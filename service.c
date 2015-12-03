@@ -5,6 +5,7 @@
 
 #include <unistd.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -83,6 +84,8 @@ int main(int argc, char *argv[])
     while (true) {
         struct announce_payload payload;
         socklen_t addrlen = sizeof(raddr);
+
+        waitpid(-1, NULL, WNOHANG);
 
         memset(&raddr, 0, addrlen);
 
