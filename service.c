@@ -36,6 +36,7 @@ static void announce(void *payload)
 
     msg.pubkey.len = crypto_box_PUBLICKEYBYTES;
     msg.pubkey.data = pk;
+    msg.port = 6667;
     len = announce_message__get_packed_size(&msg);
     if (len > sizeof(buf)) {
         sd_log(LOG_LEVEL_ERROR, "Announce message longer than buffer");
