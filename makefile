@@ -1,10 +1,12 @@
 CFLAGS=-Wall -Wextra -pedantic -std=c99 -D_POSIX_SOURCE
 
 CLIENT_SRC=common.c \
+		   log.c \
 		   client.c
 CLIENT_OBJ=$(patsubst %.c,%.o,${CLIENT_SRC})
 
 SERVICE_SRC=common.c \
+			log.c \
 			service.c
 SERVICE_OBJ=$(patsubst %.c,%.o,${SERVICE_SRC})
 

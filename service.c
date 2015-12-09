@@ -1,6 +1,5 @@
 #include <errno.h>
 #include <stdbool.h>
-#include <stdio.h>
 #include <string.h>
 
 #include <unistd.h>
@@ -11,6 +10,7 @@
 #include <arpa/inet.h>
 
 #include "common.h"
+#include "log.h"
 
 #define ANNOUNCE_MESSAGE "ANNOUNCE"
 
@@ -27,21 +27,21 @@ static void announce(void *payload)
     struct sockaddr_in raddr = p->addr;
     int ret, sock;
 
-    printf("Received %lu bytes from %s: '%s'\n", p->buflen,
+    sd_log(LOG_LEVEL_ERROR, "Received %lu bytes from %s: '%s'\n", p->buflen,
             inet_ntoa(p->addr.sin_addr), p->buf);
 
     raddr.sin_port = htons(6668);
 
     sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (sock < 0) {
-        printf("Could not open announce socket: %s\n", strerror(errno));
+        sd_log(LOG_LEVEL_ERROR, "Could not open announce socket: %s\n", strerror(errno));
         goto out;
     }
 
     ret = sendto(sock, ANNOUNCE_MESSAGE, sizeof(ANNOUNCE_MESSAGE), 0,
             (struct sockaddr*)&raddr, sizeof(raddr));
     if (ret < 0) {
-        printf("Unable to send announce: %s\n", strerror(errno));
+        sd_log(LOG_LEVEL_ERROR, "Unable to send announce: %s\n", strerror(errno));
         goto out;
     }
 
@@ -63,13 +63,13 @@ static void handle_probes(void)
 
     sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (sock < 0) {
-        printf("Could not open socket: %s\n", strerror(errno));
+        sd_log(LOG_LEVEL_ERROR, "Could not open socket: %s\n", strerror(errno));
         goto out;
     }
 
     ret = bind(sock, (struct sockaddr*)&maddr, sizeof(maddr));
     if (ret < 0) {
-        printf("Could not bind socket: %s\n", strerror(errno));
+        sd_log(LOG_LEVEL_ERROR, "Could not bind socket: %s\n", strerror(errno));
         goto out;
     }
 
@@ -83,7 +83,7 @@ static void handle_probes(void)
 
         ret = recvfrom(sock, buf, sizeof(buf), 0, (struct sockaddr*)&raddr, &addrlen);
         if (ret < 0) {
-            printf("Could not receive: %s\n", strerror(errno));
+            sd_log(LOG_LEVEL_ERROR, "Could not receive: %s\n", strerror(errno));
             goto out;
         }
 
@@ -93,7 +93,7 @@ static void handle_probes(void)
         payload.buflen = ret;
 
         if (spawn(announce, &payload) < 0) {
-            printf("Could not spawn announcer: %s\n", strerror(errno));
+            sd_log(LOG_LEVEL_ERROR, "Could not spawn announcer: %s\n", strerror(errno));
             goto out;
         }
     }

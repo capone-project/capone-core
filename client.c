@@ -1,6 +1,5 @@
 #include <errno.h>
 #include <stdbool.h>
-#include <stdio.h>
 #include <string.h>
 
 #include <unistd.h>
@@ -12,6 +11,7 @@
 #include <signal.h>
 
 #include "common.h"
+#include "log.h"
 
 #define PROBE_MESSAGE "PROBE"
 
@@ -31,13 +31,14 @@ static void probe(void *payload)
 
     sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (sock < 0) {
-        printf("Could not open probe socket: %s\n", strerror(errno));
+        sd_log(LOG_LEVEL_ERROR, "Could not open probe socket: %s",
+                strerror(errno));
         goto out;
     }
 
     ret = setsockopt(sock, IPPROTO_IP, IP_MULTICAST_TTL, &ttl, sizeof(ttl));
     if (ret < 0) {
-        printf("Could not set TTL: %s\n", strerror(errno));
+        sd_log(LOG_LEVEL_ERROR, "Could not set TTL: %s", strerror(errno));
         goto out;
     }
 
@@ -45,7 +46,7 @@ static void probe(void *payload)
         ret = sendto(sock, PROBE_MESSAGE, strlen(PROBE_MESSAGE), 0,
                 (struct sockaddr*)&maddr, sizeof(maddr));
         if (ret < 0) {
-            printf("Could not send probe: %s\n", strerror(errno));
+            sd_log(LOG_LEVEL_ERROR, "Could not send probe: %s", strerror(errno));
             goto out;
         }
 
@@ -73,23 +74,23 @@ static void receive(void *payload)
 
     sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (sock < 0) {
-        printf("Could not open receive socket: %s\n", strerror(errno));
+        sd_log(LOG_LEVEL_ERROR, "Could not open receive socket: %s", strerror(errno));
         goto out;
     }
 
     ret = bind(sock, (struct sockaddr*)&laddr, sizeof(laddr));
     if (ret < 0) {
-        printf("Could not bind receive socket: %s\n", strerror(errno));
+        sd_log(LOG_LEVEL_ERROR, "Could not bind receive socket: %s", strerror(errno));
         goto out;
     }
 
     buflen = recv(sock, buf, sizeof(buf), 0);
     if (buflen < 0) {
-        printf("Could not read announcement package: %s\n", strerror(errno));
+        sd_log(LOG_LEVEL_ERROR, "Could not read announcement package: %s", strerror(errno));
         goto out;
     }
 
-    printf("Received %lu bytes announcement: '%s'\n", buflen, buf);
+    sd_log(LOG_LEVEL_DEBUG, "Received %lu bytes announcement: '%s'", buflen, buf);
 
 out:
     if (sock >= 0)
@@ -110,15 +111,15 @@ int main(int argc, char *argv[])
         pid = waitpid(-1, NULL, 0);
 
         if (pid < 0) {
-            printf("Could not await child exit: %s\n", strerror(errno));
+            sd_log(LOG_LEVEL_ERROR, "Could not await child exit: %s", strerror(errno));
             return -1;
         } else if (pid == ppid) {
-            puts("Probe finished");
+            sd_log(LOG_LEVEL_DEBUG, "Probe finished");
         } else if (pid == rpid) {
-            puts("Receive finished");
+            sd_log(LOG_LEVEL_DEBUG, "Receive finished");
             kill(ppid, SIGTERM);
         } else {
-            puts("Unknown child finished");
+            sd_log(LOG_LEVEL_DEBUG, "Unknown child finished");
             return -1;
         }
     }
