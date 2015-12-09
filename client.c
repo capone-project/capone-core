@@ -60,7 +60,7 @@ out:
 static void receive(void *payload)
 {
     struct sockaddr_in laddr;
-    int sock, csock, ret;
+    int sock, ret;
     char buf[4096];
     ssize_t buflen;
 
@@ -94,8 +94,6 @@ static void receive(void *payload)
 out:
     if (sock >= 0)
         close(sock);
-    if (csock >= 0)
-        close(csock);
 }
 
 int main(int argc, char *argv[])
