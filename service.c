@@ -48,13 +48,13 @@ static void announce(void *payload)
 
     sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (sock < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not open announce socket: %s\n", strerror(errno));
+        sd_log(LOG_LEVEL_ERROR, "Could not open announce socket: %s", strerror(errno));
         goto out;
     }
 
     ret = sendto(sock, buf, len, 0, (struct sockaddr*)&raddr, sizeof(raddr));
     if (ret < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Unable to send announce: %s\n", strerror(errno));
+        sd_log(LOG_LEVEL_ERROR, "Unable to send announce: %s", strerror(errno));
         goto out;
     }
 
@@ -81,13 +81,13 @@ static void handle_probes(void *payload)
 
     sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (sock < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not open socket: %s\n", strerror(errno));
+        sd_log(LOG_LEVEL_ERROR, "Could not open socket: %s", strerror(errno));
         goto out;
     }
 
     ret = bind(sock, (struct sockaddr*)&maddr, sizeof(maddr));
     if (ret < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not bind socket: %s\n", strerror(errno));
+        sd_log(LOG_LEVEL_ERROR, "Could not bind socket: %s", strerror(errno));
         goto out;
     }
 
@@ -105,7 +105,7 @@ static void handle_probes(void *payload)
 
         ret = recvfrom(sock, buf, sizeof(buf), 0, (struct sockaddr*)&raddr, &addrlen);
         if (ret < 0) {
-            sd_log(LOG_LEVEL_ERROR, "Could not receive: %s\n", strerror(errno));
+            sd_log(LOG_LEVEL_ERROR, "Could not receive: %s", strerror(errno));
             goto out;
         }
 
@@ -122,7 +122,7 @@ static void handle_probes(void *payload)
         payload.addrlen = addrlen;
 
         if (spawn(announce, &payload) < 0) {
-            sd_log(LOG_LEVEL_ERROR, "Could not spawn announcer: %s\n", strerror(errno));
+            sd_log(LOG_LEVEL_ERROR, "Could not spawn announcer: %s", strerror(errno));
             goto out;
         }
 
