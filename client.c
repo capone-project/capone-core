@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include <string.h>
 
+#include <stdlib.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -10,19 +11,38 @@
 #include <sys/wait.h>
 #include <signal.h>
 
+#include <sodium/crypto_box.h>
+
 #include "common.h"
 #include "log.h"
 
-#define PROBE_MESSAGE "PROBE"
+#include "announce.pb-c.h"
+#include "probe.pb-c.h"
+
+static uint8_t pk[crypto_box_PUBLICKEYBYTES];
+static uint8_t sk[crypto_box_SECRETKEYBYTES];
+
+static uint8_t rpk[crypto_box_PUBLICKEYBYTES];
 
 static void probe(void *payload)
 {
+    ProbeMessage msg = PROBE_MESSAGE__INIT;
+    uint8_t buf[4096];
     struct sockaddr_in maddr;
     unsigned int ttl = 1;
-    int sock;
-    int ret;
+    int sock, ret;
+    size_t len;
 
     UNUSED(payload);
+
+    msg.pubkey.len = crypto_box_PUBLICKEYBYTES;
+    msg.pubkey.data = pk;
+    len = probe_message__get_packed_size(&msg);
+    if (len > sizeof(buf)) {
+        sd_log(LOG_LEVEL_ERROR, "Probe message longer than buffer");
+        goto out;
+    }
+    probe_message__pack(&msg, buf);
 
     memset(&maddr, 0, sizeof(maddr));
     maddr.sin_family = AF_INET;
@@ -43,8 +63,7 @@ static void probe(void *payload)
     }
 
     while (true) {
-        ret = sendto(sock, PROBE_MESSAGE, strlen(PROBE_MESSAGE), 0,
-                (struct sockaddr*)&maddr, sizeof(maddr));
+        ret = sendto(sock, buf, len, 0, (struct sockaddr*)&maddr, sizeof(maddr));
         if (ret < 0) {
             sd_log(LOG_LEVEL_ERROR, "Could not send probe: %s", strerror(errno));
             goto out;
@@ -58,12 +77,14 @@ out:
         close(sock);
 }
 
-static void receive(void *payload)
+static void handle_announce(void *payload)
 {
-    struct sockaddr_in laddr;
+    AnnounceMessage *msg = NULL;
+    struct sockaddr_in laddr, raddr;
     int sock, ret;
-    char buf[4096];
+    uint8_t buf[4096];
     ssize_t buflen;
+    socklen_t addrlen;
 
     UNUSED(payload);
 
@@ -84,27 +105,43 @@ static void receive(void *payload)
         goto out;
     }
 
-    buflen = recv(sock, buf, sizeof(buf), 0);
+    buflen = recvfrom(sock, buf, sizeof(buf), 0, (struct sockaddr*)&raddr, &addrlen);
     if (buflen < 0) {
         sd_log(LOG_LEVEL_ERROR, "Could not read announcement package: %s", strerror(errno));
         goto out;
     }
 
-    sd_log(LOG_LEVEL_DEBUG, "Received %lu bytes announcement: '%s'", buflen, buf);
+    msg = announce_message__unpack(NULL, buflen, buf);
+    if (msg == NULL) {
+        sd_log(LOG_LEVEL_ERROR, "Could not unpack announce message");
+        goto out;
+    }
+
+    if (msg->pubkey.len != sizeof(rpk)) {
+        sd_log(LOG_LEVEL_ERROR, "Unexpected key size in announcement");
+        goto out;
+    }
+
+    memcpy(rpk, msg->pubkey.data, sizeof(rpk));
+
+    sd_log(LOG_LEVEL_DEBUG, "Successfully retrieved remote public key");
 
 out:
+    announce_message__free_unpacked(msg, NULL);
     if (sock >= 0)
         close(sock);
 }
 
 int main(int argc, char *argv[])
 {
+    int pid, ppid, rpid;
+
     UNUSED(argc);
     UNUSED(argv);
 
-    int pid, ppid, rpid;
+    crypto_box_keypair(pk, sk);
 
-    rpid = spawn(receive, NULL);
+    rpid = spawn(handle_announce, NULL);
     ppid = spawn(probe, NULL);
 
     while (true) {

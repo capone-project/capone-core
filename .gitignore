@@ -1,2 +1,4 @@
+*.pb-c.c
+*.pb-c.h
 client
 service

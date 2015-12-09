@@ -1,0 +1,3 @@
+message AnnounceMessage {
+    required bytes pubkey = 1;
+}

@@ -1,0 +1,3 @@
+message ProbeMessage {
+    required bytes pubkey = 1;
+}
