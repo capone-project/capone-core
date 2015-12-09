@@ -71,7 +71,7 @@ static void receive(void *payload)
     laddr.sin_addr.s_addr = htonl(INADDR_ANY);
     laddr.sin_port = htons(6668);
 
-    sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (sock < 0) {
         printf("Could not open receive socket: %s\n", strerror(errno));
         goto out;
@@ -83,21 +83,9 @@ static void receive(void *payload)
         goto out;
     }
 
-    ret = listen(sock, 1);
-    if (ret < 0) {
-        printf("Could not listen on receive socket: %s\n", strerror(errno));
-        goto out;
-    }
-
-    csock = accept(sock, NULL, NULL);
-    if (csock < 0) {
-        printf("Could not accept announcement: %s\n", strerror(errno));
-        goto out;
-    }
-
-    buflen = read(csock, buf, sizeof(buf));
+    buflen = recv(sock, buf, sizeof(buf), 0);
     if (buflen < 0) {
-        printf("Could not read from announce socket: %s\n", strerror(errno));
+        printf("Could not read announcement package: %s\n", strerror(errno));
         goto out;
     }
 

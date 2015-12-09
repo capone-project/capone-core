@@ -32,19 +32,14 @@ static void announce(void *payload)
 
     raddr.sin_port = htons(6668);
 
-    sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (sock < 0) {
         printf("Could not open announce socket: %s\n", strerror(errno));
         goto out;
     }
 
-    ret = connect(sock, (struct sockaddr*)&raddr, p->addrlen);
-    if (ret < 0) {
-        printf("Unable to connect to client: %s\n", strerror(errno));
-        goto out;
-    }
-
-    ret = write(sock, ANNOUNCE_MESSAGE, sizeof(ANNOUNCE_MESSAGE));
+    ret = sendto(sock, ANNOUNCE_MESSAGE, sizeof(ANNOUNCE_MESSAGE), 0,
+            (struct sockaddr*)&raddr, sizeof(raddr));
     if (ret < 0) {
         printf("Unable to send announce: %s\n", strerror(errno));
         goto out;
