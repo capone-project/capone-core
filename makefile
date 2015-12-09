@@ -1,4 +1,4 @@
-CFLAGS=-Wall -Wextra -pedantic -std=c99
+CFLAGS=-Wall -Wextra -pedantic -std=c99 -D_POSIX_SOURCE
 
 CLIENT_SRC=common.c \
 		   client.c
