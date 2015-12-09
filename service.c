@@ -50,14 +50,11 @@ out:
         close(sock);
 }
 
-int main(int argc, char *argv[])
+static void handle_probes(void)
 {
     struct sockaddr_in maddr, raddr;
     int sock, ret;
     char buf[4096];
-
-    UNUSED(argc);
-    UNUSED(argv);
 
     memset(&maddr, 0, sizeof(maddr));
     maddr.sin_family = AF_INET;
@@ -104,6 +101,14 @@ int main(int argc, char *argv[])
 out:
     if (sock >= 0)
         close(sock);
+}
+
+int main(int argc, char *argv[])
+{
+    UNUSED(argc);
+    UNUSED(argv);
+
+    handle_probes();
 
     return 0;
 }
