@@ -104,8 +104,8 @@ int main(int argc, char *argv[])
 
     int pid, ppid, rpid;
 
-    ppid = spawn(probe, NULL);
     rpid = spawn(receive, NULL);
+    ppid = spawn(probe, NULL);
 
     while (true) {
         pid = waitpid(-1, NULL, 0);
