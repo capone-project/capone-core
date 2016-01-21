@@ -28,8 +28,9 @@ static uint8_t rpk[crypto_box_PUBLICKEYBYTES];
 
 static void probe(void *payload)
 {
+    DiscoverEnvelope env = DISCOVER_ENVELOPE__INIT;
     DiscoverMessage msg = DISCOVER_MESSAGE__INIT;
-    uint8_t buf[4096];
+    uint8_t envbuf[4096], msgbuf[4096];
     struct sockaddr_in maddr;
     unsigned int ttl = 1;
     int sock, ret;
@@ -42,11 +43,21 @@ static void probe(void *payload)
     msg.pubkey.len = crypto_box_PUBLICKEYBYTES;
     msg.pubkey.data = pk;
     len = discover_message__get_packed_size(&msg);
-    if (len > sizeof(buf)) {
-        sd_log(LOG_LEVEL_ERROR, "Probe message longer than buffer");
+    if (len > sizeof(msgbuf)) {
+        sd_log(LOG_LEVEL_ERROR, "Discover message longer than buffer");
         goto out;
     }
-    discover_message__pack(&msg, buf);
+    discover_message__pack(&msg, msgbuf);
+
+    env.encrypted = false;
+    env.discover.data = msgbuf;
+    env.discover.len = len;
+    len = discover_envelope__get_packed_size(&env);
+    if (len > sizeof(envbuf)) {
+        sd_log(LOG_LEVEL_ERROR, "Discover envelope longer than buffer");
+        goto out;
+    }
+    discover_envelope__pack(&env, envbuf);
 
     memset(&maddr, 0, sizeof(maddr));
     maddr.sin_family = AF_INET;
@@ -67,7 +78,7 @@ static void probe(void *payload)
     }
 
     while (true) {
-        ret = sendto(sock, buf, len, 0, (struct sockaddr*)&maddr, sizeof(maddr));
+        ret = sendto(sock, envbuf, len, 0, (struct sockaddr*)&maddr, sizeof(maddr));
         if (ret < 0) {
             sd_log(LOG_LEVEL_ERROR, "Could not send probe: %s", strerror(errno));
             goto out;

@@ -70,7 +70,7 @@ out:
         close(sock);
 }
 
-static void handle_probes(void *payload)
+static void handle_discover(void *payload)
 {
     struct sockaddr_in maddr, raddr;
     int sock, ret;
@@ -99,6 +99,7 @@ static void handle_probes(void *payload)
             inet_ntoa(maddr.sin_addr), ntohs(maddr.sin_port));
 
     while (true) {
+        DiscoverEnvelope *env;
         DiscoverMessage *msg;
         struct announce_payload payload;
         socklen_t addrlen = sizeof(raddr);
@@ -113,9 +114,20 @@ static void handle_probes(void *payload)
             goto out;
         }
 
-        msg = discover_message__unpack(NULL, ret, buf);
+        env = discover_envelope__unpack(NULL, ret, buf);
+        if (env == NULL) {
+            sd_log(LOG_LEVEL_ERROR, "Could not unpack discover envelope");
+            goto out;
+        }
+
+        if (env->encrypted) {
+            sd_log(LOG_LEVEL_ERROR, "Encrypted discover message not yet supported");
+            goto out;
+        }
+
+        msg = discover_message__unpack(NULL, env->discover.len, env->discover.data);
         if (msg == NULL) {
-            sd_log(LOG_LEVEL_ERROR, "Could not unpack probe message");
+            sd_log(LOG_LEVEL_ERROR, "Could not unpack discover message");
             goto out;
         }
 
@@ -132,6 +144,7 @@ static void handle_probes(void *payload)
         }
 
         discover_message__free_unpacked(msg, NULL);
+        discover_envelope__free_unpacked(env, NULL);
     }
 
 out:
@@ -193,7 +206,7 @@ int main(int argc, char *argv[])
 
     crypto_box_keypair(pk, sk);
 
-    ppid = spawn(handle_probes, NULL);
+    ppid = spawn(handle_discover, NULL);
     rpid = spawn(handle_requests, NULL);
 
     while (true) {
