@@ -20,9 +20,12 @@
 static uint8_t pk[crypto_box_PUBLICKEYBYTES];
 static uint8_t sk[crypto_box_SECRETKEYBYTES];
 
+#define LISTEN_PORT 6667
+
 struct announce_payload {
     struct sockaddr_in addr;
     socklen_t addrlen;
+    uint32_t port;
 };
 
 static void announce(void *payload)
@@ -34,9 +37,10 @@ static void announce(void *payload)
     int ret, sock;
     size_t len;
 
+    msg.version = VERSION;
+    msg.port = LISTEN_PORT;
     msg.pubkey.len = crypto_box_PUBLICKEYBYTES;
     msg.pubkey.data = pk;
-    msg.port = 6667;
     len = announce_message__get_packed_size(&msg);
     if (len > sizeof(buf)) {
         sd_log(LOG_LEVEL_ERROR, "Announce message longer than buffer");
@@ -44,7 +48,7 @@ static void announce(void *payload)
     }
     announce_message__pack(&msg, buf);
 
-    raddr.sin_port = htons(6668);
+    raddr.sin_port = htons(p->port);
 
     sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (sock < 0) {
@@ -115,11 +119,12 @@ static void handle_probes(void *payload)
             goto out;
         }
 
-        sd_log(LOG_LEVEL_DEBUG, "Received %lu bytes from %s", ret,
-                inet_ntoa(raddr.sin_addr));
+        sd_log(LOG_LEVEL_DEBUG, "Received %lu bytes from %s (version %s)", ret,
+                inet_ntoa(raddr.sin_addr), msg->version);
 
         payload.addr = raddr;
         payload.addrlen = addrlen;
+        payload.port = msg->port;
 
         if (spawn(announce, &payload) < 0) {
             sd_log(LOG_LEVEL_ERROR, "Could not spawn announcer: %s", strerror(errno));

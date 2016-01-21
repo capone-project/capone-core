@@ -1,5 +1,6 @@
 LIBS=libsodium libprotobuf-c
 CFLAGS=-Wall -Wextra -pedantic -std=c99 -D_POSIX_SOURCE $(shell pkg-config --cflags ${LIBS})
+CPPFLAGS=-DVERSION=\"0.0.1\"
 LDFLAGS=$(shell pkg-config --libs ${LIBS})
 
 PROTOBUF=announce.proto \
@@ -54,4 +55,4 @@ service: ${PROTOBUF_OBJECTS} ${SERVICE_OBJECTS}
 	@protoc-c --c_out . $^
 %.o: %.c ${CLIENT_HEADERS} ${SERVICE_HEADERS}
 	@echo "CC $@"
-	@gcc ${CFLAGS} -c -o "$@" "$<"
+	@gcc ${CFLAGS} ${CPPFLAGS} -c -o "$@" "$<"

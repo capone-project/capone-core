@@ -19,6 +19,8 @@
 #include "announce.pb-c.h"
 #include "discover.pb-c.h"
 
+#define LISTEN_PORT 6668
+
 static uint8_t pk[crypto_box_PUBLICKEYBYTES];
 static uint8_t sk[crypto_box_SECRETKEYBYTES];
 
@@ -35,6 +37,8 @@ static void probe(void *payload)
 
     UNUSED(payload);
 
+    msg.version = VERSION;
+    msg.port = LISTEN_PORT;
     msg.pubkey.len = crypto_box_PUBLICKEYBYTES;
     msg.pubkey.data = pk;
     len = discover_message__get_packed_size(&msg);
@@ -91,7 +95,7 @@ static void handle_announce(void *payload)
     memset(&laddr, 0, sizeof(laddr));
     laddr.sin_family = AF_INET;
     laddr.sin_addr.s_addr = htonl(INADDR_ANY);
-    laddr.sin_port = htons(6668);
+    laddr.sin_port = htons(LISTEN_PORT);
 
     sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (sock < 0) {
@@ -124,7 +128,8 @@ static void handle_announce(void *payload)
 
     memcpy(rpk, msg->pubkey.data, sizeof(rpk));
 
-    sd_log(LOG_LEVEL_DEBUG, "Successfully retrieved remote public key");
+    sd_log(LOG_LEVEL_DEBUG, "Successfully retrieved remote public key from server (version %s)",
+            msg->version);
 
 out:
     announce_message__free_unpacked(msg, NULL);
