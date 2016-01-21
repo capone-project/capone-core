@@ -1,4 +1,5 @@
 message AnnounceMessage {
-    required bytes pubkey = 1;
-    required uint64 port = 2;
+    required string version = 1;
+    required uint32 port = 2;
+    required bytes pubkey = 3;
 }

@@ -15,7 +15,7 @@
 #include "log.h"
 
 #include "announce.pb-c.h"
-#include "probe.pb-c.h"
+#include "discover.pb-c.h"
 
 static uint8_t pk[crypto_box_PUBLICKEYBYTES];
 static uint8_t sk[crypto_box_SECRETKEYBYTES];
@@ -95,7 +95,7 @@ static void handle_probes(void *payload)
             inet_ntoa(maddr.sin_addr), ntohs(maddr.sin_port));
 
     while (true) {
-        ProbeMessage *msg;
+        DiscoverMessage *msg;
         struct announce_payload payload;
         socklen_t addrlen = sizeof(raddr);
 
@@ -109,7 +109,7 @@ static void handle_probes(void *payload)
             goto out;
         }
 
-        msg = probe_message__unpack(NULL, ret, buf);
+        msg = discover_message__unpack(NULL, ret, buf);
         if (msg == NULL) {
             sd_log(LOG_LEVEL_ERROR, "Could not unpack probe message");
             goto out;
@@ -126,7 +126,7 @@ static void handle_probes(void *payload)
             goto out;
         }
 
-        probe_message__free_unpacked(msg, NULL);
+        discover_message__free_unpacked(msg, NULL);
     }
 
 out:

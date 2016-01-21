@@ -17,7 +17,7 @@
 #include "log.h"
 
 #include "announce.pb-c.h"
-#include "probe.pb-c.h"
+#include "discover.pb-c.h"
 
 static uint8_t pk[crypto_box_PUBLICKEYBYTES];
 static uint8_t sk[crypto_box_SECRETKEYBYTES];
@@ -26,7 +26,7 @@ static uint8_t rpk[crypto_box_PUBLICKEYBYTES];
 
 static void probe(void *payload)
 {
-    ProbeMessage msg = PROBE_MESSAGE__INIT;
+    DiscoverMessage msg = DISCOVER_MESSAGE__INIT;
     uint8_t buf[4096];
     struct sockaddr_in maddr;
     unsigned int ttl = 1;
@@ -37,12 +37,12 @@ static void probe(void *payload)
 
     msg.pubkey.len = crypto_box_PUBLICKEYBYTES;
     msg.pubkey.data = pk;
-    len = probe_message__get_packed_size(&msg);
+    len = discover_message__get_packed_size(&msg);
     if (len > sizeof(buf)) {
         sd_log(LOG_LEVEL_ERROR, "Probe message longer than buffer");
         goto out;
     }
-    probe_message__pack(&msg, buf);
+    discover_message__pack(&msg, buf);
 
     memset(&maddr, 0, sizeof(maddr));
     maddr.sin_family = AF_INET;

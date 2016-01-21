@@ -1,0 +1,10 @@
+message DiscoverEnvelope {
+    required bool encrypted = 1;
+    required bytes discover = 2;
+}
+
+message DiscoverMessage {
+    required string version = 1;
+    required uint32 port = 2;
+    required bytes pubkey = 3;
+}
