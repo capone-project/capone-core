@@ -172,62 +172,16 @@ out:
         close(sock);
 }
 
-static void handle_requests(void *payload)
-{
-    int sock, ret;
-    struct sockaddr_in addr;
-
-    UNUSED(payload);
-
-    memset(&addr, 0, sizeof(addr));
-    addr.sin_family = AF_INET;
-    addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    addr.sin_port = htons(6667);
-
-    sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    if (sock < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not open socket: %s", strerror(errno));
-        goto out;
-    }
-
-    ret = bind(sock, (struct sockaddr*)&addr, sizeof(addr));
-    if (ret < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not bind socket: %s", strerror(errno));
-        goto out;
-    }
-
-    while (true) {
-        int cfd;
-
-        ret = listen(sock, 0);
-        if (ret < 0) {
-            sd_log(LOG_LEVEL_ERROR, "Could not listen on socket: %s", strerror(errno));
-            goto out;
-        }
-
-        cfd = accept(sock, NULL, NULL);
-        if (cfd < 0) {
-            sd_log(LOG_LEVEL_ERROR, "Couldn ot accept connection: %s", strerror(errno));
-            goto out;
-        }
-    }
-
-out:
-    if (sock >= 0)
-        close(sock);
-}
-
 int main(int argc, char *argv[])
 {
-    int ppid, rpid;
+    int dpid;
 
     UNUSED(argc);
     UNUSED(argv);
 
     crypto_box_keypair(pk, sk);
 
-    ppid = spawn(handle_discover, NULL);
-    rpid = spawn(handle_requests, NULL);
+    dpid = spawn(handle_discover, NULL);
 
     while (true) {
         int pid = waitpid(-1, NULL, 0);
@@ -235,10 +189,8 @@ int main(int argc, char *argv[])
         if (pid < 0) {
             sd_log(LOG_LEVEL_ERROR, "Could not await child exit: %s", strerror(errno));
             return -1;
-        } else if (pid == ppid) {
+        } else if (pid == dpid) {
             sd_log(LOG_LEVEL_DEBUG, "Probe handler finished");
-        } else if (pid == rpid) {
-            sd_log(LOG_LEVEL_DEBUG, "Request handler finished");
         } else {
             sd_log(LOG_LEVEL_DEBUG, "Unknown child finished");
             return -1;
