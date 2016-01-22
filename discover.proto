@@ -1,6 +1,7 @@
 message DiscoverEnvelope {
     required bool encrypted = 1;
     required bytes discover = 2;
+    required bytes mac = 3;
 }
 
 message DiscoverMessage {

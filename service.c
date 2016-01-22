@@ -9,6 +9,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+#include <sodium/crypto_auth.h>
 #include <sodium/crypto_box.h>
 
 #include "common.h"
@@ -128,6 +129,11 @@ static void handle_discover(void *payload)
         msg = discover_message__unpack(NULL, env->discover.len, env->discover.data);
         if (msg == NULL) {
             sd_log(LOG_LEVEL_ERROR, "Could not unpack discover message");
+            goto out;
+        }
+
+        if (crypto_auth_verify(env->mac.data, env->discover.data, env->discover.len, msg->pubkey.data) != 0) {
+            sd_log(LOG_LEVEL_ERROR, "Could not verify MAC");
             goto out;
         }
 

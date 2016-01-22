@@ -12,6 +12,7 @@
 #include <signal.h>
 
 #include <sodium/crypto_box.h>
+#include <sodium/crypto_auth.h>
 
 #include "common.h"
 #include "log.h"
@@ -30,7 +31,7 @@ static void probe(void *payload)
 {
     DiscoverEnvelope env = DISCOVER_ENVELOPE__INIT;
     DiscoverMessage msg = DISCOVER_MESSAGE__INIT;
-    uint8_t envbuf[4096], msgbuf[4096];
+    uint8_t envbuf[4096], msgbuf[4096], mac[crypto_auth_BYTES];
     struct sockaddr_in maddr;
     unsigned int ttl = 1;
     int sock, ret;
@@ -49,7 +50,14 @@ static void probe(void *payload)
     }
     discover_message__pack(&msg, msgbuf);
 
+    if (crypto_auth(mac, msgbuf, len, pk) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Unable to sign message");
+        goto out;
+    }
+
     env.encrypted = false;
+    env.mac.len = crypto_auth_BYTES;
+    env.mac.data = mac;
     env.discover.data = msgbuf;
     env.discover.len = len;
     len = discover_envelope__get_packed_size(&env);
