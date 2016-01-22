@@ -92,6 +92,9 @@ static void probe(void *payload)
             goto out;
         }
 
+        sd_log(LOG_LEVEL_DEBUG, "Sent probe message to %s:%d",
+                inet_ntoa(maddr.sin_addr), ntohs(maddr.sin_port));
+
         sleep(5);
     }
 
