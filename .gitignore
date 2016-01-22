@@ -1,4 +1,9 @@
-*.pb-c.c
-*.pb-c.h
-client
-service
+/proto/*.pb-c.c
+/proto/*.pb-c.h
+
+/sd-discover
+/sd-discover-responder
+/sd-query
+/sd-query-responder
+/sd-connect
+/sd-connect-responder
