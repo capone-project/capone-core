@@ -37,6 +37,9 @@ $(EXECUTABLES): %: ${PROTOBUF_OBJECTS} ${LIBRARY_OBJECTS} %.o
 	@echo "LD $@"
 	@gcc -o "$@" $^ ${LDFLAGS}
 
+%.o: %.c %.h
+	@echo "CC $@"
+	@gcc ${CFLAGS} ${CPPFLAGS} -c -o "$@" "$<"
 %.o: %.c
 	@echo "CC $@"
 	@gcc ${CFLAGS} ${CPPFLAGS} -c -o "$@" "$<"
