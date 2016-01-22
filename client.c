@@ -102,6 +102,7 @@ out:
 
 static void handle_announce(void *payload)
 {
+    AnnounceEnvelope *env = NULL;
     AnnounceMessage *msg = NULL;
     struct sockaddr_in laddr, raddr;
     int sock, ret;
@@ -134,7 +135,13 @@ static void handle_announce(void *payload)
         goto out;
     }
 
-    msg = announce_message__unpack(NULL, buflen, buf);
+    env = announce_envelope__unpack(NULL, buflen, buf);
+    if (env == NULL) {
+        sd_log(LOG_LEVEL_ERROR, "Could not unpack announce envelope");
+        goto out;
+    }
+
+    msg = announce_message__unpack(NULL, env->announce.len, env->announce.data);
     if (msg == NULL) {
         sd_log(LOG_LEVEL_ERROR, "Could not unpack announce message");
         goto out;
@@ -145,6 +152,11 @@ static void handle_announce(void *payload)
         goto out;
     }
 
+    if (crypto_auth_verify(env->mac.data, env->announce.data, env->announce.len, msg->pubkey.data) != 0) {
+        sd_log(LOG_LEVEL_ERROR, "Could not verify MAC");
+        goto out;
+    }
+
     memcpy(rpk, msg->pubkey.data, sizeof(rpk));
 
     sd_log(LOG_LEVEL_DEBUG, "Successfully retrieved remote public key from server (version %s)",
@@ -152,6 +164,7 @@ static void handle_announce(void *payload)
 
 out:
     announce_message__free_unpacked(msg, NULL);
+    announce_envelope__free_unpacked(env, NULL);
     if (sock >= 0)
         close(sock);
 }

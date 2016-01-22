@@ -31,8 +31,9 @@ struct announce_payload {
 
 static void announce(void *payload)
 {
+    AnnounceEnvelope env = ANNOUNCE_ENVELOPE__INIT;
     AnnounceMessage msg = ANNOUNCE_MESSAGE__INIT;
-    uint8_t buf[4096];
+    uint8_t msgbuf[4096], envbuf[4096], mac[crypto_auth_BYTES];
     struct announce_payload *p = (struct announce_payload *)payload;
     struct sockaddr_in raddr = p->addr;
     int ret, sock;
@@ -43,11 +44,24 @@ static void announce(void *payload)
     msg.pubkey.len = crypto_box_PUBLICKEYBYTES;
     msg.pubkey.data = pk;
     len = announce_message__get_packed_size(&msg);
-    if (len > sizeof(buf)) {
+    if (len > sizeof(msgbuf)) {
         sd_log(LOG_LEVEL_ERROR, "Announce message longer than buffer");
         goto out;
     }
-    announce_message__pack(&msg, buf);
+    announce_message__pack(&msg, msgbuf);
+
+    crypto_auth(mac, msgbuf, len, pk);
+
+    env.announce.data = msgbuf;
+    env.announce.len = len;
+    env.mac.data = mac;
+    env.mac.len = crypto_auth_BYTES;
+    len = announce_envelope__get_packed_size(&env);
+    if (len > sizeof(envbuf)) {
+        sd_log(LOG_LEVEL_ERROR, "Announce envelope longer than buffer");
+        goto out;
+    }
+    announce_envelope__pack(&env, envbuf);
 
     raddr.sin_port = htons(p->port);
 
@@ -57,7 +71,7 @@ static void announce(void *payload)
         goto out;
     }
 
-    ret = sendto(sock, buf, len, 0, (struct sockaddr*)&raddr, sizeof(raddr));
+    ret = sendto(sock, envbuf, len, 0, (struct sockaddr*)&raddr, sizeof(raddr));
     if (ret < 0) {
         sd_log(LOG_LEVEL_ERROR, "Unable to send announce: %s", strerror(errno));
         goto out;
