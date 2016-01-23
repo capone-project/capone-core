@@ -1,5 +1,5 @@
 LIBS=libsodium libprotobuf-c
-CFLAGS=-I. -Iproto -Ilib -Wall -Wextra -pedantic -std=c99 -D_POSIX_SOURCE $(shell pkg-config --cflags ${LIBS})
+CFLAGS=-I. -Ilib -Wall -Wextra -pedantic -std=c99 -D_POSIX_SOURCE $(shell pkg-config --cflags ${LIBS})
 CPPFLAGS=-DVERSION=\"0.0.1\"
 LDFLAGS=$(shell pkg-config --libs ${LIBS})
 
