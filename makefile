@@ -1,10 +1,9 @@
 LIBS=libsodium libprotobuf-c
-CFLAGS=-I. -Ilib -Wall -Wextra -pedantic -std=c99 -D_POSIX_SOURCE $(shell pkg-config --cflags ${LIBS})
+CFLAGS=-I. -Wall -Wextra -pedantic -std=c99 -D_POSIX_SOURCE $(shell pkg-config --cflags ${LIBS})
 CPPFLAGS=-DVERSION=\"0.0.1\"
 LDFLAGS=$(shell pkg-config --libs ${LIBS})
 
-PROTOBUF=proto/announce.proto \
-		 proto/discover.proto
+PROTOBUF=proto/discovery.proto
 PROTOBUF_SOURCES=$(patsubst %.proto,%.pb-c.c,${PROTOBUF})
 PROTOBUF_HEADERS=$(patsubst %.proto,%.pb-c.h,${PROTOBUF})
 PROTOBUF_OBJECTS=$(patsubst %.proto,%.pb-c.o,${PROTOBUF})

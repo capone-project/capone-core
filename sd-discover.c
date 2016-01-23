@@ -31,11 +31,10 @@
 #include <sodium/crypto_box.h>
 #include <sodium/crypto_auth.h>
 
-#include "common.h"
-#include "log.h"
+#include "lib/common.h"
+#include "lib/log.h"
 
-#include "announce.pb-c.h"
-#include "discover.pb-c.h"
+#include "proto/discovery.pb-c.h"
 
 #define LISTEN_PORT 6668
 
