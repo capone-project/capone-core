@@ -8,7 +8,8 @@ PROTOBUF_SOURCES=$(patsubst %.proto,%.pb-c.c,${PROTOBUF})
 PROTOBUF_HEADERS=$(patsubst %.proto,%.pb-c.h,${PROTOBUF})
 PROTOBUF_OBJECTS=$(patsubst %.proto,%.pb-c.o,${PROTOBUF})
 
-LIBRARY_SOURCES=lib/common.c \
+LIBRARY_SOURCES=lib/cfg.c \
+				lib/common.c \
 				lib/log.c \
 				lib/schannel.c
 LIBRARY_HEADERS=$(patsubst %.c,%.h,${LIBRARY_SOURCES})
