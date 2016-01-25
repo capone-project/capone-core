@@ -151,10 +151,10 @@ static enum line_type parse_line(char *key, size_t keylen, char *value, size_t v
     }
 
     /* Find line end */
-    for (ptr = line; ptr != '\0' && *ptr != '\n' && (ptr - line) < (ssize_t) len; ptr++);
+    for (ptr = line; *ptr && *ptr != '\n' && (ptr - line) < (ssize_t) len; ptr++);
 
     /* Trim trailing whitespace */
-    for (end = ptr; isspace(*end) && end > line; end--);
+    for (end = ptr; (*end == '\0' || isspace(*end)) && end > line; end--);
     /* Trim leading whitespace */
     for (start = line; isspace(*start) && start < end; start++);
 
