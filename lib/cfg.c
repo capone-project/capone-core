@@ -223,6 +223,7 @@ int cfg_parse_string(struct cfg *c, const char *ptr, size_t len)
     struct cfg_section *section = NULL;
     const char *line = ptr;
     int ret = 0;
+    size_t remaining;
 
     memset(c, '\0', sizeof(struct cfg));
 
@@ -230,9 +231,9 @@ int cfg_parse_string(struct cfg *c, const char *ptr, size_t len)
         char key[128], value[1024];
         enum line_type type;
 
-        len = len - (line - ptr);
+        remaining = len - (line - ptr);
 
-        type = parse_line(key, sizeof(key), value, sizeof(value), line, len);
+        type = parse_line(key, sizeof(key), value, sizeof(value), line, remaining);
         switch (type) {
             case LINE_TYPE_EOF:
                 break;
@@ -254,7 +255,7 @@ int cfg_parse_string(struct cfg *c, const char *ptr, size_t len)
                 ret = -1;
                 goto out;
         }
-    } while ((line = next_line(line, len)) != NULL);
+    } while ((line = next_line(line, remaining)) != NULL);
 
 out:
 
