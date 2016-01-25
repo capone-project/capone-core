@@ -23,6 +23,16 @@
 #include <lib/cfg.h>
 #include <lib/common.h>
 
+#define assert_cfg_section(c, n, expected) do {                     \
+        assert_string_equal((c).sections[(n)].name, (expected)); \
+    } while (0)
+#define assert_cfg_entry(c, section, n, expected_name, expected_value) do {                     \
+        assert_string_equal((c).sections[(section)].entries[(n)].name, (expected_name));      \
+        assert_string_equal((c).sections[(section)].entries[(n)].value, (expected_value));    \
+    } while (0)
+
+static struct cfg config;
+
 static int setup()
 {
     return 0;
@@ -30,7 +40,16 @@ static int setup()
 
 static int teardown()
 {
+    cfg_free(&config);
     return 0;
+}
+
+static void parse_empty()
+{
+    const char text[] = "";
+
+    assert_int_equal(cfg_parse_string(&config, text, sizeof(text)), 0);
+    assert_int_equal(config.sections, 0);
 }
 
 static void parse_simple()
@@ -38,16 +57,14 @@ static void parse_simple()
     const char text[] =
         "[one]\n"
         "two=three";
-    struct cfg c;
 
-    assert_int_equal(cfg_parse_string(&c, text, sizeof(text)), 0);
+    assert_int_equal(cfg_parse_string(&config, text, sizeof(text)), 0);
 
-    assert_int_equal(c.numsections, 1);
-    assert_string_equal(c.sections[0].name, "one");
+    assert_int_equal(config.numsections, 1);
+    assert_int_equal(config.sections[0].numentries, 1);
 
-    assert_int_equal(c.sections[0].numentries, 1);
-    assert_string_equal(c.sections[0].entries[0].name, "two");
-    assert_string_equal(c.sections[0].entries[0].value, "three");
+    assert_cfg_section(config, 0, "one");
+    assert_cfg_entry(config, 0, 0, "two", "three");
 }
 
 static void parse_multiple_sections()
@@ -55,22 +72,22 @@ static void parse_multiple_sections()
     const char text[] =
         "[one]\n"
         "[two]";
-    struct cfg c;
 
-    assert_int_equal(cfg_parse_string(&c, text, sizeof(text)), 0);
+    assert_int_equal(cfg_parse_string(&config, text, sizeof(text)), 0);
 
-    assert_int_equal(c.numsections, 2);
+    assert_int_equal(config.numsections, 2);
 
-    assert_string_equal(c.sections[0].name, "one");
-    assert_int_equal(c.sections[0].numentries, 0);
+    assert_cfg_section(config, 0, "one");
+    assert_cfg_section(config, 1, "two");
 
-    assert_string_equal(c.sections[1].name, "two");
-    assert_int_equal(c.sections[1].numentries, 0);
+    assert_int_equal(config.sections[0].numentries, 0);
+    assert_int_equal(config.sections[1].numentries, 0);
 }
 
 int cfg_test_run_suite()
 {
     const struct CMUnitTest tests[] = {
+        cmocka_unit_test(parse_empty),
         cmocka_unit_test(parse_simple),
         cmocka_unit_test(parse_multiple_sections),
     };
