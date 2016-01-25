@@ -36,7 +36,6 @@ struct cfg_section {
 };
 
 struct cfg {
-    const char *file;
     struct cfg_section *sections;
     size_t numsections;
 };

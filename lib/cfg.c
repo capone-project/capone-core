@@ -258,6 +258,9 @@ int cfg_parse_string(struct cfg *c, const char *ptr, size_t len)
     } while ((line = next_line(line, remaining)) != NULL);
 
 out:
+    if (ret != 0) {
+        cfg_free(c);
+    }
 
     return ret;
 }
@@ -299,5 +302,6 @@ void cfg_free(struct cfg *c)
         free(s->entries);
     }
 
-
+    c->numsections = 0;
+    c->sections = NULL;
 }
