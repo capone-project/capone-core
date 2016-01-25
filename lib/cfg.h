@@ -42,4 +42,5 @@ struct cfg {
 };
 
 int cfg_parse(struct cfg *c, const char *path);
+int cfg_parse_string(struct cfg *c, const char *ptr, size_t len);
 void cfg_free(struct cfg *c);

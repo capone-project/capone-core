@@ -215,23 +215,18 @@ static void add_config(struct cfg_section *s, const char *key, const char *value
     return;
 }
 
-int cfg_parse(struct cfg *c, const char *path)
+int cfg_parse_string(struct cfg *c, const char *ptr, size_t len)
 {
-    struct cfg_section *section;
-    char *ptr, *line;
-    size_t len;
+    struct cfg_section *section = NULL;
+    char *line;
     int ret;
-
-    ret = map_file(&ptr, &len, path);
-    if (ret < 0) {
-        return ret;
-    }
 
     while ((line = next_line(ptr, len)) != NULL) {
         char key[128], value[1024];
         enum line_type type;
 
         len = len - (line - ptr);
+        ptr += len;
 
         type = parse_line(key, sizeof(key), value, sizeof(value), line, len);
         switch (type) {
@@ -249,6 +244,12 @@ int cfg_parse(struct cfg *c, const char *path)
                 ret = parse_config(key, sizeof(key), value, sizeof(value), line, len);
                 if (ret < 0)
                     goto out;
+                if (!section) {
+                    sd_log(LOG_LEVEL_ERROR, "Unable to add config without section: '%s'",
+                            line);
+                    ret = -1;
+                    goto out;
+                }
                 add_config(section, key, value);
                 break;
             case LINE_TYPE_INVALID:
@@ -260,6 +261,24 @@ int cfg_parse(struct cfg *c, const char *path)
 out:
 
     return 0;
+}
+
+int cfg_parse(struct cfg *c, const char *path)
+{
+    char *ptr;
+    size_t len;
+    int ret;
+
+    ret = map_file(&ptr, &len, path);
+    if (ret < 0) {
+        return ret;
+    }
+
+    ret = cfg_parse_string(c, ptr, len);
+
+    munmap(ptr, len);
+
+    return ret;
 }
 
 void cfg_free(struct cfg *c)
