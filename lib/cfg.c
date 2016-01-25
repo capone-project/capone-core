@@ -105,12 +105,13 @@ static int parse_section(char *section, size_t maxlen, const char *line, size_t 
         }
     }
 
-    if (len - 2 > maxlen) {
+    if (len > maxlen) {
         sd_log(LOG_LEVEL_ERROR, "Section longer than maxlen: '%s'", section);
         return -1;
     }
 
-    memcpy(section, line + 1, len - 2);
+    memcpy(section, line + 1, len - 1);
+    section[len - 1] = '\0';
 
     return 0;
 }
@@ -155,7 +156,7 @@ static enum line_type parse_line(char *key, size_t keylen, char *value, size_t v
     /* Trim trailing whitespace */
     for (end = ptr; isspace(*end) && end > line; end--);
     /* Trim leading whitespace */
-    for (start = line; isspace(*ptr) && start < end; start++);
+    for (start = line; isspace(*start) && start < end; start++);
 
     linelen = end - start;
 
@@ -165,8 +166,10 @@ static enum line_type parse_line(char *key, size_t keylen, char *value, size_t v
 
     if (*start == '[' && *end == ']') {
         parse_section(key, keylen, start, linelen);
+        return LINE_TYPE_SECTION;
     } else if ((ptr = memchr(start, '=', linelen)) != NULL) {
-        parse_line(key, keylen, value, valuelen, start, linelen);
+        parse_config(key, keylen, value, valuelen, start, linelen);
+        return LINE_TYPE_CONFIG;
     }
 
     return LINE_TYPE_INVALID;
@@ -180,7 +183,7 @@ static struct cfg_section *add_section(struct cfg *c, const char *section)
     c->numsections += 1;
     c->sections = realloc(c->sections, sizeof(struct cfg_section) * c->numsections);
 
-    s = &c->sections[c->numsections];
+    s = &c->sections[c->numsections - 1];
     memset(s, '\0', sizeof(struct cfg_section));
 
     len = strlen(section);
@@ -188,7 +191,7 @@ static struct cfg_section *add_section(struct cfg *c, const char *section)
     memcpy(s->name, section, len);
     s->name[len + 1] = '\0';
 
-    return NULL;
+    return s;
 }
 
 static void add_config(struct cfg_section *s, const char *key, const char *value)
@@ -199,7 +202,7 @@ static void add_config(struct cfg_section *s, const char *key, const char *value
     s->numentries += 1;
     s->entries = realloc(s->entries, sizeof(struct cfg_entry) * s->numentries);
 
-    e = &s->entries[s->numentries];
+    e = &s->entries[s->numentries - 1];
     memset(e, '\0', sizeof(struct cfg_entry));
 
     len = strlen(key);
@@ -218,15 +221,16 @@ static void add_config(struct cfg_section *s, const char *key, const char *value
 int cfg_parse_string(struct cfg *c, const char *ptr, size_t len)
 {
     struct cfg_section *section = NULL;
-    char *line;
-    int ret;
+    const char *line = ptr;
+    int ret = 0;
 
-    while ((line = next_line(ptr, len)) != NULL) {
+    memset(c, '\0', sizeof(struct cfg));
+
+    do {
         char key[128], value[1024];
         enum line_type type;
 
         len = len - (line - ptr);
-        ptr += len;
 
         type = parse_line(key, sizeof(key), value, sizeof(value), line, len);
         switch (type) {
@@ -235,15 +239,9 @@ int cfg_parse_string(struct cfg *c, const char *ptr, size_t len)
             case LINE_TYPE_EMPTY:
                 continue;
             case LINE_TYPE_SECTION:
-                ret = parse_section(key, sizeof(key), line, len);
-                if (ret < 0)
-                    goto out;
                 section = add_section(c, key);
                 break;
             case LINE_TYPE_CONFIG:
-                ret = parse_config(key, sizeof(key), value, sizeof(value), line, len);
-                if (ret < 0)
-                    goto out;
                 if (!section) {
                     sd_log(LOG_LEVEL_ERROR, "Unable to add config without section: '%s'",
                             line);
@@ -256,11 +254,11 @@ int cfg_parse_string(struct cfg *c, const char *ptr, size_t len)
                 ret = -1;
                 goto out;
         }
-    }
+    } while ((line = next_line(line, len)) != NULL);
 
 out:
 
-    return 0;
+    return ret;
 }
 
 int cfg_parse(struct cfg *c, const char *path)
