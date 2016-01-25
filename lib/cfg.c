@@ -283,5 +283,22 @@ int cfg_parse(struct cfg *c, const char *path)
 
 void cfg_free(struct cfg *c)
 {
-    UNUSED(c);
+    unsigned section, entry;
+
+    for (section = 0; section < c->numsections; section++) {
+        struct cfg_section *s = &c->sections[section];
+
+        for (entry = 0; entry < s->numentries; entry++) {
+            struct cfg_entry *e = &s->entries[entry];
+
+            free(e->name);
+            free(e->value);
+
+        }
+
+        free(s->name);
+        free(s->entries);
+    }
+
+
 }
