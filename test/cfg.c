@@ -102,6 +102,57 @@ static void parse_multiple_sections()
     assert_int_equal(config.sections[1].numentries, 0);
 }
 
+static void parse_leading_whitespace()
+{
+    const char text[] = " \n\t  \t[one]\n";
+
+    assert_int_equal(cfg_parse_string(&config, text, sizeof(text)), 0);
+
+    assert_int_equal(config.numsections, 1);
+    assert_cfg_section(config, 0, "one");
+}
+
+static void parse_trailing_whitespace()
+{
+    const char text[] =
+        "[one]\t   \t\n\t\n"
+        "[two]";
+
+    assert_int_equal(cfg_parse_string(&config, text, sizeof(text)), 0);
+
+    assert_int_equal(config.numsections, 2);
+    assert_cfg_section(config, 0, "one");
+    assert_cfg_section(config, 1, "two");
+}
+
+static void parse_invalid_without_section()
+{
+    const char text[] =
+        "one=two";
+
+    assert_int_not_equal(cfg_parse_string(&config, text, sizeof(text)), 0);
+    assert_int_equal(config.numsections, 0);
+}
+
+static void parse_invalid_section_format()
+{
+    const char text[] =
+        "[bla";
+
+    assert_int_not_equal(cfg_parse_string(&config, text, sizeof(text)), 0);
+    assert_int_equal(config.numsections, 0);
+}
+
+static void parse_invalid_config_format()
+{
+    const char text[] =
+        "[one]\n"
+        "two three";
+
+    assert_int_not_equal(cfg_parse_string(&config, text, sizeof(text)), 0);
+    assert_int_equal(config.numsections, 0);
+}
+
 int cfg_test_run_suite()
 {
     const struct CMUnitTest tests[] = {
@@ -109,6 +160,11 @@ int cfg_test_run_suite()
         cmocka_unit_test(parse_simple),
         cmocka_unit_test(parse_empty_line),
         cmocka_unit_test(parse_multiple_sections),
+        cmocka_unit_test(parse_leading_whitespace),
+        cmocka_unit_test(parse_trailing_whitespace),
+        cmocka_unit_test(parse_invalid_without_section),
+        cmocka_unit_test(parse_invalid_section_format),
+        cmocka_unit_test(parse_invalid_config_format),
     };
 
     return cmocka_run_group_tests_name("cfg", tests, setup, teardown);
