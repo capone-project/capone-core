@@ -1,9 +1,10 @@
 /proto/*.pb-c.c
 /proto/*.pb-c.h
 
+/sd-connect
+/sd-connect-responder
 /sd-discover
 /sd-discover-responder
 /sd-query
 /sd-query-responder
-/sd-connect
-/sd-connect-responder
+/sd-test
