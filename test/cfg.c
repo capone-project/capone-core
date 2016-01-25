@@ -67,6 +67,24 @@ static void parse_simple()
     assert_cfg_entry(config, 0, 0, "two", "three");
 }
 
+static void parse_empty_line()
+{
+    const char text[] =
+        "[one]\n"
+        "two=three\n"
+        "\n"
+        "four=five\n";
+
+    assert_int_equal(cfg_parse_string(&config, text, sizeof(text)), 0);
+
+    assert_int_equal(config.numsections, 1);
+    assert_int_equal(config.sections[0].numentries, 2);
+
+    assert_cfg_section(config, 0, "one");
+    assert_cfg_entry(config, 0, 0, "two", "three");
+    assert_cfg_entry(config, 0, 1, "four", "five");
+}
+
 static void parse_multiple_sections()
 {
     const char text[] =
@@ -89,6 +107,7 @@ int cfg_test_run_suite()
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(parse_empty),
         cmocka_unit_test(parse_simple),
+        cmocka_unit_test(parse_empty_line),
         cmocka_unit_test(parse_multiple_sections),
     };
 
