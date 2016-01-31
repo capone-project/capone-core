@@ -189,7 +189,7 @@ static struct cfg_section *add_section(struct cfg *c, const char *section)
     len = strlen(section);
     s->name = malloc(len + 1);
     memcpy(s->name, section, len);
-    s->name[len + 1] = '\0';
+    s->name[len] = '\0';
 
     return s;
 }
@@ -208,12 +208,12 @@ static void add_config(struct cfg_section *s, const char *key, const char *value
     len = strlen(key);
     e->name = malloc(len + 1);
     memcpy(e->name, key, len);
-    e->name[len + 1] = '\0';
+    e->name[len] = '\0';
 
     len = strlen(value);
     e->value = malloc(len + 1);
     memcpy(e->value, value, len);
-    e->value[len + 1] = '\0';
+    e->value[len] = '\0';
 
     return;
 }
