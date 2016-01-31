@@ -17,6 +17,7 @@ LIBRARY_OBJECTS=$(patsubst %.c,%.o,${LIBRARY_SOURCES})
 
 EXECUTABLES=sd-discover \
 			sd-discover-responder \
+			sd-genkey \
 			sd-query \
 			sd-query-responder \
 			sd-connect \
