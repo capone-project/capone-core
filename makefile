@@ -11,7 +11,8 @@ PROTOBUF_OBJECTS=$(patsubst %.proto,%.pb-c.o,${PROTOBUF})
 LIBRARY_SOURCES=lib/cfg.c \
 				lib/common.c \
 				lib/log.c \
-				lib/schannel.c
+				lib/schannel.c \
+				lib/service.c
 LIBRARY_HEADERS=$(patsubst %.c,%.h,${LIBRARY_SOURCES})
 LIBRARY_OBJECTS=$(patsubst %.c,%.o,${LIBRARY_SOURCES})
 
