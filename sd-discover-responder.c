@@ -17,6 +17,7 @@
 
 #include <errno.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include <string.h>
 
 #include <unistd.h>
@@ -28,7 +29,9 @@
 
 #include <sodium/crypto_auth.h>
 #include <sodium/crypto_box.h>
+#include <sodium/utils.h>
 
+#include "lib/cfg.h"
 #include "lib/common.h"
 #include "lib/log.h"
 
@@ -190,12 +193,41 @@ out:
 
 int main(int argc, char *argv[])
 {
+    struct cfg cfg;
     int dpid;
+    char *key;
 
-    UNUSED(argc);
-    UNUSED(argv);
+    if (argc < 3) {
+        printf("USAGE: %s <SERVER_CONFIG> <SERVICE_CONFIG>..\n", argv[0]);
+        return 0;
+    }
 
-    crypto_box_keypair(pk, sk);
+    if (cfg_parse(&cfg, argv[1]) < 0) {
+        puts("Could not parse config");
+        return -1;
+    }
+
+    key = cfg_get_str_value(&cfg, "server", "public_key");
+    if (key == NULL) {
+        puts("Could not retrieve public key from config");
+        return -1;
+    }
+    if (sodium_hex2bin(pk, sizeof(pk), key, strlen(key), NULL, NULL, NULL) < 0) {
+        puts("Could not decode public key");
+        return -1;
+    }
+    free(key);
+
+    key = cfg_get_str_value(&cfg, "server", "secret_key");
+    if (key == NULL) {
+        puts("Could not retrieve secret key from config");
+        return -1;
+    }
+    if (sodium_hex2bin(sk, sizeof(sk), key, strlen(key), NULL, NULL, NULL)) {
+        puts("Could not decode public key");
+        return -1;
+    }
+    free(key);
 
     dpid = spawn(handle_discover, NULL);
 
