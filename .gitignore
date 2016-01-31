@@ -5,6 +5,7 @@
 /sd-connect-responder
 /sd-discover
 /sd-discover-responder
+/sd-genkey
 /sd-query
 /sd-query-responder
 /sd-test
