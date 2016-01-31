@@ -15,7 +15,12 @@ LIBRARY_SOURCES=lib/cfg.c \
 LIBRARY_HEADERS=$(patsubst %.c,%.h,${LIBRARY_SOURCES})
 LIBRARY_OBJECTS=$(patsubst %.c,%.o,${LIBRARY_SOURCES})
 
-EXECUTABLES=sd-discover sd-discover-responder sd-query sd-query-responder sd-connect sd-connect-responder
+EXECUTABLES=sd-discover \
+			sd-discover-responder \
+			sd-query \
+			sd-query-responder \
+			sd-connect \
+			sd-connect-responder
 EXECUTABLES_LIBS=libsodium libprotobuf-c
 EXECUTABLES_CFLAGS=${CFLAGS} -I. $(shell pkg-config --cflags ${EXECUTABLES_LIBS})
 EXECUTABLES_LDFLAGS=${LDFLAGS} $(shell pkg-config --libs ${EXECUTABLES_LIBS})
