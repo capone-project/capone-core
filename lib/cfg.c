@@ -305,3 +305,88 @@ void cfg_free(struct cfg *c)
     c->numsections = 0;
     c->sections = NULL;
 }
+
+const struct cfg_section *cfg_get_section(const struct cfg *c, const char *name)
+{
+    const struct cfg_section *section;
+    size_t i;
+
+    for (i = 0; i < c->numsections; i++) {
+        section = &c->sections[i];
+
+        if (!strcmp(section->name, name))
+            return section;
+    }
+
+    return NULL;
+}
+
+const struct cfg_entry *cfg_get_entry(const struct cfg_section *s, const char *name)
+{
+    const struct cfg_entry *entry;
+    size_t i;
+
+    for (i = 0; i < s->numentries; i++) {
+        entry = &s->entries[i];
+
+        if (!strcmp(entry->name, name))
+            return entry;
+    }
+
+    return NULL;
+}
+
+static const char *get_raw_value(const struct cfg *c, const char *s, const char *key)
+{
+    const struct cfg_section *section;
+    const struct cfg_entry *entry;
+
+    section = cfg_get_section(c, s);
+    if (section == NULL) {
+        return NULL;
+    }
+
+    entry = cfg_get_entry(section, key);
+    if (entry == NULL) {
+        return NULL;
+    }
+
+    return entry->value;
+}
+
+char *cfg_get_str_value(const struct cfg *c, const char *section, const char *key)
+{
+    const char *value = get_raw_value(c, section, key);
+    if (value == NULL) {
+        sd_log(LOG_LEVEL_WARNING, "Could not find entry '%s' in section '%s'",
+                section, key);
+        return NULL;
+    }
+
+    return strdup(value);
+}
+
+int cfg_get_int_value(const struct cfg *c, const char *section, const char *key)
+{
+    const char *value = get_raw_value(c, section, key);
+    int i, savederrno;
+
+    if (value == NULL) {
+        sd_log(LOG_LEVEL_WARNING, "Could not find entry '%s' in section '%s'",
+                section, key);
+        return 0;
+    }
+
+    savederrno = errno;
+    errno = 0;
+
+    i = strtol(value, NULL, 10);
+    if (errno != 0) {
+        sd_log(LOG_LEVEL_WARNING, "Could not parse value '%s' as integer", value);
+        return 0;
+    }
+
+    errno = savederrno;
+
+    return i;
+}

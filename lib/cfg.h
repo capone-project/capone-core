@@ -43,3 +43,9 @@ struct cfg {
 int cfg_parse(struct cfg *c, const char *path);
 int cfg_parse_string(struct cfg *c, const char *ptr, size_t len);
 void cfg_free(struct cfg *c);
+
+const struct cfg_section *cfg_get_section(const struct cfg *c, const char *name);
+const struct cfg_entry *cfg_get_entry(const struct cfg_section *s, const char *name);
+
+char *cfg_get_str_value(const struct cfg *c, const char *section, const char *key);
+int cfg_get_int_value(const struct cfg *c, const char *section, const char *key);
