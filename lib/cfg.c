@@ -359,7 +359,7 @@ char *cfg_get_str_value(const struct cfg *c, const char *section, const char *ke
     const char *value = get_raw_value(c, section, key);
     if (value == NULL) {
         sd_log(LOG_LEVEL_WARNING, "Could not find entry '%s' in section '%s'",
-                section, key);
+                key, section);
         return NULL;
     }
 
@@ -373,7 +373,7 @@ int cfg_get_int_value(const struct cfg *c, const char *section, const char *key)
 
     if (value == NULL) {
         sd_log(LOG_LEVEL_WARNING, "Could not find entry '%s' in section '%s'",
-                section, key);
+                key, section);
         return 0;
     }
 
