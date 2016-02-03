@@ -54,13 +54,14 @@ struct sd_channel {
     uint8_t secret_key[crypto_box_SECRETKEYBYTES];
     uint8_t remote_key[crypto_box_PUBLICKEYBYTES];
 };
-#define SD_CHANNEL_INIT { -1, -1, }
 
-int sd_channel_init_local_address(struct sd_channel *c,
-        const char *host, const char *port, enum sd_channel_type type);
-int sd_channel_init_remote_address(struct sd_channel *c,
-        const char *host, const char *port, enum sd_channel_type type);
+void sd_channel_init(struct sd_channel *c);
 int sd_channel_close(struct sd_channel *c);
+
+int sd_channel_set_local_address(struct sd_channel *c,
+        const char *host, const char *port, enum sd_channel_type type);
+int sd_channel_set_remote_address(struct sd_channel *c,
+        const char *host, const char *port, enum sd_channel_type type);
 
 int sd_channel_connect(struct sd_channel *c);
 int sd_channel_listen(struct sd_channel *c);

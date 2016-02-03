@@ -74,7 +74,14 @@ static int getsock(struct sockaddr_storage *addr, const char *host,
     return fd;
 }
 
-int sd_channel_init_local_address(struct sd_channel *c, const char *host,
+void sd_channel_init(struct sd_channel *c)
+{
+    memset(c, 0, sizeof(struct sd_channel));
+    c->local_fd = -1;
+    c->remote_fd = -1;
+}
+
+int sd_channel_set_local_address(struct sd_channel *c, const char *host,
         const char *port, enum sd_channel_type type)
 {
     int fd;
@@ -89,7 +96,7 @@ int sd_channel_init_local_address(struct sd_channel *c, const char *host,
     return 0;
 }
 
-int sd_channel_init_remote_address(struct sd_channel *c, const char *host,
+int sd_channel_set_remote_address(struct sd_channel *c, const char *host,
         const char *port, enum sd_channel_type type)
 {
     int fd;
