@@ -24,138 +24,215 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <netdb.h>
 
+#include "common.h"
 #include "log.h"
 #include "schannel.h"
 
-int schannel_init(struct schannel *channel, uint8_t *pkey, uint8_t *skey, uint8_t *rkey)
+static int getsock(struct sockaddr_storage *addr, const char *host,
+        const char *port, enum sd_channel_type type)
 {
-    memset(channel, 0, sizeof(struct schannel));
+    struct addrinfo hints, *servinfo, *hint;
+    int ret, fd;
 
-    channel->fd = -1;
-    channel->nonce_offset = 2;
+    memset(&hints, 0, sizeof(hints));
+    switch (type) {
+        case SD_CHANNEL_TYPE_TCP:
+            hints.ai_socktype = SOCK_STREAM;
+            hints.ai_protocol = IPPROTO_TCP;
+            break;
+        case SD_CHANNEL_TYPE_UDP:
+            hints.ai_socktype = SOCK_DGRAM;
+            hints.ai_protocol = IPPROTO_UDP;
+            break;
+    }
 
-    memcpy(channel->pkey, pkey, sizeof(channel->pkey));
-    memcpy(channel->skey, skey, sizeof(channel->skey));
-    memcpy(channel->rkey, rkey, sizeof(channel->rkey));
-
-    return 0;
-}
-
-int schannel_close(struct schannel *channel)
-{
-    int ret;
-
-    if (channel->fd < 0) {
-        sd_log(LOG_LEVEL_WARNING, "Trying to close inactive schannel");
+    ret = getaddrinfo(host, port, &hints, &servinfo);
+    if (ret != 0) {
+        sd_log(LOG_LEVEL_ERROR, "Could not get addrinfo for address %s:%s",
+                host, port);
         return -1;
     }
 
-    ret = close(channel->fd);
-    if (ret == 0) {
-        channel->fd = -1;
+    for (hint = servinfo; hint != NULL; hint = hint->ai_next) {
+        fd = socket(hint->ai_family, hint->ai_socktype, hint->ai_protocol);
+        if (fd < 0)
+            continue;
+
+        break;
     }
 
-    return ret;
+    if (hint == NULL) {
+        sd_log(LOG_LEVEL_ERROR, "Unable to resolve address");
+        return -1;
+    }
+
+    memcpy(addr, hint, sizeof(struct sockaddr_storage));
+    freeaddrinfo(servinfo);
+
+    return fd;
 }
 
-int schannel_connect(struct schannel *channel, char *host, uint32_t port)
+int sd_channel_init_local_address(struct sd_channel *c, const char *host,
+        const char *port, enum sd_channel_type type)
 {
-    struct sockaddr_in addr;
-    int fd, ret;
+    int fd;
 
-    memset(&addr, 0, sizeof(addr));
-    addr.sin_family = AF_INET;
-    addr.sin_addr.s_addr = inet_addr(host);
-    addr.sin_port = htons(port);
-
-    fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    fd = getsock(&c->laddr, host, port, type);
     if (fd < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not open socket: %s",
-                strerror(errno));
-        ret = fd;
-        goto out;
-    }
-
-    ret = connect(fd, (struct sockaddr*) &addr, sizeof(addr));
-    if (ret < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not connect socket: %s",
-                strerror(errno));
-        goto out;
-    }
-
-out:
-    if (ret < 0 && channel->fd >= 0) {
-        close(channel->fd);
-    }
-
-    return ret;
-}
-
-int schannel_write(struct schannel *c, uint8_t *msg, size_t msglen)
-{
-    uint8_t plain[4096 + crypto_box_MACBYTES], cipher[4096 + crypto_box_MACBYTES];
-    uint8_t *ptr;
-    int ret, len;
-
-    if (msglen > sizeof(cipher) - crypto_box_MACBYTES) {
-        sd_log(LOG_LEVEL_ERROR, "Message length greater than internal buffer");
         return -1;
     }
 
-    memset(plain, 0, crypto_box_MACBYTES);
-    memcpy(plain + crypto_box_MACBYTES, msg, msglen);
-
-    ret = crypto_box_easy(cipher, plain, msglen, c->nonce, c->rkey, c->skey);
-    if (ret != 0) {
-        sd_log(LOG_LEVEL_ERROR, "Unable to encrypt message");
-        return ret;
-    }
-    len = crypto_box_MACBYTES + msglen;
-    ptr = cipher;
-
-    while (len > 0) {
-        ret = write(c->fd, ptr, len);
-        if (ret < 0) {
-            sd_log(LOG_LEVEL_ERROR, "Could not write to socket: %s",
-                    strerror(errno));
-            return ret;
-        }
-
-        len -= ret;
-        ptr += ret;
-    }
-
-    /* TODO: increase nonce */
+    c->local_fd = fd;
 
     return 0;
 }
 
-int schannel_receive(struct schannel *c, void *buf, size_t maxlen)
+int sd_channel_init_remote_address(struct sd_channel *c, const char *host,
+        const char *port, enum sd_channel_type type)
 {
-    uint8_t cipher[4096 + crypto_box_MACBYTES];
-    int ret;
+    int fd;
 
-    ret = read(c->fd, cipher, sizeof(cipher));
-    if (ret < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not read from socket: %s",
+    fd = getsock(&c->raddr, host, port, type);
+    if (fd < 0) {
+        return -1;
+    }
+
+    c->remote_fd = fd;
+
+    return 0;
+}
+
+int sd_channel_close(struct sd_channel *c)
+{
+    if (c->local_fd < 0 && c->remote_fd < 0) {
+        sd_log(LOG_LEVEL_WARNING, "Closing channel with invalid fd");
+        return -1;
+    }
+
+    close(c->local_fd);
+    close(c->remote_fd);
+
+    return 0;
+}
+
+int sd_channel_connect(struct sd_channel *c)
+{
+    assert(c->remote_fd >= 0);
+
+    if (connect(c->remote_fd, (struct sockaddr*) &c->raddr, sizeof(c->raddr)) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Could not connect");
+        return -1;
+    }
+
+    return 0;
+}
+
+int sd_channel_listen(struct sd_channel *c)
+{
+    int fd;
+
+    assert(c->local_fd >= 0);
+
+    if (bind(c->local_fd, (struct sockaddr*) &c->laddr, sizeof(c->laddr)) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Could not bind socket: %s", strerror(errno));
+        return -1;
+    }
+
+    fd = listen(c->local_fd, 16);
+    if (fd < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Could not listen: %s", strerror(errno));
+        return -1;
+    }
+
+    return 0;
+}
+
+int sd_channel_accept(struct sd_channel *c)
+{
+    int fd;
+    unsigned int addrsize;
+    struct sockaddr_storage addr;
+
+    assert(c->local_fd >= 0);
+
+    addrsize = sizeof(addr);
+
+    fd = accept(c->local_fd, (struct sockaddr*) &addr, &addrsize);
+    if (fd < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Could not accept connection: %s",
                 strerror(errno));
-        return ret;
-    }
-
-    if ((unsigned) ret > maxlen) {
-        sd_log(LOG_LEVEL_ERROR, "Could not decipher received text: "
-                "Receive buffer too short");
         return -1;
     }
 
-    /* TODO: retrieve nonce */
+    c->remote_fd = fd;
+    c->raddr = addr;
 
-    ret = crypto_box_open_easy(buf, cipher, ret, NULL, c->rkey, c->skey);
-    if (ret != 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not decipher received text");
+    return 0;
+}
+
+int sd_channel_write_data(struct sd_channel *c, uint8_t *buf, size_t len)
+{
+    ssize_t ret;
+
+    ret = send(c->remote_fd, buf, len, 0);
+    if (ret < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Could not send data");
+        return -1;
+    } else if ((size_t) ret != len) {
+        sd_log(LOG_LEVEL_ERROR, "Buffer not wholly transimmted");
         return -1;
     }
+
+    return 0;
+}
+
+int sd_channel_write_protobuf(struct sd_channel *c, void *msg, pack_fn packfn, size_fn sizefn)
+{
+    size_t size;
+    uint8_t buf[4096];
+
+    size = sizefn(msg);
+    if (size > sizeof(buf)) {
+        sd_log(LOG_LEVEL_ERROR, "Protobuf message exceeds buffer length");
+        return -1;
+    }
+    packfn(msg, buf);
+
+    return sd_channel_write_data(c, buf, size);
+}
+
+ssize_t sd_channel_receive_data(struct sd_channel *c, void *buf, size_t maxlen)
+{
+    unsigned int addrlen;
+    ssize_t len;
+
+    addrlen = sizeof(c->raddr);
+
+    len = recvfrom(c->local_fd, buf, maxlen, 0, (struct sockaddr*) &c->raddr, &addrlen);
+    if (len < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Could not receive data");
+        return -1;
+    }
+
+    return len;
+}
+
+int sd_channel_recveive_protobuf(struct sd_channel *c, void **msg, size_t maxlen, unpack_fn unpackfn)
+{
+    uint8_t buf[4096];
+    ssize_t len;
+
+    len = sd_channel_receive_data(c, buf, sizeof(buf));
+    if (len < 0) {
+        return -1;
+    } else if ((size_t) len > maxlen) {
+        sd_log(LOG_LEVEL_ERROR, "Protobuf message exceeds buffer length");
+        return -1;
+    }
+
+    (*msg) = unpackfn(NULL, len, buf);
 
     return 0;
 }

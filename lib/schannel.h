@@ -17,22 +17,55 @@
 
 #include <stdint.h>
 
+#include <sys/types.h>
+
+#include <protobuf-c/protobuf-c.h>
+
 #include <sodium/crypto_box.h>
 
-struct schannel {
-    int fd;
+typedef void *(unpack_fn)(ProtobufCAllocator *allocator, size_t len, const uint8_t *data);
+typedef size_t (pack_fn)(const void *protobuf, uint8_t *out);
+typedef size_t (size_fn)(const void *protobuf);
+
+enum sd_channel_type {
+    SD_CHANNEL_TYPE_UDP,
+    SD_CHANNEL_TYPE_TCP,
+};
+
+enum sd_channel_crpto {
+    SD_CHANNEL_CRTYPTO_NONE,
+    SD_CHANNEL_CRTYPTO_SIGN,
+    SD_CHANNEL_CRTYPTO_ENCRYPT,
+};
+
+struct sd_channel {
+    int local_fd;
+    int remote_fd;
+    enum sd_channel_type type;
+
+    struct sockaddr_storage laddr;
+    struct sockaddr_storage raddr;
 
     uint8_t nonce[crypto_box_NONCEBYTES];
     uint8_t nonce_offset;
 
-    uint8_t pkey[crypto_box_PUBLICKEYBYTES];
-    uint8_t skey[crypto_box_SECRETKEYBYTES];
-    uint8_t rkey[crypto_box_PUBLICKEYBYTES];
+    uint8_t public_key[crypto_box_PUBLICKEYBYTES];
+    uint8_t secret_key[crypto_box_SECRETKEYBYTES];
+    uint8_t remote_key[crypto_box_PUBLICKEYBYTES];
 };
+#define SD_CHANNEL_INIT { -1, -1, }
 
-int schannel_init(struct schannel *channel, uint8_t *pkey, uint8_t *skey, uint8_t *rkey);
-int schannel_close(struct schannel *channel);
+int sd_channel_init_local_address(struct sd_channel *c,
+        const char *host, const char *port, enum sd_channel_type type);
+int sd_channel_init_remote_address(struct sd_channel *c,
+        const char *host, const char *port, enum sd_channel_type type);
+int sd_channel_close(struct sd_channel *c);
 
-int schannel_connect(struct schannel *channel, char *host, uint32_t port);
-int schannel_write(struct schannel *c, uint8_t *buf, size_t len);
-int schannel_receive(struct schannel *c, void *buf, size_t maxlen);
+int sd_channel_connect(struct sd_channel *c);
+int sd_channel_listen(struct sd_channel *c);
+int sd_channel_accept(struct sd_channel *c);
+
+int sd_channel_write_data(struct sd_channel *c, uint8_t *buf, size_t len);
+int sd_channel_write_protobuf(struct sd_channel *c, void *msg, pack_fn packfn, size_fn sizefn);
+ssize_t sd_channel_receive_data(struct sd_channel *c, void *buf, size_t maxlen);
+int sd_channel_recveive_protobuf(struct sd_channel *c, void **msg, size_t maxlen, unpack_fn unpackfn);
