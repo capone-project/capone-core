@@ -27,8 +27,8 @@
 #include <netdb.h>
 
 #include "common.h"
+#include "channel.h"
 #include "log.h"
-#include "schannel.h"
 
 static int getsock(struct sockaddr_storage *addr, const char *host,
         const char *port, enum sd_channel_type type)
