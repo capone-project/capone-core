@@ -131,7 +131,7 @@ int sd_channel_connect(struct sd_channel *c)
     assert(c->remote_fd >= 0);
 
     if (connect(c->remote_fd, (struct sockaddr*) &c->raddr, sizeof(c->raddr)) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not connect");
+        sd_log(LOG_LEVEL_ERROR, "Could not connect: %s", strerror(errno));
         return -1;
     }
 
@@ -187,7 +187,8 @@ int sd_channel_write_data(struct sd_channel *c, uint8_t *buf, size_t len)
 
     ret = send(c->remote_fd, buf, len, 0);
     if (ret < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not send data");
+        sd_log(LOG_LEVEL_ERROR, "Could not send data: %s",
+                strerror(errno));
         return -1;
     } else if ((size_t) ret != len) {
         sd_log(LOG_LEVEL_ERROR, "Buffer not wholly transimmted");
@@ -221,7 +222,8 @@ ssize_t sd_channel_receive_data(struct sd_channel *c, void *buf, size_t maxlen)
 
     len = recvfrom(c->local_fd, buf, maxlen, 0, (struct sockaddr*) &c->raddr, &addrlen);
     if (len < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not receive data");
+        sd_log(LOG_LEVEL_ERROR, "Could not receive data: %s",
+                strerror(errno));
         return -1;
     }
 
