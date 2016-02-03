@@ -17,6 +17,7 @@
 
 #include <stdarg.h>
 #include <stddef.h>
+#include <stdlib.h>
 #include <setjmp.h>
 #include <cmocka.h>
 
@@ -32,15 +33,18 @@
     } while (0)
 
 static struct cfg config;
+static char *value = NULL;
 
 static int setup()
 {
+    value = NULL;
     return 0;
 }
 
 static int teardown()
 {
     cfg_free(&config);
+    free(value);
     return 0;
 }
 
@@ -143,14 +147,145 @@ static void parse_invalid_section_format()
     assert_int_equal(config.numsections, 0);
 }
 
-static void parse_invalid_config_format()
+static void parse_invalid_missing_assignment()
 {
     const char text[] =
         "[one]\n"
         "two three";
 
     assert_int_not_equal(cfg_parse_string(&config, text, sizeof(text)), 0);
+    assert_null(config.sections);
     assert_int_equal(config.numsections, 0);
+}
+
+static void parse_invalid_missing_value()
+{
+    const char text[] =
+        "[one]\n"
+        "two=";
+
+    assert_int_not_equal(cfg_parse_string(&config, text, sizeof(text)), 0);
+    assert_null(config.sections);
+    assert_int_equal(config.numsections, 0);
+}
+
+
+static void get_section_simple()
+{
+    const struct cfg_section *s;
+    const char text[] =
+        "[one]\n"
+        "two=three";
+
+    assert_int_equal(cfg_parse_string(&config, text, sizeof(text)), 0);
+    assert_non_null(s = cfg_get_section(&config, "one"));
+    assert_string_equal(s->name, "one");
+}
+
+static void get_section_with_multiple_sections()
+{
+    const struct cfg_section *s;
+    const char text[] =
+        "[one]\n"
+        "[two]\n"
+        "three=four\n"
+        "[five]\n";
+
+    assert_int_equal(cfg_parse_string(&config, text, sizeof(text)), 0);
+    assert_non_null(s = cfg_get_section(&config, "one"));
+    assert_string_equal(s->name, "one");
+    assert_non_null(s = cfg_get_section(&config, "two"));
+    assert_string_equal(s->name, "two");
+    assert_non_null(s = cfg_get_section(&config, "five"));
+    assert_string_equal(s->name, "five");
+}
+
+static void get_section_nonexisting()
+{
+    const struct cfg_section *s;
+    const char text[] =
+        "[one]\n"
+        "two=three";
+
+    assert_int_equal(cfg_parse_string(&config, text, sizeof(text)), 0);
+    assert_null(s = cfg_get_section(&config, "two"));
+}
+
+static void get_entry_simple()
+{
+    const struct cfg_section *s;
+    const struct cfg_entry *e;
+    const char text[] =
+        "[one]\n"
+        "two=three";
+
+    assert_int_equal(cfg_parse_string(&config, text, sizeof(text)), 0);
+    assert_non_null(s = cfg_get_section(&config, "one"));
+    assert_non_null(e = cfg_get_entry(s, "two"));
+    assert_string_equal(e->name, "two");
+}
+
+static void get_entry_nonexisting()
+{
+    const struct cfg_section *s;
+    const struct cfg_entry *e;
+    const char text[] =
+        "[one]\n";
+
+    assert_int_equal(cfg_parse_string(&config, text, sizeof(text)), 0);
+    assert_non_null(s = cfg_get_section(&config, "one"));
+    assert_null(e = cfg_get_entry(s, "two"));
+}
+
+static void get_str_value_simple()
+{
+    const char text[] =
+        "[one]\n"
+        "two=three";
+
+    assert_int_equal(cfg_parse_string(&config, text, sizeof(text)), 0);
+    assert_string_equal(value = cfg_get_str_value(&config, "one", "two"),
+                        "three");
+}
+
+static void get_str_value_nonexisting()
+{
+    const char text[] =
+        "[one]\n"
+        "two=three";
+
+    assert_int_equal(cfg_parse_string(&config, text, sizeof(text)), 0);
+    assert_null(cfg_get_str_value(&config, "four", "five"));
+}
+
+static void get_int_value_simple()
+{
+    const char text[] =
+        "[one]\n"
+        "two=12345";
+
+    assert_int_equal(cfg_parse_string(&config, text, sizeof(text)), 0);
+    assert_int_equal(cfg_get_int_value(&config, "one", "two"), 12345);
+}
+
+static void get_int_value_nonexisting()
+{
+    const char text[] =
+        "[one]\n"
+        "";
+
+    assert_int_equal(cfg_parse_string(&config, text, sizeof(text)), 0);
+    assert_int_equal(cfg_get_int_value(&config, "one", "two"), 0);
+}
+
+static void get_int_value_invalid()
+{
+    const char text[] =
+        "[one]\n"
+        "two=xvlc";
+
+    assert_int_equal(cfg_parse_string(&config, text, sizeof(text)), 0);
+    assert_int_equal(cfg_get_int_value(&config, "one", "two"), 0);
 }
 
 int cfg_test_run_suite()
@@ -164,7 +299,20 @@ int cfg_test_run_suite()
         cmocka_unit_test(parse_trailing_whitespace),
         cmocka_unit_test(parse_invalid_without_section),
         cmocka_unit_test(parse_invalid_section_format),
-        cmocka_unit_test(parse_invalid_config_format),
+        cmocka_unit_test(parse_invalid_missing_assignment),
+        cmocka_unit_test(parse_invalid_missing_value),
+
+        cmocka_unit_test(get_section_simple),
+        cmocka_unit_test(get_section_with_multiple_sections),
+        cmocka_unit_test(get_section_nonexisting),
+        cmocka_unit_test(get_entry_simple),
+        cmocka_unit_test(get_entry_nonexisting),
+
+        cmocka_unit_test(get_str_value_simple),
+        cmocka_unit_test(get_str_value_nonexisting),
+        cmocka_unit_test(get_int_value_simple),
+        cmocka_unit_test(get_int_value_nonexisting),
+        cmocka_unit_test(get_int_value_invalid),
     };
 
     return cmocka_run_group_tests_name("cfg", tests, setup, teardown);
