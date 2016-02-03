@@ -15,22 +15,4 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <stdarg.h>
-#include <stddef.h>
-#include <setjmp.h>
-#include <cmocka.h>
-
-#include "lib/log.h"
-
-#include "cfg.h"
-#include "channel.h"
-
-int main(void)
-{
-    sd_log_set_level(LOG_LEVEL_NONE);
-
-    cfg_test_run_suite();
-    channel_test_run_suite();
-
-    return 0;
-}
+void channel_test_run_suite(void);

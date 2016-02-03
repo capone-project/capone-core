@@ -17,20 +17,30 @@
 
 #include <stdarg.h>
 #include <stddef.h>
+#include <stdlib.h>
 #include <setjmp.h>
 #include <cmocka.h>
 
-#include "lib/log.h"
-
-#include "cfg.h"
-#include "channel.h"
-
-int main(void)
+static int setup()
 {
-    sd_log_set_level(LOG_LEVEL_NONE);
-
-    cfg_test_run_suite();
-    channel_test_run_suite();
-
     return 0;
 }
+
+static int teardown()
+{
+    return 0;
+}
+
+void test()
+{
+}
+
+int channel_test_run_suite()
+{
+    const struct CMUnitTest tests[] = {
+        cmocka_unit_test(test),
+    };
+
+    return cmocka_run_group_tests_name("channel", tests, setup, teardown);
+}
+

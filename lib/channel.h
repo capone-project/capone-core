@@ -17,6 +17,7 @@
 
 #include <stdint.h>
 
+#include <sys/socket.h>
 #include <sys/types.h>
 
 #include <protobuf-c/protobuf-c.h>
