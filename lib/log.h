@@ -20,6 +20,8 @@ enum log_level {
     LOG_LEVEL_VERBOSE,
     LOG_LEVEL_WARNING,
     LOG_LEVEL_ERROR,
+    LOG_LEVEL_NONE,
 };
 
-extern void sd_log(enum log_level lvl, const char *msgformat, ...);
+void sd_log(enum log_level lvl, const char *msgformat, ...);
+void sd_log_set_level(enum log_level lvl);

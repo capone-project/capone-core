@@ -53,3 +53,8 @@ void sd_log(enum log_level lvl, const char *msgformat, ...)
 
     puts(buf);
 }
+
+void sd_log_set_level(enum log_level lvl)
+{
+    current_log_level = lvl;
+}
