@@ -17,7 +17,10 @@
 
 #include <stdarg.h>
 #include <stddef.h>
+#include <stdio.h>
+#include <string.h>
 #include <setjmp.h>
+
 #include <cmocka.h>
 
 #include "lib/log.h"
@@ -25,9 +28,17 @@
 #include "cfg.h"
 #include "channel.h"
 
-int main(void)
+int main(int argc, char *argv[])
 {
-    sd_log_set_level(LOG_LEVEL_NONE);
+    if (argc != 1 && (argc == 2 && strcmp(argv[1], "--verbose"))) {
+        printf("USAGE: %s [--verbose]", argv[0]);
+        return -1;
+    }
+
+    if (argc == 2 && !strcmp(argv[1], "--verbose"))
+        sd_log_set_level(LOG_LEVEL_VERBOSE);
+    else
+        sd_log_set_level(LOG_LEVEL_NONE);
 
     cfg_test_run_suite();
     channel_test_run_suite();
