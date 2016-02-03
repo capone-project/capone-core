@@ -119,7 +119,9 @@ int sd_channel_close(struct sd_channel *c)
     }
 
     close(c->local_fd);
+    c->local_fd = -1;
     close(c->remote_fd);
+    c->remote_fd = -1;
 
     return 0;
 }
