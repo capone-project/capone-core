@@ -21,12 +21,22 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
+#include "lib/common.h"
 #include "lib/channel.h"
 
 static struct sd_channel channel;
+static enum sd_channel_type type;
 
-static int setup()
+static int setup_tcp()
 {
+    type = SD_CHANNEL_TYPE_TCP;
+    sd_channel_init(&channel);
+    return 0;
+}
+
+static int setup_udp()
+{
+    type = SD_CHANNEL_TYPE_UDP;
     sd_channel_init(&channel);
     return 0;
 }
@@ -60,69 +70,84 @@ static void close_resets_sockets_to_invalid_values()
 static void set_local_address_to_localhost()
 {
     assert_int_equal(sd_channel_set_local_address(&channel,
-                "localhost", "8080", SD_CHANNEL_TYPE_TCP), 0);
+                "localhost", "8080", type), 0);
     assert_true(channel.local_fd >= 0);
 }
 
 static void set_local_address_to_127001()
 {
     assert_int_equal(sd_channel_set_local_address(&channel,
-                "127.0.0.1", "8080", SD_CHANNEL_TYPE_TCP), 0);
+                "127.0.0.1", "8080", type), 0);
     assert_true(channel.local_fd >= 0);
 }
 
 static void set_local_address_to_empty_address()
 {
     assert_int_equal(sd_channel_set_local_address(&channel,
-                NULL, "8080", SD_CHANNEL_TYPE_TCP), 0);
+                NULL, "8080", type), 0);
     assert_true(channel.local_fd >= 0);
 }
 
 static void set_local_address_to_invalid_address()
 {
     assert_int_equal(sd_channel_set_local_address(&channel,
-                "999.999.999.999", "8080", SD_CHANNEL_TYPE_TCP), -1);
+                "999.999.999.999", "8080", type), -1);
     assert_true(channel.local_fd >= 0);
 }
 
 static void set_remote_address_to_localhost()
 {
     assert_int_equal(sd_channel_set_remote_address(&channel,
-                "localhost", "8080", SD_CHANNEL_TYPE_TCP), 0);
+                "localhost", "8080", type), 0);
     assert_true(channel.local_fd >= 0);
 }
 
 static void set_remote_address_to_127001()
 {
     assert_int_equal(sd_channel_set_remote_address(&channel,
-                "127.0.0.1", "8080", SD_CHANNEL_TYPE_TCP), 0);
+                "127.0.0.1", "8080", type), 0);
     assert_true(channel.local_fd >= 0);
 }
 
 static void set_remote_address_to_empty_address()
 {
     assert_int_equal(sd_channel_set_remote_address(&channel,
-                NULL, "8080", SD_CHANNEL_TYPE_TCP), 0);
+                NULL, "8080", type), 0);
     assert_true(channel.local_fd >= 0);
 }
 
 static void set_remote_address_to_invalid_address()
 {
     assert_int_equal(sd_channel_set_remote_address(&channel,
-                "999.999.999.999", "8080", SD_CHANNEL_TYPE_TCP), -1);
+                "999.999.999.999", "8080", type), -1);
     assert_true(channel.local_fd >= 0);
 }
 
 static void connect_fails_without_other_side()
 {
     assert_int_equal(sd_channel_set_remote_address(&channel,
-                "127.0.0.1", "8080", SD_CHANNEL_TYPE_TCP), 0);
+                "127.0.0.1", "8080", type), 0);
     assert_int_equal(sd_channel_connect(&channel), -1);
+}
+
+static void connect_with_other_side()
+{
+    struct sd_channel remote;
+    sd_channel_init(&remote);
+    assert_int_equal(sd_channel_set_local_address(&remote,
+                NULL, "8080", type), 0);
+    assert_int_equal(sd_channel_listen(&remote), 0);
+
+    assert_int_equal(sd_channel_set_remote_address(&channel,
+                "127.0.0.1", "8080", type), 0);
+    assert_int_equal(sd_channel_connect(&channel), 0);
+
+    sd_channel_close(&remote);
 }
 
 int channel_test_run_suite()
 {
-    const struct CMUnitTest tests[] = {
+    const struct CMUnitTest shared_tests[] = {
         cmocka_unit_test(initialization_sets_invalid_sockets),
         cmocka_unit_test(close_resets_sockets_to_invalid_values),
 
@@ -135,10 +160,14 @@ int channel_test_run_suite()
         cmocka_unit_test(set_remote_address_to_127001),
         cmocka_unit_test(set_remote_address_to_empty_address),
         cmocka_unit_test(set_remote_address_to_invalid_address),
-
+    };
+    const struct CMUnitTest tcp_tests[] = {
         cmocka_unit_test(connect_fails_without_other_side),
+        cmocka_unit_test(connect_with_other_side),
     };
 
-    return cmocka_run_group_tests_name("channel", tests, setup, teardown);
+    return cmocka_run_group_tests_name("channel_tcp_shared", shared_tests, setup_tcp, teardown) ||
+           cmocka_run_group_tests_name("channel_udp_shared", shared_tests, setup_udp, teardown) ||
+           cmocka_run_group_tests_name("channel_tcp", tcp_tests, setup_tcp, teardown);
 }
 
