@@ -37,7 +37,7 @@ static int teardown()
     return 0;
 }
 
-void initialization_sets_invalid_sockets()
+static void initialization_sets_invalid_sockets()
 {
     channel.local_fd = 123;
     sd_channel_init(&channel);
@@ -46,7 +46,7 @@ void initialization_sets_invalid_sockets()
     assert_int_equal(channel.remote_fd, -1);
 }
 
-void close_resets_sockets_to_invalid_values()
+static void close_resets_sockets_to_invalid_values()
 {
     channel.local_fd = INT_MAX;;
     channel.remote_fd = INT_MAX;;
@@ -57,63 +57,63 @@ void close_resets_sockets_to_invalid_values()
     assert_int_equal(channel.remote_fd, -1);
 }
 
-void set_local_address_to_localhost()
+static void set_local_address_to_localhost()
 {
     assert_int_equal(sd_channel_set_local_address(&channel,
                 "localhost", "8080", SD_CHANNEL_TYPE_TCP), 0);
     assert_true(channel.local_fd >= 0);
 }
 
-void set_local_address_to_127001()
+static void set_local_address_to_127001()
 {
     assert_int_equal(sd_channel_set_local_address(&channel,
                 "127.0.0.1", "8080", SD_CHANNEL_TYPE_TCP), 0);
     assert_true(channel.local_fd >= 0);
 }
 
-void set_local_address_to_empty_address()
+static void set_local_address_to_empty_address()
 {
     assert_int_equal(sd_channel_set_local_address(&channel,
                 NULL, "8080", SD_CHANNEL_TYPE_TCP), 0);
     assert_true(channel.local_fd >= 0);
 }
 
-void set_local_address_to_invalid_address()
+static void set_local_address_to_invalid_address()
 {
     assert_int_equal(sd_channel_set_local_address(&channel,
                 "999.999.999.999", "8080", SD_CHANNEL_TYPE_TCP), -1);
     assert_true(channel.local_fd >= 0);
 }
 
-void set_remote_address_to_localhost()
+static void set_remote_address_to_localhost()
 {
     assert_int_equal(sd_channel_set_remote_address(&channel,
                 "localhost", "8080", SD_CHANNEL_TYPE_TCP), 0);
     assert_true(channel.local_fd >= 0);
 }
 
-void set_remote_address_to_127001()
+static void set_remote_address_to_127001()
 {
     assert_int_equal(sd_channel_set_remote_address(&channel,
                 "127.0.0.1", "8080", SD_CHANNEL_TYPE_TCP), 0);
     assert_true(channel.local_fd >= 0);
 }
 
-void set_remote_address_to_empty_address()
+static void set_remote_address_to_empty_address()
 {
     assert_int_equal(sd_channel_set_remote_address(&channel,
                 NULL, "8080", SD_CHANNEL_TYPE_TCP), 0);
     assert_true(channel.local_fd >= 0);
 }
 
-void set_remote_address_to_invalid_address()
+static void set_remote_address_to_invalid_address()
 {
     assert_int_equal(sd_channel_set_remote_address(&channel,
                 "999.999.999.999", "8080", SD_CHANNEL_TYPE_TCP), -1);
     assert_true(channel.local_fd >= 0);
 }
 
-void connect_fails_without_other_side()
+static void connect_fails_without_other_side()
 {
     assert_int_equal(sd_channel_set_remote_address(&channel,
                 "127.0.0.1", "8080", SD_CHANNEL_TYPE_TCP), 0);
