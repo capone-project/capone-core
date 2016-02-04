@@ -20,6 +20,8 @@
 #include "lib/common.h"
 #include "lib/channel.h"
 
+#include "proto/test.pb-c.h"
+
 static struct sd_channel channel, remote;
 static enum sd_channel_type type;
 
@@ -162,6 +164,25 @@ static void write_data()
     assert_string_equal(sender, receiver);
 }
 
+static void write_protobuf()
+{
+    TestMessage msg, *recv = NULL;
+    unsigned char value[] = "test";
+
+    stub_sockets(&channel, &remote);
+
+    test_message__init(&msg);
+    msg.value.data = value;
+    msg.value.len = sizeof(value);
+
+    assert_success(sd_channel_write_protobuf(&channel, (ProtobufCMessage *)&msg));
+    assert_success(sd_channel_recveive_protobuf(&remote,
+            (ProtobufCMessageDescriptor *) &test_message__descriptor,
+            (ProtobufCMessage **) &recv));
+
+    assert_string_equal(msg.value.data, recv->value.data);
+}
+
 int channel_test_run_suite()
 {
     const struct CMUnitTest shared_tests[] = {
@@ -182,10 +203,10 @@ int channel_test_run_suite()
         cmocka_unit_test(connect_fails_without_other_side),
         cmocka_unit_test(connect_with_other_side),
         cmocka_unit_test(write_data),
+        cmocka_unit_test(write_protobuf),
     };
 
     return execute_test_suite("channel_tcp_shared", shared_tests, setup_tcp, teardown) ||
            execute_test_suite("channel_udp_shared", shared_tests, setup_udp, teardown) ||
            execute_test_suite("channel_tcp", tcp_tests, setup_tcp, teardown);
 }
-

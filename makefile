@@ -3,7 +3,8 @@ CFLAGS=-g -ggdb -O0 -Wall -Wextra -pedantic -std=c99 -D_POSIX_SOURCE -D_DEFAULT_
 LDFLAGS=-g -ggdb
 CPPFLAGS=-DVERSION=\"0.0.1\"
 
-PROTOBUF=proto/discovery.proto
+PROTOBUF=proto/discovery.proto \
+		 proto/test.proto
 PROTOBUF_SOURCES=$(patsubst %.proto,%.pb-c.c,${PROTOBUF})
 PROTOBUF_HEADERS=$(patsubst %.proto,%.pb-c.h,${PROTOBUF})
 PROTOBUF_OBJECTS=$(patsubst %.proto,%.pb-c.o,${PROTOBUF})
@@ -64,7 +65,7 @@ test: sd-test
 	./sd-test
 sd-test: _CFLAGS=${TEST_CFLAGS}
 sd-test: _LDFLAGS=${TEST_LDFLAGS}
-sd-test: ${TEST_OBJECTS} ${LIBRARY_OBJECTS}
+sd-test: ${PROTOBUF_OBJECTS} ${TEST_OBJECTS} ${LIBRARY_OBJECTS}
 	@echo "LD $@"
 	@$(CC) ${_LDFLAGS} -o "$@" $^
 
