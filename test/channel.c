@@ -36,8 +36,8 @@ static void stub_sockets(struct sd_channel *local, struct sd_channel *remote)
             break;
     }
 
-    local->local_fd = sockets[0];
-    remote->remote_fd = sockets[1];
+    local->remote_fd = sockets[0];
+    remote->local_fd = sockets[1];
 }
 
 static int setup_tcp()
