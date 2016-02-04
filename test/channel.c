@@ -156,7 +156,8 @@ static void write_data()
     stub_sockets(&channel, &remote);
 
     assert_success(sd_channel_write_data(&channel, sender, sizeof(sender)));
-    assert_success(sd_channel_receive_data(&remote, receiver, sizeof(receiver)));
+    assert_int_equal(sd_channel_receive_data(&remote, receiver, sizeof(receiver)),
+            sizeof(sender));
 
     assert_string_equal(sender, receiver);
 }
