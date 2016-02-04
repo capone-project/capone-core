@@ -4,6 +4,7 @@ LDFLAGS=-g -ggdb
 CPPFLAGS=-DVERSION=\"0.0.1\"
 
 PROTOBUF=proto/discovery.proto \
+		 proto/envelope.proto \
 		 proto/test.proto
 PROTOBUF_SOURCES=$(patsubst %.proto,%.pb-c.c,${PROTOBUF})
 PROTOBUF_HEADERS=$(patsubst %.proto,%.pb-c.h,${PROTOBUF})

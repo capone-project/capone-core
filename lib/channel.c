@@ -26,9 +26,13 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 
+#include <sodium/crypto_auth.h>
+
 #include "common.h"
 #include "channel.h"
 #include "log.h"
+
+#include "proto/envelope.pb-c.h"
 
 static int getsock(struct sockaddr_storage *addr, const char *host,
         const char *port, enum sd_channel_type type)
@@ -118,6 +122,41 @@ int sd_channel_set_remote_address(struct sd_channel *c, const char *host,
     }
 
     c->remote_fd = fd;
+
+    return 0;
+}
+
+int sd_channel_set_crypto_none(struct sd_channel *c)
+{
+    memset(c->public_key, 0, sizeof(c->public_key));
+    memset(c->secret_key, 0, sizeof(c->secret_key));
+    memset(c->remote_key, 0, sizeof(c->remote_key));
+
+    c->crypto = SD_CHANNEL_CRTYPTO_NONE;
+
+    return 0;
+}
+
+int sd_channel_set_crypto_sign(struct sd_channel *c, uint8_t *pk, uint8_t *sk)
+{
+    memset(c->remote_key, 0, sizeof(c->remote_key));
+
+    memcpy(c->public_key, pk, sizeof(c->public_key));
+    memcpy(c->secret_key, sk, sizeof(c->secret_key));
+
+    c->crypto = SD_CHANNEL_CRTYPTO_SIGN;
+
+    return 0;
+}
+
+int sd_channel_set_crypto_encrypt(struct sd_channel *c, uint8_t *sk, uint8_t *rk)
+{
+    memset(c->public_key, 0, sizeof(c->public_key));
+
+    memcpy(c->secret_key, sk, sizeof(c->secret_key));
+    memcpy(c->remote_key, rk, sizeof(c->remote_key));
+
+    c->crypto = SD_CHANNEL_CRTYPTO_ENCRYPT;
 
     return 0;
 }
@@ -225,18 +264,84 @@ int sd_channel_write_protobuf(struct sd_channel *c, ProtobufCMessage *msg)
     return sd_channel_write_data(c, buf, size);
 }
 
-ssize_t sd_channel_receive_data(struct sd_channel *c, void *buf, size_t maxlen)
+static int unpack_signed_data(struct sd_channel *c, const uint8_t *buf, size_t len,
+        uint8_t *out, size_t outlen)
 {
+    Envelope *envelope;
+    int ret;
+
+    envelope = envelope__unpack(NULL, len, buf);
+    if (envelope == NULL) {
+        sd_log(LOG_LEVEL_ERROR, "Unable to unpack signed envelope");
+        return -1;
+    }
+
+    ret = crypto_auth_verify(envelope->mac.data, envelope->data.data,
+            envelope->data.len, envelope->pk.data);
+    if (ret < 0) {
+        ret = -1;
+        goto out;
+    }
+
+    if (envelope->encrypted) {
+        uint8_t plaintext[4096];
+
+        if (crypto_box_open_easy(plaintext, buf, len, c->nonce,
+                envelope->pk.data, c->secret_key) != 0) {
+            sd_log(LOG_LEVEL_ERROR, "Unable to decrypt signed message");
+            ret = -1;
+            goto out;
+        }
+    }
+
+    if (envelope->data.len <= outlen) {
+        memcpy(out, envelope->data.data, envelope->data.len);
+    } else {
+        sd_log(LOG_LEVEL_ERROR, "Signed message bigger than passed buffer");
+        ret = -1;
+        goto out;
+    }
+
+out:
+    envelope__free_unpacked(envelope, NULL);
+
+    return ret;
+}
+
+ssize_t sd_channel_receive_data(struct sd_channel *c, uint8_t *out, size_t maxlen)
+{
+    uint8_t buf[4096];
     unsigned int addrlen;
     ssize_t len;
 
     addrlen = sizeof(c->raddr);
 
-    len = recvfrom(c->local_fd, buf, maxlen, 0, (struct sockaddr*) &c->raddr, &addrlen);
+    len = recvfrom(c->local_fd, buf, sizeof(buf), 0, (struct sockaddr*) &c->raddr, &addrlen);
     if (len < 0) {
         sd_log(LOG_LEVEL_ERROR, "Could not receive data: %s",
                 strerror(errno));
         return -1;
+    }
+
+    if ((size_t) len > maxlen) {
+        sd_log(LOG_LEVEL_ERROR, "Buffer smaller than message");
+        return -1;
+    }
+
+    switch (c->crypto) {
+        case SD_CHANNEL_CRTYPTO_NONE:
+            memcpy(out, buf, len);
+            break;
+        case SD_CHANNEL_CRTYPTO_SIGN:
+            len = unpack_signed_data(c, out, maxlen, buf, sizeof(buf));
+            break;
+        case SD_CHANNEL_CRTYPTO_ENCRYPT:
+            if (crypto_box_open_easy(out, buf, sizeof(buf), c->nonce,
+                        c->remote_key, c->secret_key) != 0) {
+                sd_log(LOG_LEVEL_ERROR, "Unable to decrypt message");
+                return -1;
+            }
+            break;
     }
 
     return len;

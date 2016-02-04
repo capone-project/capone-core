@@ -1,0 +1,6 @@
+message Envelope {
+    required bytes mac = 1;
+    required bytes pk = 2;
+    required bytes data = 3;
+    required bool encrypted = 4;
+}
