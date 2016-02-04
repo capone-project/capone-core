@@ -15,17 +15,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <stdarg.h>
-#include <stddef.h>
-#include <stdlib.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "test.h"
 
 #include "lib/common.h"
 #include "lib/channel.h"
-
-#define assert_success(fn) assert_int_equal((fn), 0)
-#define assert_failure(fn) assert_int_equal((fn), -1)
 
 static struct sd_channel channel;
 static enum sd_channel_type type;
@@ -134,6 +127,8 @@ static void connect_with_other_side()
     assert_success(sd_channel_set_remote_address(&channel, "127.0.0.1", "8080", type));
     assert_success(sd_channel_connect(&channel));
 
+    assert_success(sd_channel_accept(&remote));
+
     sd_channel_close(&remote);
 }
 
@@ -158,8 +153,8 @@ int channel_test_run_suite()
         cmocka_unit_test(connect_with_other_side),
     };
 
-    return cmocka_run_group_tests_name("channel_tcp_shared", shared_tests, setup_tcp, teardown) ||
-           cmocka_run_group_tests_name("channel_udp_shared", shared_tests, setup_udp, teardown) ||
-           cmocka_run_group_tests_name("channel_tcp", tcp_tests, setup_tcp, teardown);
+    return execute_test_suite("channel_tcp_shared", shared_tests, setup_tcp, teardown) ||
+           execute_test_suite("channel_udp_shared", shared_tests, setup_udp, teardown) ||
+           execute_test_suite("channel_tcp", tcp_tests, setup_tcp, teardown);
 }
 
