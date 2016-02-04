@@ -164,6 +164,38 @@ static void write_data()
     assert_string_equal(sender, receiver);
 }
 
+static void write_multiple_messages()
+{
+    uint8_t m1[] = "m1", m2[] = "m2", buf[10];
+
+    stub_sockets(&channel, &remote);
+
+    assert_success(sd_channel_write_data(&channel, m1, sizeof(m1)));
+    assert_success(sd_channel_write_data(&channel, m2, sizeof(m2)));
+
+    assert_int_equal(sd_channel_receive_data(&remote, buf, sizeof(buf)), sizeof(m1));
+    assert_string_equal(buf, m1);
+
+    assert_int_equal(sd_channel_receive_data(&remote, buf, sizeof(buf)), sizeof(m2));
+    assert_string_equal(buf, m2);
+}
+
+static void write_with_response()
+{
+    uint8_t m1[] = "m1", m2[] = "m2", buf[10];
+
+    stub_sockets(&channel, &remote);
+    stub_sockets(&remote, &channel);
+
+    assert_success(sd_channel_write_data(&channel, m1, sizeof(m1)));
+    assert_int_equal(sd_channel_receive_data(&remote, buf, sizeof(buf)), sizeof(m1));
+    assert_string_equal(buf, m1);
+
+    assert_success(sd_channel_write_data(&remote, m2, sizeof(m2)));
+    assert_int_equal(sd_channel_receive_data(&channel, buf, sizeof(buf)), sizeof(m2));
+    assert_string_equal(buf, m2);
+}
+
 static void write_protobuf()
 {
     TestMessage msg, *recv = NULL;
@@ -203,6 +235,8 @@ int channel_test_run_suite()
         cmocka_unit_test(connect_fails_without_other_side),
         cmocka_unit_test(connect_with_other_side),
         cmocka_unit_test(write_data),
+        cmocka_unit_test(write_multiple_messages),
+        cmocka_unit_test(write_with_response),
         cmocka_unit_test(write_protobuf),
     };
 
