@@ -24,6 +24,9 @@
 #include "lib/common.h"
 #include "lib/channel.h"
 
+#define assert_success(fn) assert_int_equal((fn), 0)
+#define assert_failure(fn) assert_int_equal((fn), -1)
+
 static struct sd_channel channel;
 static enum sd_channel_type type;
 
@@ -69,78 +72,67 @@ static void close_resets_sockets_to_invalid_values()
 
 static void set_local_address_to_localhost()
 {
-    assert_int_equal(sd_channel_set_local_address(&channel,
-                "localhost", "8080", type), 0);
+    assert_success(sd_channel_set_local_address(&channel, "localhost", "8080", type));
     assert_true(channel.local_fd >= 0);
 }
 
 static void set_local_address_to_127001()
 {
-    assert_int_equal(sd_channel_set_local_address(&channel,
-                "127.0.0.1", "8080", type), 0);
+    assert_success(sd_channel_set_local_address(&channel, "127.0.0.1", "8080", type));
     assert_true(channel.local_fd >= 0);
 }
 
 static void set_local_address_to_empty_address()
 {
-    assert_int_equal(sd_channel_set_local_address(&channel,
-                NULL, "8080", type), 0);
+    assert_success(sd_channel_set_local_address(&channel, NULL, "8080", type));
     assert_true(channel.local_fd >= 0);
 }
 
 static void set_local_address_to_invalid_address()
 {
-    assert_int_equal(sd_channel_set_local_address(&channel,
-                "999.999.999.999", "8080", type), -1);
+    assert_failure(sd_channel_set_local_address(&channel, "999.999.999.999", "8080", type));
     assert_true(channel.local_fd >= 0);
 }
 
 static void set_remote_address_to_localhost()
 {
-    assert_int_equal(sd_channel_set_remote_address(&channel,
-                "localhost", "8080", type), 0);
+    assert_success(sd_channel_set_remote_address(&channel, "localhost", "8080", type));
     assert_true(channel.local_fd >= 0);
 }
 
 static void set_remote_address_to_127001()
 {
-    assert_int_equal(sd_channel_set_remote_address(&channel,
-                "127.0.0.1", "8080", type), 0);
+    assert_success(sd_channel_set_remote_address(&channel, "127.0.0.1", "8080", type));
     assert_true(channel.local_fd >= 0);
 }
 
 static void set_remote_address_to_empty_address()
 {
-    assert_int_equal(sd_channel_set_remote_address(&channel,
-                NULL, "8080", type), 0);
+    assert_success(sd_channel_set_remote_address(&channel, NULL, "8080", type));
     assert_true(channel.local_fd >= 0);
 }
 
 static void set_remote_address_to_invalid_address()
 {
-    assert_int_equal(sd_channel_set_remote_address(&channel,
-                "999.999.999.999", "8080", type), -1);
+    assert_failure(sd_channel_set_remote_address(&channel, "999.999.999.999", "8080", type));
     assert_true(channel.local_fd >= 0);
 }
 
 static void connect_fails_without_other_side()
 {
-    assert_int_equal(sd_channel_set_remote_address(&channel,
-                "127.0.0.1", "8080", type), 0);
-    assert_int_equal(sd_channel_connect(&channel), -1);
+    assert_success(sd_channel_set_remote_address(&channel, "127.0.0.1", "8080", type));
+    assert_failure(sd_channel_connect(&channel));
 }
 
 static void connect_with_other_side()
 {
     struct sd_channel remote;
     sd_channel_init(&remote);
-    assert_int_equal(sd_channel_set_local_address(&remote,
-                NULL, "8080", type), 0);
-    assert_int_equal(sd_channel_listen(&remote), 0);
+    assert_success(sd_channel_set_local_address(&remote, NULL, "8080", type));
+    assert_success(sd_channel_listen(&remote));
 
-    assert_int_equal(sd_channel_set_remote_address(&channel,
-                "127.0.0.1", "8080", type), 0);
-    assert_int_equal(sd_channel_connect(&channel), 0);
+    assert_success(sd_channel_set_remote_address(&channel, "127.0.0.1", "8080", type));
+    assert_success(sd_channel_connect(&channel));
 
     sd_channel_close(&remote);
 }
