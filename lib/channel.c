@@ -68,7 +68,12 @@ static int getsock(struct sockaddr_storage *addr, const char *host,
         return -1;
     }
 
-    memcpy(addr, hint, sizeof(struct sockaddr_storage));
+    if (hint->ai_addrlen > sizeof(struct sockaddr_storage)) {
+        sd_log(LOG_LEVEL_ERROR, "Hint's addrlen is greater than sockaddr_storage length");
+        return -1;
+    }
+
+    memcpy(addr, hint->ai_addr, hint->ai_addrlen);
     freeaddrinfo(servinfo);
 
     return fd;
