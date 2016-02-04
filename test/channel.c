@@ -20,13 +20,31 @@
 #include "lib/common.h"
 #include "lib/channel.h"
 
-static struct sd_channel channel;
+static struct sd_channel channel, remote;
 static enum sd_channel_type type;
+
+static void stub_sockets(struct sd_channel *local, struct sd_channel *remote)
+{
+    int sockets[2];
+
+    switch (local->type) {
+        case SD_CHANNEL_TYPE_TCP:
+            assert_success(socketpair(AF_UNIX, SOCK_STREAM, 0, sockets));
+            break;
+        case SD_CHANNEL_TYPE_UDP:
+            assert_success(socketpair(AF_UNIX, SOCK_DGRAM, 0, sockets));
+            break;
+    }
+
+    local->local_fd = sockets[0];
+    remote->remote_fd = sockets[1];
+}
 
 static int setup_tcp()
 {
     type = SD_CHANNEL_TYPE_TCP;
     sd_channel_init(&channel);
+    sd_channel_init(&remote);
     return 0;
 }
 
@@ -34,12 +52,14 @@ static int setup_udp()
 {
     type = SD_CHANNEL_TYPE_UDP;
     sd_channel_init(&channel);
+    sd_channel_init(&remote);
     return 0;
 }
 
 static int teardown()
 {
     sd_channel_close(&channel);
+    sd_channel_close(&remote);
     return 0;
 }
 
@@ -119,8 +139,6 @@ static void connect_fails_without_other_side()
 
 static void connect_with_other_side()
 {
-    struct sd_channel remote;
-    sd_channel_init(&remote);
     assert_success(sd_channel_set_local_address(&remote, NULL, "8080", type));
     assert_success(sd_channel_listen(&remote));
 
@@ -128,8 +146,19 @@ static void connect_with_other_side()
     assert_success(sd_channel_connect(&channel));
 
     assert_success(sd_channel_accept(&remote));
+}
 
-    sd_channel_close(&remote);
+static void write_data()
+{
+    uint8_t sender[] = "test";
+    uint8_t receiver[sizeof(sender)];
+
+    stub_sockets(&channel, &remote);
+
+    assert_success(sd_channel_write_data(&channel, sender, sizeof(sender)));
+    assert_success(sd_channel_receive_data(&remote, receiver, sizeof(receiver)));
+
+    assert_string_equal(sender, receiver);
 }
 
 int channel_test_run_suite()
@@ -151,6 +180,7 @@ int channel_test_run_suite()
     const struct CMUnitTest tcp_tests[] = {
         cmocka_unit_test(connect_fails_without_other_side),
         cmocka_unit_test(connect_with_other_side),
+        cmocka_unit_test(write_data),
     };
 
     return execute_test_suite("channel_tcp_shared", shared_tests, setup_tcp, teardown) ||
