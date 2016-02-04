@@ -89,10 +89,16 @@ void sd_channel_init(struct sd_channel *c)
 int sd_channel_set_local_address(struct sd_channel *c, const char *host,
         const char *port, enum sd_channel_type type)
 {
-    int fd;
+    int fd, opt;
 
     fd = getsock(&c->laddr, host, port, type);
     if (fd < 0) {
+        return -1;
+    }
+
+    opt = 1;
+    if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Could not set socket option: %s", strerror(errno));
         return -1;
     }
 
