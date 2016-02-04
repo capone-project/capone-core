@@ -209,17 +209,18 @@ int sd_channel_write_data(struct sd_channel *c, uint8_t *buf, size_t len)
     return 0;
 }
 
-int sd_channel_write_protobuf(struct sd_channel *c, void *msg, pack_fn packfn, size_fn sizefn)
+int sd_channel_write_protobuf(struct sd_channel *c, ProtobufCMessage *msg)
 {
     size_t size;
     uint8_t buf[4096];
 
-    size = sizefn(msg);
+    size = protobuf_c_message_get_packed_size(msg);
     if (size > sizeof(buf)) {
         sd_log(LOG_LEVEL_ERROR, "Protobuf message exceeds buffer length");
         return -1;
     }
-    packfn(msg, buf);
+
+    protobuf_c_message_pack(msg, buf);
 
     return sd_channel_write_data(c, buf, size);
 }
@@ -241,20 +242,24 @@ ssize_t sd_channel_receive_data(struct sd_channel *c, void *buf, size_t maxlen)
     return len;
 }
 
-int sd_channel_recveive_protobuf(struct sd_channel *c, void **msg, size_t maxlen, unpack_fn unpackfn)
+int sd_channel_recveive_protobuf(struct sd_channel *c, ProtobufCMessageDescriptor *descr, ProtobufCMessage **msg)
 {
+    ProtobufCMessage *result;
     uint8_t buf[4096];
     ssize_t len;
 
     len = sd_channel_receive_data(c, buf, sizeof(buf));
     if (len < 0) {
         return -1;
-    } else if ((size_t) len > maxlen) {
-        sd_log(LOG_LEVEL_ERROR, "Protobuf message exceeds buffer length");
+    }
+
+    result = protobuf_c_message_unpack(descr, NULL, len, buf);
+    if (result == NULL) {
+        sd_log(LOG_LEVEL_ERROR, "Protobuf message could not be unpacked");
         return -1;
     }
 
-    (*msg) = unpackfn(NULL, len, buf);
+    *msg = result;
 
     return 0;
 }
