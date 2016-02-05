@@ -27,6 +27,8 @@
 #include <netdb.h>
 
 #include <sodium/crypto_auth.h>
+#include <sodium/utils.h>
+#include <sodium/randombytes.h>
 
 #include "common.h"
 #include "channel.h"
@@ -88,6 +90,7 @@ void sd_channel_init(struct sd_channel *c)
     memset(c, 0, sizeof(struct sd_channel));
     c->local_fd = -1;
     c->remote_fd = -1;
+    c->nonce_offset = 2;
 }
 
 int sd_channel_set_local_address(struct sd_channel *c, const char *host,
@@ -138,11 +141,15 @@ int sd_channel_set_crypto_none(struct sd_channel *c)
 }
 
 int sd_channel_set_crypto_encrypt(struct sd_channel *c,
-        uint8_t *pk, uint8_t *sk, uint8_t *rk)
+        uint8_t *pk, uint8_t *sk, uint8_t *rk,
+        uint8_t *local_nonce, uint8_t *remote_nonce)
 {
     memcpy(c->public_key, pk, sizeof(c->public_key));
     memcpy(c->secret_key, sk, sizeof(c->secret_key));
     memcpy(c->remote_key, rk, sizeof(c->remote_key));
+
+    memcpy(c->local_nonce, local_nonce, sizeof(c->local_nonce));
+    memcpy(c->remote_nonce, remote_nonce, sizeof(c->remote_nonce));
 
     c->crypto = SD_CHANNEL_CRTYPTO_ENCRYPT;
 
@@ -219,19 +226,43 @@ int sd_channel_accept(struct sd_channel *c)
     return 0;
 }
 
-int sd_channel_write_data(struct sd_channel *c, uint8_t *buf, size_t len)
+int sd_channel_write_data(struct sd_channel *c, uint8_t *data, size_t datalen)
 {
+    uint8_t msg[4096 + crypto_box_MACBYTES];
     ssize_t ret;
+    int i;
 
-    ret = send(c->remote_fd, buf, len, 0);
+    switch (c->crypto) {
+        case SD_CHANNEL_CRTYPTO_NONE:
+            assert(datalen <= sizeof(msg));
+
+            memcpy(msg, data, datalen);
+            break;
+        case SD_CHANNEL_CRTYPTO_ENCRYPT:
+            assert(datalen <= sizeof(msg) - crypto_box_MACBYTES);
+
+            if (crypto_box_easy(msg, data, datalen,
+                    c->local_nonce, c->remote_key, c->secret_key) < 0) {
+                sd_log(LOG_LEVEL_ERROR, "Unable to encrypt msg");
+                return -1;
+            }
+            datalen = datalen + crypto_box_MACBYTES;
+
+            break;
+    }
+
+    ret = send(c->remote_fd, msg, datalen, 0);
     if (ret < 0) {
         sd_log(LOG_LEVEL_ERROR, "Could not send data: %s",
                 strerror(errno));
         return -1;
-    } else if ((size_t) ret != len) {
-        sd_log(LOG_LEVEL_ERROR, "Buffer not wholly transimmted");
+    } else if ((size_t) ret != datalen) {
+        sd_log(LOG_LEVEL_ERROR, "Buffer not wholly transmittedd");
         return -1;
     }
+
+    for (i = 0; i < c->nonce_offset; i++)
+        sodium_increment(c->local_nonce, crypto_box_NONCEBYTES);
 
     return 0;
 }
@@ -257,6 +288,7 @@ ssize_t sd_channel_receive_data(struct sd_channel *c, uint8_t *out, size_t maxle
     uint8_t buf[4096];
     unsigned int addrlen;
     ssize_t len;
+    int i;
 
     addrlen = sizeof(c->raddr);
 
@@ -267,23 +299,27 @@ ssize_t sd_channel_receive_data(struct sd_channel *c, uint8_t *out, size_t maxle
         return -1;
     }
 
-    if ((size_t) len > maxlen) {
-        sd_log(LOG_LEVEL_ERROR, "Buffer smaller than message");
-        return -1;
-    }
-
     switch (c->crypto) {
         case SD_CHANNEL_CRTYPTO_NONE:
+            assert((size_t) len <= maxlen);
+
             memcpy(out, buf, len);
             break;
         case SD_CHANNEL_CRTYPTO_ENCRYPT:
-            if (crypto_box_open_easy(out, buf, sizeof(buf), c->nonce,
+            assert((size_t) len - crypto_box_MACBYTES <= maxlen);
+
+            if (crypto_box_open_easy(out, buf, len, c->remote_nonce,
                         c->remote_key, c->secret_key) != 0) {
                 sd_log(LOG_LEVEL_ERROR, "Unable to decrypt message");
                 return -1;
             }
+            len = len - crypto_box_MACBYTES;
+
             break;
     }
+
+    for (i = 0; i < c->nonce_offset; i++)
+        sodium_increment(c->remote_nonce, crypto_box_NONCEBYTES);
 
     return len;
 }

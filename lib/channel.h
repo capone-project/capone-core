@@ -51,7 +51,9 @@ struct sd_channel {
     uint8_t public_key[crypto_box_PUBLICKEYBYTES];
     uint8_t secret_key[crypto_box_SECRETKEYBYTES];
     uint8_t remote_key[crypto_box_PUBLICKEYBYTES];
-    uint8_t nonce[crypto_box_NONCEBYTES];
+
+    uint8_t remote_nonce[crypto_box_NONCEBYTES];
+    uint8_t local_nonce[crypto_box_NONCEBYTES];
     uint8_t nonce_offset;
 };
 
@@ -65,7 +67,8 @@ int sd_channel_set_remote_address(struct sd_channel *c,
 
 int sd_channel_set_crypto_none(struct sd_channel *c);
 int sd_channel_set_crypto_encrypt(struct sd_channel *c,
-        uint8_t *pk, uint8_t *sk, uint8_t *rk);
+        uint8_t *pk, uint8_t *sk, uint8_t *rk,
+        uint8_t *local_nonce, uint8_t *remote_nonce);
 
 int sd_channel_connect(struct sd_channel *c);
 int sd_channel_listen(struct sd_channel *c);
