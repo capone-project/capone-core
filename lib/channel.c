@@ -110,6 +110,7 @@ int sd_channel_set_local_address(struct sd_channel *c, const char *host,
     }
 
     c->local_fd = fd;
+    c->type = type;
 
     return 0;
 }
@@ -125,6 +126,7 @@ int sd_channel_set_remote_address(struct sd_channel *c, const char *host,
     }
 
     c->remote_fd = fd;
+    c->type = type;
 
     return 0;
 }
@@ -259,7 +261,16 @@ int sd_channel_write_data(struct sd_channel *c, uint8_t *data, size_t datalen)
             break;
     }
 
-    ret = send(c->remote_fd, msg, datalen, 0);
+    switch (c->type) {
+        case SD_CHANNEL_TYPE_TCP:
+            ret = send(c->remote_fd, msg, datalen, 0);
+            break;
+        case SD_CHANNEL_TYPE_UDP:
+            ret = sendto(c->remote_fd, msg, datalen, 0,
+                    (struct sockaddr *) &c->raddr, sizeof(c->raddr));
+            break;
+    }
+
     if (ret < 0) {
         sd_log(LOG_LEVEL_ERROR, "Could not send data: %s",
                 strerror(errno));

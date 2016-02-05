@@ -41,6 +41,7 @@ static enum sd_channel_type type;
 static void stub_sockets(struct sd_channel *local, struct sd_channel *remote)
 {
     int sockets[2];
+    unsigned int addrlen = sizeof(local->raddr);
 
     switch (local->type) {
         case SD_CHANNEL_TYPE_TCP:
@@ -53,23 +54,31 @@ static void stub_sockets(struct sd_channel *local, struct sd_channel *remote)
 
     local->remote_fd = sockets[0];
     remote->local_fd = sockets[1];
+
+    getsockname(sockets[0], (struct sockaddr *) &local->raddr, &addrlen);
+    getsockname(sockets[1], (struct sockaddr *) &remote->laddr, &addrlen);
 }
 
 static int setup_tcp()
 {
-    type = SD_CHANNEL_TYPE_TCP;
     sd_channel_init(&channel);
     sd_channel_set_crypto_none(&channel);
+
     sd_channel_init(&remote);
     sd_channel_set_crypto_none(&remote);
+
+    channel.type = remote.type = type = SD_CHANNEL_TYPE_TCP;
+
     return 0;
 }
 
 static int setup_udp()
 {
-    type = SD_CHANNEL_TYPE_UDP;
     sd_channel_init(&channel);
     sd_channel_init(&remote);
+
+    channel.type = remote.type = type = SD_CHANNEL_TYPE_UDP;
+
     return 0;
 }
 
@@ -197,11 +206,10 @@ static void write_multiple_messages()
     stub_sockets(&channel, &remote);
 
     assert_success(sd_channel_write_data(&channel, m1, sizeof(m1)));
-    assert_success(sd_channel_write_data(&channel, m2, sizeof(m2)));
-
     assert_int_equal(sd_channel_receive_data(&remote, buf, sizeof(buf)), sizeof(m1));
     assert_string_equal(buf, m1);
 
+    assert_success(sd_channel_write_data(&channel, m2, sizeof(m2)));
     assert_int_equal(sd_channel_receive_data(&remote, buf, sizeof(buf)), sizeof(m2));
     assert_string_equal(buf, m2);
 }
@@ -343,7 +351,10 @@ int channel_test_run_suite()
         cmocka_unit_test(set_remote_address_to_127001),
         cmocka_unit_test(set_remote_address_to_empty_address),
         cmocka_unit_test(set_remote_address_to_invalid_address),
-
+    };
+    const struct CMUnitTest tcp_tests[] = {
+        cmocka_unit_test(connect_fails_without_other_side),
+        cmocka_unit_test(connect_with_other_side),
         cmocka_unit_test(write_data),
         cmocka_unit_test(receive_fails_with_too_small_buffer),
         cmocka_unit_test(write_multiple_messages),
@@ -353,10 +364,6 @@ int channel_test_run_suite()
         cmocka_unit_test(write_multiple_encrypted_messages),
         cmocka_unit_test(write_encrypted_messages_increments_nonce),
         cmocka_unit_test(write_encrypted_message_with_response),
-    };
-    const struct CMUnitTest tcp_tests[] = {
-        cmocka_unit_test(connect_fails_without_other_side),
-        cmocka_unit_test(connect_with_other_side),
     };
 
     crypto_box_keypair(channel_pk, channel_sk);
