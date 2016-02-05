@@ -114,6 +114,7 @@ int sd_server_accept(struct sd_server *s, struct sd_channel *out)
                 sd_log(LOG_LEVEL_ERROR, "Could not peek message");
                 return -1;
             }
+            fd = s->fd;
             break;
     }
 
