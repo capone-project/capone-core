@@ -54,8 +54,10 @@ struct sd_channel {
     uint8_t nonce_offset;
 };
 
-int sd_channel_init_from_address(struct sd_channel *c,
+int sd_channel_init_from_host(struct sd_channel *c,
         const char *host, const char *port, enum sd_channel_type type);
+int sd_channel_init_from_address(struct sd_channel *c,
+        struct sockaddr_storage addr, enum sd_channel_type type);
 int sd_channel_init_from_fd(struct sd_channel *c,
         int fd, struct sockaddr_storage addr, enum sd_channel_type type);
 int sd_channel_close(struct sd_channel *c);

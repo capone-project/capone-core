@@ -104,25 +104,25 @@ static void close_resets_sockets_to_invalid_values()
 
 static void init_address_to_localhost()
 {
-    assert_success(sd_channel_init_from_address(&channel, "localhost", "8080", type));
+    assert_success(sd_channel_init_from_host(&channel, "localhost", "8080", type));
     assert_true(channel.fd >= 0);
 }
 
 static void init_address_to_127001()
 {
-    assert_success(sd_channel_init_from_address(&channel, "127.0.0.1", "8080", type));
+    assert_success(sd_channel_init_from_host(&channel, "127.0.0.1", "8080", type));
     assert_true(channel.fd >= 0);
 }
 
 static void init_address_to_empty_address()
 {
-    assert_success(sd_channel_init_from_address(&channel, NULL, "8080", type));
+    assert_success(sd_channel_init_from_host(&channel, NULL, "8080", type));
     assert_true(channel.fd >= 0);
 }
 
 static void init_address_to_invalid_address()
 {
-    assert_failure(sd_channel_init_from_address(&channel, "999.999.999.999", "8080", type));
+    assert_failure(sd_channel_init_from_host(&channel, "999.999.999.999", "8080", type));
     assert_true(channel.fd >= 0);
 }
 
@@ -289,7 +289,7 @@ static void write_encrypted_message_with_response()
 
 static void connect_fails_without_other_side()
 {
-    assert_success(sd_channel_init_from_address(&channel, "127.0.0.1", "8080", type));
+    assert_success(sd_channel_init_from_host(&channel, "127.0.0.1", "8080", type));
     assert_failure(sd_channel_connect(&channel));
 }
 

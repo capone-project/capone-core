@@ -69,7 +69,7 @@ static void connect_with_other_side()
     if (type == SD_CHANNEL_TYPE_TCP)
         assert_success(sd_server_listen(&server));
 
-    assert_success(sd_channel_init_from_address(&channel, "127.0.0.1", "8080", type));
+    assert_success(sd_channel_init_from_host(&channel, "127.0.0.1", "8080", type));
     assert_success(sd_channel_connect(&channel));
 
     assert_success(sd_server_accept(&server, &connected));

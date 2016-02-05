@@ -75,7 +75,7 @@ static void probe(void *payload)
     env.discover.data = msgbuf;
     env.discover.len = len;
 
-    if (sd_channel_init_from_address(&channel, "224.0.0.1", "6667", SD_CHANNEL_TYPE_UDP) < 0)
+    if (sd_channel_init_from_host(&channel, "224.0.0.1", "6667", SD_CHANNEL_TYPE_UDP) < 0)
         return;
 
     while (true) {

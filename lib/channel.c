@@ -88,7 +88,7 @@ int getsock(struct sockaddr_storage *addr, const char *host,
     return fd;
 }
 
-int sd_channel_init_from_address(struct sd_channel *c, const char *host,
+int sd_channel_init_from_host(struct sd_channel *c, const char *host,
         const char *port, enum sd_channel_type type)
 {
     int fd;
@@ -100,6 +100,35 @@ int sd_channel_init_from_address(struct sd_channel *c, const char *host,
     }
 
     return sd_channel_init_from_fd(c, fd, addr, c->type);
+}
+
+int sd_channel_init_from_address(struct sd_channel *c,
+        struct sockaddr_storage addr, enum sd_channel_type type)
+{
+    int fd, stype;
+    struct sockaddr_in *inaddr;
+
+    switch (type) {
+        case SD_CHANNEL_TYPE_TCP:
+            stype = SOCK_STREAM;
+            break;
+        case SD_CHANNEL_TYPE_UDP:
+            stype = SOCK_DGRAM;
+            break;
+    }
+
+    switch (addr.ss_family) {
+        case AF_INET:
+            inaddr = (struct sockaddr_in *) &addr;
+            fd = socket(addr.ss_family, stype, inaddr->sin_port);
+            break;
+        default:
+            sd_log(LOG_LEVEL_ERROR, "Invalid address family");
+            return -1;
+    }
+
+
+    return sd_channel_init_from_fd(c, fd, addr, type);
 }
 
 int sd_channel_init_from_fd(struct sd_channel *c,
