@@ -234,7 +234,7 @@ static void write_protobuf()
     msg.value.len = sizeof(value);
 
     assert_success(sd_channel_write_protobuf(&channel, (ProtobufCMessage *)&msg));
-    assert_success(sd_channel_recveive_protobuf(&remote,
+    assert_success(sd_channel_receive_protobuf(&remote,
             (ProtobufCMessageDescriptor *) &test_message__descriptor,
             (ProtobufCMessage **) &recv));
 
