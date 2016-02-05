@@ -343,10 +343,7 @@ int channel_test_run_suite()
         cmocka_unit_test(set_remote_address_to_127001),
         cmocka_unit_test(set_remote_address_to_empty_address),
         cmocka_unit_test(set_remote_address_to_invalid_address),
-    };
-    const struct CMUnitTest tcp_tests[] = {
-        cmocka_unit_test(connect_fails_without_other_side),
-        cmocka_unit_test(connect_with_other_side),
+
         cmocka_unit_test(write_data),
         cmocka_unit_test(receive_fails_with_too_small_buffer),
         cmocka_unit_test(write_multiple_messages),
@@ -356,6 +353,10 @@ int channel_test_run_suite()
         cmocka_unit_test(write_multiple_encrypted_messages),
         cmocka_unit_test(write_encrypted_messages_increments_nonce),
         cmocka_unit_test(write_encrypted_message_with_response),
+    };
+    const struct CMUnitTest tcp_tests[] = {
+        cmocka_unit_test(connect_fails_without_other_side),
+        cmocka_unit_test(connect_with_other_side),
     };
 
     crypto_box_keypair(channel_pk, channel_sk);
