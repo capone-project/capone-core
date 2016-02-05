@@ -14,6 +14,7 @@ LIBRARY_SOURCES=lib/cfg.c \
 				lib/common.c \
 				lib/channel.c \
 				lib/log.c \
+				lib/server.c \
 				lib/service.c
 LIBRARY_HEADERS=$(patsubst %.c,%.h,${LIBRARY_SOURCES})
 LIBRARY_OBJECTS=$(patsubst %.c,%.o,${LIBRARY_SOURCES})
@@ -31,7 +32,8 @@ EXECUTABLES_LDFLAGS=${LDFLAGS} $(shell pkg-config --libs ${EXECUTABLES_LIBS})
 
 TEST_SOURCES=test/test.c \
 			 test/cfg.c \
-			 test/channel.c
+			 test/channel.c \
+			 test/server.c
 TEST_OBJECTS=$(patsubst %.c,%.o,${TEST_SOURCES})
 TEST_LIBS=cmocka ${EXECUTABLES_LIBS}
 TEST_CFLAGS=${CFLAGS} -I. $(shell pkg-config --cflags ${TEST_LIBS})

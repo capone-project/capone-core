@@ -41,7 +41,7 @@ static enum sd_channel_type type;
 static void stub_sockets(struct sd_channel *local, struct sd_channel *remote)
 {
     int sockets[2];
-    unsigned int addrlen = sizeof(local->raddr);
+    unsigned int addrlen = sizeof(local->addr);
 
     switch (local->type) {
         case SD_CHANNEL_TYPE_TCP:
@@ -52,33 +52,28 @@ static void stub_sockets(struct sd_channel *local, struct sd_channel *remote)
             break;
     }
 
-    local->remote_fd = sockets[0];
-    remote->local_fd = sockets[1];
+    local->fd = sockets[0];
+    remote->fd = sockets[1];
 
-    getsockname(sockets[0], (struct sockaddr *) &local->raddr, &addrlen);
-    getsockname(sockets[1], (struct sockaddr *) &remote->laddr, &addrlen);
+    getsockname(sockets[0], (struct sockaddr *) &local->addr, &addrlen);
+    getsockname(sockets[1], (struct sockaddr *) &remote->addr, &addrlen);
 }
 
 static int setup_tcp()
 {
-    sd_channel_init(&channel);
-    sd_channel_set_crypto_none(&channel);
-
-    sd_channel_init(&remote);
-    sd_channel_set_crypto_none(&remote);
-
     channel.type = remote.type = type = SD_CHANNEL_TYPE_TCP;
-
+    sd_channel_set_crypto_none(&channel);
+    sd_channel_set_crypto_none(&remote);
+    channel.nonce_offset = remote.nonce_offset = 2;
     return 0;
 }
 
 static int setup_udp()
 {
-    sd_channel_init(&channel);
-    sd_channel_init(&remote);
-
-    channel.type = remote.type = type = SD_CHANNEL_TYPE_UDP;
-
+    channel.type = remote.type = type = SD_CHANNEL_TYPE_TCP;
+    sd_channel_set_crypto_none(&channel);
+    sd_channel_set_crypto_none(&remote);
+    channel.nonce_offset = remote.nonce_offset = 2;
     return 0;
 }
 
@@ -89,89 +84,46 @@ static int teardown()
     return 0;
 }
 
-static void initialization_sets_invalid_sockets()
+static void initialization_sets_socket()
 {
-    channel.local_fd = 123;
-    sd_channel_init(&channel);
+    struct sockaddr_storage addr;
 
-    assert_int_equal(channel.local_fd, -1);
-    assert_int_equal(channel.remote_fd, -1);
+    sd_channel_init_from_fd(&channel, 123, addr, type);
+
+    assert_int_equal(channel.fd, 123);
 }
 
 static void close_resets_sockets_to_invalid_values()
 {
-    channel.local_fd = INT_MAX;;
-    channel.remote_fd = INT_MAX;;
+    channel.fd = INT_MAX;;
 
     sd_channel_close(&channel);
 
-    assert_int_equal(channel.local_fd, -1);
-    assert_int_equal(channel.remote_fd, -1);
+    assert_int_equal(channel.fd, -1);
 }
 
-static void set_local_address_to_localhost()
+static void init_address_to_localhost()
 {
-    assert_success(sd_channel_set_local_address(&channel, "localhost", "8080", type));
-    assert_true(channel.local_fd >= 0);
+    assert_success(sd_channel_init_from_address(&channel, "localhost", "8080", type));
+    assert_true(channel.fd >= 0);
 }
 
-static void set_local_address_to_127001()
+static void init_address_to_127001()
 {
-    assert_success(sd_channel_set_local_address(&channel, "127.0.0.1", "8080", type));
-    assert_true(channel.local_fd >= 0);
+    assert_success(sd_channel_init_from_address(&channel, "127.0.0.1", "8080", type));
+    assert_true(channel.fd >= 0);
 }
 
-static void set_local_address_to_empty_address()
+static void init_address_to_empty_address()
 {
-    assert_success(sd_channel_set_local_address(&channel, NULL, "8080", type));
-    assert_true(channel.local_fd >= 0);
+    assert_success(sd_channel_init_from_address(&channel, NULL, "8080", type));
+    assert_true(channel.fd >= 0);
 }
 
-static void set_local_address_to_invalid_address()
+static void init_address_to_invalid_address()
 {
-    assert_failure(sd_channel_set_local_address(&channel, "999.999.999.999", "8080", type));
-    assert_true(channel.local_fd >= 0);
-}
-
-static void set_remote_address_to_localhost()
-{
-    assert_success(sd_channel_set_remote_address(&channel, "localhost", "8080", type));
-    assert_true(channel.local_fd >= 0);
-}
-
-static void set_remote_address_to_127001()
-{
-    assert_success(sd_channel_set_remote_address(&channel, "127.0.0.1", "8080", type));
-    assert_true(channel.local_fd >= 0);
-}
-
-static void set_remote_address_to_empty_address()
-{
-    assert_success(sd_channel_set_remote_address(&channel, NULL, "8080", type));
-    assert_true(channel.local_fd >= 0);
-}
-
-static void set_remote_address_to_invalid_address()
-{
-    assert_failure(sd_channel_set_remote_address(&channel, "999.999.999.999", "8080", type));
-    assert_true(channel.local_fd >= 0);
-}
-
-static void connect_fails_without_other_side()
-{
-    assert_success(sd_channel_set_remote_address(&channel, "127.0.0.1", "8080", type));
-    assert_failure(sd_channel_connect(&channel));
-}
-
-static void connect_with_other_side()
-{
-    assert_success(sd_channel_set_local_address(&remote, NULL, "8080", type));
-    assert_success(sd_channel_listen(&remote));
-
-    assert_success(sd_channel_set_remote_address(&channel, "127.0.0.1", "8080", type));
-    assert_success(sd_channel_connect(&channel));
-
-    assert_success(sd_channel_accept(&remote));
+    assert_failure(sd_channel_init_from_address(&channel, "999.999.999.999", "8080", type));
+    assert_true(channel.fd >= 0);
 }
 
 static void write_data()
@@ -279,7 +231,6 @@ static void write_multiple_encrypted_messages()
             remote_nonce, local_nonce);
 
     assert_success(sd_channel_write_data(&channel, m1, sizeof(m1)));
-
     assert_int_equal(sd_channel_receive_data(&remote, buf, sizeof(buf)), sizeof(m1));
     assert_string_equal(m1, buf);
 
@@ -336,25 +287,24 @@ static void write_encrypted_message_with_response()
     assert_string_equal(m2, buf);
 }
 
+static void connect_fails_without_other_side()
+{
+    assert_success(sd_channel_init_from_address(&channel, "127.0.0.1", "8080", type));
+    assert_failure(sd_channel_connect(&channel));
+}
+
 int channel_test_run_suite()
 {
     const struct CMUnitTest shared_tests[] = {
-        cmocka_unit_test(initialization_sets_invalid_sockets),
+        cmocka_unit_test(initialization_sets_socket),
         cmocka_unit_test(close_resets_sockets_to_invalid_values),
 
-        cmocka_unit_test(set_local_address_to_localhost),
-        cmocka_unit_test(set_local_address_to_127001),
-        cmocka_unit_test(set_local_address_to_empty_address),
-        cmocka_unit_test(set_local_address_to_invalid_address),
-
-        cmocka_unit_test(set_remote_address_to_localhost),
-        cmocka_unit_test(set_remote_address_to_127001),
-        cmocka_unit_test(set_remote_address_to_empty_address),
-        cmocka_unit_test(set_remote_address_to_invalid_address),
+        cmocka_unit_test(init_address_to_localhost),
+        cmocka_unit_test(init_address_to_127001),
+        cmocka_unit_test(init_address_to_empty_address),
+        cmocka_unit_test(init_address_to_invalid_address),
     };
     const struct CMUnitTest tcp_tests[] = {
-        cmocka_unit_test(connect_fails_without_other_side),
-        cmocka_unit_test(connect_with_other_side),
         cmocka_unit_test(write_data),
         cmocka_unit_test(receive_fails_with_too_small_buffer),
         cmocka_unit_test(write_multiple_messages),
@@ -364,6 +314,7 @@ int channel_test_run_suite()
         cmocka_unit_test(write_multiple_encrypted_messages),
         cmocka_unit_test(write_encrypted_messages_increments_nonce),
         cmocka_unit_test(write_encrypted_message_with_response),
+        cmocka_unit_test(connect_fails_without_other_side),
     };
 
     crypto_box_keypair(channel_pk, channel_sk);

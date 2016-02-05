@@ -36,7 +36,7 @@
 
 #include "proto/envelope.pb-c.h"
 
-static int getsock(struct sockaddr_storage *addr, const char *host,
+int getsock(struct sockaddr_storage *addr, const char *host,
         const char *port, enum sd_channel_type type)
 {
     struct addrinfo hints, *servinfo, *hint;
@@ -53,6 +53,9 @@ static int getsock(struct sockaddr_storage *addr, const char *host,
             hints.ai_protocol = IPPROTO_UDP;
             break;
     }
+
+    if (host == NULL)
+        hints.ai_flags = AI_PASSIVE;
 
     ret = getaddrinfo(host, port, &hints, &servinfo);
     if (ret != 0) {
@@ -85,48 +88,30 @@ static int getsock(struct sockaddr_storage *addr, const char *host,
     return fd;
 }
 
-void sd_channel_init(struct sd_channel *c)
-{
-    memset(c, 0, sizeof(struct sd_channel));
-    c->local_fd = -1;
-    c->remote_fd = -1;
-    c->nonce_offset = 2;
-}
-
-int sd_channel_set_local_address(struct sd_channel *c, const char *host,
-        const char *port, enum sd_channel_type type)
-{
-    int fd, opt;
-
-    fd = getsock(&c->laddr, host, port, type);
-    if (fd < 0) {
-        return -1;
-    }
-
-    opt = 1;
-    if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not set socket option: %s", strerror(errno));
-        return -1;
-    }
-
-    c->local_fd = fd;
-    c->type = type;
-
-    return 0;
-}
-
-int sd_channel_set_remote_address(struct sd_channel *c, const char *host,
+int sd_channel_init_from_address(struct sd_channel *c, const char *host,
         const char *port, enum sd_channel_type type)
 {
     int fd;
+    struct sockaddr_storage addr;
 
-    fd = getsock(&c->raddr, host, port, type);
+    fd = getsock(&addr, host, port, type);
     if (fd < 0) {
         return -1;
     }
 
-    c->remote_fd = fd;
+    return sd_channel_init_from_fd(c, fd, addr, c->type);
+}
+
+int sd_channel_init_from_fd(struct sd_channel *c,
+        int fd, struct sockaddr_storage addr, enum sd_channel_type type)
+{
+    memset(c, 0, sizeof(struct sd_channel));
+    c->nonce_offset = 2;
+
+    c->fd = fd;
     c->type = type;
+    c->crypto = SD_CHANNEL_CRTYPTO_NONE;
+    c->addr = addr;
 
     return 0;
 }
@@ -160,70 +145,25 @@ int sd_channel_set_crypto_encrypt(struct sd_channel *c,
 
 int sd_channel_close(struct sd_channel *c)
 {
-    if (c->local_fd < 0 && c->remote_fd < 0) {
+    if (c->fd < 0) {
         sd_log(LOG_LEVEL_WARNING, "Closing channel with invalid fd");
         return -1;
     }
 
-    close(c->local_fd);
-    c->local_fd = -1;
-    close(c->remote_fd);
-    c->remote_fd = -1;
+    close(c->fd);
+    c->fd = -1;
 
     return 0;
 }
 
 int sd_channel_connect(struct sd_channel *c)
 {
-    assert(c->remote_fd >= 0);
+    assert(c->fd >= 0);
 
-    if (connect(c->remote_fd, (struct sockaddr*) &c->raddr, sizeof(c->raddr)) < 0) {
+    if (connect(c->fd, (struct sockaddr*) &c->addr, sizeof(c->addr)) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Could not connect: %s", strerror(errno));
         return -1;
     }
-
-    return 0;
-}
-
-int sd_channel_listen(struct sd_channel *c)
-{
-    int fd;
-
-    assert(c->local_fd >= 0);
-
-    if (bind(c->local_fd, (struct sockaddr*) &c->laddr, sizeof(c->laddr)) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not bind socket: %s", strerror(errno));
-        return -1;
-    }
-
-    fd = listen(c->local_fd, 16);
-    if (fd < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not listen: %s", strerror(errno));
-        return -1;
-    }
-
-    return 0;
-}
-
-int sd_channel_accept(struct sd_channel *c)
-{
-    int fd;
-    unsigned int addrsize;
-    struct sockaddr_storage addr;
-
-    assert(c->local_fd >= 0);
-
-    addrsize = sizeof(addr);
-
-    fd = accept(c->local_fd, (struct sockaddr*) &addr, &addrsize);
-    if (fd < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not accept connection: %s",
-                strerror(errno));
-        return -1;
-    }
-
-    c->remote_fd = fd;
-    c->raddr = addr;
 
     return 0;
 }
@@ -263,11 +203,11 @@ int sd_channel_write_data(struct sd_channel *c, uint8_t *data, size_t datalen)
 
     switch (c->type) {
         case SD_CHANNEL_TYPE_TCP:
-            ret = send(c->remote_fd, msg, datalen, 0);
+            ret = send(c->fd, msg, datalen, 0);
             break;
         case SD_CHANNEL_TYPE_UDP:
-            ret = sendto(c->remote_fd, msg, datalen, 0,
-                    (struct sockaddr *) &c->raddr, sizeof(c->raddr));
+            ret = sendto(c->fd, msg, datalen, 0,
+                    (struct sockaddr *) &c->addr, sizeof(c->addr));
             break;
     }
 
@@ -305,13 +245,10 @@ int sd_channel_write_protobuf(struct sd_channel *c, ProtobufCMessage *msg)
 ssize_t sd_channel_receive_data(struct sd_channel *c, uint8_t *out, size_t maxlen)
 {
     uint8_t buf[4096];
-    unsigned int addrlen;
     ssize_t len;
     int i;
 
-    addrlen = sizeof(c->raddr);
-
-    len = recvfrom(c->local_fd, buf, sizeof(buf), 0, (struct sockaddr*) &c->raddr, &addrlen);
+    len = recv(c->fd, buf, sizeof(buf), 0);
     if (len < 0) {
         sd_log(LOG_LEVEL_ERROR, "Could not receive data: %s",
                 strerror(errno));

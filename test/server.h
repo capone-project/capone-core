@@ -15,35 +15,4 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <stdarg.h>
-#include <stddef.h>
-#include <stdio.h>
-#include <string.h>
-#include <setjmp.h>
-
-#include <cmocka.h>
-
-#include "lib/log.h"
-
-#include "cfg.h"
-#include "channel.h"
-#include "server.h"
-
-int main(int argc, char *argv[])
-{
-    if (argc != 1 && (argc == 2 && strcmp(argv[1], "--verbose"))) {
-        printf("USAGE: %s [--verbose]", argv[0]);
-        return -1;
-    }
-
-    if (argc == 2 && !strcmp(argv[1], "--verbose"))
-        sd_log_set_level(LOG_LEVEL_VERBOSE);
-    else
-        sd_log_set_level(LOG_LEVEL_NONE);
-
-    cfg_test_run_suite();
-    channel_test_run_suite();
-    server_test_run_suite();
-
-    return 0;
-}
+void server_test_run_suite(void);
