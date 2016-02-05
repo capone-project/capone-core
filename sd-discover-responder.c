@@ -19,13 +19,11 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
-
 #include <unistd.h>
-#include <sys/types.h>
-#include <sys/wait.h>
+
 #include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
+#include <sys/wait.h>
+#include <netdb.h>
 
 #include <sodium/crypto_auth.h>
 #include <sodium/crypto_box.h>
@@ -34,6 +32,7 @@
 #include "lib/cfg.h"
 #include "lib/common.h"
 #include "lib/log.h"
+#include "lib/server.h"
 
 #include "proto/discovery.pb-c.h"
 
@@ -42,21 +41,23 @@ static uint8_t sk[crypto_box_SECRETKEYBYTES];
 
 #define LISTEN_PORT 6667
 
-struct announce_payload {
-    struct sockaddr_in addr;
-    socklen_t addrlen;
-    uint32_t port;
-};
-
-static void announce(void *payload)
+static void announce(struct sockaddr_storage addr, uint32_t port)
 {
     AnnounceEnvelope env = ANNOUNCE_ENVELOPE__INIT;
     AnnounceMessage msg = ANNOUNCE_MESSAGE__INIT;
-    uint8_t msgbuf[4096], envbuf[4096], mac[crypto_auth_BYTES];
-    struct announce_payload *p = (struct announce_payload *)payload;
-    struct sockaddr_in raddr = p->addr;
-    int ret, sock;
+    uint8_t msgbuf[4096];
+    uint8_t mac[crypto_auth_BYTES];
+    struct sd_channel channel;
+    char host[128], service[16];
     size_t len;
+
+    if (getnameinfo((struct sockaddr *) &addr, sizeof(addr),
+                host, sizeof(host), NULL, 0, 0) != 0) {
+        sd_log(LOG_LEVEL_ERROR, "Could not extract address");
+        return;
+    }
+
+    snprintf(service, sizeof(service), "%u", port);
 
     msg.version = VERSION;
     msg.port = LISTEN_PORT;
@@ -75,83 +76,48 @@ static void announce(void *payload)
     env.announce.len = len;
     env.mac.data = mac;
     env.mac.len = crypto_auth_BYTES;
-    len = announce_envelope__get_packed_size(&env);
-    if (len > sizeof(envbuf)) {
-        sd_log(LOG_LEVEL_ERROR, "Announce envelope longer than buffer");
-        goto out;
-    }
-    announce_envelope__pack(&env, envbuf);
 
-    raddr.sin_port = htons(p->port);
-
-    sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-    if (sock < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not open announce socket: %s", strerror(errno));
-        goto out;
+    if (sd_channel_init_from_host(&channel, host, service, SD_CHANNEL_TYPE_UDP) < 0) {
+        puts("Could not initialize channel");
+        return;
     }
 
-    ret = sendto(sock, envbuf, len, 0, (struct sockaddr*)&raddr, sizeof(raddr));
-    if (ret < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Unable to send announce: %s", strerror(errno));
-        goto out;
+    if (sd_channel_write_protobuf(&channel, (ProtobufCMessage *) &env) < 0) {
+        puts("Could not write protobuf");
+        return;
     }
-
-    sd_log(LOG_LEVEL_DEBUG, "Sent announce message to %s:%u",
-            inet_ntoa(raddr.sin_addr), ntohs(raddr.sin_port));
 
 out:
-    if (sock >= 0)
-        close(sock);
+    sd_channel_close(&channel);
 }
 
-static void handle_discover(void *payload)
+static void handle_discover()
 {
-    struct sockaddr_in maddr, raddr;
-    int sock, ret;
-    uint8_t buf[4096];
+    struct sd_server server;
+    struct sd_channel channel;
+    DiscoverEnvelope *env;
+    DiscoverMessage *msg;
 
-    UNUSED(payload);
-
-    memset(&maddr, 0, sizeof(maddr));
-    maddr.sin_family = AF_INET;
-    maddr.sin_addr.s_addr = htonl(INADDR_ANY);
-    maddr.sin_port = htons(6667);
-
-    sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-    if (sock < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not open socket: %s", strerror(errno));
-        goto out;
+    if (sd_server_init(&server, NULL, "6667", SD_CHANNEL_TYPE_UDP) < 0) {
+        puts("Unable to init listening channel");
+        return;
     }
-
-    ret = bind(sock, (struct sockaddr*)&maddr, sizeof(maddr));
-    if (ret < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not bind socket: %s", strerror(errno));
-        goto out;
-    }
-
-    sd_log(LOG_LEVEL_DEBUG, "Listening for probes on %s:%u",
-            inet_ntoa(maddr.sin_addr), ntohs(maddr.sin_port));
 
     while (true) {
-        DiscoverEnvelope *env;
-        DiscoverMessage *msg;
-        struct announce_payload payload;
-        socklen_t addrlen = sizeof(raddr);
-
         waitpid(-1, NULL, WNOHANG);
 
-        memset(&raddr, 0, addrlen);
-
-        ret = recvfrom(sock, buf, sizeof(buf), 0, (struct sockaddr*)&raddr, &addrlen);
-        if (ret < 0) {
-            sd_log(LOG_LEVEL_ERROR, "Could not receive: %s", strerror(errno));
-            goto out;
+        if (sd_server_accept(&server, &channel) < 0) {
+            puts("Unable to accept connection");
+            return;
         }
 
-        env = discover_envelope__unpack(NULL, ret, buf);
-        if (env == NULL) {
-            sd_log(LOG_LEVEL_ERROR, "Could not unpack discover envelope");
-            goto out;
+        sd_log(LOG_LEVEL_DEBUG, "Received announce");
+
+        if (sd_channel_receive_protobuf(&channel,
+                (ProtobufCMessageDescriptor *) &discover_envelope__descriptor,
+                (ProtobufCMessage **) &env) < 0) {
+            puts("Unable to receive protobuf");
+            return;
         }
 
         if (env->encrypted) {
@@ -170,31 +136,19 @@ static void handle_discover(void *payload)
             goto out;
         }
 
-        sd_log(LOG_LEVEL_DEBUG, "Received %lu bytes from %s (version %s)", ret,
-                inet_ntoa(raddr.sin_addr), msg->version);
-
-        payload.addr = raddr;
-        payload.addrlen = addrlen;
-        payload.port = msg->port;
-
-        if (spawn(announce, &payload) < 0) {
-            sd_log(LOG_LEVEL_ERROR, "Could not spawn announcer: %s", strerror(errno));
-            goto out;
-        }
+        announce(channel.addr, msg->port);
 
         discover_message__free_unpacked(msg, NULL);
         discover_envelope__free_unpacked(env, NULL);
     }
 
 out:
-    if (sock >= 0)
-        close(sock);
+    sd_server_close(&server);
 }
 
 int main(int argc, char *argv[])
 {
     struct cfg cfg;
-    int dpid;
     char *key;
 
     if (argc < 3) {
@@ -229,21 +183,7 @@ int main(int argc, char *argv[])
     }
     free(key);
 
-    dpid = spawn(handle_discover, NULL);
-
-    while (true) {
-        int pid = waitpid(-1, NULL, 0);
-
-        if (pid < 0) {
-            sd_log(LOG_LEVEL_ERROR, "Could not await child exit: %s", strerror(errno));
-            return -1;
-        } else if (pid == dpid) {
-            sd_log(LOG_LEVEL_DEBUG, "Probe handler finished");
-        } else {
-            sd_log(LOG_LEVEL_DEBUG, "Unknown child finished");
-            return -1;
-        }
-    }
+    handle_discover();
 
     return 0;
 }
