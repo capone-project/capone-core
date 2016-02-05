@@ -93,6 +93,13 @@ static void initialization_sets_socket()
     assert_int_equal(channel.fd, 123);
 }
 
+static void initialization_sets_type()
+{
+    channel.type = -1;
+    assert_success(sd_channel_init_from_host(&channel, NULL, "12345", type));
+    assert_int_equal(channel.type, type);
+}
+
 static void close_resets_sockets_to_invalid_values()
 {
     channel.fd = INT_MAX;;
@@ -297,6 +304,7 @@ int channel_test_run_suite()
 {
     const struct CMUnitTest shared_tests[] = {
         cmocka_unit_test(initialization_sets_socket),
+        cmocka_unit_test(initialization_sets_type),
         cmocka_unit_test(close_resets_sockets_to_invalid_values),
 
         cmocka_unit_test(init_address_to_localhost),

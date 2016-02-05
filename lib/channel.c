@@ -102,7 +102,7 @@ int sd_channel_init_from_host(struct sd_channel *c, const char *host,
         return -1;
     }
 
-    return sd_channel_init_from_fd(c, fd, addr, c->type);
+    return sd_channel_init_from_fd(c, fd, addr, type);
 }
 
 int sd_channel_init_from_fd(struct sd_channel *c,
