@@ -30,7 +30,7 @@ int execute_test_suite(const char *name, const struct CMUnitTest tests[],
 # define execute_test_suite(group_name, group_tests, group_setup, group_teardown) \
         _execute_test_suite(group_name, group_tests, sizeof(group_tests) / sizeof(group_tests)[0], group_setup, group_teardown)
 
-int _execute_test_suite(const char *name, const struct CMUnitTest *tests, const size_t count,
+static int _execute_test_suite(const char *name, const struct CMUnitTest *tests, const size_t count,
         CMFixtureFunction setup, CMFixtureFunction teardown)
 {
     printf("[==========] Running testsuite %s\n", name);

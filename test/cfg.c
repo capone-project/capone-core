@@ -15,14 +15,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <stdarg.h>
-#include <stddef.h>
-#include <stdlib.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "lib/cfg.h"
+#include "lib/common.h"
 
-#include <lib/cfg.h>
-#include <lib/common.h>
+#include "test.h"
 
 #define assert_cfg_section(c, n, expected) do {                     \
         assert_string_equal((c).sections[(n)].name, (expected)); \
@@ -315,5 +311,5 @@ int cfg_test_run_suite()
         cmocka_unit_test(get_int_value_invalid),
     };
 
-    return cmocka_run_group_tests_name("cfg", tests, setup, teardown);
+    return execute_test_suite("cfg", tests, setup, teardown);
 }
