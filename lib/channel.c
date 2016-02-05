@@ -234,12 +234,20 @@ int sd_channel_write_data(struct sd_channel *c, uint8_t *data, size_t datalen)
 
     switch (c->crypto) {
         case SD_CHANNEL_CRTYPTO_NONE:
-            assert(datalen <= sizeof(msg));
+            if (datalen > sizeof(msg)) {
+                sd_log(LOG_LEVEL_ERROR,
+                        "Data buffer bigger then internal buffer");
+                return -1;
+            }
 
             memcpy(msg, data, datalen);
             break;
         case SD_CHANNEL_CRTYPTO_ENCRYPT:
-            assert(datalen <= sizeof(msg) - crypto_box_MACBYTES);
+            if (datalen > sizeof(msg) - crypto_box_MACBYTES) {
+                sd_log(LOG_LEVEL_ERROR,
+                        "Data buffer bigger then internal buffer");
+                return -1;
+            }
 
             if (crypto_box_easy(msg, data, datalen,
                     c->local_nonce, c->remote_key, c->secret_key) < 0) {
@@ -301,12 +309,20 @@ ssize_t sd_channel_receive_data(struct sd_channel *c, uint8_t *out, size_t maxle
 
     switch (c->crypto) {
         case SD_CHANNEL_CRTYPTO_NONE:
-            assert((size_t) len <= maxlen);
+            if ((size_t) len > maxlen) {
+                sd_log(LOG_LEVEL_ERROR,
+                        "Data buffer bigger then internal buffer");
+                return -1;
+            }
 
             memcpy(out, buf, len);
             break;
         case SD_CHANNEL_CRTYPTO_ENCRYPT:
-            assert((size_t) len - crypto_box_MACBYTES <= maxlen);
+            if ((size_t) len - crypto_box_MACBYTES > maxlen) {
+                sd_log(LOG_LEVEL_ERROR,
+                        "Data buffer bigger then internal buffer");
+                return -1;
+            }
 
             if (crypto_box_open_easy(out, buf, len, c->remote_nonce,
                         c->remote_key, c->secret_key) != 0) {
