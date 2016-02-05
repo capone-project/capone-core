@@ -15,12 +15,25 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <string.h>
+
+#include <sodium/crypto_box.h>
+#include <sodium/randombytes.h>
+#include <sodium/utils.h>
+
 #include "test.h"
 
 #include "lib/common.h"
 #include "lib/channel.h"
 
 #include "proto/test.pb-c.h"
+
+static uint8_t channel_pk[crypto_box_PUBLICKEYBYTES],
+               channel_sk[crypto_box_SECRETKEYBYTES],
+               remote_pk[crypto_box_PUBLICKEYBYTES],
+               remote_sk[crypto_box_SECRETKEYBYTES],
+               local_nonce[crypto_box_NONCEBYTES],
+               remote_nonce[crypto_box_NONCEBYTES];
 
 static struct sd_channel channel, remote;
 static enum sd_channel_type type;
@@ -46,7 +59,9 @@ static int setup_tcp()
 {
     type = SD_CHANNEL_TYPE_TCP;
     sd_channel_init(&channel);
+    sd_channel_set_crypto_none(&channel);
     sd_channel_init(&remote);
+    sd_channel_set_crypto_none(&remote);
     return 0;
 }
 
@@ -215,6 +230,93 @@ static void write_protobuf()
     assert_string_equal(msg.value.data, recv->value.data);
 }
 
+static void write_encrypted_data()
+{
+    unsigned char msg[] = "test", buf[sizeof(msg)];
+
+    stub_sockets(&channel, &remote);
+
+    sd_channel_set_crypto_encrypt(&channel, channel_pk, channel_sk, remote_pk,
+            local_nonce, remote_nonce);
+    sd_channel_set_crypto_encrypt(&remote, remote_pk, remote_sk, channel_pk,
+            remote_nonce, local_nonce);
+
+    assert_success(sd_channel_write_data(&channel, msg, sizeof(msg)));
+    assert_int_equal(sd_channel_receive_data(&remote, buf, sizeof(buf)), sizeof(msg));
+
+    assert_string_equal(msg, buf);
+}
+
+static void write_multiple_encrypted_messages()
+{
+    unsigned char m1[] = "test", m2[] = "somewhatlongermessage",
+                  buf[sizeof(m2)];
+
+    stub_sockets(&channel, &remote);
+
+    sd_channel_set_crypto_encrypt(&channel, channel_pk, channel_sk, remote_pk,
+            local_nonce, remote_nonce);
+    sd_channel_set_crypto_encrypt(&remote, remote_pk, remote_sk, channel_pk,
+            remote_nonce, local_nonce);
+
+    assert_success(sd_channel_write_data(&channel, m1, sizeof(m1)));
+
+    assert_int_equal(sd_channel_receive_data(&remote, buf, sizeof(buf)), sizeof(m1));
+    assert_string_equal(m1, buf);
+
+    assert_success(sd_channel_write_data(&channel, m2, sizeof(m2)));
+    assert_int_equal(sd_channel_receive_data(&remote, buf, sizeof(buf)), sizeof(m2));
+    assert_string_equal(m2, buf);
+}
+
+static void write_encrypted_messages_increments_nonce()
+{
+    unsigned char m1[] = "test", m2[] = "somewhatlongermessage",
+                  buf[sizeof(m2)];
+    uint8_t nonce[crypto_box_MACBYTES];
+
+    stub_sockets(&channel, &remote);
+
+    sd_channel_set_crypto_encrypt(&channel, channel_pk, channel_sk, remote_pk,
+            local_nonce, remote_nonce);
+    sd_channel_set_crypto_encrypt(&remote, remote_pk, remote_sk, channel_pk,
+            remote_nonce, local_nonce);
+
+    memcpy(nonce, channel.local_nonce, sizeof(nonce));
+    assert_success(sd_channel_write_data(&channel, m1, sizeof(m1)));
+    assert_int_not_equal(sodium_compare(nonce, channel.local_nonce, sizeof(nonce)), 0);
+
+    memcpy(nonce, channel.local_nonce, sizeof(nonce));
+    assert_int_equal(sd_channel_receive_data(&remote, buf, sizeof(buf)), sizeof(m1));
+    assert_int_not_equal(sodium_compare(nonce, channel.remote_nonce, sizeof(nonce)), 0);
+    assert_string_equal(m1, buf);
+
+    assert_success(sd_channel_write_data(&channel, m2, sizeof(m2)));
+    assert_int_equal(sd_channel_receive_data(&remote, buf, sizeof(buf)), sizeof(m2));
+    assert_string_equal(m2, buf);
+}
+
+static void write_encrypted_message_with_response()
+{
+    unsigned char m1[] = "test", m2[] = "response",
+                  buf[sizeof(m2)];
+
+    stub_sockets(&channel, &remote);
+
+    sd_channel_set_crypto_encrypt(&channel, channel_pk, channel_sk, remote_pk,
+            local_nonce, remote_nonce);
+    sd_channel_set_crypto_encrypt(&remote, remote_pk, remote_sk, channel_pk,
+            remote_nonce, local_nonce);
+
+    assert_success(sd_channel_write_data(&channel, m1, sizeof(m1)));
+    assert_int_equal(sd_channel_receive_data(&remote, buf, sizeof(buf)), sizeof(m1));
+    assert_string_equal(m1, buf);
+
+    assert_success(sd_channel_write_data(&remote, m2, sizeof(m2)));
+    assert_int_equal(sd_channel_receive_data(&channel, buf, sizeof(buf)), sizeof(m2));
+    assert_string_equal(m2, buf);
+}
+
 int channel_test_run_suite()
 {
     const struct CMUnitTest shared_tests[] = {
@@ -238,7 +340,16 @@ int channel_test_run_suite()
         cmocka_unit_test(write_multiple_messages),
         cmocka_unit_test(write_with_response),
         cmocka_unit_test(write_protobuf),
+        cmocka_unit_test(write_encrypted_data),
+        cmocka_unit_test(write_multiple_encrypted_messages),
+        cmocka_unit_test(write_encrypted_messages_increments_nonce),
+        cmocka_unit_test(write_encrypted_message_with_response),
     };
+
+    crypto_box_keypair(channel_pk, channel_sk);
+    crypto_box_keypair(remote_pk, remote_sk);
+    randombytes(local_nonce, sizeof(local_nonce));
+    randombytes(remote_nonce, sizeof(remote_nonce));
 
     return execute_test_suite("channel_tcp_shared", shared_tests, setup_tcp, teardown) ||
            execute_test_suite("channel_udp_shared", shared_tests, setup_udp, teardown) ||
