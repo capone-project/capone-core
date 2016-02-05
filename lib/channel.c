@@ -137,22 +137,10 @@ int sd_channel_set_crypto_none(struct sd_channel *c)
     return 0;
 }
 
-int sd_channel_set_crypto_sign(struct sd_channel *c, uint8_t *pk, uint8_t *sk)
+int sd_channel_set_crypto_encrypt(struct sd_channel *c,
+        uint8_t *pk, uint8_t *sk, uint8_t *rk)
 {
-    memset(c->remote_key, 0, sizeof(c->remote_key));
-
     memcpy(c->public_key, pk, sizeof(c->public_key));
-    memcpy(c->secret_key, sk, sizeof(c->secret_key));
-
-    c->crypto = SD_CHANNEL_CRTYPTO_SIGN;
-
-    return 0;
-}
-
-int sd_channel_set_crypto_encrypt(struct sd_channel *c, uint8_t *sk, uint8_t *rk)
-{
-    memset(c->public_key, 0, sizeof(c->public_key));
-
     memcpy(c->secret_key, sk, sizeof(c->secret_key));
     memcpy(c->remote_key, rk, sizeof(c->remote_key));
 
@@ -264,50 +252,6 @@ int sd_channel_write_protobuf(struct sd_channel *c, ProtobufCMessage *msg)
     return sd_channel_write_data(c, buf, size);
 }
 
-static int unpack_signed_data(struct sd_channel *c, const uint8_t *buf, size_t len,
-        uint8_t *out, size_t outlen)
-{
-    Envelope *envelope;
-    int ret;
-
-    envelope = envelope__unpack(NULL, len, buf);
-    if (envelope == NULL) {
-        sd_log(LOG_LEVEL_ERROR, "Unable to unpack signed envelope");
-        return -1;
-    }
-
-    ret = crypto_auth_verify(envelope->mac.data, envelope->data.data,
-            envelope->data.len, envelope->pk.data);
-    if (ret < 0) {
-        ret = -1;
-        goto out;
-    }
-
-    if (envelope->encrypted) {
-        uint8_t plaintext[4096];
-
-        if (crypto_box_open_easy(plaintext, buf, len, c->nonce,
-                envelope->pk.data, c->secret_key) != 0) {
-            sd_log(LOG_LEVEL_ERROR, "Unable to decrypt signed message");
-            ret = -1;
-            goto out;
-        }
-    }
-
-    if (envelope->data.len <= outlen) {
-        memcpy(out, envelope->data.data, envelope->data.len);
-    } else {
-        sd_log(LOG_LEVEL_ERROR, "Signed message bigger than passed buffer");
-        ret = -1;
-        goto out;
-    }
-
-out:
-    envelope__free_unpacked(envelope, NULL);
-
-    return ret;
-}
-
 ssize_t sd_channel_receive_data(struct sd_channel *c, uint8_t *out, size_t maxlen)
 {
     uint8_t buf[4096];
@@ -331,9 +275,6 @@ ssize_t sd_channel_receive_data(struct sd_channel *c, uint8_t *out, size_t maxle
     switch (c->crypto) {
         case SD_CHANNEL_CRTYPTO_NONE:
             memcpy(out, buf, len);
-            break;
-        case SD_CHANNEL_CRTYPTO_SIGN:
-            len = unpack_signed_data(c, out, maxlen, buf, sizeof(buf));
             break;
         case SD_CHANNEL_CRTYPTO_ENCRYPT:
             if (crypto_box_open_easy(out, buf, sizeof(buf), c->nonce,

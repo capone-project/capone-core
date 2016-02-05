@@ -35,7 +35,6 @@ enum sd_channel_type {
 
 enum sd_channel_crypto {
     SD_CHANNEL_CRTYPTO_NONE,
-    SD_CHANNEL_CRTYPTO_SIGN,
     SD_CHANNEL_CRTYPTO_ENCRYPT,
 };
 
@@ -65,8 +64,8 @@ int sd_channel_set_remote_address(struct sd_channel *c,
         const char *host, const char *port, enum sd_channel_type type);
 
 int sd_channel_set_crypto_none(struct sd_channel *c);
-int sd_channel_set_crypto_sign(struct sd_channel *c, uint8_t *pk, uint8_t *sk);
-int sd_channel_set_crypto_encrypt(struct sd_channel *c, uint8_t *pk, uint8_t *sk);
+int sd_channel_set_crypto_encrypt(struct sd_channel *c,
+        uint8_t *pk, uint8_t *sk, uint8_t *rk);
 
 int sd_channel_connect(struct sd_channel *c);
 int sd_channel_listen(struct sd_channel *c);
