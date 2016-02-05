@@ -52,6 +52,9 @@ int getsock(struct sockaddr_storage *addr, const char *host,
             hints.ai_socktype = SOCK_DGRAM;
             hints.ai_protocol = IPPROTO_UDP;
             break;
+        default:
+            sd_log(LOG_LEVEL_ERROR, "Unknown channel type");
+            return -1;
     }
 
     if (host == NULL)
@@ -228,6 +231,9 @@ int sd_channel_write_data(struct sd_channel *c, uint8_t *data, size_t datalen)
             datalen = datalen + crypto_box_MACBYTES;
 
             break;
+        default:
+            sd_log(LOG_LEVEL_ERROR, "Unknown crypto type");
+            return -1;
     }
 
     switch (c->type) {
@@ -238,6 +244,9 @@ int sd_channel_write_data(struct sd_channel *c, uint8_t *data, size_t datalen)
             ret = sendto(c->fd, msg, datalen, 0,
                     (struct sockaddr *) &c->addr, sizeof(c->addr));
             break;
+        default:
+            sd_log(LOG_LEVEL_ERROR, "Unknown channel type");
+            return -1;
     }
 
     if (ret < 0) {
@@ -309,6 +318,9 @@ ssize_t sd_channel_receive_data(struct sd_channel *c, uint8_t *out, size_t maxle
             len = len - crypto_box_MACBYTES;
 
             break;
+        default:
+            sd_log(LOG_LEVEL_ERROR, "Unknown crypto type");
+            return -1;
     }
 
     for (i = 0; i < c->nonce_offset; i++)

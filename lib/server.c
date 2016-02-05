@@ -116,6 +116,9 @@ int sd_server_accept(struct sd_server *s, struct sd_channel *out)
             }
             fd = s->fd;
             break;
+        default:
+            sd_log(LOG_LEVEL_ERROR, "Unknown channel type");
+            return -1;
     }
 
     return sd_channel_init_from_fd(out, fd, addr, s->type);
