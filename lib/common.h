@@ -15,8 +15,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "proto/envelope.pb-c.h"
+
 #define UNUSED(x) (void)(x)
 
 typedef void (*thread_fn)(void *);
 
 int spawn(thread_fn fn, void *payload);
+
+int pack_signed_protobuf(Envelope **out, const ProtobufCMessage *msg, uint8_t *pk, uint8_t *sk);
+int unpack_signed_protobuf(const ProtobufCMessageDescriptor *descr,
+        ProtobufCMessage **out, const Envelope *env);

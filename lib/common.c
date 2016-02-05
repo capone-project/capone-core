@@ -21,6 +21,11 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#include <sodium/crypto_box.h>
+#include <sodium/crypto_sign.h>
+
+#include "lib/log.h"
+
 #include "common.h"
 
 int spawn(thread_fn fn, void *payload)
@@ -38,4 +43,72 @@ int spawn(thread_fn fn, void *payload)
         printf("Could not spawn function: %s\n", strerror(errno));
         return -1;
     }
+}
+
+int pack_signed_protobuf(Envelope **out, const ProtobufCMessage *msg, uint8_t *pk, uint8_t *sk)
+{
+    Envelope *env;
+    uint8_t mac[crypto_sign_BYTES];
+    uint8_t *buf;
+    int len;
+
+    *out = NULL;
+
+    len = protobuf_c_message_get_packed_size(msg);
+    buf = malloc(len);
+    protobuf_c_message_pack(msg, buf);
+
+    if (crypto_sign_detached(mac, NULL, buf, len, sk) != 0) {
+        sd_log(LOG_LEVEL_ERROR, "Unable to sign protobuf");
+        return -1;
+    }
+
+    env = malloc(sizeof(Envelope));
+    envelope__init(env);
+
+    env->data.data = buf;
+    env->data.len = len;
+
+    env->pk.data = malloc(crypto_box_PUBLICKEYBYTES);
+    memcpy(env->pk.data, pk, crypto_box_PUBLICKEYBYTES);
+    env->pk.len = crypto_box_PUBLICKEYBYTES;
+
+    env->mac.data = malloc(crypto_sign_BYTES);
+    memcpy(env->mac.data, mac, crypto_sign_BYTES);
+    env->mac.len = crypto_sign_BYTES;
+
+    if (env->encrypted) {
+        sd_log(LOG_LEVEL_ERROR, "Encrypted signed messages not supported");
+        return -1;
+    }
+    env->encrypted = 0;
+
+    *out = env;
+
+    return 0;
+}
+
+int unpack_signed_protobuf(const ProtobufCMessageDescriptor *descr,
+        ProtobufCMessage **out, const Envelope *env)
+{
+    ProtobufCMessage *msg;
+
+    *out = NULL;
+
+    if (crypto_sign_verify_detached(env->mac.data,
+                env->data.data, env->data.len, env->pk.data) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Unable to verify signed protobuf");
+        return -1;
+    }
+
+    msg = protobuf_c_message_unpack(descr, NULL,
+            env->data.len, env->data.data);
+    if (msg == NULL) {
+        sd_log(LOG_LEVEL_ERROR, "Unable to unpack signed protobuf");
+        return -1;
+    }
+
+    *out = msg;
+
+    return 0;
 }

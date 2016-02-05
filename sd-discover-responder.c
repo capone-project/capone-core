@@ -20,14 +20,13 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <stdlib.h>
+
+#include <sodium/utils.h>
 
 #include <sys/socket.h>
 #include <sys/wait.h>
 #include <netdb.h>
-
-#include <sodium/crypto_auth.h>
-#include <sodium/crypto_box.h>
-#include <sodium/utils.h>
 
 #include "lib/cfg.h"
 #include "lib/common.h"
@@ -43,51 +42,41 @@ static uint8_t sk[crypto_box_SECRETKEYBYTES];
 
 static void announce(struct sockaddr_storage addr, uint32_t port)
 {
-    AnnounceEnvelope env = ANNOUNCE_ENVELOPE__INIT;
     AnnounceMessage msg = ANNOUNCE_MESSAGE__INIT;
-    uint8_t msgbuf[4096];
-    uint8_t mac[crypto_auth_BYTES];
+    Envelope *env = NULL;
     struct sd_channel channel;
     char host[128], service[16];
-    size_t len;
 
     if (getnameinfo((struct sockaddr *) &addr, sizeof(addr),
                 host, sizeof(host), NULL, 0, 0) != 0) {
         sd_log(LOG_LEVEL_ERROR, "Could not extract address");
         return;
     }
-
     snprintf(service, sizeof(service), "%u", port);
 
     msg.version = VERSION;
     msg.port = LISTEN_PORT;
     msg.pubkey.len = crypto_box_PUBLICKEYBYTES;
     msg.pubkey.data = pk;
-    len = announce_message__get_packed_size(&msg);
-    if (len > sizeof(msgbuf)) {
-        sd_log(LOG_LEVEL_ERROR, "Announce message longer than buffer");
-        goto out;
+
+    if (pack_signed_protobuf(&env, (ProtobufCMessage *) &msg, pk, sk) < 0) {
+        puts("Could not create signed envelope");
+        return;
     }
-    announce_message__pack(&msg, msgbuf);
-
-    crypto_auth(mac, msgbuf, len, pk);
-
-    env.announce.data = msgbuf;
-    env.announce.len = len;
-    env.mac.data = mac;
-    env.mac.len = crypto_auth_BYTES;
 
     if (sd_channel_init_from_host(&channel, host, service, SD_CHANNEL_TYPE_UDP) < 0) {
         puts("Could not initialize channel");
         return;
     }
 
-    if (sd_channel_write_protobuf(&channel, (ProtobufCMessage *) &env) < 0) {
+    if (sd_channel_write_protobuf(&channel, (ProtobufCMessage *) env) < 0) {
         puts("Could not write protobuf");
         return;
     }
 
-out:
+    puts("Sent announce");
+
+    envelope__free_unpacked(env, NULL);
     sd_channel_close(&channel);
 }
 
@@ -95,8 +84,8 @@ static void handle_discover()
 {
     struct sd_server server;
     struct sd_channel channel;
-    DiscoverEnvelope *env;
     DiscoverMessage *msg;
+    Envelope *env;
 
     if (sd_server_init(&server, NULL, "6667", SD_CHANNEL_TYPE_UDP) < 0) {
         puts("Unable to init listening channel");
@@ -108,38 +97,28 @@ static void handle_discover()
 
         if (sd_server_accept(&server, &channel) < 0) {
             puts("Unable to accept connection");
-            return;
+            goto out;
         }
 
         sd_log(LOG_LEVEL_DEBUG, "Received announce");
 
         if (sd_channel_receive_protobuf(&channel,
-                (ProtobufCMessageDescriptor *) &discover_envelope__descriptor,
+                (ProtobufCMessageDescriptor *) &envelope__descriptor,
                 (ProtobufCMessage **) &env) < 0) {
             puts("Unable to receive protobuf");
-            return;
-        }
-
-        if (env->encrypted) {
-            sd_log(LOG_LEVEL_ERROR, "Encrypted discover message not yet supported");
             goto out;
         }
 
-        msg = discover_message__unpack(NULL, env->discover.len, env->discover.data);
-        if (msg == NULL) {
-            sd_log(LOG_LEVEL_ERROR, "Could not unpack discover message");
-            goto out;
-        }
-
-        if (crypto_auth_verify(env->mac.data, env->discover.data, env->discover.len, msg->pubkey.data) != 0) {
-            sd_log(LOG_LEVEL_ERROR, "Could not verify MAC");
+        if (unpack_signed_protobuf(&discover_message__descriptor,
+                    (ProtobufCMessage **) &msg, env) < 0) {
+            puts("Received invalid signed envelope");
             goto out;
         }
 
         announce(channel.addr, msg->port);
 
         discover_message__free_unpacked(msg, NULL);
-        discover_envelope__free_unpacked(env, NULL);
+        envelope__free_unpacked(env, NULL);
     }
 
 out:
