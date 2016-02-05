@@ -179,6 +179,17 @@ static void write_data()
     assert_string_equal(sender, receiver);
 }
 
+static void receive_fails_with_too_small_buffer()
+{
+    uint8_t msg[] = "test",
+            buf[sizeof(msg) - 1];
+
+    stub_sockets(&channel, &remote);
+
+    assert_success(sd_channel_write_data(&channel, msg, sizeof(msg)));
+    assert_failure(sd_channel_receive_data(&remote, buf, sizeof(buf)));
+}
+
 static void write_multiple_messages()
 {
     uint8_t m1[] = "m1", m2[] = "m2", buf[10];
@@ -337,6 +348,7 @@ int channel_test_run_suite()
         cmocka_unit_test(connect_fails_without_other_side),
         cmocka_unit_test(connect_with_other_side),
         cmocka_unit_test(write_data),
+        cmocka_unit_test(receive_fails_with_too_small_buffer),
         cmocka_unit_test(write_multiple_messages),
         cmocka_unit_test(write_with_response),
         cmocka_unit_test(write_protobuf),
