@@ -35,8 +35,8 @@
 
 #include "proto/discovery.pb-c.h"
 
-static uint8_t pk[crypto_box_PUBLICKEYBYTES];
-static uint8_t sk[crypto_box_SECRETKEYBYTES];
+static uint8_t sign_pk[crypto_sign_ed25519_PUBLICKEYBYTES];
+static uint8_t sign_sk[crypto_sign_ed25519_SECRETKEYBYTES];
 
 #define LISTEN_PORT 6667
 
@@ -56,10 +56,10 @@ static void announce(struct sockaddr_storage addr, uint32_t port)
 
     msg.version = VERSION;
     msg.port = LISTEN_PORT;
-    msg.pubkey.len = crypto_box_PUBLICKEYBYTES;
-    msg.pubkey.data = pk;
+    msg.pubkey.data = sign_pk;
+    msg.pubkey.len = sizeof(sign_pk);
 
-    if (pack_signed_protobuf(&env, (ProtobufCMessage *) &msg, pk, sk) < 0) {
+    if (pack_signed_protobuf(&env, (ProtobufCMessage *) &msg, sign_pk, sign_sk) < 0) {
         puts("Could not create signed envelope");
         return;
     }
@@ -149,7 +149,7 @@ int main(int argc, char *argv[])
         puts("Could not retrieve public key from config");
         return -1;
     }
-    if (sodium_hex2bin(pk, sizeof(pk), key, strlen(key), NULL, NULL, NULL) < 0) {
+    if (sodium_hex2bin(sign_pk, sizeof(sign_pk), key, strlen(key), NULL, NULL, NULL) < 0) {
         puts("Could not decode public key");
         return -1;
     }
@@ -160,7 +160,7 @@ int main(int argc, char *argv[])
         puts("Could not retrieve secret key from config");
         return -1;
     }
-    if (sodium_hex2bin(sk, sizeof(sk), key, strlen(key), NULL, NULL, NULL)) {
+    if (sodium_hex2bin(sign_sk, sizeof(sign_sk), key, strlen(key), NULL, NULL, NULL)) {
         puts("Could not decode public key");
         return -1;
     }

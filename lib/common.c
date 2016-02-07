@@ -69,9 +69,9 @@ int pack_signed_protobuf(Envelope **out, const ProtobufCMessage *msg, uint8_t *p
     env->data.data = buf;
     env->data.len = len;
 
-    env->pk.data = malloc(crypto_box_PUBLICKEYBYTES);
-    memcpy(env->pk.data, pk, crypto_box_PUBLICKEYBYTES);
-    env->pk.len = crypto_box_PUBLICKEYBYTES;
+    env->pk.data = malloc(crypto_sign_ed25519_PUBLICKEYBYTES);
+    memcpy(env->pk.data, pk, crypto_sign_ed25519_PUBLICKEYBYTES);
+    env->pk.len = crypto_sign_ed25519_PUBLICKEYBYTES;
 
     env->mac.data = malloc(crypto_sign_BYTES);
     memcpy(env->mac.data, mac, crypto_sign_BYTES);
