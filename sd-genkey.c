@@ -17,15 +17,14 @@
 
 #include <stdio.h>
 
-#include <sodium/crypto_box.h>
-#include <sodium/utils.h>
+#include <sodium.h>
 
 #include "lib/common.h"
 
 int main(int argc, char *argv[])
 {
-    unsigned char pk[crypto_box_PUBLICKEYBYTES],
-                  sk[crypto_box_SECRETKEYBYTES];
+    unsigned char pk[crypto_sign_ed25519_PUBLICKEYBYTES],
+                  sk[crypto_sign_ed25519_SECRETKEYBYTES];
     char pkhex[sizeof(pk) * 2 + 1],
          skhex[sizeof(sk) * 2 + 1];
 
@@ -34,7 +33,7 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    crypto_box_keypair(pk, sk);
+    crypto_sign_ed25519_keypair(pk, sk);
 
     sodium_bin2hex(pkhex, sizeof(pkhex), pk, sizeof(pk));
     sodium_bin2hex(skhex, sizeof(skhex), sk, sizeof(sk));
