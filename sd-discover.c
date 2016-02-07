@@ -25,8 +25,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
-#include <sodium/crypto_sign.h>
-#include <sodium/utils.h>
+#include <sodium.h>
 
 #include "lib/cfg.h"
 #include "lib/common.h"
@@ -129,6 +128,10 @@ int main(int argc, char *argv[])
     int pid;
     struct cfg cfg;
     char *key;
+
+    if (sodium_init() < 0) {
+        return -1;
+    }
 
     if (argc != 2) {
         printf("USAGE: %s <CONFIG>\n", argv[0]);

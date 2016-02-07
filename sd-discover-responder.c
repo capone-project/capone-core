@@ -22,7 +22,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 
-#include <sodium/utils.h>
+#include <sodium.h>
 
 #include <sys/socket.h>
 #include <sys/wait.h>
@@ -129,6 +129,10 @@ int main(int argc, char *argv[])
 {
     struct cfg cfg;
     char *key;
+
+    if (sodium_init() < 0) {
+        return -1;
+    }
 
     if (argc < 3) {
         printf("USAGE: %s <SERVER_CONFIG> <SERVICE_CONFIG>..\n", argv[0]);
