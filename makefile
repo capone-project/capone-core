@@ -26,6 +26,7 @@ EXECUTABLES=sd-discover \
 			sd-query-responder \
 			sd-connect \
 			sd-connect-responder
+EXECUTABLES_OBJECTS=$(patsubst %,%.o,${EXECUTABLES})
 EXECUTABLES_LIBS=libsodium libprotobuf-c
 EXECUTABLES_CFLAGS=${CFLAGS} -I. $(shell pkg-config --cflags ${EXECUTABLES_LIBS})
 EXECUTABLES_LDFLAGS=${LDFLAGS} $(shell pkg-config --libs ${EXECUTABLES_LIBS})
@@ -51,6 +52,7 @@ clean:
 	@rm ${PROTOBUF_HEADERS} 2>/dev/null || true
 	@rm ${PROTOBUF_SOURCES} 2>/dev/null || true
 	@echo "Cleaning objects..."
+	@rm ${EXECUTABLES_OBJECTS} 2>/dev/null || true
 	@rm ${LIBRARY_OBJECTS} 2>/dev/null || true
 	@rm ${PROTOBUF_OBJECTS} 2>/dev/null || true
 	@rm ${TEST_OBJECTS} 2>/dev/null || true
