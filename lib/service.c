@@ -39,8 +39,8 @@ int sd_service_from_config_file(struct sd_service **out, const char *file)
 
 int sd_service_from_config(struct sd_service **out, const struct cfg *cfg)
 {
-    int i, count;
-    struct sd_service *services;
+    struct sd_service *services = NULL;
+    int i, count = 0;
 
     for (i = 0; (size_t) i < cfg->numsections; i++) {
         if (strcmp(cfg->sections[i].name, "service"))
@@ -49,14 +49,14 @@ int sd_service_from_config(struct sd_service **out, const struct cfg *cfg)
         count++;
         services = realloc(services, sizeof(struct sd_service) * count);
 
-        if (sd_service_from_section(&services[count], &cfg->sections[i]) < 0) {
+        if (sd_service_from_section(&services[count - 1], &cfg->sections[i]) < 0) {
             goto out_err;
         }
     }
 
     *out = services;
 
-    return 0;
+    return count;
 
 out_err:
     for (i = 0; i < count; i++)
@@ -68,7 +68,7 @@ out_err:
 
 int sd_service_from_section(struct sd_service *out, const struct cfg_section *section)
 {
-    char *name, *port;
+    char *name = NULL, *type = NULL, *port = NULL;
     unsigned i;
 
     for (i = 0; i < section->numentries; i++) {
@@ -82,6 +82,13 @@ int sd_service_from_section(struct sd_service *out, const struct cfg_section *se
             }
 
             name = strdup(value);
+        } else if (!strcmp(entry, "type")) {
+            if (type) {
+                sd_log(LOG_LEVEL_ERROR, "Service config 'type' has been specified twice");
+                goto out_err;
+            }
+
+            type = strdup(value);
         } else if (!strcmp(entry, "port")) {
             if (port) {
                 sd_log(LOG_LEVEL_ERROR, "Service config 'port' has been specified twice");
@@ -95,15 +102,17 @@ int sd_service_from_section(struct sd_service *out, const struct cfg_section *se
         }
     }
 
-    assert(name && port);
+    assert(name && type && port);
 
     out->name = name;
+    out->type = type;
     out->port = port;
 
     return 0;
 
 out_err:
     free(name);
+    free(type);
     free(port);
 
     return -1;

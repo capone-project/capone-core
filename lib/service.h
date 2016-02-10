@@ -19,6 +19,7 @@
 
 struct sd_service {
     char *name;
+    char *type;
     char *port;
 };
 
