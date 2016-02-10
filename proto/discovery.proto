@@ -1,11 +1,16 @@
 message AnnounceMessage {
+    message Service {
+        required string name = 1;
+        required string type = 2;
+        required string port = 3;
+    }
+
     required string version = 1;
-    required uint32 port = 2;
-    required bytes pubkey = 3;
+    required bytes pubkey = 2;
+    repeated Service services = 3;
 }
 
 message DiscoverMessage {
     required string version = 1;
     required uint32 port = 2;
-    required bytes pubkey = 3;
 }

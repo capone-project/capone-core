@@ -28,21 +28,22 @@
 #include <sys/wait.h>
 #include <netdb.h>
 
-#include "lib/cfg.h"
 #include "lib/common.h"
 #include "lib/log.h"
 #include "lib/server.h"
+#include "lib/service.h"
 
 #include "proto/discovery.pb-c.h"
 
+static AnnounceMessage announce_message;
 static struct sd_keys keys;
 
 #define LISTEN_PORT 6667
 
 static void announce(struct sockaddr_storage addr, uint32_t port)
 {
-    AnnounceMessage msg = ANNOUNCE_MESSAGE__INIT;
     Envelope *env = NULL;
+
     struct sd_channel channel;
     char host[128], service[16];
 
@@ -52,11 +53,6 @@ static void announce(struct sockaddr_storage addr, uint32_t port)
         return;
     }
     snprintf(service, sizeof(service), "%u", port);
-
-    msg.version = VERSION;
-    msg.port = LISTEN_PORT;
-    msg.pubkey.data = keys.sign_pk;
-    msg.pubkey.len = sizeof(keys.sign_pk);
 
     if (pack_signed_protobuf(&env, (ProtobufCMessage *) &announce_message, &keys) < 0) {
         puts("Could not create signed envelope");
@@ -99,8 +95,6 @@ static void handle_discover()
             goto out;
         }
 
-        sd_log(LOG_LEVEL_DEBUG, "Received announce");
-
         if (sd_channel_receive_protobuf(&channel,
                 (ProtobufCMessageDescriptor *) &envelope__descriptor,
                 (ProtobufCMessage **) &env) < 0) {
@@ -114,6 +108,8 @@ static void handle_discover()
             goto out;
         }
 
+        sd_log(LOG_LEVEL_DEBUG, "Received discovery message");
+
         announce(channel.addr, msg->port);
 
         discover_message__free_unpacked(msg, NULL);
@@ -126,6 +122,10 @@ out:
 
 int main(int argc, char *argv[])
 {
+    AnnounceMessage__Service **service_messages;
+    struct sd_service *services;
+    int i, numservices;
+
     if (sodium_init() < 0) {
         return -1;
     }
@@ -135,9 +135,29 @@ int main(int argc, char *argv[])
         return 0;
     }
 
-    if (sd_keys_from_config_file(&keys, argv[1]) < 0) {
+    if (sd_keys_from_config_file(&keys, argv[1]) < 0)
         return -1;
+    if ((numservices = sd_service_from_config_file(&services, argv[1])) <= 0)
+        return -1;
+
+    announce_message__init(&announce_message);
+    announce_message.version = VERSION;
+    announce_message.pubkey.data = keys.sign_pk;
+    announce_message.pubkey.len = sizeof(keys.sign_pk);
+
+    service_messages = malloc(sizeof(AnnounceMessage__Service *) * numservices);
+    for (i = 0; i < numservices; i++) {
+        AnnounceMessage__Service *service_message = malloc(sizeof(AnnounceMessage__Service));
+        announce_message__service__init(service_message);
+
+        service_message->name = services[i].name;
+        service_message->type = services[i].type;
+        service_message->port = services[i].port;
+
+        service_messages[i] = service_message;
     }
+    announce_message.services = service_messages;
+    announce_message.n_services = numservices;
 
     handle_discover();
 
