@@ -79,6 +79,7 @@ static void handle_announce()
     struct sd_channel channel;
     AnnounceMessage *msg = NULL;
     Envelope *env = NULL;
+    unsigned i;
 
     if (sd_server_init(&server, NULL, "6668", SD_CHANNEL_TYPE_UDP) < 0) {
         puts("Unable to init listening channel");
@@ -105,8 +106,14 @@ static void handle_announce()
 
     memcpy(rpk, msg->pubkey.data, sizeof(rpk));
 
-    sd_log(LOG_LEVEL_DEBUG, "Successfully retrieved remote public key from server (version %s)",
+    printf("Successfully retrieved remote public key from server (version %s)\n",
             msg->version);
+
+    for (i = 0; i < msg->n_services; i++) {
+        AnnounceMessage__Service *service = msg->services[i];
+
+        printf("\t%5s -> %s (%s)\n", service->port, service->name, service->type);
+    }
 
 out:
     announce_message__free_unpacked(msg, NULL);
