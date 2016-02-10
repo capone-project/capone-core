@@ -15,7 +15,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "lib/common.h"
+
 int main(int argc, char *argv[])
 {
+    UNUSED(argc);
+    UNUSED(argv);
     return 0;
 }
