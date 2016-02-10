@@ -73,9 +73,6 @@ out:
     sd_channel_close(&channel);
 }
 
-#include <netinet/in.h>
-#include <arpa/inet.h>
-
 static void handle_announce()
 {
     struct sd_server server;
