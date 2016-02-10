@@ -47,10 +47,8 @@ static void probe(void *payload)
 
     msg.version = VERSION;
     msg.port = LISTEN_PORT;
-    msg.pubkey.data = keys.sign_pk;
-    msg.pubkey.len = sizeof(keys.sign_pk);
 
-    if (pack_signed_protobuf(&env, (ProtobufCMessage *) &msg, keys.sign_pk, keys.sign_sk) < 0) {
+    if (pack_signed_protobuf(&env, (ProtobufCMessage *) &msg, &keys) < 0) {
         puts("Unable to sign protobuf");
         goto out;
     }

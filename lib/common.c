@@ -45,7 +45,7 @@ int spawn(thread_fn fn, void *payload)
     }
 }
 
-int pack_signed_protobuf(Envelope **out, const ProtobufCMessage *msg, uint8_t *pk, uint8_t *sk)
+int pack_signed_protobuf(Envelope **out, const ProtobufCMessage *msg, const struct sd_keys *keys)
 {
     Envelope *env;
     uint8_t mac[crypto_sign_BYTES];
@@ -58,7 +58,7 @@ int pack_signed_protobuf(Envelope **out, const ProtobufCMessage *msg, uint8_t *p
     buf = malloc(len);
     protobuf_c_message_pack(msg, buf);
 
-    if (crypto_sign_detached(mac, NULL, buf, len, sk) != 0) {
+    if (crypto_sign_detached(mac, NULL, buf, len, keys->sign_sk) != 0) {
         sd_log(LOG_LEVEL_ERROR, "Unable to sign protobuf");
         return -1;
     }
@@ -69,9 +69,9 @@ int pack_signed_protobuf(Envelope **out, const ProtobufCMessage *msg, uint8_t *p
     env->data.data = buf;
     env->data.len = len;
 
-    env->pk.data = malloc(crypto_sign_ed25519_PUBLICKEYBYTES);
-    memcpy(env->pk.data, pk, crypto_sign_ed25519_PUBLICKEYBYTES);
-    env->pk.len = crypto_sign_ed25519_PUBLICKEYBYTES;
+    env->pk.data = malloc(sizeof(keys->sign_pk));
+    memcpy(env->pk.data, keys->sign_pk, sizeof(keys->sign_pk));
+    env->pk.len = sizeof(keys->sign_pk);
 
     env->mac.data = malloc(crypto_sign_BYTES);
     memcpy(env->mac.data, mac, crypto_sign_BYTES);
@@ -117,8 +117,8 @@ int sd_keys_from_config_file(struct sd_keys *out, const char *file)
 {
     uint8_t sign_pk[crypto_sign_ed25519_PUBLICKEYBYTES];
     uint8_t sign_sk[crypto_sign_ed25519_SECRETKEYBYTES];
-    uint8_t box_pk[crypto_sign_ed25519_PUBLICKEYBYTES];
-    uint8_t box_sk[crypto_sign_ed25519_SECRETKEYBYTES];
+    uint8_t box_pk[crypto_scalarmult_curve25519_BYTES];
+    uint8_t box_sk[crypto_scalarmult_curve25519_BYTES];
     struct cfg cfg;
     char *value;
 
@@ -160,7 +160,7 @@ int sd_keys_from_config_file(struct sd_keys *out, const char *file)
     memcpy(out->sign_pk, sign_pk, sizeof(sign_pk));
     memcpy(out->sign_sk, sign_sk, sizeof(sign_sk));
     memcpy(out->box_pk, box_pk, sizeof(box_pk));
-    memcpy(out->box_pk, box_pk, sizeof(box_pk));
+    memcpy(out->box_sk, box_sk, sizeof(box_sk));
 
     return 0;
 }

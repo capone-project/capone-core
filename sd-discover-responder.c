@@ -58,7 +58,7 @@ static void announce(struct sockaddr_storage addr, uint32_t port)
     msg.pubkey.data = keys.sign_pk;
     msg.pubkey.len = sizeof(keys.sign_pk);
 
-    if (pack_signed_protobuf(&env, (ProtobufCMessage *) &msg, keys.sign_pk, keys.sign_sk) < 0) {
+    if (pack_signed_protobuf(&env, (ProtobufCMessage *) &announce_message, &keys) < 0) {
         puts("Could not create signed envelope");
         return;
     }
