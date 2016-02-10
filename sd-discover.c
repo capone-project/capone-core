@@ -25,8 +25,6 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
-#include <sodium.h>
-
 #include "lib/cfg.h"
 #include "lib/common.h"
 #include "lib/log.h"
@@ -36,10 +34,8 @@
 
 #define LISTEN_PORT 6668
 
-static uint8_t sign_pk[crypto_sign_ed25519_PUBLICKEYBYTES];
-static uint8_t sign_sk[crypto_sign_ed25519_SECRETKEYBYTES];
-
 static uint8_t rpk[crypto_box_PUBLICKEYBYTES];
+static struct sd_keys keys;
 
 static void probe(void *payload)
 {
@@ -51,10 +47,10 @@ static void probe(void *payload)
 
     msg.version = VERSION;
     msg.port = LISTEN_PORT;
-    msg.pubkey.data = sign_pk;
-    msg.pubkey.len = sizeof(sign_pk);
+    msg.pubkey.data = keys.sign_pk;
+    msg.pubkey.len = sizeof(keys.sign_pk);
 
-    if (pack_signed_protobuf(&env, (ProtobufCMessage *) &msg, sign_pk, sign_sk) < 0) {
+    if (pack_signed_protobuf(&env, (ProtobufCMessage *) &msg, keys.sign_pk, keys.sign_sk) < 0) {
         puts("Unable to sign protobuf");
         goto out;
     }
@@ -126,8 +122,6 @@ out:
 int main(int argc, char *argv[])
 {
     int pid;
-    struct cfg cfg;
-    char *key;
 
     if (sodium_init() < 0) {
         return -1;
@@ -138,32 +132,10 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    if (cfg_parse(&cfg, argv[1]) < 0) {
+    if (sd_keys_from_config_file(&keys, argv[1]) < 0) {
         puts("Could not parse config");
         return -1;
     }
-
-    key = cfg_get_str_value(&cfg, "client", "public_key");
-    if (key == NULL) {
-        puts("Could not retrieve public key from config");
-        return -1;
-    }
-    if (sodium_hex2bin(sign_pk, sizeof(sign_pk), key, strlen(key), NULL, NULL, NULL) < 0) {
-        puts("Could not decode public key");
-        return -1;
-    }
-    free(key);
-
-    key = cfg_get_str_value(&cfg, "client", "secret_key");
-    if (key == NULL) {
-        puts("Could not retrieve secret key from config");
-        return -1;
-    }
-    if (sodium_hex2bin(sign_sk, sizeof(sign_sk), key, strlen(key), NULL, NULL, NULL)) {
-        puts("Could not decode public key");
-        return -1;
-    }
-    free(key);
 
     pid = spawn(probe, NULL);
     handle_announce();

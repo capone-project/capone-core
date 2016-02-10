@@ -35,8 +35,7 @@
 
 #include "proto/discovery.pb-c.h"
 
-static uint8_t sign_pk[crypto_sign_ed25519_PUBLICKEYBYTES];
-static uint8_t sign_sk[crypto_sign_ed25519_SECRETKEYBYTES];
+static struct sd_keys keys;
 
 #define LISTEN_PORT 6667
 
@@ -56,10 +55,10 @@ static void announce(struct sockaddr_storage addr, uint32_t port)
 
     msg.version = VERSION;
     msg.port = LISTEN_PORT;
-    msg.pubkey.data = sign_pk;
-    msg.pubkey.len = sizeof(sign_pk);
+    msg.pubkey.data = keys.sign_pk;
+    msg.pubkey.len = sizeof(keys.sign_pk);
 
-    if (pack_signed_protobuf(&env, (ProtobufCMessage *) &msg, sign_pk, sign_sk) < 0) {
+    if (pack_signed_protobuf(&env, (ProtobufCMessage *) &msg, keys.sign_pk, keys.sign_sk) < 0) {
         puts("Could not create signed envelope");
         return;
     }
@@ -127,44 +126,18 @@ out:
 
 int main(int argc, char *argv[])
 {
-    struct cfg cfg;
-    char *key;
-
     if (sodium_init() < 0) {
         return -1;
     }
 
-    if (argc < 3) {
-        printf("USAGE: %s <SERVER_CONFIG> <SERVICE_CONFIG>..\n", argv[0]);
+    if (argc < 2) {
+        printf("USAGE: %s <SERVER_CONFIG>\n", argv[0]);
         return 0;
     }
 
-    if (cfg_parse(&cfg, argv[1]) < 0) {
-        puts("Could not parse config");
+    if (sd_keys_from_config_file(&keys, argv[1]) < 0) {
         return -1;
     }
-
-    key = cfg_get_str_value(&cfg, "server", "public_key");
-    if (key == NULL) {
-        puts("Could not retrieve public key from config");
-        return -1;
-    }
-    if (sodium_hex2bin(sign_pk, sizeof(sign_pk), key, strlen(key), NULL, NULL, NULL) < 0) {
-        puts("Could not decode public key");
-        return -1;
-    }
-    free(key);
-
-    key = cfg_get_str_value(&cfg, "server", "secret_key");
-    if (key == NULL) {
-        puts("Could not retrieve secret key from config");
-        return -1;
-    }
-    if (sodium_hex2bin(sign_sk, sizeof(sign_sk), key, strlen(key), NULL, NULL, NULL)) {
-        puts("Could not decode public key");
-        return -1;
-    }
-    free(key);
 
     handle_discover();
 
