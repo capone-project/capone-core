@@ -19,9 +19,10 @@
 
 struct sd_service {
     char *name;
-    int port;
+    char *port;
 };
 
-int sd_service_from_config_file(struct sd_service *out, const char *file);
-int sd_service_from_config(struct sd_service *out, const struct cfg *cfg);
+int sd_service_from_config_file(struct sd_service **out, const char *file);
+int sd_service_from_config(struct sd_service **out, const struct cfg *cfg);
+int sd_service_from_section(struct sd_service *out, const struct cfg_section *section);
 void sd_service_free(struct sd_service *service);
