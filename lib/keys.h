@@ -33,4 +33,4 @@ struct sd_keys {
 };
 
 int sd_keys_from_config_file(struct sd_keys *out, const char *file);
-int sd_keys_public_from_buf(struct sd_keys_public *out, const uint8_t *buf, size_t len);
+int sd_keys_public_from_hex(struct sd_keys_public *out, const char *hex);
