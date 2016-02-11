@@ -21,10 +21,9 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#include <sodium.h>
-
 #include "lib/cfg.h"
 #include "lib/log.h"
+#include "lib/keys.h"
 
 #include "common.h"
 
@@ -58,7 +57,7 @@ int pack_signed_protobuf(Envelope **out, const ProtobufCMessage *msg, const stru
     buf = malloc(len);
     protobuf_c_message_pack(msg, buf);
 
-    if (crypto_sign_detached(mac, NULL, buf, len, keys->sign_sk) != 0) {
+    if (crypto_sign_detached(mac, NULL, buf, len, keys->sk.sign) != 0) {
         sd_log(LOG_LEVEL_ERROR, "Unable to sign protobuf");
         return -1;
     }
@@ -69,9 +68,9 @@ int pack_signed_protobuf(Envelope **out, const ProtobufCMessage *msg, const stru
     env->data.data = buf;
     env->data.len = len;
 
-    env->pk.data = malloc(sizeof(keys->sign_pk));
-    memcpy(env->pk.data, keys->sign_pk, sizeof(keys->sign_pk));
-    env->pk.len = sizeof(keys->sign_pk);
+    env->pk.data = malloc(sizeof(keys->pk.sign));
+    memcpy(env->pk.data, keys->pk.sign, sizeof(keys->pk.sign));
+    env->pk.len = sizeof(keys->pk.sign);
 
     env->mac.data = malloc(crypto_sign_BYTES);
     memcpy(env->mac.data, mac, crypto_sign_BYTES);
@@ -109,58 +108,6 @@ int unpack_signed_protobuf(const ProtobufCMessageDescriptor *descr,
     }
 
     *out = msg;
-
-    return 0;
-}
-
-int sd_keys_from_config_file(struct sd_keys *out, const char *file)
-{
-    uint8_t sign_pk[crypto_sign_ed25519_PUBLICKEYBYTES];
-    uint8_t sign_sk[crypto_sign_ed25519_SECRETKEYBYTES];
-    uint8_t box_pk[crypto_scalarmult_curve25519_BYTES];
-    uint8_t box_sk[crypto_scalarmult_curve25519_BYTES];
-    struct cfg cfg;
-    char *value;
-
-    if (cfg_parse(&cfg, file) < 0) {
-        return -1;
-    }
-
-    value = cfg_get_str_value(&cfg, "core", "public_key");
-    if (value == NULL) {
-        puts("Could not retrieve public key from config");
-        return -1;
-    }
-    if (sodium_hex2bin(sign_pk, sizeof(sign_pk), value, strlen(value), NULL, NULL, NULL) < 0) {
-        puts("Could not decode public key");
-        return -1;
-    }
-    free(value);
-
-    value = cfg_get_str_value(&cfg, "core", "secret_key");
-    if (value == NULL) {
-        puts("Could not retrieve secret key from config");
-        return -1;
-    }
-    if (sodium_hex2bin(sign_sk, sizeof(sign_sk), value, strlen(value), NULL, NULL, NULL)) {
-        puts("Could not decode public key");
-        return -1;
-    }
-    free(value);
-
-    if (crypto_sign_ed25519_pk_to_curve25519(box_pk, sign_pk) < 0) {
-        puts("Could not convert public key to curve52219");
-        return -1;
-    }
-    if (crypto_sign_ed25519_sk_to_curve25519(box_sk, sign_sk) < 0) {
-        puts("Could not convert public key to curve52219");
-        return -1;
-    }
-
-    memcpy(out->sign_pk, sign_pk, sizeof(sign_pk));
-    memcpy(out->sign_sk, sign_sk, sizeof(sign_sk));
-    memcpy(out->box_pk, box_pk, sizeof(box_pk));
-    memcpy(out->box_sk, box_sk, sizeof(box_sk));
 
     return 0;
 }

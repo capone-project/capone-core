@@ -30,9 +30,9 @@
 #include <sodium/utils.h>
 #include <sodium/randombytes.h>
 
-#include "common.h"
+#include "lib/log.h"
+
 #include "channel.h"
-#include "log.h"
 
 #include "proto/envelope.pb-c.h"
 
@@ -121,9 +121,8 @@ int sd_channel_init_from_fd(struct sd_channel *c,
 
 int sd_channel_set_crypto_none(struct sd_channel *c)
 {
-    memset(c->public_key, 0, sizeof(c->public_key));
-    memset(c->secret_key, 0, sizeof(c->secret_key));
-    memset(c->remote_key, 0, sizeof(c->remote_key));
+    memset(&c->local_keys, 0, sizeof(c->local_keys));
+    memset(&c->remote_keys, 0, sizeof(c->remote_keys));
 
     c->crypto = SD_CHANNEL_CRTYPTO_NONE;
 
@@ -131,12 +130,12 @@ int sd_channel_set_crypto_none(struct sd_channel *c)
 }
 
 int sd_channel_set_crypto_encrypt(struct sd_channel *c,
-        uint8_t *pk, uint8_t *sk, uint8_t *rk,
+        struct sd_keys *local_keys,
+        struct sd_keys_public *remote_keys,
         uint8_t *local_nonce, uint8_t *remote_nonce)
 {
-    memcpy(c->public_key, pk, sizeof(c->public_key));
-    memcpy(c->secret_key, sk, sizeof(c->secret_key));
-    memcpy(c->remote_key, rk, sizeof(c->remote_key));
+    memcpy(&c->local_keys, local_keys, sizeof(c->local_keys));
+    memcpy(&c->remote_keys, remote_keys, sizeof(c->remote_keys));
 
     memcpy(c->local_nonce, local_nonce, sizeof(c->local_nonce));
     memcpy(c->remote_nonce, remote_nonce, sizeof(c->remote_nonce));
@@ -195,7 +194,7 @@ int sd_channel_write_data(struct sd_channel *c, uint8_t *data, size_t datalen)
             }
 
             if (crypto_box_easy(msg, data, datalen,
-                    c->local_nonce, c->remote_key, c->secret_key) < 0) {
+                    c->local_nonce, c->remote_keys.box, c->local_keys.sk.box) < 0) {
                 sd_log(LOG_LEVEL_ERROR, "Unable to encrypt msg");
                 return -1;
             }
@@ -282,7 +281,7 @@ ssize_t sd_channel_receive_data(struct sd_channel *c, uint8_t *out, size_t maxle
             }
 
             if (crypto_box_open_easy(out, buf, len, c->remote_nonce,
-                        c->remote_key, c->secret_key) != 0) {
+                        c->remote_keys.box, c->local_keys.sk.box) != 0) {
                 sd_log(LOG_LEVEL_ERROR, "Unable to decrypt message");
                 return -1;
             }

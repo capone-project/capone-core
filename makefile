@@ -13,6 +13,7 @@ PROTOBUF_OBJECTS=$(patsubst %.proto,%.pb-c.o,${PROTOBUF})
 LIBRARY_SOURCES=lib/cfg.c \
 				lib/common.c \
 				lib/channel.c \
+				lib/keys.c \
 				lib/log.c \
 				lib/server.c \
 				lib/service.c

@@ -24,6 +24,8 @@
 
 #include <sodium/crypto_box.h>
 
+#include "lib/keys.h"
+
 typedef void *(unpack_fn)(ProtobufCAllocator *allocator, size_t len, const uint8_t *data);
 typedef size_t (pack_fn)(const void *protobuf, uint8_t *out);
 typedef size_t (size_fn)(const void *protobuf);
@@ -45,9 +47,8 @@ struct sd_channel {
     enum sd_channel_type type;
     enum sd_channel_crypto crypto;
 
-    uint8_t public_key[crypto_box_PUBLICKEYBYTES];
-    uint8_t secret_key[crypto_box_SECRETKEYBYTES];
-    uint8_t remote_key[crypto_box_PUBLICKEYBYTES];
+    struct sd_keys local_keys;
+    struct sd_keys_public remote_keys;
 
     uint8_t remote_nonce[crypto_box_NONCEBYTES];
     uint8_t local_nonce[crypto_box_NONCEBYTES];
@@ -62,7 +63,8 @@ int sd_channel_close(struct sd_channel *c);
 
 int sd_channel_set_crypto_none(struct sd_channel *c);
 int sd_channel_set_crypto_encrypt(struct sd_channel *c,
-        uint8_t *pk, uint8_t *sk, uint8_t *rk,
+        struct sd_keys *local_keys,
+        struct sd_keys_public *remote_keys,
         uint8_t *local_nonce, uint8_t *remote_nonce);
 
 int sd_channel_connect(struct sd_channel *c);

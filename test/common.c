@@ -18,6 +18,7 @@
 #include <sodium.h>
 
 #include "lib/common.h"
+#include "lib/keys.h"
 
 #include "proto/test.pb-c.h"
 
@@ -64,13 +65,13 @@ static void test_keys_from_existing_config_file()
     assert_success(sd_keys_from_config_file(&keys, "config/client.conf"));
 
     sodium_bin2hex(actual_sign_pk, sizeof(actual_sign_pk),
-            keys.sign_pk, sizeof(keys.sign_pk));
+            keys.pk.sign, sizeof(keys.pk.sign));
     sodium_bin2hex(actual_sign_sk, sizeof(actual_sign_sk),
-            keys.sign_sk, sizeof(keys.sign_sk));
+            keys.sk.sign, sizeof(keys.sk.sign));
     sodium_bin2hex(actual_box_pk, sizeof(actual_box_pk),
-            keys.box_pk, sizeof(keys.box_pk));
+            keys.pk.box, sizeof(keys.pk.box));
     sodium_bin2hex(actual_box_sk, sizeof(actual_box_sk),
-            keys.box_sk, sizeof(keys.box_sk));
+            keys.sk.box, sizeof(keys.sk.box));
 
     assert_string_equal(expected_sign_pk, actual_sign_pk);
     assert_string_equal(expected_sign_sk, actual_sign_sk);
@@ -91,12 +92,12 @@ static void test_packing_signed_protobuf()
     assert_non_null(out);
 
     assert_false(out->encrypted);
-    assert_int_equal(out->pk.len, sizeof(keys.sign_pk));
-    assert_memory_equal(out->pk.data, keys.sign_pk, sizeof(keys.sign_pk));
+    assert_int_equal(out->pk.len, sizeof(keys.pk.sign));
+    assert_memory_equal(out->pk.data, keys.pk.sign, sizeof(keys.pk.sign));
 
     assert_int_equal(out->mac.len, crypto_sign_BYTES);
     assert_success(crypto_sign_verify_detached(out->mac.data,
-                out->data.data, out->data.len, keys.sign_pk));
+                out->data.data, out->data.len, keys.pk.sign));
 
     deserialized = test_message__unpack(NULL, out->data.len, out->data.data);
     assert_non_null(deserialized);

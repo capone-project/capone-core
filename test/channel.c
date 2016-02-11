@@ -29,13 +29,9 @@
 #include "test.h"
 #include "channel.h"
 
-static uint8_t channel_pk[crypto_box_PUBLICKEYBYTES],
-               channel_sk[crypto_box_SECRETKEYBYTES],
-               remote_pk[crypto_box_PUBLICKEYBYTES],
-               remote_sk[crypto_box_SECRETKEYBYTES],
-               local_nonce[crypto_box_NONCEBYTES],
+static uint8_t local_nonce[crypto_box_NONCEBYTES],
                remote_nonce[crypto_box_NONCEBYTES];
-
+static struct sd_keys channel_keys, remote_keys;
 static struct sd_channel channel, remote;
 static enum sd_channel_type type;
 
@@ -215,9 +211,9 @@ static void write_encrypted_data()
 
     stub_sockets(&channel, &remote);
 
-    sd_channel_set_crypto_encrypt(&channel, channel_pk, channel_sk, remote_pk,
+    sd_channel_set_crypto_encrypt(&channel, &channel_keys, &remote_keys.pk,
             local_nonce, remote_nonce);
-    sd_channel_set_crypto_encrypt(&remote, remote_pk, remote_sk, channel_pk,
+    sd_channel_set_crypto_encrypt(&remote, &remote_keys, &channel_keys.pk,
             remote_nonce, local_nonce);
 
     assert_success(sd_channel_write_data(&channel, msg, sizeof(msg)));
@@ -233,9 +229,9 @@ static void write_multiple_encrypted_messages()
 
     stub_sockets(&channel, &remote);
 
-    sd_channel_set_crypto_encrypt(&channel, channel_pk, channel_sk, remote_pk,
+    sd_channel_set_crypto_encrypt(&channel, &channel_keys, &remote_keys.pk,
             local_nonce, remote_nonce);
-    sd_channel_set_crypto_encrypt(&remote, remote_pk, remote_sk, channel_pk,
+    sd_channel_set_crypto_encrypt(&remote, &remote_keys, &channel_keys.pk,
             remote_nonce, local_nonce);
 
     assert_success(sd_channel_write_data(&channel, m1, sizeof(m1)));
@@ -255,9 +251,9 @@ static void write_encrypted_messages_increments_nonce()
 
     stub_sockets(&channel, &remote);
 
-    sd_channel_set_crypto_encrypt(&channel, channel_pk, channel_sk, remote_pk,
+    sd_channel_set_crypto_encrypt(&channel, &channel_keys, &remote_keys.pk,
             local_nonce, remote_nonce);
-    sd_channel_set_crypto_encrypt(&remote, remote_pk, remote_sk, channel_pk,
+    sd_channel_set_crypto_encrypt(&remote, &remote_keys, &channel_keys.pk,
             remote_nonce, local_nonce);
 
     memcpy(nonce, channel.local_nonce, sizeof(nonce));
@@ -281,9 +277,9 @@ static void write_encrypted_message_with_response()
 
     stub_sockets(&channel, &remote);
 
-    sd_channel_set_crypto_encrypt(&channel, channel_pk, channel_sk, remote_pk,
+    sd_channel_set_crypto_encrypt(&channel, &channel_keys, &remote_keys.pk,
             local_nonce, remote_nonce);
-    sd_channel_set_crypto_encrypt(&remote, remote_pk, remote_sk, channel_pk,
+    sd_channel_set_crypto_encrypt(&remote, &remote_keys, &channel_keys.pk,
             remote_nonce, local_nonce);
 
     assert_success(sd_channel_write_data(&channel, m1, sizeof(m1)));
@@ -326,8 +322,8 @@ int channel_test_run_suite(void)
         cmocka_unit_test(connect_fails_without_other_side),
     };
 
-    crypto_box_keypair(channel_pk, channel_sk);
-    crypto_box_keypair(remote_pk, remote_sk);
+    crypto_box_keypair(channel_keys.pk.box, channel_keys.sk.box);
+    crypto_box_keypair(remote_keys.pk.box, remote_keys.sk.box);
     randombytes(local_nonce, sizeof(local_nonce));
     randombytes(remote_nonce, sizeof(remote_nonce));
 

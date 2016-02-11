@@ -28,7 +28,6 @@
 #include <sys/wait.h>
 #include <netdb.h>
 
-#include "lib/common.h"
 #include "lib/log.h"
 #include "lib/server.h"
 #include "lib/service.h"
@@ -142,8 +141,8 @@ int main(int argc, char *argv[])
 
     announce_message__init(&announce_message);
     announce_message.version = VERSION;
-    announce_message.pubkey.data = keys.sign_pk;
-    announce_message.pubkey.len = sizeof(keys.sign_pk);
+    announce_message.pubkey.data = keys.pk.sign;
+    announce_message.pubkey.len = sizeof(keys.pk.sign);
 
     service_messages = malloc(sizeof(AnnounceMessage__Service *) * numservices);
     for (i = 0; i < numservices; i++) {
