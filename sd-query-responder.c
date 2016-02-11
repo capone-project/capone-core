@@ -16,10 +16,49 @@
  */
 
 #include "lib/common.h"
+#include "lib/server.h"
 
 int main(int argc, char *argv[])
 {
-    UNUSED(argc);
-    UNUSED(argv);
+    const char *config, *port;
+    struct sd_channel channel;
+    struct sd_server server;
+    struct sd_keys keys;
+
+    if (argc != 3) {
+        printf("USAGE: %s <CONFIG> <PORT>\n", argv[0]);
+        return -1;
+    }
+
+    config = argv[1];
+    port = argv[2];
+
+    if (sodium_init() < 0) {
+        puts("Could not init libsodium");
+        return -1;
+    }
+
+    if (sd_keys_from_config_file(&keys, config) < 0) {
+        puts("Could not parse config");
+        return -1;
+    }
+
+    if (sd_server_init(&server, NULL, port, SD_CHANNEL_TYPE_TCP) < 0) {
+        puts("Could not set up server");
+        return -1;
+    }
+
+    if (sd_server_listen(&server) < 0) {
+        puts("Could not start listening");
+        return -1;
+    }
+
+    if (sd_server_accept(&server, &channel) < 0) {
+        puts("Could not accept connection");
+        return -1;
+    }
+
+    sd_server_close(&server);
+
     return 0;
 }
