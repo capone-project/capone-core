@@ -75,6 +75,7 @@ out:
 
 static void handle_announce()
 {
+    char pubkey[sizeof(keys.pk.sign) * 2 + 1];
     struct sd_server server;
     struct sd_channel channel;
     AnnounceMessage *msg = NULL;
@@ -106,13 +107,14 @@ static void handle_announce()
 
     memcpy(rpk, msg->pubkey.data, sizeof(rpk));
 
-    printf("Successfully retrieved remote public key from server (version %s)\n",
-            msg->version);
+    sodium_bin2hex(pubkey, sizeof(pubkey), msg->pubkey.data, msg->pubkey.len);
+
+    printf("%s (v%s)\n", pubkey, msg->version);
 
     for (i = 0; i < msg->n_services; i++) {
         AnnounceMessage__Service *service = msg->services[i];
 
-        printf("\t%5s -> %s (%s)\n", service->port, service->name, service->type);
+        printf("\t%s -> %s (%s)\n", service->port, service->name, service->type);
     }
 
 out:
