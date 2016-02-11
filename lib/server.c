@@ -109,7 +109,7 @@ int sd_server_accept(struct sd_server *s, struct sd_channel *out)
             }
             break;
         case SD_CHANNEL_TYPE_UDP:
-            if (recvfrom(s->fd, NULL, 0, 0,
+            if (recvfrom(s->fd, NULL, 0, MSG_PEEK,
                         (struct sockaddr *)&addr, &addrsize) < 0) {
                 sd_log(LOG_LEVEL_ERROR, "Could not peek message");
                 return -1;
