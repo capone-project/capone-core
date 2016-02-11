@@ -25,6 +25,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
+#include "lib/common.h"
 #include "lib/cfg.h"
 #include "lib/log.h"
 #include "lib/server.h"

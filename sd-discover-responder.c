@@ -28,6 +28,7 @@
 #include <sys/wait.h>
 #include <netdb.h>
 
+#include "lib/common.h"
 #include "lib/log.h"
 #include "lib/server.h"
 #include "lib/service.h"
