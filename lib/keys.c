@@ -81,7 +81,7 @@ int sd_keys_public_from_hex(struct sd_keys_public *out, const char *hex)
         box_pk[crypto_scalarmult_curve25519_BYTES];
 
     len = strlen(hex);
-    if (len != 2 * crypto_sign_PUBLICKEYBYTES + 1) {
+    if (len != 2 * crypto_sign_PUBLICKEYBYTES) {
         sd_log(LOG_LEVEL_ERROR, "Passed in buffer does not match required public key length");
         return -1;
     }
