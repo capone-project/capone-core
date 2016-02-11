@@ -1,4 +1,3 @@
 message TestMessage {
     required bytes value = 1;
 }
-

@@ -19,11 +19,17 @@
 
 #include "lib/common.h"
 
+#include "proto/test.pb-c.h"
+
 #include "common.h"
 #include "test.h"
 
+static struct sd_keys keys;
+
 static int setup()
 {
+    assert_success(sd_keys_from_config_file(&keys, "config/client.conf"));
+
     return 0;
 }
 
@@ -72,10 +78,82 @@ static void test_keys_from_existing_config_file()
     assert_string_equal(expected_box_sk, actual_box_sk);
 }
 
+static void test_packing_signed_protobuf()
+{
+    uint8_t buf[] = "test-message";
+    TestMessage msg = TEST_MESSAGE__INIT, *deserialized;
+    Envelope *out = NULL;
+
+    msg.value.data = buf;
+    msg.value.len = sizeof(buf);
+
+    assert_success(pack_signed_protobuf(&out, (ProtobufCMessage *) &msg, &keys));
+    assert_non_null(out);
+
+    assert_false(out->encrypted);
+    assert_int_equal(out->pk.len, sizeof(keys.sign_pk));
+    assert_memory_equal(out->pk.data, keys.sign_pk, sizeof(keys.sign_pk));
+
+    assert_int_equal(out->mac.len, crypto_sign_BYTES);
+    assert_success(crypto_sign_verify_detached(out->mac.data,
+                out->data.data, out->data.len, keys.sign_pk));
+
+    deserialized = test_message__unpack(NULL, out->data.len, out->data.data);
+    assert_non_null(deserialized);
+    assert_string_equal(deserialized->value.data, msg.value.data);
+
+    envelope__free_unpacked(out, NULL);
+    test_message__free_unpacked(deserialized, NULL);
+}
+
+static void test_unpacking_signed_protobuf()
+{
+    uint8_t buf[] = "test-message";
+    TestMessage msg = TEST_MESSAGE__INIT,
+                *unpacked;;
+    Envelope *out = NULL;
+
+    msg.value.data = buf;
+    msg.value.len = sizeof(buf);
+
+    assert_success(pack_signed_protobuf(&out, (ProtobufCMessage *) &msg, &keys));
+    assert_non_null(out);
+
+    assert_success(unpack_signed_protobuf(&test_message__descriptor,
+                (ProtobufCMessage **) &unpacked, out));
+
+    assert_string_equal(msg.value.data, unpacked->value.data);
+
+    envelope__free_unpacked(out, NULL);
+    test_message__free_unpacked(unpacked, NULL);
+}
+
+static void test_unpacking_falsely_signed_protobuf()
+{
+    uint8_t buf[] = "test-message";
+    TestMessage msg = TEST_MESSAGE__INIT,
+                *unpacked;
+    Envelope *out = NULL;
+
+    msg.value.data = buf;
+    msg.value.len = sizeof(buf);
+
+    assert_success(pack_signed_protobuf(&out, (ProtobufCMessage *) &msg, &keys));
+    assert_non_null(out);
+    randombytes(out->mac.data, out->mac.len);
+
+    assert_failure(unpack_signed_protobuf(&test_message__descriptor,
+                (ProtobufCMessage **) &unpacked, out));
+    assert_null(unpacked);
+}
+
 int common_test_run_suite(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_keys_from_existing_config_file),
+        cmocka_unit_test(test_packing_signed_protobuf),
+        cmocka_unit_test(test_unpacking_signed_protobuf),
+        cmocka_unit_test(test_unpacking_falsely_signed_protobuf),
     };
 
     return execute_test_suite("cfg", tests, setup, teardown);
