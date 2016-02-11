@@ -34,6 +34,7 @@ EXECUTABLES_LDFLAGS=${LDFLAGS} $(shell pkg-config --libs ${EXECUTABLES_LIBS})
 TEST_SOURCES=test/test.c \
 			 test/cfg.c \
 			 test/channel.c \
+			 test/common.c \
 			 test/server.c
 TEST_OBJECTS=$(patsubst %.c,%.o,${TEST_SOURCES})
 TEST_LIBS=cmocka ${EXECUTABLES_LIBS}
