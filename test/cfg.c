@@ -19,6 +19,7 @@
 #include "lib/common.h"
 
 #include "test.h"
+#include "cfg.h"
 
 #define assert_cfg_section(c, n, expected) do {                     \
         assert_string_equal((c).sections[(n)].name, (expected)); \
@@ -284,7 +285,7 @@ static void get_int_value_invalid()
     assert_int_equal(cfg_get_int_value(&config, "one", "two"), 0);
 }
 
-int cfg_test_run_suite()
+int cfg_test_run_suite(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(parse_empty),

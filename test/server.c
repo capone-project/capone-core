@@ -15,9 +15,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "test.h"
-
 #include "lib/server.h"
+
+#include "test.h"
+#include "server.h"
 
 static struct sd_server server;
 static struct sd_channel channel;
@@ -79,7 +80,7 @@ static void connect_with_other_side()
     assert_success(sd_channel_close(&connected));
 }
 
-int server_test_run_suite()
+int server_test_run_suite(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(set_local_address_to_localhost),

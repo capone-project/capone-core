@@ -15,4 +15,4 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-void server_test_run_suite(void);
+int server_test_run_suite(void);

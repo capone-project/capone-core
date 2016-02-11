@@ -15,4 +15,4 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-void channel_test_run_suite(void);
+int channel_test_run_suite(void);

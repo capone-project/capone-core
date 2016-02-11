@@ -15,4 +15,4 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-void cfg_test_run_suite(void);
+int cfg_test_run_suite(void);

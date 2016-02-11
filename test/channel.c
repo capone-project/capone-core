@@ -21,12 +21,13 @@
 #include <sodium/randombytes.h>
 #include <sodium/utils.h>
 
-#include "test.h"
-
 #include "lib/common.h"
 #include "lib/channel.h"
 
 #include "proto/test.pb-c.h"
+
+#include "test.h"
+#include "channel.h"
 
 static uint8_t channel_pk[crypto_box_PUBLICKEYBYTES],
                channel_sk[crypto_box_SECRETKEYBYTES],
@@ -300,7 +301,7 @@ static void connect_fails_without_other_side()
     assert_failure(sd_channel_connect(&channel));
 }
 
-int channel_test_run_suite()
+int channel_test_run_suite(void)
 {
     const struct CMUnitTest shared_tests[] = {
         cmocka_unit_test(initialization_sets_socket),
