@@ -4,6 +4,7 @@ LDFLAGS=-g -ggdb
 CPPFLAGS=-DVERSION=\"0.0.1\"
 
 PROTOBUF=proto/discovery.proto \
+		 proto/encryption.proto \
 		 proto/envelope.proto \
 		 proto/query.proto \
 		 proto/test.proto

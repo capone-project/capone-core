@@ -1,0 +1,3 @@
+message EncryptionNegotiationMessage {
+    required bytes nonce = 1;
+}

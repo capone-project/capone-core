@@ -15,6 +15,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "proto/encryption.pb-c.h"
 #include "proto/query.pb-c.h"
 
 #include "lib/common.h"
@@ -26,8 +27,8 @@ static int negotiate_encryption(struct sd_channel *channel)
 {
     uint8_t nonce[crypto_box_NONCEBYTES];
     struct sd_keys_public remote_keys;
-    QueryResponse response = QUERY_RESPONSE__INIT;
-    QueryMessage *query;
+    EncryptionNegotiationMessage *negotiation,
+        response = ENCRYPTION_NEGOTIATION_MESSAGE__INIT;
     Envelope *env;
 
     if (sd_channel_receive_protobuf(channel,
@@ -37,8 +38,8 @@ static int negotiate_encryption(struct sd_channel *channel)
         return -1;
     }
 
-    if (unpack_signed_protobuf(&query_message__descriptor,
-                (ProtobufCMessage **) &query, env, &keys) < 0) {
+    if (unpack_signed_protobuf(&encryption_negotiation_message__descriptor,
+                (ProtobufCMessage **) &negotiation, env, &keys) < 0) {
         puts("Failed unpacking protobuf");
         return -1;
     }
@@ -46,7 +47,6 @@ static int negotiate_encryption(struct sd_channel *channel)
         puts("Could not extract remote keys");
         return -1;
     }
-    query_message__free_unpacked(query, NULL);
     envelope__free_unpacked(env, NULL);
 
     /* TODO: use correct nonce */
@@ -65,7 +65,8 @@ static int negotiate_encryption(struct sd_channel *channel)
     }
     envelope__free_unpacked(env, NULL);
 
-    sd_channel_set_crypto_encrypt(channel, &keys, &remote_keys, nonce, query->nonce.data);
+    sd_channel_set_crypto_encrypt(channel, &keys, &remote_keys, nonce, negotiation->nonce.data);
+    encryption_negotiation_message__free_unpacked(negotiation, NULL);
 
     return 0;
 }
