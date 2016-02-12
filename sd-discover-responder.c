@@ -130,7 +130,7 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    if (argc < 2) {
+    if (argc != 2) {
         printf("USAGE: %s <SERVER_CONFIG>\n", argv[0]);
         return 0;
     }
