@@ -19,12 +19,14 @@
 
 #define UNUSED(x) (void)(x)
 
-struct sd_keys;
-
 typedef void (*thread_fn)(void *);
 
 int spawn(thread_fn fn, void *payload);
 
-int pack_signed_protobuf(Envelope **out, const ProtobufCMessage *msg, const struct sd_keys *keys);
+struct sd_keys;
+struct sd_keys_public;
+
+int pack_signed_protobuf(Envelope **out, const ProtobufCMessage *msg,
+        const struct sd_keys *keys, const struct sd_keys_public *remote_key);
 int unpack_signed_protobuf(const ProtobufCMessageDescriptor *descr,
-        ProtobufCMessage **out, const Envelope *env);
+        ProtobufCMessage **out, const Envelope *env, const struct sd_keys *keys);

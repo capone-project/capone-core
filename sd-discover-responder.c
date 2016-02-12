@@ -54,7 +54,7 @@ static void announce(struct sockaddr_storage addr, uint32_t port)
     }
     snprintf(service, sizeof(service), "%u", port);
 
-    if (pack_signed_protobuf(&env, (ProtobufCMessage *) &announce_message, &keys) < 0) {
+    if (pack_signed_protobuf(&env, (ProtobufCMessage *) &announce_message, &keys, NULL) < 0) {
         puts("Could not create signed envelope");
         return;
     }
@@ -103,7 +103,7 @@ static void handle_discover()
         }
 
         if (unpack_signed_protobuf(&discover_message__descriptor,
-                    (ProtobufCMessage **) &msg, env) < 0) {
+                    (ProtobufCMessage **) &msg, env, NULL) < 0) {
             puts("Received invalid signed envelope");
             goto out;
         }

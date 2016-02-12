@@ -88,7 +88,7 @@ static void test_packing_signed_protobuf()
     msg.value.data = buf;
     msg.value.len = sizeof(buf);
 
-    assert_success(pack_signed_protobuf(&out, (ProtobufCMessage *) &msg, &keys));
+    assert_success(pack_signed_protobuf(&out, (ProtobufCMessage *) &msg, &keys, NULL));
     assert_non_null(out);
 
     assert_false(out->encrypted);
@@ -117,11 +117,11 @@ static void test_unpacking_signed_protobuf()
     msg.value.data = buf;
     msg.value.len = sizeof(buf);
 
-    assert_success(pack_signed_protobuf(&out, (ProtobufCMessage *) &msg, &keys));
+    assert_success(pack_signed_protobuf(&out, (ProtobufCMessage *) &msg, &keys, NULL));
     assert_non_null(out);
 
     assert_success(unpack_signed_protobuf(&test_message__descriptor,
-                (ProtobufCMessage **) &unpacked, out));
+                (ProtobufCMessage **) &unpacked, out, NULL));
 
     assert_string_equal(msg.value.data, unpacked->value.data);
 
@@ -139,12 +139,12 @@ static void test_unpacking_falsely_signed_protobuf()
     msg.value.data = buf;
     msg.value.len = sizeof(buf);
 
-    assert_success(pack_signed_protobuf(&out, (ProtobufCMessage *) &msg, &keys));
+    assert_success(pack_signed_protobuf(&out, (ProtobufCMessage *) &msg, &keys, NULL));
     assert_non_null(out);
     randombytes(out->mac.data, out->mac.len);
 
     assert_failure(unpack_signed_protobuf(&test_message__descriptor,
-                (ProtobufCMessage **) &unpacked, out));
+                (ProtobufCMessage **) &unpacked, out, NULL));
     assert_null(unpacked);
 }
 

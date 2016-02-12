@@ -48,7 +48,7 @@ static void probe(void *payload)
     msg.version = VERSION;
     msg.port = LISTEN_PORT;
 
-    if (pack_signed_protobuf(&env, (ProtobufCMessage *) &msg, &keys) < 0) {
+    if (pack_signed_protobuf(&env, (ProtobufCMessage *) &msg, &keys, NULL) < 0) {
         puts("Unable to sign protobuf");
         goto out;
     }
@@ -100,7 +100,7 @@ static void handle_announce()
     }
 
     if (unpack_signed_protobuf(&announce_message__descriptor,
-                (ProtobufCMessage **) &msg, env) < 0) {
+                (ProtobufCMessage **) &msg, env, NULL) < 0) {
         puts("Unable to unpack signed protobuf");
         goto out;
     }

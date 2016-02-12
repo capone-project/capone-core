@@ -44,7 +44,8 @@ int spawn(thread_fn fn, void *payload)
     }
 }
 
-int pack_signed_protobuf(Envelope **out, const ProtobufCMessage *msg, const struct sd_keys *keys)
+int pack_signed_protobuf(Envelope **out, const ProtobufCMessage *msg,
+        const struct sd_keys *keys, const struct sd_keys_public *remote_key)
 {
     Envelope *env;
     uint8_t mac[crypto_sign_BYTES];
@@ -57,30 +58,36 @@ int pack_signed_protobuf(Envelope **out, const ProtobufCMessage *msg, const stru
     buf = malloc(len);
     protobuf_c_message_pack(msg, buf);
 
-    if (crypto_sign_detached(mac, NULL, buf, len, keys->sk.sign) != 0) {
-        sd_log(LOG_LEVEL_ERROR, "Unable to sign protobuf");
-        return -1;
-    }
-
     env = malloc(sizeof(Envelope));
     envelope__init(env);
 
     env->data.data = buf;
     env->data.len = len;
 
-    env->pk.data = malloc(sizeof(keys->pk.sign));
-    memcpy(env->pk.data, keys->pk.sign, sizeof(keys->pk.sign));
-    env->pk.len = sizeof(keys->pk.sign);
-
+    if (crypto_sign_detached(mac, NULL, buf, len, keys->sk.sign) != 0) {
+        sd_log(LOG_LEVEL_ERROR, "Unable to sign protobuf");
+        return -1;
+    }
     env->mac.data = malloc(crypto_sign_BYTES);
     memcpy(env->mac.data, mac, crypto_sign_BYTES);
     env->mac.len = crypto_sign_BYTES;
 
-    if (env->encrypted) {
-        sd_log(LOG_LEVEL_ERROR, "Encrypted signed messages not supported");
-        return -1;
+    if (remote_key) {
+        buf = realloc(buf, len + sizeof(crypto_box_SEALBYTES));
+
+        if (crypto_box_seal(buf, buf, len, remote_key->box) < 0) {
+            sd_log(LOG_LEVEL_ERROR, "Unable to encrypt protobuf");
+            return -1;
+        }
+
+        len = len + crypto_box_SEALBYTES;
+        env->encrypted = 1;
+    } else {
+        env->encrypted = 0;
     }
-    env->encrypted = 0;
+    env->pk.data = malloc(sizeof(keys->pk.sign));
+    memcpy(env->pk.data, keys->pk.sign, sizeof(keys->pk.sign));
+    env->pk.len = sizeof(keys->pk.sign);
 
     *out = env;
 
@@ -88,11 +95,28 @@ int pack_signed_protobuf(Envelope **out, const ProtobufCMessage *msg, const stru
 }
 
 int unpack_signed_protobuf(const ProtobufCMessageDescriptor *descr,
-        ProtobufCMessage **out, const Envelope *env)
+        ProtobufCMessage **out, const Envelope *env, const struct sd_keys *keys)
 {
     ProtobufCMessage *msg;
 
     *out = NULL;
+
+    if (env->mac.len != crypto_sign_BYTES) {
+        sd_log(LOG_LEVEL_ERROR, "Invalid MAC length");
+        return -1;
+    }
+    if (env->pk.len != crypto_sign_ed25519_PUBLICKEYBYTES) {
+        sd_log(LOG_LEVEL_ERROR, "Invalid public key length");
+        return -1;
+    }
+
+    if (env->encrypted) {
+        if (crypto_box_seal_open(env->data.data, env->data.data, env->data.len,
+                env->mac.data, keys->sk.box) < 0) {
+            sd_log(LOG_LEVEL_ERROR, "Unable to decrypt protobuf");
+            return -1;
+        }
+    }
 
     if (crypto_sign_verify_detached(env->mac.data,
                 env->data.data, env->data.len, env->pk.data) < 0) {
