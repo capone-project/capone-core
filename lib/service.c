@@ -22,7 +22,7 @@
 #include "log.h"
 #include "service.h"
 
-int sd_service_from_config_file(struct sd_service **out, const char *file)
+int sd_services_from_config_file(struct sd_service **out, const char *file)
 {
     struct cfg cfg;
     int ret;
@@ -31,13 +31,13 @@ int sd_service_from_config_file(struct sd_service **out, const char *file)
         return -1;
     }
 
-    ret = sd_service_from_config(out, &cfg);
+    ret = sd_services_from_config(out, &cfg);
     cfg_free(&cfg);
 
     return ret;
 }
 
-int sd_service_from_config(struct sd_service **out, const struct cfg *cfg)
+int sd_services_from_config(struct sd_service **out, const struct cfg *cfg)
 {
     struct sd_service *services = NULL;
     int i, count = 0;
@@ -62,6 +62,33 @@ out_err:
     for (i = 0; i < count; i++)
         sd_service_free(&services[i]);
     free(services);
+
+    return -1;
+}
+
+int sd_service_from_config_file(struct sd_service *out, const char *name, const char *file)
+{
+    struct cfg cfg;
+    int ret;
+
+    if (cfg_parse(&cfg, file) < 0) {
+        return -1;
+    }
+
+    ret = sd_service_from_config(out, name, &cfg);
+    cfg_free(&cfg);
+
+    return ret;
+}
+
+int sd_service_from_config(struct sd_service *out, const char *name, const struct cfg *cfg)
+{
+    unsigned i;
+
+    for (i = 0; i < cfg->numsections; i++) {
+        if (!strcmp(cfg->sections[i].name, name))
+            return sd_service_from_section(out, &cfg->sections[i]);
+    }
 
     return -1;
 }

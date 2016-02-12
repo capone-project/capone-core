@@ -136,7 +136,7 @@ int main(int argc, char *argv[])
 
     if (sd_keys_from_config_file(&keys, argv[1]) < 0)
         return -1;
-    if ((numservices = sd_service_from_config_file(&services, argv[1])) <= 0)
+    if ((numservices = sd_services_from_config_file(&services, argv[1])) <= 0)
         return -1;
 
     announce_message__init(&announce_message);
