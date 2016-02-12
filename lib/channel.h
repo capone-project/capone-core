@@ -72,4 +72,4 @@ int sd_channel_connect(struct sd_channel *c);
 int sd_channel_write_data(struct sd_channel *c, uint8_t *buf, size_t len);
 ssize_t sd_channel_receive_data(struct sd_channel *c, uint8_t *buf, size_t maxlen);
 int sd_channel_write_protobuf(struct sd_channel *c, ProtobufCMessage *msg);
-int sd_channel_receive_protobuf(struct sd_channel *c, ProtobufCMessageDescriptor *descr, ProtobufCMessage **msg);
+int sd_channel_receive_protobuf(struct sd_channel *c, const ProtobufCMessageDescriptor *descr, ProtobufCMessage **msg);

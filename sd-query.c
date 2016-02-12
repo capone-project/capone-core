@@ -51,8 +51,7 @@ static int negotiate_encryption(struct sd_channel *channel)
     }
     envelope__free_unpacked(env, NULL);
 
-    if (sd_channel_receive_protobuf(channel,
-            (ProtobufCMessageDescriptor *) &envelope__descriptor,
+    if (sd_channel_receive_protobuf(channel, &envelope__descriptor,
             (ProtobufCMessage **) &env) < 0) {
         puts("Failed receiving negotiation response");
         return -1;

@@ -95,8 +95,7 @@ static void handle_discover()
             goto out;
         }
 
-        if (sd_channel_receive_protobuf(&channel,
-                (ProtobufCMessageDescriptor *) &envelope__descriptor,
+        if (sd_channel_receive_protobuf(&channel, &envelope__descriptor,
                 (ProtobufCMessage **) &env) < 0) {
             puts("Unable to receive protobuf");
             goto out;

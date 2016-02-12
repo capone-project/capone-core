@@ -299,7 +299,7 @@ ssize_t sd_channel_receive_data(struct sd_channel *c, uint8_t *out, size_t maxle
     return len;
 }
 
-int sd_channel_receive_protobuf(struct sd_channel *c, ProtobufCMessageDescriptor *descr, ProtobufCMessage **msg)
+int sd_channel_receive_protobuf(struct sd_channel *c, const ProtobufCMessageDescriptor *descr, ProtobufCMessage **msg)
 {
     ProtobufCMessage *result;
     uint8_t buf[4096];
