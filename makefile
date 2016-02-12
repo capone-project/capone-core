@@ -73,7 +73,7 @@ sd-test: _CFLAGS=${TEST_CFLAGS}
 sd-test: _LDFLAGS=${TEST_LDFLAGS}
 sd-test: ${PROTOBUF_OBJECTS} ${TEST_OBJECTS} ${LIBRARY_OBJECTS}
 	@echo "LD $@"
-	@$(CC) ${_LDFLAGS} -o "$@" $^
+	@$(CC) ${_CFLAGS} ${_LDFLAGS} -o "$@" $^
 
 %.o: %.c %.h
 	@echo "CC $@"
