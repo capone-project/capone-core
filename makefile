@@ -67,7 +67,7 @@ $(EXECUTABLES): _CFLAGS=${EXECUTABLES_CFLAGS}
 $(EXECUTABLES): _LDFLAGS=${EXECUTABLES_LDFLAGS}
 $(EXECUTABLES): %: ${PROTOBUF_OBJECTS} ${LIBRARY_OBJECTS} %.o
 	@echo "LD $@"
-	@$(CC) ${_LDFLAGS} -o "$@" $^
+	@$(CC) ${_CFLAGS} ${_LDFLAGS} -o "$@" $^
 
 test: sd-test
 	./sd-test
