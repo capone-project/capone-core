@@ -101,3 +101,23 @@ int sd_keys_public_from_hex(struct sd_keys_public *out, const char *hex)
 
     return 0;
 }
+
+int sd_keys_public_from_bin(struct sd_keys_public *out, uint8_t *data, size_t len)
+{
+    uint8_t box_pk[crypto_scalarmult_curve25519_BYTES];
+
+    if (len != crypto_sign_PUBLICKEYBYTES) {
+        sd_log(LOG_LEVEL_ERROR, "Passed in buffer does not match required public key length");
+        return -1;
+    }
+
+    if (crypto_sign_ed25519_pk_to_curve25519(box_pk, data) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Could not convert public key to curve52219");
+        return -1;
+    }
+
+    memcpy(out->box, box_pk, sizeof(out->box));
+    memcpy(out->sign, data, len);
+
+    return 0;
+}
