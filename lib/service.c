@@ -83,64 +83,67 @@ int sd_service_from_config_file(struct sd_service *out, const char *name, const 
 
 int sd_service_from_config(struct sd_service *out, const char *name, const struct cfg *cfg)
 {
-    unsigned i;
+    unsigned i, j;
 
     for (i = 0; i < cfg->numsections; i++) {
-        if (!strcmp(cfg->sections[i].name, name))
-            return sd_service_from_section(out, &cfg->sections[i]);
+        struct cfg_section *s = &cfg->sections[i];
+        if (strcmp(s->name, "service"))
+            continue;
+
+        for (j = 0; j < s->numentries; j++) {
+            struct cfg_entry *e = &s->entries[j];
+
+            if (strcmp(e->name, "name"))
+                continue;
+            if (!strcmp(e->value, name))
+                return sd_service_from_section(out, s);
+        }
     }
+
+    sd_log(LOG_LEVEL_ERROR, "Could not find service '%s'", name);
 
     return -1;
 }
 
 int sd_service_from_section(struct sd_service *out, const struct cfg_section *section)
 {
-    char *name = NULL, *type = NULL, *port = NULL;
+    struct sd_service service;
     unsigned i;
+
+    memset(&service, 0, sizeof(service));
+
+#define MAYBE_ADD_ENTRY(field, entry, value)                                    \
+    if (!strcmp(#field, entry)) {                                               \
+        if (service.field != NULL) {                                            \
+            sd_log(LOG_LEVEL_ERROR, "Service config has been specified twice"); \
+            goto out_err;                                                       \
+        }                                                                       \
+        service.field = strdup(value);                                          \
+        continue;                                                               \
+    }
 
     for (i = 0; i < section->numentries; i++) {
         const char *entry = section->entries[i].name,
             *value = section->entries[i].value;
 
-        if (!strcmp(entry, "name")) {
-            if (name) {
-                sd_log(LOG_LEVEL_ERROR, "Service config 'name' has been specified twice");
-                goto out_err;
-            }
+        MAYBE_ADD_ENTRY(name, entry, value);
+        MAYBE_ADD_ENTRY(type, entry, value);
+        MAYBE_ADD_ENTRY(subtype, entry, value);
+        MAYBE_ADD_ENTRY(port, entry, value);
+        MAYBE_ADD_ENTRY(location, entry, value);
 
-            name = strdup(value);
-        } else if (!strcmp(entry, "type")) {
-            if (type) {
-                sd_log(LOG_LEVEL_ERROR, "Service config 'type' has been specified twice");
-                goto out_err;
-            }
-
-            type = strdup(value);
-        } else if (!strcmp(entry, "port")) {
-            if (port) {
-                sd_log(LOG_LEVEL_ERROR, "Service config 'port' has been specified twice");
-                goto out_err;
-            }
-
-            port = strdup(value);
-        } else {
-            sd_log(LOG_LEVEL_ERROR, "Unknown service config '%s'", entry);
-            goto out_err;
-        }
+        sd_log(LOG_LEVEL_ERROR, "Unknown service config '%s'", entry);
+        goto out_err;
     }
 
-    assert(name && type && port);
+#undef MAYBE_ADD_ENTRY
 
-    out->name = name;
-    out->type = type;
-    out->port = port;
+    memcpy(out, &service, sizeof(service));
 
     return 0;
 
 out_err:
-    free(name);
-    free(type);
-    free(port);
+    sd_service_free(&service);
 
     return -1;
 }
@@ -148,4 +151,7 @@ out_err:
 void sd_service_free(struct sd_service *service)
 {
     free(service->name);
+    free(service->port);
+    free(service->type);
+    free(service->location);
 }

@@ -20,7 +20,9 @@
 struct sd_service {
     char *name;
     char *type;
+    char *subtype;
     char *port;
+    char *location;
 };
 
 int sd_service_from_config_file(struct sd_service *out, const char *name, const char *file);
