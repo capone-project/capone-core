@@ -15,15 +15,67 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "proto/query.pb-c.h"
+
 #include "lib/common.h"
 #include "lib/server.h"
+
+static struct sd_keys keys;
+
+static int handle_connect(struct sd_channel *channel)
+{
+    uint8_t nonce[crypto_box_NONCEBYTES];
+    struct sd_keys_public remote_keys;
+    QueryResponse response = QUERY_RESPONSE__INIT;
+    QueryMessage *query;
+    Envelope *env;
+
+    if (sd_channel_receive_protobuf(channel,
+            (ProtobufCMessageDescriptor *) &envelope__descriptor,
+            (ProtobufCMessage **) &env) < 0) {
+        puts("Failed receiving protobuf");
+        return -1;
+    }
+
+    if (unpack_signed_protobuf(&query_message__descriptor,
+                (ProtobufCMessage **) &query, env, &keys) < 0) {
+        puts("Failed unpacking protobuf");
+        return -1;
+    }
+    if (sd_keys_public_from_bin(&remote_keys, env->pk.data, env->pk.len) < 0 ) {
+        puts("Could not extract remote keys");
+        return -1;
+    }
+    query_message__free_unpacked(query, NULL);
+    envelope__free_unpacked(env, NULL);
+
+    /* TODO: use correct nonce */
+    randombytes_buf(nonce, sizeof(nonce));
+    response.nonce.data = nonce;
+    response.nonce.len = sizeof(nonce);
+
+    if (pack_signed_protobuf(&env, (ProtobufCMessage *) &response,
+                &keys, &remote_keys) < 0) {
+        puts("Could not pack query");
+        return -1;
+    }
+    if (sd_channel_write_protobuf(channel, (ProtobufCMessage *) env) < 0) {
+        puts("Could not send query");
+        return -1;
+    }
+    envelope__free_unpacked(env, NULL);
+
+    puts("Exchanged nonces");
+
+    UNUSED(channel);
+    return 0;
+}
 
 int main(int argc, char *argv[])
 {
     const char *config, *port;
     struct sd_channel channel;
     struct sd_server server;
-    struct sd_keys keys;
 
     if (argc != 3) {
         printf("USAGE: %s <CONFIG> <PORT>\n", argv[0]);
@@ -57,6 +109,8 @@ int main(int argc, char *argv[])
         puts("Could not accept connection");
         return -1;
     }
+
+    handle_connect(&channel);
 
     sd_server_close(&server);
 

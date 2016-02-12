@@ -19,17 +19,58 @@
 #include <stdio.h>
 #include <sodium.h>
 
+#include "proto/query.pb-c.h"
+
 #include "lib/channel.h"
 #include "lib/common.h"
+
+static struct sd_channel channel;
+static struct sd_keys keys;
+static struct sd_keys_public remote_keys;
+
+int query(void)
+{
+    uint8_t nonce[crypto_box_NONCEBYTES];
+    QueryMessage query = QUERY_MESSAGE__INIT;
+    QueryResponse *response;
+    Envelope *env;
+
+    /* TODO: use correct nonce */
+    randombytes_buf(nonce, sizeof(nonce));
+    query.nonce.data = nonce;
+    query.nonce.len = sizeof(nonce);
+
+    if (pack_signed_protobuf(&env, (ProtobufCMessage *) &query,
+                &keys, &remote_keys) < 0) {
+        puts("Could not pack query");
+        return -1;
+    }
+    if (sd_channel_write_protobuf(&channel, (ProtobufCMessage *) env) < 0) {
+        puts("Could not send query");
+        return -1;
+    }
+    envelope__free_unpacked(env, NULL);
+
+    if (sd_channel_receive_protobuf(&channel,
+            (ProtobufCMessageDescriptor *) &envelope__descriptor,
+            (ProtobufCMessage **) &env) < 0) {
+        puts("Failed receiving query response");
+        return -1;
+    }
+    if (unpack_signed_protobuf(&query_response__descriptor,
+                (ProtobufCMessage **) &response, env, &keys) < 0) {
+        puts("Failed unpacking protobuf");
+        return -1;
+    }
+
+    puts("Exchanged nonces");
+
+    return 0;
+}
 
 int main(int argc, char *argv[])
 {
     const char *config, *key, *host, *port;
-    struct sd_channel channel;
-    struct sd_keys keys;
-    struct sd_keys_public remote_keys;
-    uint8_t local_nonce[crypto_box_NONCEBYTES],
-        remote_nonce[crypto_box_NONCEBYTES];
 
     if (argc != 5) {
         printf("USAGE: %s <CONFIG> <KEY> <HOST> <PORT>\n", argv[0]);
@@ -56,23 +97,18 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    randombytes_buf(local_nonce, sizeof(local_nonce));
-    memcpy(remote_nonce, local_nonce, sizeof(remote_nonce));
-    sodium_increment(remote_nonce, sizeof(remote_nonce));
-
     if (sd_channel_init_from_host(&channel, host, port, SD_CHANNEL_TYPE_TCP) < 0) {
         puts("Could not initialize channel");
         return -1;
     }
 
-    if (sd_channel_set_crypto_encrypt(&channel, &keys, &remote_keys,
-            local_nonce, remote_nonce) < 0) {
-        puts("Could not enable encryption");
+    if (sd_channel_connect(&channel) < 0) {
+        puts("Could not connect to server");
         return -1;
     }
 
-    if (sd_channel_connect(&channel) < 0) {
-        puts("Could not connect to server");
+    if (query() < 0) {
+        puts("Could not query server");
         return -1;
     }
 

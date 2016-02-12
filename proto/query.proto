@@ -1,0 +1,7 @@
+message QueryMessage {
+    required bytes nonce = 1;
+}
+
+message QueryResponse {
+    required bytes nonce = 1;
+}
