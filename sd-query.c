@@ -24,11 +24,10 @@
 #include "lib/channel.h"
 #include "lib/common.h"
 
-static struct sd_channel channel;
 static struct sd_keys keys;
 static struct sd_keys_public remote_keys;
 
-int query(void)
+static int negotiate_encryption(struct sd_channel *channel)
 {
     uint8_t nonce[crypto_box_NONCEBYTES];
     QueryMessage query = QUERY_MESSAGE__INIT;
@@ -45,13 +44,13 @@ int query(void)
         puts("Could not pack query");
         return -1;
     }
-    if (sd_channel_write_protobuf(&channel, (ProtobufCMessage *) env) < 0) {
+    if (sd_channel_write_protobuf(channel, (ProtobufCMessage *) env) < 0) {
         puts("Could not send query");
         return -1;
     }
     envelope__free_unpacked(env, NULL);
 
-    if (sd_channel_receive_protobuf(&channel,
+    if (sd_channel_receive_protobuf(channel,
             (ProtobufCMessageDescriptor *) &envelope__descriptor,
             (ProtobufCMessage **) &env) < 0) {
         puts("Failed receiving query response");
@@ -63,7 +62,22 @@ int query(void)
         return -1;
     }
 
-    puts("Exchanged nonces");
+    if (sd_channel_set_crypto_encrypt(channel, &keys, &remote_keys,
+                nonce, response->nonce.data) < 0) {
+        puts("Failed enabling encryption");
+        return -1;
+    }
+    query_response__free_unpacked(response, NULL);
+
+    return 0;
+}
+
+int query(struct sd_channel *channel)
+{
+    if (negotiate_encryption(channel) < 0) {
+        puts("Unable to negotiate encryption");
+        return -1;
+    }
 
     return 0;
 }
@@ -71,6 +85,7 @@ int query(void)
 int main(int argc, char *argv[])
 {
     const char *config, *key, *host, *port;
+    struct sd_channel channel;
 
     if (argc != 5) {
         printf("USAGE: %s <CONFIG> <KEY> <HOST> <PORT>\n", argv[0]);
@@ -107,7 +122,7 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    if (query() < 0) {
+    if (query(&channel) < 0) {
         puts("Could not query server");
         return -1;
     }

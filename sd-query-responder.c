@@ -22,7 +22,7 @@
 
 static struct sd_keys keys;
 
-static int handle_connect(struct sd_channel *channel)
+static int negotiate_encryption(struct sd_channel *channel)
 {
     uint8_t nonce[crypto_box_NONCEBYTES];
     struct sd_keys_public remote_keys;
@@ -65,9 +65,17 @@ static int handle_connect(struct sd_channel *channel)
     }
     envelope__free_unpacked(env, NULL);
 
-    puts("Exchanged nonces");
+    sd_channel_set_crypto_encrypt(channel, &keys, &remote_keys, nonce, query->nonce.data);
 
-    UNUSED(channel);
+    return 0;
+}
+
+static int handle_connect(struct sd_channel *channel)
+{
+    if (negotiate_encryption(channel) < 0) {
+        puts("Unable to negotiate encryption");
+        return -1;
+    }
     return 0;
 }
 
