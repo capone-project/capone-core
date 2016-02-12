@@ -74,11 +74,28 @@ static int negotiate_encryption(struct sd_channel *channel)
 
 int query(struct sd_channel *channel)
 {
+    QueryResults *result;
+    char pk[crypto_sign_PUBLICKEYBYTES * 2 + 1];
+
     if (negotiate_encryption(channel) < 0) {
         puts("Unable to negotiate encryption");
         return -1;
     }
 
+    sodium_bin2hex(pk, sizeof(pk),
+            channel->remote_keys.sign, sizeof(channel->remote_keys.sign));
+
+    if (sd_channel_receive_protobuf(channel, &query_results__descriptor,
+            (ProtobufCMessage **) &result) < 0) {
+        puts("Could not receive query results");
+        return -1;
+    }
+
+    printf("%s\n"
+           "\tname: %s\n"
+           "\ttype: %s\n"
+           "\tsubtype: %s\n"
+           "\tlocation: %s\n", pk, result->name, result->type, result->subtype, result->location);
 
     return 0;
 }

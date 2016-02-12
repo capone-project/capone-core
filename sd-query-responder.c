@@ -20,8 +20,10 @@
 
 #include "lib/common.h"
 #include "lib/server.h"
+#include "lib/service.h"
 
 static struct sd_keys keys;
+static struct sd_service service;
 
 static int negotiate_encryption(struct sd_channel *channel)
 {
@@ -73,29 +75,44 @@ static int negotiate_encryption(struct sd_channel *channel)
 
 static int handle_connect(struct sd_channel *channel)
 {
+    QueryResults results = QUERY_RESULTS__INIT;
+
     if (negotiate_encryption(channel) < 0) {
         puts("Unable to negotiate encryption");
         return -1;
     }
+
+    results.name = service.name;
+    results.type = service.type;
+    results.subtype = service.subtype;
+    results.location = service.location;
+
+    sd_channel_write_protobuf(channel, (ProtobufCMessage *) &results);
+
     return 0;
 }
 
 int main(int argc, char *argv[])
 {
-    const char *config, *port;
+    const char *config, *servicename;
     struct sd_channel channel;
     struct sd_server server;
 
     if (argc != 3) {
-        printf("USAGE: %s <CONFIG> <PORT>\n", argv[0]);
+        printf("USAGE: %s <CONFIG> <SERVICENAME>\n", argv[0]);
         return -1;
     }
 
     config = argv[1];
-    port = argv[2];
+    servicename = argv[2];
 
     if (sodium_init() < 0) {
         puts("Could not init libsodium");
+        return -1;
+    }
+
+    if (sd_service_from_config_file(&service, servicename, config) < 0) {
+        puts("Could not parse services");
         return -1;
     }
 
@@ -104,7 +121,7 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    if (sd_server_init(&server, NULL, port, SD_CHANNEL_TYPE_TCP) < 0) {
+    if (sd_server_init(&server, NULL, service.port, SD_CHANNEL_TYPE_TCP) < 0) {
         puts("Could not set up server");
         return -1;
     }

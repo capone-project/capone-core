@@ -1,2 +1,12 @@
 message QueryResults {
+    message Parameter {
+        required string key = 1;
+        repeated string value = 2;
+    }
+
+    required string name = 1;
+    required string type = 2;
+    required string subtype = 3;
+    required string location = 4;
+    repeated Parameter parameters = 5;
 }
