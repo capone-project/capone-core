@@ -94,10 +94,17 @@ int query(struct sd_channel *channel)
     }
 
     printf("%s\n"
-           "\tname: %s\n"
-           "\ttype: %s\n"
-           "\tsubtype: %s\n"
-           "\tlocation: %s\n", pk, result->name, result->type, result->subtype, result->location);
+           "\tname:     %s\n"
+           "\ttype:     %s\n"
+           "\tsubtype:  %s\n"
+           "\tversion:  %s\n"
+           "\tlocation: %s\n",
+           pk,
+           result->name,
+           result->type,
+           result->subtype,
+           result->version,
+           result->location);
 
     query_results__free_unpacked(result, NULL);
 

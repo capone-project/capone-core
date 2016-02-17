@@ -21,6 +21,7 @@ struct sd_service {
     char *name;
     char *type;
     char *subtype;
+    char *version;
     char *port;
     char *location;
 };

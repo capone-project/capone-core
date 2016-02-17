@@ -129,6 +129,7 @@ int sd_service_from_section(struct sd_service *out, const struct cfg_section *se
         MAYBE_ADD_ENTRY(name, entry, value);
         MAYBE_ADD_ENTRY(type, entry, value);
         MAYBE_ADD_ENTRY(subtype, entry, value);
+        MAYBE_ADD_ENTRY(version, entry, value);
         MAYBE_ADD_ENTRY(port, entry, value);
         MAYBE_ADD_ENTRY(location, entry, value);
 
@@ -151,7 +152,9 @@ out_err:
 void sd_service_free(struct sd_service *service)
 {
     free(service->name);
-    free(service->port);
     free(service->type);
+    free(service->subtype);
+    free(service->version);
+    free(service->port);
     free(service->location);
 }
