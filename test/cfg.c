@@ -288,29 +288,29 @@ static void get_int_value_invalid()
 int cfg_test_run_suite(void)
 {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test(parse_empty),
-        cmocka_unit_test(parse_simple),
-        cmocka_unit_test(parse_empty_line),
-        cmocka_unit_test(parse_multiple_sections),
-        cmocka_unit_test(parse_leading_whitespace),
-        cmocka_unit_test(parse_trailing_whitespace),
-        cmocka_unit_test(parse_invalid_without_section),
-        cmocka_unit_test(parse_invalid_section_format),
-        cmocka_unit_test(parse_invalid_missing_assignment),
-        cmocka_unit_test(parse_invalid_missing_value),
+        test(parse_empty),
+        test(parse_simple),
+        test(parse_empty_line),
+        test(parse_multiple_sections),
+        test(parse_leading_whitespace),
+        test(parse_trailing_whitespace),
+        test(parse_invalid_without_section),
+        test(parse_invalid_section_format),
+        test(parse_invalid_missing_assignment),
+        test(parse_invalid_missing_value),
 
-        cmocka_unit_test(get_section_simple),
-        cmocka_unit_test(get_section_with_multiple_sections),
-        cmocka_unit_test(get_section_nonexisting),
-        cmocka_unit_test(get_entry_simple),
-        cmocka_unit_test(get_entry_nonexisting),
+        test(get_section_simple),
+        test(get_section_with_multiple_sections),
+        test(get_section_nonexisting),
+        test(get_entry_simple),
+        test(get_entry_nonexisting),
 
-        cmocka_unit_test(get_str_value_simple),
-        cmocka_unit_test(get_str_value_nonexisting),
-        cmocka_unit_test(get_int_value_simple),
-        cmocka_unit_test(get_int_value_nonexisting),
-        cmocka_unit_test(get_int_value_invalid),
+        test(get_str_value_simple),
+        test(get_str_value_nonexisting),
+        test(get_int_value_simple),
+        test(get_int_value_nonexisting),
+        test(get_int_value_invalid),
     };
 
-    return execute_test_suite("cfg", tests, setup, teardown);
+    return execute_test_suite("cfg", tests, NULL, NULL);
 }

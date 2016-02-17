@@ -153,11 +153,11 @@ static void test_unpacking_falsely_signed_protobuf()
 int common_test_run_suite(void)
 {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test(test_keys_from_existing_config_file),
-        cmocka_unit_test(test_packing_signed_protobuf),
-        cmocka_unit_test(test_unpacking_signed_protobuf),
-        cmocka_unit_test(test_unpacking_falsely_signed_protobuf),
+        test(test_keys_from_existing_config_file),
+        test(test_packing_signed_protobuf),
+        test(test_unpacking_signed_protobuf),
+        test(test_unpacking_falsely_signed_protobuf),
     };
 
-    return execute_test_suite("cfg", tests, setup, teardown);
+    return execute_test_suite("cfg", tests, NULL, NULL);
 }

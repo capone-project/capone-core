@@ -28,3 +28,5 @@
         _execute_test_suite(group_name, group_tests, sizeof(group_tests) / sizeof(group_tests)[0], group_setup, group_teardown)
 int _execute_test_suite(const char *name, const struct CMUnitTest *tests, const size_t count,
         CMFixtureFunction setup, CMFixtureFunction teardown);
+
+#define test(f) cmocka_unit_test_setup_teardown((f), setup, teardown)

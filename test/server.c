@@ -83,12 +83,12 @@ static void connect_with_other_side()
 int server_test_run_suite(void)
 {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test(set_local_address_to_localhost),
-        cmocka_unit_test(set_local_address_to_127001),
-        cmocka_unit_test(set_local_address_to_empty_address),
-        cmocka_unit_test(set_local_address_to_invalid_address),
-        cmocka_unit_test(connect_with_other_side),
+        test(set_local_address_to_localhost),
+        test(set_local_address_to_127001),
+        test(set_local_address_to_empty_address),
+        test(set_local_address_to_invalid_address),
+        test(connect_with_other_side),
     };
 
-    return execute_test_suite("server", tests, setup, teardown);
+    return execute_test_suite("server", tests, NULL, NULL);
 }

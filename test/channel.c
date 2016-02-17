@@ -59,15 +59,17 @@ static void stub_sockets(struct sd_channel *local, struct sd_channel *remote)
 static int setup_tcp()
 {
     channel.type = remote.type = type = SD_CHANNEL_TYPE_TCP;
-    sd_channel_set_crypto_none(&channel);
-    sd_channel_set_crypto_none(&remote);
-    channel.nonce_offset = remote.nonce_offset = 2;
     return 0;
 }
 
 static int setup_udp()
 {
     channel.type = remote.type = type = SD_CHANNEL_TYPE_TCP;
+    return 0;
+}
+
+static int setup()
+{
     sd_channel_set_crypto_none(&channel);
     sd_channel_set_crypto_none(&remote);
     channel.nonce_offset = remote.nonce_offset = 2;
@@ -299,26 +301,26 @@ static void connect_fails_without_other_side()
 int channel_test_run_suite(void)
 {
     const struct CMUnitTest shared_tests[] = {
-        cmocka_unit_test(initialization_sets_socket),
-        cmocka_unit_test(initialization_sets_type),
-        cmocka_unit_test(close_resets_sockets_to_invalid_values),
+        test(initialization_sets_socket),
+        test(initialization_sets_type),
+        test(close_resets_sockets_to_invalid_values),
 
-        cmocka_unit_test(init_address_to_localhost),
-        cmocka_unit_test(init_address_to_127001),
-        cmocka_unit_test(init_address_to_empty_address),
-        cmocka_unit_test(init_address_to_invalid_address),
+        test(init_address_to_localhost),
+        test(init_address_to_127001),
+        test(init_address_to_empty_address),
+        test(init_address_to_invalid_address),
     };
     const struct CMUnitTest tcp_tests[] = {
-        cmocka_unit_test(write_data),
-        cmocka_unit_test(receive_fails_with_too_small_buffer),
-        cmocka_unit_test(write_multiple_messages),
-        cmocka_unit_test(write_with_response),
-        cmocka_unit_test(write_protobuf),
-        cmocka_unit_test(write_encrypted_data),
-        cmocka_unit_test(write_multiple_encrypted_messages),
-        cmocka_unit_test(write_encrypted_messages_increments_nonce),
-        cmocka_unit_test(write_encrypted_message_with_response),
-        cmocka_unit_test(connect_fails_without_other_side),
+        test(write_data),
+        test(receive_fails_with_too_small_buffer),
+        test(write_multiple_messages),
+        test(write_with_response),
+        test(write_protobuf),
+        test(write_encrypted_data),
+        test(write_multiple_encrypted_messages),
+        test(write_encrypted_messages_increments_nonce),
+        test(write_encrypted_message_with_response),
+        test(connect_fails_without_other_side),
     };
 
     crypto_box_keypair(channel_keys.pk.box, channel_keys.sk.box);
@@ -326,7 +328,7 @@ int channel_test_run_suite(void)
     randombytes(local_nonce, sizeof(local_nonce));
     randombytes(remote_nonce, sizeof(remote_nonce));
 
-    return execute_test_suite("channel_tcp_shared", shared_tests, setup_tcp, teardown) ||
-           execute_test_suite("channel_udp_shared", shared_tests, setup_udp, teardown) ||
-           execute_test_suite("channel_tcp", tcp_tests, setup_tcp, teardown);
+    return execute_test_suite("channel_tcp_shared", shared_tests, setup_tcp, NULL) ||
+           execute_test_suite("channel_udp_shared", shared_tests, setup_udp, NULL) ||
+           execute_test_suite("channel_tcp", tcp_tests, setup_tcp, NULL);
 }
