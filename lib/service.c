@@ -19,8 +19,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "log.h"
-#include "service.h"
+#include "lib/log.h"
+#include "lib/service.h"
+#include "lib/service/x2x.h"
+#include "lib/service/xpra.h"
 
 int sd_services_from_config_file(struct sd_service **out, const char *file)
 {
@@ -105,6 +107,16 @@ int sd_service_from_config(struct sd_service *out, const char *name, const struc
     return -1;
 }
 
+static int fill_service_functions(struct sd_service *service)
+{
+    if (!strcmp(service->subtype, "xpra"))
+        return sd_xpra_init_service(service);
+    if (!strcmp(service->subtype, "x2x"))
+        return sd_x2x_init_service(service);
+
+    return -1;
+}
+
 int sd_service_from_section(struct sd_service *out, const struct cfg_section *section)
 {
     struct sd_service service;
@@ -129,7 +141,6 @@ int sd_service_from_section(struct sd_service *out, const struct cfg_section *se
         MAYBE_ADD_ENTRY(name, entry, value);
         MAYBE_ADD_ENTRY(type, entry, value);
         MAYBE_ADD_ENTRY(subtype, entry, value);
-        MAYBE_ADD_ENTRY(version, entry, value);
         MAYBE_ADD_ENTRY(port, entry, value);
         MAYBE_ADD_ENTRY(location, entry, value);
 
@@ -138,6 +149,11 @@ int sd_service_from_section(struct sd_service *out, const struct cfg_section *se
     }
 
 #undef MAYBE_ADD_ENTRY
+
+    if (fill_service_functions(&service) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Unknown service type '%s'", service.subtype);
+        goto out_err;
+    }
 
     memcpy(out, &service, sizeof(service));
 
@@ -154,7 +170,6 @@ void sd_service_free(struct sd_service *service)
     free(service->name);
     free(service->type);
     free(service->subtype);
-    free(service->version);
     free(service->port);
     free(service->location);
 }

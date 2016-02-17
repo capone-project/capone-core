@@ -85,7 +85,7 @@ static int handle_connect(struct sd_channel *channel)
     results.name = service.name;
     results.type = service.type;
     results.subtype = service.subtype;
-    results.version = service.version;
+    results.version = (char *) service.version();
     results.location = service.location;
 
     sd_channel_write_protobuf(channel, (ProtobufCMessage *) &results);

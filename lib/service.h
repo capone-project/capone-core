@@ -17,13 +17,22 @@
 
 #include "cfg.h"
 
+typedef void (*status_fn)(void);
+typedef void (*handle_fn)(void);
+typedef void (*parameters_fn)(void);
+typedef const char *(*version_fn)(void);
+
 struct sd_service {
     char *name;
     char *type;
     char *subtype;
-    char *version;
     char *port;
     char *location;
+
+    status_fn status;
+    version_fn version;
+    handle_fn handle;
+    parameters_fn parameters;
 };
 
 int sd_service_from_config_file(struct sd_service *out, const char *name, const char *file);

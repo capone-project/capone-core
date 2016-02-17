@@ -15,7 +15,9 @@ LIBRARY_SOURCES=lib/cfg.c \
 				lib/keys.c \
 				lib/log.c \
 				lib/server.c \
-				lib/service.c
+				lib/service.c \
+				lib/service/x2x.c \
+				lib/service/xpra.c
 LIBRARY_HEADERS=$(patsubst %.c,%.h,${LIBRARY_SOURCES})
 LIBRARY_OBJECTS=$(patsubst %.c,%.o,${LIBRARY_SOURCES})
 
