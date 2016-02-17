@@ -252,7 +252,7 @@ static void get_str_value_nonexisting()
         "two=three";
 
     assert_int_equal(cfg_parse_string(&config, text, sizeof(text)), 0);
-    assert_null(cfg_get_str_value(&config, "four", "five"));
+    assert_null(value = cfg_get_str_value(&config, "four", "five"));
 }
 
 static void get_int_value_simple()
