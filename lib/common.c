@@ -49,7 +49,7 @@ int pack_signed_protobuf(Envelope **out, const ProtobufCMessage *msg,
 {
     Envelope *env;
     uint8_t mac[crypto_sign_BYTES];
-    uint8_t *buf;
+    uint8_t *buf = NULL;
     int len;
 
     *out = NULL;
@@ -63,7 +63,7 @@ int pack_signed_protobuf(Envelope **out, const ProtobufCMessage *msg,
 
     if (crypto_sign_detached(mac, NULL, buf, len, keys->sk.sign) != 0) {
         sd_log(LOG_LEVEL_ERROR, "Unable to sign protobuf");
-        return -1;
+        goto out_err;
     }
     env->mac.data = malloc(crypto_sign_BYTES);
     memcpy(env->mac.data, mac, crypto_sign_BYTES);
@@ -74,7 +74,7 @@ int pack_signed_protobuf(Envelope **out, const ProtobufCMessage *msg,
 
         if (crypto_box_seal(ciphertext, buf, len, remote_key->box) < 0) {
             sd_log(LOG_LEVEL_ERROR, "Unable to encrypt protobuf");
-            return -1;
+            goto out_err;
         }
 
         free(buf);
@@ -94,6 +94,12 @@ int pack_signed_protobuf(Envelope **out, const ProtobufCMessage *msg,
     *out = env;
 
     return 0;
+
+out_err:
+    envelope__free_unpacked(env, NULL);
+    free(buf);
+
+    return -1;
 }
 
 int unpack_signed_protobuf(const ProtobufCMessageDescriptor *descr,

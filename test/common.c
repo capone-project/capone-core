@@ -146,6 +146,8 @@ static void test_unpacking_falsely_signed_protobuf()
     assert_failure(unpack_signed_protobuf(&test_message__descriptor,
                 (ProtobufCMessage **) &unpacked, out, NULL));
     assert_null(unpacked);
+
+    envelope__free_unpacked(out, NULL);
 }
 
 int common_test_run_suite(void)
