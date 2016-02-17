@@ -131,12 +131,15 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    if (sd_server_accept(&server, &channel) < 0) {
-        puts("Could not accept connection");
-        return -1;
-    }
+    while (1) {
+        if (sd_server_accept(&server, &channel) < 0) {
+            puts("Could not accept connection");
+            return -1;
+        }
 
-    handle_connect(&channel);
+        handle_connect(&channel);
+        sd_channel_close(&channel);
+    }
 
     sd_server_close(&server);
 
