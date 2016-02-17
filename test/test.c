@@ -15,13 +15,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <stdarg.h>
-#include <stddef.h>
-#include <stdio.h>
 #include <string.h>
-#include <setjmp.h>
-
-#include <cmocka.h>
 
 #include "lib/log.h"
 
@@ -29,6 +23,8 @@
 #include "channel.h"
 #include "common.h"
 #include "server.h"
+
+#include "test.h"
 
 int main(int argc, char *argv[])
 {
@@ -48,4 +44,11 @@ int main(int argc, char *argv[])
     server_test_run_suite();
 
     return 0;
+}
+
+int _execute_test_suite(const char *name, const struct CMUnitTest *tests, const size_t count,
+        CMFixtureFunction setup, CMFixtureFunction teardown)
+{
+    printf("[==========] Running testsuite %s\n", name);
+    return _cmocka_run_group_tests(name, tests, count, setup, teardown);
 }
