@@ -58,7 +58,7 @@ static void set_local_address_to_empty_address()
 static void set_local_address_to_invalid_address()
 {
     assert_failure(sd_server_init(&server, "999.999.999.999", "8080", type));
-    assert_true(server.fd >= 0);
+    assert_true(server.fd < 0);
 }
 
 static void connect_with_other_side()

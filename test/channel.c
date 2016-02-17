@@ -129,7 +129,7 @@ static void init_address_to_empty_address()
 static void init_address_to_invalid_address()
 {
     assert_failure(sd_channel_init_from_host(&channel, "999.999.999.999", "8080", type));
-    assert_true(channel.fd >= 0);
+    assert_true(channel.fd < 0);
 }
 
 static void write_data()
