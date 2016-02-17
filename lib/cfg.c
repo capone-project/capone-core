@@ -175,21 +175,16 @@ static enum line_type parse_line(char *key, size_t keylen, char *value, size_t v
     return LINE_TYPE_INVALID;
 }
 
-static struct cfg_section *add_section(struct cfg *c, const char *section)
+static struct cfg_section *add_section(struct cfg *c, const char *name)
 {
     struct cfg_section *s;
-    int len;
 
     c->numsections += 1;
     c->sections = realloc(c->sections, sizeof(struct cfg_section) * c->numsections);
 
     s = &c->sections[c->numsections - 1];
-    memset(s, '\0', sizeof(struct cfg_section));
-
-    len = strlen(section);
-    s->name = malloc(len + 1);
-    memcpy(s->name, section, len);
-    s->name[len] = '\0';
+    memset(s, 0, sizeof(struct cfg_section));
+    s->name = strdup(name);
 
     return s;
 }
@@ -197,25 +192,14 @@ static struct cfg_section *add_section(struct cfg *c, const char *section)
 static void add_config(struct cfg_section *s, const char *key, const char *value)
 {
     struct cfg_entry *e;
-    int len;
 
     s->numentries += 1;
     s->entries = realloc(s->entries, sizeof(struct cfg_entry) * s->numentries);
 
     e = &s->entries[s->numentries - 1];
-    memset(e, '\0', sizeof(struct cfg_entry));
-
-    len = strlen(key);
-    e->name = malloc(len + 1);
-    memcpy(e->name, key, len);
-    e->name[len] = '\0';
-
-    len = strlen(value);
-    e->value = malloc(len + 1);
-    memcpy(e->value, value, len);
-    e->value[len] = '\0';
-
-    return;
+    memset(e, 0, sizeof(struct cfg_entry));
+    e->name = strdup(key);
+    e->value = strdup(value);
 }
 
 int cfg_parse_string(struct cfg *c, const char *ptr, size_t len)
@@ -295,7 +279,6 @@ void cfg_free(struct cfg *c)
 
             free(e->name);
             free(e->value);
-
         }
 
         free(s->name);
