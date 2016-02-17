@@ -61,12 +61,14 @@ static int negotiate_encryption(struct sd_channel *channel)
         puts("Failed unpacking protobuf");
         return -1;
     }
+    envelope__free_unpacked(env, NULL);
 
     if (sd_channel_set_crypto_encrypt(channel, &keys, &remote_keys,
                 nonce, response->nonce.data) < 0) {
         puts("Failed enabling encryption");
         return -1;
     }
+
     encryption_negotiation_message__free_unpacked(response, NULL);
 
     return 0;
@@ -96,6 +98,8 @@ int query(struct sd_channel *channel)
            "\ttype: %s\n"
            "\tsubtype: %s\n"
            "\tlocation: %s\n", pk, result->name, result->type, result->subtype, result->location);
+
+    query_results__free_unpacked(result, NULL);
 
     return 0;
 }

@@ -38,32 +38,33 @@ int sd_keys_from_config_file(struct sd_keys *out, const char *file)
     value = cfg_get_str_value(&cfg, "core", "public_key");
     if (value == NULL) {
         puts("Could not retrieve public key from config");
-        return -1;
+        goto out_err;
     }
     if (sodium_hex2bin(sign_pk, sizeof(sign_pk), value, strlen(value), NULL, NULL, NULL) < 0) {
         puts("Could not decode public key");
-        return -1;
+        goto out_err;
     }
     free(value);
 
     value = cfg_get_str_value(&cfg, "core", "secret_key");
     if (value == NULL) {
         puts("Could not retrieve secret key from config");
-        return -1;
+        goto out_err;
     }
     if (sodium_hex2bin(sign_sk, sizeof(sign_sk), value, strlen(value), NULL, NULL, NULL)) {
         puts("Could not decode public key");
-        return -1;
+        goto out_err;
     }
     free(value);
+    value = NULL;
 
     if (crypto_sign_ed25519_pk_to_curve25519(box_pk, sign_pk) < 0) {
         puts("Could not convert public key to curve52219");
-        return -1;
+        goto out_err;
     }
     if (crypto_sign_ed25519_sk_to_curve25519(box_sk, sign_sk) < 0) {
         puts("Could not convert public key to curve52219");
-        return -1;
+        goto out_err;
     }
 
     memcpy(out->pk.sign, sign_pk, sizeof(sign_pk));
@@ -71,7 +72,15 @@ int sd_keys_from_config_file(struct sd_keys *out, const char *file)
     memcpy(out->pk.box, box_pk, sizeof(box_pk));
     memcpy(out->sk.box, box_sk, sizeof(box_sk));
 
+    cfg_free(&cfg);
+
     return 0;
+
+out_err:
+    free(value);
+    cfg_free(&cfg);
+
+    return -1;
 }
 
 int sd_keys_public_from_hex(struct sd_keys_public *out, const char *hex)

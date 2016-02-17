@@ -302,6 +302,7 @@ void cfg_free(struct cfg *c)
         free(s->entries);
     }
 
+    free(c->sections);
     c->numsections = 0;
     c->sections = NULL;
 }
