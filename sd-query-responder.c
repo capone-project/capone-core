@@ -76,6 +76,9 @@ static int negotiate_encryption(struct sd_channel *channel)
 static int handle_connect(struct sd_channel *channel)
 {
     QueryResults results = QUERY_RESULTS__INIT;
+    QueryResults__Parameter **parameters;
+    const struct sd_service_parameter *params;
+    int i, n;
 
     if (negotiate_encryption(channel) < 0) {
         puts("Unable to negotiate encryption");
@@ -87,6 +90,21 @@ static int handle_connect(struct sd_channel *channel)
     results.subtype = service.subtype;
     results.version = (char *) service.version();
     results.location = service.location;
+
+    n = service.parameters(&params);
+    parameters = malloc(sizeof(QueryResults__Parameter *) * n);
+    for (i = 0; i < n; i++) {
+        QueryResults__Parameter *parameter = malloc(sizeof(QueryResults__Parameter));
+        query_results__parameter__init(parameter);
+
+        parameter->key = (char *) params[i].name;
+        parameter->n_value = params[i].numvalues;
+        parameter->value = (char **) params[i].values;
+
+        parameters[i] = parameter;
+    }
+    results.parameters = parameters;
+    results.n_parameters = n;
 
     sd_channel_write_protobuf(channel, (ProtobufCMessage *) &results);
 

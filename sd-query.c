@@ -78,6 +78,7 @@ int query(struct sd_channel *channel)
 {
     QueryResults *result;
     char pk[crypto_sign_PUBLICKEYBYTES * 2 + 1];
+    size_t i, j;
 
     if (negotiate_encryption(channel) < 0) {
         puts("Unable to negotiate encryption");
@@ -105,6 +106,14 @@ int query(struct sd_channel *channel)
            result->subtype,
            result->version,
            result->location);
+
+    for (i = 0; i < result->n_parameters; i++) {
+        QueryResults__Parameter *param = result->parameters[i];
+        printf("\tparam:    %s\n", param->key);
+
+        for (j = 0; j < param->n_value; j++)
+            printf("\t          %s\n", param->value[j]);
+    }
 
     query_results__free_unpacked(result, NULL);
 
