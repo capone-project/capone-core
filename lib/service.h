@@ -17,9 +17,16 @@
 
 #include "cfg.h"
 
+struct sd_service_parameter {
+    const char *name;
+
+    int numvalues;
+    const char **values;
+};
+
 typedef void (*status_fn)(void);
 typedef void (*handle_fn)(void);
-typedef void (*parameters_fn)(void);
+typedef int (*parameters_fn)(const struct sd_service_parameter **out);
 typedef const char *(*version_fn)(void);
 
 struct sd_service {

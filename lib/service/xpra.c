@@ -25,12 +25,23 @@ static const char *version(void)
     return "0.0.1";
 }
 
+static int parameters(const struct sd_service_parameter **out)
+{
+    static const char *resolutions[] = { "1920x1080", "1024x860" };
+    static const struct sd_service_parameter params[] = {
+        { "resolution", sizeof(resolutions) / sizeof(resolutions[0]) , resolutions },
+    };
+
+    *out = params;
+    return sizeof(params) / sizeof(params[0]);
+}
+
 int sd_xpra_init_service(struct sd_service *service)
 {
     service->version = version;
     service->status = NULL;
     service->handle = NULL;
-    service->parameters = NULL;
+    service->parameters = parameters;
 
     return 0;
 }

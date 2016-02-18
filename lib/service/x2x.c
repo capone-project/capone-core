@@ -25,12 +25,19 @@ static const char *version(void)
     return "0.0.1";
 }
 
+
+static int parameters(const struct sd_service_parameter **out)
+{
+    *out = NULL;
+    return 0;
+}
+
 int sd_x2x_init_service(struct sd_service *service)
 {
     service->version = version;
     service->status = NULL;
     service->handle = NULL;
-    service->parameters = NULL;
+    service->parameters = parameters;
 
     return 0;
 }
