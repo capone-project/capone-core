@@ -28,12 +28,14 @@ static const char *version(void)
 static int parameters(const struct sd_service_parameter **out)
 {
     static const char *resolutions[] = { "1920x1080", "1024x860" };
+    static const char *boolean[] = { "true", "false" };
     static const struct sd_service_parameter params[] = {
-        { "resolution", sizeof(resolutions) / sizeof(resolutions[0]) , resolutions },
+        { "resolution", ARRAY_SIZE(resolutions), resolutions },
+        { "clipboard", ARRAY_SIZE(boolean), boolean },
     };
 
     *out = params;
-    return sizeof(params) / sizeof(params[0]);
+    return ARRAY_SIZE(params);
 }
 
 int sd_xpra_init_service(struct sd_service *service)

@@ -18,6 +18,7 @@
 #include "proto/envelope.pb-c.h"
 
 #define UNUSED(x) (void)(x)
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
 
 typedef void (*thread_fn)(void *);
 
