@@ -1,0 +1,16 @@
+message ConnectionRequestMessage {
+    message Parameter {
+        required string key = 1;
+        required string value = 2;
+    }
+
+    repeated Parameter parameters = 1;
+}
+
+message ConnectionTokenMessage {
+    required bytes token = 1;
+}
+
+message ConnectMessage {
+    required bytes token = 1;
+}

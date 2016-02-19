@@ -1,6 +1,7 @@
 include config.mk
 
-PROTOBUF=proto/discovery.proto \
+PROTOBUF=proto/connect.proto \
+		 proto/discovery.proto \
 		 proto/encryption.proto \
 		 proto/envelope.proto \
 		 proto/query.proto \
