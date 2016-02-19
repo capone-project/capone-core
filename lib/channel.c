@@ -170,7 +170,7 @@ int sd_channel_connect(struct sd_channel *c)
     return 0;
 }
 
-int sd_channel_write_data(struct sd_channel *c, uint8_t *data, size_t datalen)
+int sd_channel_write_data(struct sd_channel *c, uint8_t *data, uint32_t datalen)
 {
     uint8_t msg[4096 + crypto_box_MACBYTES];
     ssize_t ret;
@@ -208,9 +208,16 @@ int sd_channel_write_data(struct sd_channel *c, uint8_t *data, size_t datalen)
 
     switch (c->type) {
         case SD_CHANNEL_TYPE_TCP:
+            /* prefix with data length */
+            /* TODO: encrypt length */
+            ret = send(c->fd, (uint8_t *) &datalen, sizeof(uint32_t) / sizeof(uint8_t), 0);
             ret = send(c->fd, msg, datalen, 0);
             break;
         case SD_CHANNEL_TYPE_UDP:
+            /* prefix with data length */
+            /* TODO: encrypt length */
+            ret = sendto(c->fd, (uint8_t *) &datalen, sizeof(uint32_t) / sizeof(uint8_t), 0,
+                    (struct sockaddr *) &c->addr, sizeof(c->addr));
             ret = sendto(c->fd, msg, datalen, 0,
                     (struct sockaddr *) &c->addr, sizeof(c->addr));
             break;
@@ -253,13 +260,29 @@ int sd_channel_write_protobuf(struct sd_channel *c, ProtobufCMessage *msg)
 ssize_t sd_channel_receive_data(struct sd_channel *c, uint8_t *out, size_t maxlen)
 {
     uint8_t buf[4096];
-    ssize_t len;
+    uint32_t len;
+    ssize_t ret;
     int i;
 
-    len = recv(c->fd, buf, sizeof(buf), 0);
-    if (len < 0) {
+    ret = recv(c->fd, (uint8_t *) &len, sizeof(uint32_t) / sizeof(uint8_t), 0);
+    if (ret < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Could not receive data length: %s",
+                strerror(errno));
+        return -1;
+    }
+
+    if (len > sizeof(buf)) {
+        sd_log(LOG_LEVEL_ERROR, "Data length exceeds buffer");
+        return -1;
+    }
+
+    ret = recv(c->fd, buf, len, 0);
+    if (ret < 0) {
         sd_log(LOG_LEVEL_ERROR, "Could not receive data: %s",
                 strerror(errno));
+        return -1;
+    } else if (len != ret) {
+        sd_log(LOG_LEVEL_ERROR, "Unexpected size received");
         return -1;
     }
 
