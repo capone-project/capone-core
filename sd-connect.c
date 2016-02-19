@@ -15,9 +15,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <errno.h>
 #include <string.h>
 #include <stdio.h>
 #include <sodium.h>
+#include <inttypes.h>
 
 #include "lib/common.h"
 #include "lib/channel.h"
@@ -36,18 +38,22 @@ static void usage(const char *prog)
 {
     printf("USAGE: %s (request|connect)\n"
             "\trequest <CONFIG> <KEY> <HOST> <PORT> [<PARAMETER>...]\n"
-            "\tconnect <TOKEN> <HOST> <PORT>\n", prog);
+            "\tconnect <SESSIONID> <TOKEN> <HOST> <PORT> <TYPE>\n", prog);
     exit(-1);
 }
 
 static int request_connection(struct sd_channel *channel,
         const struct params *params, int nparams)
 {
+    ConnectionType type = CONNECTION_TYPE__INIT;
     ConnectionRequestMessage request = CONNECTION_REQUEST_MESSAGE__INIT;
     ConnectionRequestMessage__Parameter **parameters;
     ConnectionTokenMessage *token;
     char tokenhex[crypto_secretbox_KEYBYTES * 2 + 1];
     int i;
+
+    type.type = CONNECTION_TYPE__TYPE__REQUEST;
+    sd_channel_write_protobuf(channel, &type.base);
 
     if (initiate_encryption(channel, &keys, &remote_keys) < 0) {
         puts("Unable to initiate encryption");
@@ -83,7 +89,8 @@ static int request_connection(struct sd_channel *channel,
 
     sodium_bin2hex(tokenhex, sizeof(tokenhex),
             token->token.data, token->token.len);
-    printf("Received token %s\n", tokenhex);
+    printf("token:     %s\n"
+           "sessionid: %"PRIu32"\n", tokenhex, token->sessionid);
 
     return 0;
 }
@@ -171,8 +178,54 @@ static int cmd_request(int argc, char *argv[])
 
 static int cmd_connect(int argc, char *argv[])
 {
-    UNUSED(argc);
-    UNUSED(argv);
+    ConnectionType conntype = CONNECTION_TYPE__INIT;
+    ConnectionInitiation initiation = CONNECTION_INITIATION__INIT;
+    char *key, *host, *port, *type;
+    struct sd_channel channel;
+    uint32_t sessionid;
+    int saved_errno;
+
+    if (argc != 7)
+        usage(argv[0]);
+
+    saved_errno = errno;
+    sessionid = strtol(argv[2], NULL, 10);
+    if (errno != 0) {
+        printf("Invalid session ID %s\n", argv[2]);
+        return -1;
+    }
+    errno = saved_errno;
+
+    key = argv[3];
+    host = argv[4];
+    port = argv[5];
+    type = argv[6];
+
+    UNUSED(key);
+    UNUSED(type);
+
+    if (sd_channel_init_from_host(&channel, host, port, SD_CHANNEL_TYPE_TCP) < 0) {
+        puts("Could not initialize channel");
+        return -1;
+    }
+
+    if (sd_channel_connect(&channel) < 0) {
+        puts("Could not connect to server");
+        return -1;
+    }
+
+    conntype.type = CONNECTION_TYPE__TYPE__CONNECT;
+    if (sd_channel_write_protobuf(&channel, &conntype.base) < 0) {
+        puts("Could not send connection type");
+        return -1;
+    }
+
+    initiation.sessionid = sessionid;
+    if (sd_channel_write_protobuf(&channel, &initiation.base) < 0 ){
+        puts("Could not initiate session");
+        return -1;
+    }
+
     return 0;
 }
 

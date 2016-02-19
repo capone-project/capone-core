@@ -26,7 +26,7 @@
 static struct sd_keys keys;
 static struct sd_service service;
 
-static int handle_connect(struct sd_channel *channel)
+static int handle_request(struct sd_channel *channel)
 {
     ConnectionRequestMessage *request;
     ConnectionTokenMessage token = CONNECTION_TOKEN_MESSAGE__INIT;
@@ -47,12 +47,19 @@ static int handle_connect(struct sd_channel *channel)
     randombytes_buf(key, sizeof(key));
     token.token.data = key;
     token.token.len = sizeof(key);
+    token.sessionid = randombytes_random();
 
     if (sd_channel_write_protobuf(channel, &token.base) < 0) {
         puts("Unable to send connection token");
         return -1;
     }
 
+    return 0;
+}
+
+static int handle_connect(struct sd_channel *channel)
+{
+    UNUSED(channel);
     return 0;
 }
 
@@ -96,17 +103,37 @@ int main(int argc, char *argv[])
     }
 
     while (1) {
+        ConnectionType *type;
+
         if (sd_server_accept(&server, &channel) < 0) {
             puts("Could not accept connection");
             return -1;
         }
 
-        handle_connect(&channel);
+        if (sd_channel_receive_protobuf(&channel,
+                    (ProtobufCMessageDescriptor *) &connection_type__descriptor,
+                    (ProtobufCMessage **) &type) < 0) {
+            puts("Failed receiving connection type");
+            return -1;
+        }
+
+        switch (type->type) {
+            case CONNECTION_TYPE__TYPE__REQUEST:
+                handle_request(&channel);
+                break;
+            case CONNECTION_TYPE__TYPE__CONNECT:
+                handle_connect(&channel);
+                break;
+            default:
+                printf("Unknown connection envelope type %d\n", type->type);
+                break;
+        }
+
         sd_channel_close(&channel);
+        connection_type__free_unpacked(type, NULL);
     }
 
     sd_server_close(&server);
-
 
     return 0;
 }

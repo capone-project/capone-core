@@ -1,3 +1,12 @@
+message ConnectionType {
+    enum Type {
+        REQUEST = 0;
+        CONNECT = 1;
+    };
+
+    required Type type = 1;
+}
+
 message ConnectionRequestMessage {
     message Parameter {
         required string key = 1;
@@ -9,6 +18,11 @@ message ConnectionRequestMessage {
 
 message ConnectionTokenMessage {
     required bytes token = 1;
+    required uint32 sessionid = 2;
+}
+
+message ConnectionInitiation {
+    required uint32 sessionid = 1;
 }
 
 message ConnectMessage {
