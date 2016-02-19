@@ -32,6 +32,14 @@ struct params {
 static struct sd_keys keys;
 static struct sd_keys_public remote_keys;
 
+static void usage(const char *prog)
+{
+    printf("USAGE: %s (request|connect)\n"
+            "\trequest <CONFIG> <KEY> <HOST> <PORT> [<PARAMETER>...]\n"
+            "\tconnect <TOKEN> <HOST> <PORT>\n", prog);
+    exit(-1);
+}
+
 static int request_connection(struct sd_channel *channel,
         const struct params *params, int nparams)
 {
@@ -109,30 +117,24 @@ static int parse_params(struct params **out, int argc, char *argv[])
     return i;
 }
 
-int main(int argc, char *argv[])
+static int cmd_request(int argc, char *argv[])
 {
     const char *config, *key, *host, *port;
     struct sd_channel channel;
     struct params *params;
     int nparams;
 
-    if (argc < 5) {
-        printf("USAGE: %s <CONFIG> <KEY> <HOST> <PORT> [<PARAMETER>...]\n", argv[0]);
-        return -1;
+    if (argc < 6) {
+        usage(argv[0]);
     }
 
-    config = argv[1];
-    key = argv[2];
-    host = argv[3];
-    port = argv[4];
+    config = argv[2];
+    key = argv[3];
+    host = argv[4];
+    port = argv[5];
 
-    if ((nparams = parse_params(&params, argc - 5, argv + 5)) < 0) {
+    if ((nparams = parse_params(&params, argc - 6, argv + 6)) < 0) {
         puts("Could not parse parameters");
-        return -1;
-    }
-
-    if (sodium_init() < 0) {
-        puts("Could not init libsodium");
         return -1;
     }
 
@@ -165,4 +167,29 @@ int main(int argc, char *argv[])
     sd_channel_close(&channel);
 
     return 0;
+}
+
+static int cmd_connect(int argc, char *argv[])
+{
+    UNUSED(argc);
+    UNUSED(argv);
+    return 0;
+}
+
+int main(int argc, char *argv[])
+{
+    if (argc < 2)
+        usage(argv[0]);
+
+    if (sodium_init() < 0) {
+        puts("Could not init libsodium");
+        return -1;
+    }
+
+    if (!strcmp(argv[1], "request"))
+        return cmd_request(argc, argv);
+    else if (!strcmp(argv[1], "connect"))
+        return cmd_connect(argc, argv);
+
+    usage(argv[0]);
 }
