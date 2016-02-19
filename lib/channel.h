@@ -63,8 +63,8 @@ int sd_channel_close(struct sd_channel *c);
 
 int sd_channel_set_crypto_none(struct sd_channel *c);
 int sd_channel_set_crypto_encrypt(struct sd_channel *c,
-        struct sd_keys *local_keys,
-        struct sd_keys_public *remote_keys,
+        const struct sd_keys *local_keys,
+        const struct sd_keys_public *remote_keys,
         uint8_t *local_nonce, uint8_t *remote_nonce);
 
 int sd_channel_connect(struct sd_channel *c);

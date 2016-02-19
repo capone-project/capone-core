@@ -25,54 +25,6 @@
 static struct sd_keys keys;
 static struct sd_service service;
 
-static int negotiate_encryption(struct sd_channel *channel)
-{
-    uint8_t nonce[crypto_box_NONCEBYTES];
-    struct sd_keys_public remote_keys;
-    EncryptionNegotiationMessage *negotiation,
-        response = ENCRYPTION_NEGOTIATION_MESSAGE__INIT;
-    Envelope *env;
-
-    if (sd_channel_receive_protobuf(channel,
-            (ProtobufCMessageDescriptor *) &envelope__descriptor,
-            (ProtobufCMessage **) &env) < 0) {
-        puts("Failed receiving protobuf");
-        return -1;
-    }
-
-    if (unpack_signed_protobuf(&encryption_negotiation_message__descriptor,
-                (ProtobufCMessage **) &negotiation, env, &keys) < 0) {
-        puts("Failed unpacking protobuf");
-        return -1;
-    }
-    if (sd_keys_public_from_bin(&remote_keys, env->pk.data, env->pk.len) < 0 ) {
-        puts("Could not extract remote keys");
-        return -1;
-    }
-    envelope__free_unpacked(env, NULL);
-
-    /* TODO: use correct nonce */
-    randombytes_buf(nonce, sizeof(nonce));
-    response.nonce.data = nonce;
-    response.nonce.len = sizeof(nonce);
-
-    if (pack_signed_protobuf(&env, (ProtobufCMessage *) &response,
-                &keys, &remote_keys) < 0) {
-        puts("Could not pack query");
-        return -1;
-    }
-    if (sd_channel_write_protobuf(channel, (ProtobufCMessage *) env) < 0) {
-        puts("Could not send query");
-        return -1;
-    }
-    envelope__free_unpacked(env, NULL);
-
-    sd_channel_set_crypto_encrypt(channel, &keys, &remote_keys, nonce, negotiation->nonce.data);
-    encryption_negotiation_message__free_unpacked(negotiation, NULL);
-
-    return 0;
-}
-
 static int handle_connect(struct sd_channel *channel)
 {
     QueryResults results = QUERY_RESULTS__INIT;
@@ -80,7 +32,7 @@ static int handle_connect(struct sd_channel *channel)
     const struct sd_service_parameter *params;
     int i, n;
 
-    if (negotiate_encryption(channel) < 0) {
+    if (await_encryption(channel, &keys) < 0) {
         puts("Unable to negotiate encryption");
         return -1;
     }

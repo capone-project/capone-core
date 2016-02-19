@@ -19,7 +19,6 @@
 #include <stdio.h>
 #include <sodium.h>
 
-#include "proto/encryption.pb-c.h"
 #include "proto/query.pb-c.h"
 
 #include "lib/channel.h"
@@ -28,59 +27,13 @@
 static struct sd_keys keys;
 static struct sd_keys_public remote_keys;
 
-static int negotiate_encryption(struct sd_channel *channel)
-{
-    uint8_t nonce[crypto_box_NONCEBYTES];
-    EncryptionNegotiationMessage *response,
-        negotiation = ENCRYPTION_NEGOTIATION_MESSAGE__INIT;
-    Envelope *env;
-
-    /* TODO: use correct nonce */
-    randombytes_buf(nonce, sizeof(nonce));
-    negotiation.nonce.data = nonce;
-    negotiation.nonce.len = sizeof(nonce);
-
-    if (pack_signed_protobuf(&env, (ProtobufCMessage *) &negotiation,
-                &keys, &remote_keys) < 0) {
-        puts("Could not pack negotiation");
-        return -1;
-    }
-    if (sd_channel_write_protobuf(channel, (ProtobufCMessage *) env) < 0) {
-        puts("Could not send negotiation");
-        return -1;
-    }
-    envelope__free_unpacked(env, NULL);
-
-    if (sd_channel_receive_protobuf(channel, &envelope__descriptor,
-            (ProtobufCMessage **) &env) < 0) {
-        puts("Failed receiving negotiation response");
-        return -1;
-    }
-    if (unpack_signed_protobuf(&encryption_negotiation_message__descriptor,
-                (ProtobufCMessage **) &response, env, &keys) < 0) {
-        puts("Failed unpacking protobuf");
-        return -1;
-    }
-    envelope__free_unpacked(env, NULL);
-
-    if (sd_channel_set_crypto_encrypt(channel, &keys, &remote_keys,
-                nonce, response->nonce.data) < 0) {
-        puts("Failed enabling encryption");
-        return -1;
-    }
-
-    encryption_negotiation_message__free_unpacked(response, NULL);
-
-    return 0;
-}
-
 int query(struct sd_channel *channel)
 {
     QueryResults *result;
     char pk[crypto_sign_PUBLICKEYBYTES * 2 + 1];
     size_t i, j;
 
-    if (negotiate_encryption(channel) < 0) {
+    if (initiate_encryption(channel, &keys, &remote_keys) < 0) {
         puts("Unable to negotiate encryption");
         return -1;
     }

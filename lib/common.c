@@ -21,9 +21,11 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#include "lib/channel.h"
 #include "lib/cfg.h"
 #include "lib/log.h"
-#include "lib/keys.h"
+
+#include "proto/encryption.pb-c.h"
 
 #include "common.h"
 
@@ -153,6 +155,102 @@ int unpack_signed_protobuf(const ProtobufCMessageDescriptor *descr,
         free(data);
 
     *out = msg;
+
+    return 0;
+}
+
+int initiate_encryption(struct sd_channel *channel,
+        const struct sd_keys *local_keys,
+        const struct sd_keys_public *remote_keys)
+{
+    uint8_t nonce[crypto_box_NONCEBYTES];
+    EncryptionNegotiationMessage *response,
+        negotiation = ENCRYPTION_NEGOTIATION_MESSAGE__INIT;
+    Envelope *env;
+
+    /* TODO: use correct nonce */
+    randombytes_buf(nonce, sizeof(nonce));
+    negotiation.nonce.data = nonce;
+    negotiation.nonce.len = sizeof(nonce);
+
+    if (pack_signed_protobuf(&env, (ProtobufCMessage *) &negotiation,
+                local_keys, remote_keys) < 0) {
+        puts("Could not pack negotiation");
+        return -1;
+    }
+    if (sd_channel_write_protobuf(channel, (ProtobufCMessage *) env) < 0) {
+        puts("Could not send negotiation");
+        return -1;
+    }
+    envelope__free_unpacked(env, NULL);
+
+    if (sd_channel_receive_protobuf(channel, &envelope__descriptor,
+            (ProtobufCMessage **) &env) < 0) {
+        puts("Failed receiving negotiation response");
+        return -1;
+    }
+    if (unpack_signed_protobuf(&encryption_negotiation_message__descriptor,
+                (ProtobufCMessage **) &response, env, local_keys) < 0) {
+        puts("Failed unpacking protobuf");
+        return -1;
+    }
+    envelope__free_unpacked(env, NULL);
+
+    if (sd_channel_set_crypto_encrypt(channel, local_keys, remote_keys,
+                nonce, response->nonce.data) < 0) {
+        puts("Failed enabling encryption");
+        return -1;
+    }
+
+    encryption_negotiation_message__free_unpacked(response, NULL);
+
+    return 0;
+}
+
+int await_encryption(struct sd_channel *channel, const struct sd_keys *local_keys)
+{
+    uint8_t nonce[crypto_box_NONCEBYTES];
+    struct sd_keys_public remote_keys;
+    EncryptionNegotiationMessage *negotiation,
+        response = ENCRYPTION_NEGOTIATION_MESSAGE__INIT;
+    Envelope *env;
+
+    if (sd_channel_receive_protobuf(channel,
+            (ProtobufCMessageDescriptor *) &envelope__descriptor,
+            (ProtobufCMessage **) &env) < 0) {
+        puts("Failed receiving protobuf");
+        return -1;
+    }
+
+    if (unpack_signed_protobuf(&encryption_negotiation_message__descriptor,
+                (ProtobufCMessage **) &negotiation, env, local_keys) < 0) {
+        puts("Failed unpacking protobuf");
+        return -1;
+    }
+    if (sd_keys_public_from_bin(&remote_keys, env->pk.data, env->pk.len) < 0 ) {
+        puts("Could not extract remote keys");
+        return -1;
+    }
+    envelope__free_unpacked(env, NULL);
+
+    /* TODO: use correct nonce */
+    randombytes_buf(nonce, sizeof(nonce));
+    response.nonce.data = nonce;
+    response.nonce.len = sizeof(nonce);
+
+    if (pack_signed_protobuf(&env, (ProtobufCMessage *) &response,
+                local_keys, &remote_keys) < 0) {
+        puts("Could not pack query");
+        return -1;
+    }
+    if (sd_channel_write_protobuf(channel, (ProtobufCMessage *) env) < 0) {
+        puts("Could not send query");
+        return -1;
+    }
+    envelope__free_unpacked(env, NULL);
+
+    sd_channel_set_crypto_encrypt(channel, local_keys, &remote_keys, nonce, negotiation->nonce.data);
+    encryption_negotiation_message__free_unpacked(negotiation, NULL);
 
     return 0;
 }
