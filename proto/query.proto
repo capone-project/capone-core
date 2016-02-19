@@ -9,5 +9,6 @@ message QueryResults {
     required string subtype = 3;
     required string version = 4;
     required string location = 5;
-    repeated Parameter parameters = 6;
+    required string port = 6;
+    repeated Parameter parameters = 7;
 }

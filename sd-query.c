@@ -99,13 +99,15 @@ int query(struct sd_channel *channel)
            "\ttype:     %s\n"
            "\tsubtype:  %s\n"
            "\tversion:  %s\n"
-           "\tlocation: %s\n",
+           "\tlocation: %s\n"
+           "\tport:     %s\n",
            pk,
            result->name,
            result->type,
            result->subtype,
            result->version,
-           result->location);
+           result->location,
+           result->port);
 
     for (i = 0; i < result->n_parameters; i++) {
         QueryResults__Parameter *param = result->parameters[i];
