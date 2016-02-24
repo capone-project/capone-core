@@ -38,7 +38,7 @@ static void usage(const char *prog)
 {
     printf("USAGE: %s (request|connect)\n"
             "\trequest <CONFIG> <KEY> <HOST> <PORT> [<PARAMETER>...]\n"
-            "\tconnect <SESSIONID> <TOKEN> <HOST> <PORT> <TYPE>\n", prog);
+            "\tconnect <SESSIONID> <TOKEN> <HOST> <PORT>\n", prog);
     exit(-1);
 }
 
@@ -179,7 +179,7 @@ static int cmd_connect(int argc, char *argv[])
 {
     ConnectionType conntype = CONNECTION_TYPE__INIT;
     ConnectionInitiation initiation = CONNECTION_INITIATION__INIT;
-    const char *token, *host, *port, *type;
+    const char *token, *host, *port;
     struct sd_key_symmetric key;
     struct sd_channel channel;
     uint8_t local_nonce[crypto_secretbox_NONCEBYTES],
@@ -188,13 +188,12 @@ static int cmd_connect(int argc, char *argv[])
     int saved_errno, n;
     uint8_t buf[4096];
 
-    if (argc != 7)
+    if (argc != 6)
         usage(argv[0]);
 
     token = argv[3];
     host = argv[4];
     port = argv[5];
-    type = argv[6];
 
     saved_errno = errno;
     sessionid = strtol(argv[2], NULL, 10);
@@ -241,13 +240,9 @@ static int cmd_connect(int argc, char *argv[])
         return -1;
     }
 
-    /* TODO: start service */
-    UNUSED(type);
-
     while ((n = sd_channel_receive_data(&channel, buf, sizeof(buf))) > 0) {
         printf("%.*s", n, buf);
     }
-
     return 0;
 }
 
