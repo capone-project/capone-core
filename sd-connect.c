@@ -102,11 +102,6 @@ static int request_connection(struct sd_channel *channel,
     return 0;
 }
 
-static int start_connection(void)
-{
-    return 0;
-}
-
 static int parse_params(struct params **out, int argc, char *argv[])
 {
     struct params *params;
@@ -173,9 +168,6 @@ static int cmd_request(int argc, char *argv[])
     }
 
     if (request_connection(&channel, params, nparams) < 0)
-        return -1;
-
-    if (start_connection() < 0)
         return -1;
 
     sd_channel_close(&channel);
