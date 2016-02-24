@@ -246,6 +246,11 @@ int sd_channel_write_protobuf(struct sd_channel *c, ProtobufCMessage *msg)
     size_t size;
     uint8_t buf[4096];
 
+    if (!protobuf_c_message_check(msg)) {
+        sd_log(LOG_LEVEL_ERROR, "Invalid protobuf message");
+        return -1;
+    }
+
     size = protobuf_c_message_get_packed_size(msg);
     if (size > sizeof(buf)) {
         sd_log(LOG_LEVEL_ERROR, "Protobuf message exceeds buffer length");
