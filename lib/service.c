@@ -21,6 +21,7 @@
 
 #include "lib/log.h"
 #include "lib/service.h"
+#include "lib/service/exec.h"
 #include "lib/service/x2x.h"
 #include "lib/service/xpra.h"
 
@@ -109,6 +110,8 @@ int sd_service_from_config(struct sd_service *out, const char *name, const struc
 
 static int fill_service_functions(struct sd_service *service)
 {
+    if (!strcmp(service->subtype, "exec"))
+        return sd_exec_init_service(service);
     if (!strcmp(service->subtype, "xpra"))
         return sd_xpra_init_service(service);
     if (!strcmp(service->subtype, "x2x"))

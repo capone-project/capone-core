@@ -17,6 +17,7 @@ LIBRARY_SOURCES=lib/cfg.c \
 				lib/log.c \
 				lib/server.c \
 				lib/service.c \
+				lib/service/exec.c \
 				lib/service/x2x.c \
 				lib/service/xpra.c
 LIBRARY_HEADERS=$(patsubst %.c,%.h,${LIBRARY_SOURCES})
