@@ -244,9 +244,9 @@ static void write_encrypted_data()
 
     stub_sockets(&channel, &remote);
 
-    sd_channel_set_crypto_encrypt(&channel, &channel_keys, &remote_keys.pk,
+    sd_channel_set_crypto_asymmetric(&channel, &channel_keys, &remote_keys.pk,
             local_nonce, remote_nonce);
-    sd_channel_set_crypto_encrypt(&remote, &remote_keys, &channel_keys.pk,
+    sd_channel_set_crypto_asymmetric(&remote, &remote_keys, &channel_keys.pk,
             remote_nonce, local_nonce);
 
     assert_success(sd_channel_write_data(&channel, msg, sizeof(msg)));
@@ -262,9 +262,9 @@ static void write_multiple_encrypted_messages()
 
     stub_sockets(&channel, &remote);
 
-    sd_channel_set_crypto_encrypt(&channel, &channel_keys, &remote_keys.pk,
+    sd_channel_set_crypto_asymmetric(&channel, &channel_keys, &remote_keys.pk,
             local_nonce, remote_nonce);
-    sd_channel_set_crypto_encrypt(&remote, &remote_keys, &channel_keys.pk,
+    sd_channel_set_crypto_asymmetric(&remote, &remote_keys, &channel_keys.pk,
             remote_nonce, local_nonce);
 
     assert_success(sd_channel_write_data(&channel, m1, sizeof(m1)));
@@ -284,9 +284,9 @@ static void write_encrypted_messages_increments_nonce()
 
     stub_sockets(&channel, &remote);
 
-    sd_channel_set_crypto_encrypt(&channel, &channel_keys, &remote_keys.pk,
+    sd_channel_set_crypto_asymmetric(&channel, &channel_keys, &remote_keys.pk,
             local_nonce, remote_nonce);
-    sd_channel_set_crypto_encrypt(&remote, &remote_keys, &channel_keys.pk,
+    sd_channel_set_crypto_asymmetric(&remote, &remote_keys, &channel_keys.pk,
             remote_nonce, local_nonce);
 
     memcpy(nonce, channel.local_nonce, sizeof(nonce));
@@ -310,9 +310,9 @@ static void write_encrypted_message_with_response()
 
     stub_sockets(&channel, &remote);
 
-    sd_channel_set_crypto_encrypt(&channel, &channel_keys, &remote_keys.pk,
+    sd_channel_set_crypto_asymmetric(&channel, &channel_keys, &remote_keys.pk,
             local_nonce, remote_nonce);
-    sd_channel_set_crypto_encrypt(&remote, &remote_keys, &channel_keys.pk,
+    sd_channel_set_crypto_asymmetric(&remote, &remote_keys, &channel_keys.pk,
             remote_nonce, local_nonce);
 
     assert_success(sd_channel_write_data(&channel, m1, sizeof(m1)));

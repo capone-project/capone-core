@@ -202,7 +202,7 @@ int initiate_encryption(struct sd_channel *channel,
     }
     envelope__free_unpacked(env, NULL);
 
-    if (sd_channel_set_crypto_encrypt(channel, local_keys, remote_keys,
+    if (sd_channel_set_crypto_asymmetric(channel, local_keys, remote_keys,
                 nonce, response->nonce.data) < 0) {
         puts("Failed enabling encryption");
         return -1;
@@ -255,7 +255,7 @@ int await_encryption(struct sd_channel *channel, const struct sd_key_pair *local
     }
     envelope__free_unpacked(env, NULL);
 
-    sd_channel_set_crypto_encrypt(channel, local_keys, &remote_keys, nonce, negotiation->nonce.data);
+    sd_channel_set_crypto_asymmetric(channel, local_keys, &remote_keys, nonce, negotiation->nonce.data);
     encryption_negotiation_message__free_unpacked(negotiation, NULL);
 
     return 0;
