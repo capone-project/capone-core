@@ -160,6 +160,7 @@ int main(int argc, char *argv[])
             case CONNECTION_TYPE__TYPE__CONNECT:
                 handle_connect(&channel);
                 break;
+            case _CONNECTION_TYPE__TYPE_IS_INT_SIZE:
             default:
                 printf("Unknown connection envelope type %d\n", type->type);
                 break;
