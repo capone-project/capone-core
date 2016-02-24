@@ -83,8 +83,8 @@ static int handle_connect(struct sd_channel *channel)
     }
 
     for (i = 0; i < nsessions; i++) {
-        if (sessions[i - 1].sessionid == initiation->sessionid) {
-            token = sessions[i - 1].token;
+        if (sessions[i].sessionid == initiation->sessionid) {
+            token = sessions[i].token;
             break;
         }
     }
