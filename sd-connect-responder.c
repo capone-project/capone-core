@@ -106,6 +106,11 @@ static int handle_connect(struct sd_channel *channel)
         return -1;
     }
 
+    if (service.handle(channel, NULL, 0) < 0) {
+        puts("Service could not handle connection");
+        return -1;
+    }
+
     return 0;
 }
 

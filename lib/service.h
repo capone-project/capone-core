@@ -15,7 +15,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "cfg.h"
+#include "lib/cfg.h"
+
+struct sd_channel;
 
 struct sd_service_parameter {
     const char *name;
@@ -25,7 +27,8 @@ struct sd_service_parameter {
 };
 
 typedef void (*status_fn)(void);
-typedef void (*handle_fn)(void);
+typedef int (*handle_fn)(struct sd_channel *channel,
+        struct sd_service_parameter **params, size_t nparams);
 typedef int (*parameters_fn)(const struct sd_service_parameter **out);
 typedef const char *(*version_fn)(void);
 

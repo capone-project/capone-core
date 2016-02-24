@@ -185,7 +185,8 @@ static int cmd_connect(int argc, char *argv[])
     uint8_t local_nonce[crypto_secretbox_NONCEBYTES],
             remote_nonce[crypto_secretbox_NONCEBYTES];
     uint32_t sessionid;
-    int saved_errno;
+    int saved_errno, n;
+    uint8_t buf[4096];
 
     if (argc != 7)
         usage(argv[0]);
@@ -242,6 +243,10 @@ static int cmd_connect(int argc, char *argv[])
 
     /* TODO: start service */
     UNUSED(type);
+
+    while ((n = sd_channel_receive_data(&channel, buf, sizeof(buf))) > 0) {
+        printf("%.*s", n, buf);
+    }
 
     return 0;
 }
