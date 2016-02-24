@@ -172,6 +172,22 @@ static void write_multiple_messages()
     assert_string_equal(buf, m2);
 }
 
+static void write_repeated_before_read()
+{
+    uint8_t m[] = "m1", buf[10];
+    int i;
+
+    stub_sockets(&channel, &remote);
+
+    for (i = 0; i < 10; i++) {
+        assert_success(sd_channel_write_data(&channel, m, sizeof(m)));
+    }
+
+    for (i = 0; i < 10; i++) {
+        assert_int_equal(sd_channel_receive_data(&remote, buf, sizeof(buf)), sizeof(m));
+    }
+}
+
 static void write_with_response()
 {
     uint8_t m1[] = "m1", m2[] = "m2", buf[10];
@@ -314,6 +330,7 @@ int channel_test_run_suite(void)
         test(write_data),
         test(receive_fails_with_too_small_buffer),
         test(write_multiple_messages),
+        test(write_repeated_before_read),
         test(write_with_response),
         test(write_protobuf),
         test(write_encrypted_data),
