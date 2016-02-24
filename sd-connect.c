@@ -47,7 +47,6 @@ static int request_connection(struct sd_channel *channel,
 {
     ConnectionType type = CONNECTION_TYPE__INIT;
     ConnectionRequestMessage request = CONNECTION_REQUEST_MESSAGE__INIT;
-    ConnectionRequestMessage__Parameter **parameters;
     ConnectionTokenMessage *token;
     char tokenhex[crypto_secretbox_KEYBYTES * 2 + 1];
     int i;
@@ -60,19 +59,27 @@ static int request_connection(struct sd_channel *channel,
         return -1;
     }
 
-    parameters = malloc(sizeof(ConnectionRequestMessage__Parameter *) * nparams);
-    for (i = 0; i < nparams; i++) {
-        ConnectionRequestMessage__Parameter *param =
-            malloc(sizeof(ConnectionRequestMessage__Parameter));
-        connection_request_message__parameter__init(param);
+    if (nparams) {
+        ConnectionRequestMessage__Parameter **parameters =
+            malloc(sizeof(ConnectionRequestMessage__Parameter *) * nparams);
 
-        param->key = (char *) params[i].key;
-        param->value = (char *) params[i].value;
+        for (i = 0; i < nparams; i++) {
+            ConnectionRequestMessage__Parameter *param =
+                malloc(sizeof(ConnectionRequestMessage__Parameter));
+            connection_request_message__parameter__init(param);
 
-        parameters[i] = param;
+            param->key = (char *) params[i].key;
+            param->value = (char *) params[i].value;
+
+            parameters[i] = param;
+        }
+
+        request.parameters = parameters;
+        request.n_parameters = nparams;
+    } else {
+        request.parameters = NULL;
+        request.n_parameters = 0;
     }
-    request.parameters = parameters;
-    request.n_parameters = nparams;
 
     if (sd_channel_write_protobuf(channel, &request.base) < 0) {
         puts("Unable to send connection request");
