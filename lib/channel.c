@@ -200,6 +200,9 @@ int sd_channel_write_data(struct sd_channel *c, uint8_t *data, uint32_t datalen)
             }
             datalen = datalen + crypto_box_MACBYTES;
 
+            for (i = 0; i < c->nonce_offset; i++)
+                sodium_increment(c->local_nonce, crypto_box_NONCEBYTES);
+
             break;
         default:
             sd_log(LOG_LEVEL_ERROR, "Unknown crypto type");
@@ -234,9 +237,6 @@ int sd_channel_write_data(struct sd_channel *c, uint8_t *data, uint32_t datalen)
         sd_log(LOG_LEVEL_ERROR, "Buffer not wholly transmittedd");
         return -1;
     }
-
-    for (i = 0; i < c->nonce_offset; i++)
-        sodium_increment(c->local_nonce, crypto_box_NONCEBYTES);
 
     return 0;
 }
@@ -310,14 +310,14 @@ ssize_t sd_channel_receive_data(struct sd_channel *c, uint8_t *out, size_t maxle
             }
             len = len - crypto_box_MACBYTES;
 
+            for (i = 0; i < c->nonce_offset; i++)
+                sodium_increment(c->remote_nonce, crypto_box_NONCEBYTES);
+
             break;
         default:
             sd_log(LOG_LEVEL_ERROR, "Unknown crypto type");
             return -1;
     }
-
-    for (i = 0; i < c->nonce_offset; i++)
-        sodium_increment(c->remote_nonce, crypto_box_NONCEBYTES);
 
     return len;
 }
