@@ -146,6 +146,22 @@ static void write_data()
     assert_string_equal(sender, receiver);
 }
 
+static void write_some_data()
+{
+    uint8_t m[4096];
+    uint8_t buf[sizeof(m)];
+
+    memset(m, '1', sizeof(m));
+    m[sizeof(m) - 1] = '\0';
+
+    stub_sockets(&channel, &remote);
+
+    assert_success(sd_channel_write_data(&channel, m, sizeof(m)));
+    assert_int_equal(sd_channel_receive_data(&remote, buf, sizeof(buf)), sizeof(m));
+
+    assert_string_equal(m, buf);
+}
+
 static void receive_fails_with_too_small_buffer()
 {
     uint8_t msg[] = "test",
@@ -328,6 +344,7 @@ int channel_test_run_suite(void)
     };
     const struct CMUnitTest tcp_tests[] = {
         test(write_data),
+        test(write_some_data),
         test(receive_fails_with_too_small_buffer),
         test(write_multiple_messages),
         test(write_repeated_before_read),
