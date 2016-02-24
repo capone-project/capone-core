@@ -180,7 +180,10 @@ static int cmd_connect(int argc, char *argv[])
     ConnectionType conntype = CONNECTION_TYPE__INIT;
     ConnectionInitiation initiation = CONNECTION_INITIATION__INIT;
     const char *token, *host, *port, *type;
+    struct sd_key_symmetric key;
     struct sd_channel channel;
+    uint8_t local_nonce[crypto_secretbox_NONCEBYTES],
+            remote_nonce[crypto_secretbox_NONCEBYTES];
     uint32_t sessionid;
     int saved_errno;
 
@@ -217,13 +220,25 @@ static int cmd_connect(int argc, char *argv[])
     }
 
     initiation.sessionid = sessionid;
-    if (sd_channel_write_protobuf(&channel, &initiation.base) < 0 ){
+    if (sd_channel_write_protobuf(&channel, &initiation.base) < 0 ) {
         puts("Could not initiate session");
         return -1;
     }
 
-    /* TODO: enable symmetric encryption */
-    UNUSED(token);
+    if (sd_key_symmetric_from_hex(&key, token) < 0) {
+        puts("Could not retrieve symmetric key");
+        return -1;
+    }
+
+    memset(local_nonce, 0, sizeof(local_nonce));
+    memset(remote_nonce, 0, sizeof(local_nonce));
+    sodium_increment(remote_nonce, sizeof(remote_nonce));
+
+    if (sd_channel_set_crypto_symmetric(&channel,
+                &key, local_nonce, remote_nonce) < 0) {
+        puts("Could not enable symmetric encryption");
+        return -1;
+    }
 
     /* TODO: start service */
     UNUSED(type);

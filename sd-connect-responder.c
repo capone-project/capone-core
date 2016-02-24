@@ -26,7 +26,7 @@
 
 static struct session {
     uint32_t sessionid;
-    uint8_t token[crypto_secretbox_KEYBYTES];
+    struct sd_key_symmetric key;
 } *sessions = NULL;
 static uint32_t nsessions = 0;
 
@@ -64,7 +64,7 @@ static int handle_request(struct sd_channel *channel)
     nsessions += 1;
     sessions = realloc(sessions, nsessions * sizeof(struct session));
     sessions[nsessions - 1].sessionid = token.sessionid;
-    memcpy(sessions[nsessions - 1].token, key, sizeof(key));
+    memcpy(sessions[nsessions - 1].key.key, key, sizeof(key));
 
     return 0;
 }
@@ -72,7 +72,9 @@ static int handle_request(struct sd_channel *channel)
 static int handle_connect(struct sd_channel *channel)
 {
     ConnectionInitiation *initiation;
-    uint8_t *token = NULL;
+    struct session *session;
+    uint8_t local_nonce[crypto_secretbox_NONCEBYTES],
+            remote_nonce[crypto_secretbox_NONCEBYTES];
     uint32_t i;
 
     if (sd_channel_receive_protobuf(channel,
@@ -84,17 +86,25 @@ static int handle_connect(struct sd_channel *channel)
 
     for (i = 0; i < nsessions; i++) {
         if (sessions[i].sessionid == initiation->sessionid) {
-            token = sessions[i].token;
+            session = &sessions[i];
             break;
         }
     }
 
-    if (token == NULL) {
+    if (session == NULL) {
         puts("Could not find session for client");
         return -1;
     }
 
-    printf("Client %u connected\n", sessions[i].sessionid);
+    memset(local_nonce, 0, sizeof(local_nonce));
+    memset(remote_nonce, 0, sizeof(local_nonce));
+    sodium_increment(local_nonce, sizeof(local_nonce));
+
+    if (sd_channel_set_crypto_symmetric(channel,
+                &session->key, local_nonce, remote_nonce) < 0) {
+        puts("Could not enable symmetric encryption");
+        return -1;
+    }
 
     return 0;
 }
