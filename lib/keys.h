@@ -17,21 +17,21 @@
 
 #include <sodium.h>
 
-struct sd_keys_secret {
+struct sd_key_secret {
     uint8_t sign[crypto_sign_ed25519_SECRETKEYBYTES];
     uint8_t box[crypto_scalarmult_curve25519_BYTES];
 };
 
-struct sd_keys_public {
+struct sd_key_public {
     uint8_t sign[crypto_sign_ed25519_PUBLICKEYBYTES];
     uint8_t box[crypto_scalarmult_curve25519_BYTES];
 };
 
-struct sd_keys {
-    struct sd_keys_secret sk;
-    struct sd_keys_public pk;
+struct sd_key_pair {
+    struct sd_key_secret sk;
+    struct sd_key_public pk;
 };
 
-int sd_keys_from_config_file(struct sd_keys *out, const char *file);
-int sd_keys_public_from_hex(struct sd_keys_public *out, const char *hex);
-int sd_keys_public_from_bin(struct sd_keys_public *out, uint8_t *data, size_t len);
+int sd_key_pair_from_config_file(struct sd_key_pair *out, const char *file);
+int sd_key_public_from_hex(struct sd_key_public *out, const char *hex);
+int sd_key_public_from_bin(struct sd_key_public *out, uint8_t *data, size_t len);

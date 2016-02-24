@@ -31,8 +31,8 @@ struct params {
     const char *value;
 };
 
-static struct sd_keys keys;
-static struct sd_keys_public remote_keys;
+static struct sd_key_pair keys;
+static struct sd_key_public remote_keys;
 
 static void usage(const char *prog)
 {
@@ -152,12 +152,12 @@ static int cmd_request(int argc, char *argv[])
         return -1;
     }
 
-    if (sd_keys_from_config_file(&keys, config) < 0) {
+    if (sd_key_pair_from_config_file(&keys, config) < 0) {
         puts("Could not parse config");
         return -1;
     }
 
-    if (sd_keys_public_from_hex(&remote_keys, key) < 0) {
+    if (sd_key_public_from_hex(&remote_keys, key) < 0) {
         puts("Could not parse remote public key");
         return -1;
     }

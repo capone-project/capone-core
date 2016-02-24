@@ -30,7 +30,7 @@ static struct session {
 } *sessions = NULL;
 static uint32_t nsessions = 0;
 
-static struct sd_keys keys;
+static struct sd_key_pair keys;
 static struct sd_service service;
 
 static int handle_request(struct sd_channel *channel)
@@ -94,6 +94,8 @@ static int handle_connect(struct sd_channel *channel)
         return -1;
     }
 
+    printf("Client %u connected\n", sessions[i].sessionid);
+
     return 0;
 }
 
@@ -121,7 +123,7 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    if (sd_keys_from_config_file(&keys, config) < 0) {
+    if (sd_key_pair_from_config_file(&keys, config) < 0) {
         puts("Could not parse config");
         return -1;
     }

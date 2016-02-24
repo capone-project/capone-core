@@ -22,7 +22,7 @@
 
 #include "keys.h"
 
-int sd_keys_from_config_file(struct sd_keys *out, const char *file)
+int sd_key_pair_from_config_file(struct sd_key_pair *out, const char *file)
 {
     uint8_t sign_pk[crypto_sign_ed25519_PUBLICKEYBYTES];
     uint8_t sign_sk[crypto_sign_ed25519_SECRETKEYBYTES];
@@ -83,7 +83,7 @@ out_err:
     return -1;
 }
 
-int sd_keys_public_from_hex(struct sd_keys_public *out, const char *hex)
+int sd_key_public_from_hex(struct sd_key_public *out, const char *hex)
 {
     int len;
     uint8_t sign_pk[crypto_sign_ed25519_PUBLICKEYBYTES],
@@ -111,7 +111,7 @@ int sd_keys_public_from_hex(struct sd_keys_public *out, const char *hex)
     return 0;
 }
 
-int sd_keys_public_from_bin(struct sd_keys_public *out, uint8_t *data, size_t len)
+int sd_key_public_from_bin(struct sd_key_public *out, uint8_t *data, size_t len)
 {
     uint8_t box_pk[crypto_scalarmult_curve25519_BYTES];
 

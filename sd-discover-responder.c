@@ -36,7 +36,7 @@
 #include "proto/discovery.pb-c.h"
 
 static AnnounceMessage announce_message;
-static struct sd_keys keys;
+static struct sd_key_pair keys;
 
 #define LISTEN_PORT 6667
 
@@ -134,7 +134,7 @@ int main(int argc, char *argv[])
         return 0;
     }
 
-    if (sd_keys_from_config_file(&keys, argv[1]) < 0)
+    if (sd_key_pair_from_config_file(&keys, argv[1]) < 0)
         return -1;
     if ((numservices = sd_services_from_config_file(&services, argv[1])) <= 0)
         return -1;

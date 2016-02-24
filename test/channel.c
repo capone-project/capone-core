@@ -31,7 +31,7 @@
 
 static uint8_t local_nonce[crypto_box_NONCEBYTES],
                remote_nonce[crypto_box_NONCEBYTES];
-static struct sd_keys channel_keys, remote_keys;
+static struct sd_key_pair channel_keys, remote_keys;
 static struct sd_channel channel, remote;
 static enum sd_channel_type type;
 

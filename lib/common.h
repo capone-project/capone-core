@@ -23,18 +23,18 @@
 typedef void (*thread_fn)(void *);
 
 struct sd_channel;
-struct sd_keys;
-struct sd_keys_public;
+struct sd_key_pair;
+struct sd_key_public;
 
 int spawn(thread_fn fn, void *payload);
 
 int pack_signed_protobuf(Envelope **out, const ProtobufCMessage *msg,
-        const struct sd_keys *keys, const struct sd_keys_public *remote_key);
+        const struct sd_key_pair *keys, const struct sd_key_public *remote_key);
 int unpack_signed_protobuf(const ProtobufCMessageDescriptor *descr,
-        ProtobufCMessage **out, const Envelope *env, const struct sd_keys *keys);
+        ProtobufCMessage **out, const Envelope *env, const struct sd_key_pair *keys);
 
 int initiate_encryption(struct sd_channel *channel,
-        const struct sd_keys *local_keys,
-        const struct sd_keys_public *remote_keys);
+        const struct sd_key_pair *local_keys,
+        const struct sd_key_public *remote_keys);
 int await_encryption(struct sd_channel *channel,
-        const struct sd_keys *local_keys);
+        const struct sd_key_pair *local_keys);

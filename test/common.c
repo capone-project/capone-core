@@ -25,11 +25,11 @@
 #include "common.h"
 #include "test.h"
 
-static struct sd_keys keys;
+static struct sd_key_pair keys;
 
 static int setup()
 {
-    assert_success(sd_keys_from_config_file(&keys, "config/client.conf"));
+    assert_success(sd_key_pair_from_config_file(&keys, "config/client.conf"));
 
     return 0;
 }
@@ -41,7 +41,7 @@ static int teardown()
 
 static void test_keys_from_existing_config_file()
 {
-    struct sd_keys keys;
+    struct sd_key_pair keys;
     const char
         expected_sign_pk[] =
             "dcd8a532871434543784a79939d5979a"
@@ -62,7 +62,7 @@ static void test_keys_from_existing_config_file()
         actual_box_pk[sizeof(expected_box_pk)],
         actual_box_sk[sizeof(expected_box_sk)];
 
-    assert_success(sd_keys_from_config_file(&keys, "config/client.conf"));
+    assert_success(sd_key_pair_from_config_file(&keys, "config/client.conf"));
 
     sodium_bin2hex(actual_sign_pk, sizeof(actual_sign_pk),
             keys.pk.sign, sizeof(keys.pk.sign));

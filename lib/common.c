@@ -47,7 +47,7 @@ int spawn(thread_fn fn, void *payload)
 }
 
 int pack_signed_protobuf(Envelope **out, const ProtobufCMessage *msg,
-        const struct sd_keys *keys, const struct sd_keys_public *remote_key)
+        const struct sd_key_pair *keys, const struct sd_key_public *remote_key)
 {
     Envelope *env;
     uint8_t mac[crypto_sign_BYTES];
@@ -111,7 +111,7 @@ out_err:
 }
 
 int unpack_signed_protobuf(const ProtobufCMessageDescriptor *descr,
-        ProtobufCMessage **out, const Envelope *env, const struct sd_keys *keys)
+        ProtobufCMessage **out, const Envelope *env, const struct sd_key_pair *keys)
 {
     ProtobufCMessage *msg;
     uint8_t *data;
@@ -166,8 +166,8 @@ int unpack_signed_protobuf(const ProtobufCMessageDescriptor *descr,
 }
 
 int initiate_encryption(struct sd_channel *channel,
-        const struct sd_keys *local_keys,
-        const struct sd_keys_public *remote_keys)
+        const struct sd_key_pair *local_keys,
+        const struct sd_key_public *remote_keys)
 {
     uint8_t nonce[crypto_box_NONCEBYTES];
     EncryptionNegotiationMessage *response,
@@ -213,10 +213,10 @@ int initiate_encryption(struct sd_channel *channel,
     return 0;
 }
 
-int await_encryption(struct sd_channel *channel, const struct sd_keys *local_keys)
+int await_encryption(struct sd_channel *channel, const struct sd_key_pair *local_keys)
 {
     uint8_t nonce[crypto_box_NONCEBYTES];
-    struct sd_keys_public remote_keys;
+    struct sd_key_public remote_keys;
     EncryptionNegotiationMessage *negotiation,
         response = ENCRYPTION_NEGOTIATION_MESSAGE__INIT;
     Envelope *env;
@@ -233,7 +233,7 @@ int await_encryption(struct sd_channel *channel, const struct sd_keys *local_key
         puts("Failed unpacking protobuf");
         return -1;
     }
-    if (sd_keys_public_from_bin(&remote_keys, env->pk.data, env->pk.len) < 0 ) {
+    if (sd_key_public_from_bin(&remote_keys, env->pk.data, env->pk.len) < 0 ) {
         puts("Could not extract remote keys");
         return -1;
     }

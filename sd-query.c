@@ -24,8 +24,8 @@
 #include "lib/channel.h"
 #include "lib/common.h"
 
-static struct sd_keys keys;
-static struct sd_keys_public remote_keys;
+static struct sd_key_pair keys;
+static struct sd_key_public remote_keys;
 
 int query(struct sd_channel *channel)
 {
@@ -95,12 +95,12 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    if (sd_keys_from_config_file(&keys, config) < 0) {
+    if (sd_key_pair_from_config_file(&keys, config) < 0) {
         puts("Could not parse config");
         return -1;
     }
 
-    if (sd_keys_public_from_hex(&remote_keys, key) < 0) {
+    if (sd_key_public_from_hex(&remote_keys, key) < 0) {
         puts("Could not parse remote public key");
         return -1;
     }

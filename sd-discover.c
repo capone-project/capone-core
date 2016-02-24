@@ -35,7 +35,7 @@
 #define LISTEN_PORT 6668
 
 static uint8_t rpk[crypto_box_PUBLICKEYBYTES];
-static struct sd_keys keys;
+static struct sd_key_pair keys;
 
 static void probe(void *payload)
 {
@@ -136,7 +136,7 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    if (sd_keys_from_config_file(&keys, argv[1]) < 0) {
+    if (sd_key_pair_from_config_file(&keys, argv[1]) < 0) {
         puts("Could not parse config");
         return -1;
     }
