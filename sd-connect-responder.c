@@ -15,6 +15,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <string.h>
 #include <sodium.h>
 
 #include "lib/common.h"
@@ -22,6 +23,12 @@
 #include "lib/service.h"
 
 #include "proto/connect.pb-c.h"
+
+static struct session {
+    uint32_t sessionid;
+    uint8_t token[crypto_secretbox_KEYBYTES];
+} *sessions = NULL;
+static uint32_t nsessions = 0;
 
 static struct sd_keys keys;
 static struct sd_service service;
@@ -54,12 +61,39 @@ static int handle_request(struct sd_channel *channel)
         return -1;
     }
 
+    nsessions += 1;
+    sessions = realloc(sessions, nsessions * sizeof(struct session));
+    sessions[nsessions - 1].sessionid = token.sessionid;
+    memcpy(sessions[nsessions - 1].token, key, sizeof(key));
+
     return 0;
 }
 
 static int handle_connect(struct sd_channel *channel)
 {
-    UNUSED(channel);
+    ConnectionInitiation *initiation;
+    uint8_t *token = NULL;
+    uint32_t i;
+
+    if (sd_channel_receive_protobuf(channel,
+                &connection_initiation__descriptor,
+                (ProtobufCMessage **) &initiation) < 0) {
+        puts("Could not receive connection initiation");
+        return -1;
+    }
+
+    for (i = 0; i < nsessions; i++) {
+        if (sessions[i - 1].sessionid == initiation->sessionid) {
+            token = sessions[i - 1].token;
+            break;
+        }
+    }
+
+    if (token == NULL) {
+        puts("Could not find session for client");
+        return -1;
+    }
+
     return 0;
 }
 
