@@ -187,13 +187,18 @@ static int cmd_connect(int argc, char *argv[])
 {
     ConnectionType conntype = CONNECTION_TYPE__INIT;
     ConnectionInitiation initiation = CONNECTION_INITIATION__INIT;
-    char *key, *host, *port, *type;
+    const char *token, *host, *port, *type;
     struct sd_channel channel;
     uint32_t sessionid;
     int saved_errno;
 
     if (argc != 7)
         usage(argv[0]);
+
+    token = argv[3];
+    host = argv[4];
+    port = argv[5];
+    type = argv[6];
 
     saved_errno = errno;
     sessionid = strtol(argv[2], NULL, 10);
@@ -203,12 +208,7 @@ static int cmd_connect(int argc, char *argv[])
     }
     errno = saved_errno;
 
-    key = argv[3];
-    host = argv[4];
-    port = argv[5];
-    type = argv[6];
-
-    UNUSED(key);
+    UNUSED(token);
     UNUSED(type);
 
     if (sd_channel_init_from_host(&channel, host, port, SD_CHANNEL_TYPE_TCP) < 0) {
