@@ -208,9 +208,6 @@ static int cmd_connect(int argc, char *argv[])
     }
     errno = saved_errno;
 
-    UNUSED(token);
-    UNUSED(type);
-
     if (sd_channel_init_from_host(&channel, host, port, SD_CHANNEL_TYPE_TCP) < 0) {
         puts("Could not initialize channel");
         return -1;
@@ -232,6 +229,12 @@ static int cmd_connect(int argc, char *argv[])
         puts("Could not initiate session");
         return -1;
     }
+
+    /* TODO: enable symmetric encryption */
+    UNUSED(token);
+
+    /* TODO: start service */
+    UNUSED(type);
 
     return 0;
 }
