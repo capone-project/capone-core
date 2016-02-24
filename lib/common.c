@@ -53,8 +53,14 @@ int pack_signed_protobuf(Envelope **out, const ProtobufCMessage *msg,
     uint8_t mac[crypto_sign_BYTES];
     uint8_t *buf = NULL;
     int len;
+    unsigned long long maclen;
 
     *out = NULL;
+
+    if (!protobuf_c_message_check(msg)) {
+        sd_log(LOG_LEVEL_ERROR, "Can not pack invalid protobuf");
+        return -1;
+    }
 
     len = protobuf_c_message_get_packed_size(msg);
     buf = malloc(len);
@@ -63,13 +69,13 @@ int pack_signed_protobuf(Envelope **out, const ProtobufCMessage *msg,
     env = malloc(sizeof(Envelope));
     envelope__init(env);
 
-    if (crypto_sign_detached(mac, NULL, buf, len, keys->sk.sign) != 0) {
+    if (crypto_sign_detached(mac, &maclen, buf, len, keys->sk.sign) != 0) {
         sd_log(LOG_LEVEL_ERROR, "Unable to sign protobuf");
         goto out_err;
     }
-    env->mac.data = malloc(crypto_sign_BYTES);
-    memcpy(env->mac.data, mac, crypto_sign_BYTES);
-    env->mac.len = crypto_sign_BYTES;
+    env->mac.data = malloc(maclen);
+    memcpy(env->mac.data, mac, maclen);
+    env->mac.len = maclen;
 
     if (remote_key) {
         uint8_t *ciphertext = malloc(len + crypto_box_SEALBYTES);
