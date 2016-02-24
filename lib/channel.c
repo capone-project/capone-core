@@ -274,6 +274,9 @@ ssize_t sd_channel_receive_data(struct sd_channel *c, uint8_t *out, size_t maxle
         sd_log(LOG_LEVEL_ERROR, "Could not receive data length: %s",
                 strerror(errno));
         return -1;
+    } else if (ret != sizeof(uint32_t) / sizeof(uint8_t)) {
+        sd_log(LOG_LEVEL_ERROR, "Invalid data length received");
+        return -1;
     }
 
     if (len > sizeof(buf)) {
