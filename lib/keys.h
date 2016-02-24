@@ -35,3 +35,9 @@ struct sd_key_pair {
 int sd_key_pair_from_config_file(struct sd_key_pair *out, const char *file);
 int sd_key_public_from_hex(struct sd_key_public *out, const char *hex);
 int sd_key_public_from_bin(struct sd_key_public *out, uint8_t *data, size_t len);
+
+struct sd_key_symmetric {
+    uint8_t key[crypto_secretbox_KEYBYTES];
+};
+
+int sd_key_symmetric_from_hex(struct sd_key_symmetric *out, const char *hex);

@@ -36,8 +36,9 @@ enum sd_channel_type {
 };
 
 enum sd_channel_crypto {
-    SD_CHANNEL_CRTYPTO_NONE,
-    SD_CHANNEL_CRTYPTO_ENCRYPT,
+    SD_CHANNEL_CRYPTO_NONE,
+    SD_CHANNEL_CRYPTO_ASYMMETRIC,
+    SD_CHANNEL_CRYPTO_SYMMETRIC,
 };
 
 struct sd_channel {
@@ -49,6 +50,7 @@ struct sd_channel {
 
     struct sd_key_pair local_keys;
     struct sd_key_public remote_keys;
+    struct sd_key_symmetric key;
 
     uint8_t remote_nonce[crypto_box_NONCEBYTES];
     uint8_t local_nonce[crypto_box_NONCEBYTES];
@@ -65,6 +67,9 @@ int sd_channel_set_crypto_none(struct sd_channel *c);
 int sd_channel_set_crypto_asymmetric(struct sd_channel *c,
         const struct sd_key_pair *local_keys,
         const struct sd_key_public *remote_keys,
+        uint8_t *local_nonce, uint8_t *remote_nonce);
+int sd_channel_set_crypto_symmetric(struct sd_channel *c,
+        const struct sd_key_symmetric *key,
         uint8_t *local_nonce, uint8_t *remote_nonce);
 
 int sd_channel_connect(struct sd_channel *c);

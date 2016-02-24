@@ -113,7 +113,7 @@ int sd_channel_init_from_fd(struct sd_channel *c,
 
     c->fd = fd;
     c->type = type;
-    c->crypto = SD_CHANNEL_CRTYPTO_NONE;
+    c->crypto = SD_CHANNEL_CRYPTO_NONE;
     c->addr = addr;
 
     return 0;
@@ -123,8 +123,9 @@ int sd_channel_set_crypto_none(struct sd_channel *c)
 {
     memset(&c->local_keys, 0, sizeof(c->local_keys));
     memset(&c->remote_keys, 0, sizeof(c->remote_keys));
+    memset(&c->key, 0, sizeof(c->key));
 
-    c->crypto = SD_CHANNEL_CRTYPTO_NONE;
+    c->crypto = SD_CHANNEL_CRYPTO_NONE;
 
     return 0;
 }
@@ -134,13 +135,32 @@ int sd_channel_set_crypto_asymmetric(struct sd_channel *c,
         const struct sd_key_public *remote_keys,
         uint8_t *local_nonce, uint8_t *remote_nonce)
 {
+    memset(&c->key, 0, sizeof(c->key));
+
     memcpy(&c->local_keys, local_keys, sizeof(c->local_keys));
     memcpy(&c->remote_keys, remote_keys, sizeof(c->remote_keys));
 
     memcpy(c->local_nonce, local_nonce, sizeof(c->local_nonce));
     memcpy(c->remote_nonce, remote_nonce, sizeof(c->remote_nonce));
 
-    c->crypto = SD_CHANNEL_CRTYPTO_ENCRYPT;
+    c->crypto = SD_CHANNEL_CRYPTO_ASYMMETRIC;
+
+    return 0;
+}
+
+int sd_channel_set_crypto_symmetric(struct sd_channel *c,
+        const struct sd_key_symmetric *key,
+        uint8_t *local_nonce, uint8_t *remote_nonce)
+{
+    memset(&c->local_keys, 0, sizeof(c->key));
+    memset(&c->remote_keys, 0, sizeof(c->key));
+
+    memcpy(&c->key, key, sizeof(c->key));
+
+    memcpy(c->local_nonce, local_nonce, sizeof(c->local_nonce));
+    memcpy(c->remote_nonce, remote_nonce, sizeof(c->remote_nonce));
+
+    c->crypto = SD_CHANNEL_CRYPTO_SYMMETRIC;
 
     return 0;
 }
@@ -177,7 +197,7 @@ int sd_channel_write_data(struct sd_channel *c, uint8_t *data, uint32_t datalen)
     int i;
 
     switch (c->crypto) {
-        case SD_CHANNEL_CRTYPTO_NONE:
+        case SD_CHANNEL_CRYPTO_NONE:
             if (datalen > sizeof(msg)) {
                 sd_log(LOG_LEVEL_ERROR,
                         "Data buffer bigger then internal buffer");
@@ -186,7 +206,7 @@ int sd_channel_write_data(struct sd_channel *c, uint8_t *data, uint32_t datalen)
 
             memcpy(msg, data, datalen);
             break;
-        case SD_CHANNEL_CRTYPTO_ENCRYPT:
+        case SD_CHANNEL_CRYPTO_ASYMMETRIC:
             if (datalen > sizeof(msg) - crypto_box_MACBYTES) {
                 sd_log(LOG_LEVEL_ERROR,
                         "Data buffer bigger then internal buffer");
@@ -202,6 +222,23 @@ int sd_channel_write_data(struct sd_channel *c, uint8_t *data, uint32_t datalen)
 
             for (i = 0; i < c->nonce_offset; i++)
                 sodium_increment(c->local_nonce, crypto_box_NONCEBYTES);
+
+            break;
+        case SD_CHANNEL_CRYPTO_SYMMETRIC:
+            if (datalen > sizeof(msg) - crypto_secretbox_MACBYTES) {
+                sd_log(LOG_LEVEL_ERROR,
+                        "Data buffer bigger then internal buffer");
+                return -1;
+            }
+
+            if (crypto_secretbox_easy(msg, data, datalen, c->local_nonce, c->key.key) < 0) {
+                sd_log(LOG_LEVEL_ERROR, "Unable to encrypt msg");
+                return -1;
+            }
+            datalen = datalen + crypto_secretbox_MACBYTES;
+
+            for (i = 0; i < c->nonce_offset; i++)
+                sodium_increment(c->local_nonce, crypto_secretbox_NONCEBYTES);
 
             break;
         default:
@@ -295,7 +332,7 @@ ssize_t sd_channel_receive_data(struct sd_channel *c, uint8_t *out, size_t maxle
     }
 
     switch (c->crypto) {
-        case SD_CHANNEL_CRTYPTO_NONE:
+        case SD_CHANNEL_CRYPTO_NONE:
             if ((size_t) len > maxlen) {
                 sd_log(LOG_LEVEL_ERROR,
                         "Data buffer bigger then internal buffer");
@@ -304,7 +341,7 @@ ssize_t sd_channel_receive_data(struct sd_channel *c, uint8_t *out, size_t maxle
 
             memcpy(out, buf, len);
             break;
-        case SD_CHANNEL_CRTYPTO_ENCRYPT:
+        case SD_CHANNEL_CRYPTO_ASYMMETRIC:
             if ((size_t) len - crypto_box_MACBYTES > maxlen) {
                 sd_log(LOG_LEVEL_ERROR,
                         "Data buffer bigger then internal buffer");
@@ -320,6 +357,24 @@ ssize_t sd_channel_receive_data(struct sd_channel *c, uint8_t *out, size_t maxle
 
             for (i = 0; i < c->nonce_offset; i++)
                 sodium_increment(c->remote_nonce, crypto_box_NONCEBYTES);
+
+            break;
+        case SD_CHANNEL_CRYPTO_SYMMETRIC:
+            if ((size_t) len - crypto_secretbox_MACBYTES > maxlen) {
+                sd_log(LOG_LEVEL_ERROR,
+                        "Data buffer bigger then internal buffer");
+                return -1;
+            }
+
+            if (crypto_secretbox_open_easy(out, buf, len, c->remote_nonce,
+                        c->key.key) != 0) {
+                sd_log(LOG_LEVEL_ERROR, "Unable to decrypt message");
+                return -1;
+            }
+            len = len - crypto_secretbox_MACBYTES;
+
+            for (i = 0; i < c->nonce_offset; i++)
+                sodium_increment(c->remote_nonce, crypto_secretbox_NONCEBYTES);
 
             break;
         default:

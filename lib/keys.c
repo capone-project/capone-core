@@ -130,3 +130,25 @@ int sd_key_public_from_bin(struct sd_key_public *out, uint8_t *data, size_t len)
 
     return 0;
 }
+
+int sd_key_symmetric_from_hex(struct sd_key_symmetric *out, const char *hex)
+{
+    int len;
+    uint8_t key[crypto_secretbox_KEYBYTES];
+
+    len = strlen(hex);
+    if (len != 2 * crypto_secretbox_KEYBYTES) {
+        sd_log(LOG_LEVEL_ERROR, "Passed in buffer does not match required symmetric key length");
+        return -1;
+    }
+
+    if (sodium_hex2bin(key, sizeof(key), hex, len, NULL, NULL, NULL) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Could not decode hex");
+        return -1;
+    }
+
+    memcpy(out->key, key, sizeof(out->key));
+
+    return 0;
+
+}
