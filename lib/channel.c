@@ -434,8 +434,8 @@ int sd_channel_relay(struct sd_channel *channel, int fd)
                 return -1;
             }
 
-            if (write(fd, buf, sizeof(buf)) != received) {
-                sd_log(LOG_LEVEL_ERROR, "Error relaying data to fd");
+            if (write(fd, buf, received) != received) {
+                sd_log(LOG_LEVEL_ERROR, "Error relaying data to fd: %s", strerror(errno));
                 return -1;
             }
         }
