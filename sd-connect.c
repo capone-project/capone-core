@@ -191,15 +191,42 @@ static int cmd_request(int argc, char *argv[])
     return 0;
 }
 
-static int cmd_connect(int argc, char *argv[])
+static int initiate_session(struct sd_channel *channel, const char *token, int sessionid)
 {
     ConnectionInitiation initiation = CONNECTION_INITIATION__INIT;
-    struct sd_service service;
-    const char *token, *host, *port;
-    struct sd_key_symmetric key;
-    struct sd_channel channel;
     uint8_t local_nonce[crypto_secretbox_NONCEBYTES],
             remote_nonce[crypto_secretbox_NONCEBYTES];
+    struct sd_key_symmetric key;
+
+    initiation.sessionid = sessionid;
+    if (sd_channel_write_protobuf(channel, &initiation.base) < 0 ) {
+        puts("Could not initiate session");
+        return -1;
+    }
+
+    if (sd_key_symmetric_from_hex(&key, token) < 0) {
+        puts("Could not retrieve symmetric key");
+        return -1;
+    }
+
+    memset(local_nonce, 0, sizeof(local_nonce));
+    memset(remote_nonce, 0, sizeof(local_nonce));
+    sodium_increment(remote_nonce, sizeof(remote_nonce));
+
+    if (sd_channel_set_crypto_symmetric(channel,
+                &key, local_nonce, remote_nonce) < 0) {
+        puts("Could not enable symmetric encryption");
+        return -1;
+    }
+
+    return 0;
+}
+
+static int cmd_connect(int argc, char *argv[])
+{
+    struct sd_service service;
+    const char *token, *host, *port;
+    struct sd_channel channel;
     uint32_t sessionid;
     int saved_errno;
 
@@ -228,24 +255,8 @@ static int cmd_connect(int argc, char *argv[])
         return -1;
     }
 
-    initiation.sessionid = sessionid;
-    if (sd_channel_write_protobuf(&channel, &initiation.base) < 0 ) {
-        puts("Could not initiate session");
-        return -1;
-    }
-
-    if (sd_key_symmetric_from_hex(&key, token) < 0) {
-        puts("Could not retrieve symmetric key");
-        return -1;
-    }
-
-    memset(local_nonce, 0, sizeof(local_nonce));
-    memset(remote_nonce, 0, sizeof(local_nonce));
-    sodium_increment(remote_nonce, sizeof(remote_nonce));
-
-    if (sd_channel_set_crypto_symmetric(&channel,
-                &key, local_nonce, remote_nonce) < 0) {
-        puts("Could not enable symmetric encryption");
+    if (initiate_session(&channel, token, sessionid) < 0) {
+        puts("Could not connect to session");
         return -1;
     }
 
