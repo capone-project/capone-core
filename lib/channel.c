@@ -20,6 +20,7 @@
 #include <stdbool.h>
 
 #include <unistd.h>
+#include <sys/select.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -403,6 +404,50 @@ int sd_channel_receive_protobuf(struct sd_channel *c, const ProtobufCMessageDesc
     }
 
     *msg = result;
+
+    return 0;
+}
+
+int sd_channel_relay(struct sd_channel *c1, struct sd_channel *c2)
+{
+    fd_set fds, read_fds;
+    uint8_t buf[4096];
+    int received;
+
+    FD_ZERO(&fds);
+    FD_ZERO(&read_fds);
+    FD_SET(c1->fd, &fds);
+    FD_SET(c2->fd, &fds);
+
+    while (select(2, &fds, &read_fds, NULL, NULL) > 0) {
+        if (FD_ISSET(c1->fd, &read_fds)) {
+            received = sd_channel_receive_data(c1, buf, sizeof(buf));
+            if (received < 0) {
+                sd_log(LOG_LEVEL_ERROR, "Error relaying data from first channel");
+                return -1;
+            }
+
+            if (sd_channel_write_data(c2, buf, sizeof(buf)) != received) {
+                sd_log(LOG_LEVEL_ERROR, "Error relaying data to second channel");
+                return -1;
+            }
+        }
+
+        if (FD_ISSET(c2->fd, &read_fds)) {
+            received = sd_channel_receive_data(c2, buf, sizeof(buf));
+            if (received < 0) {
+                sd_log(LOG_LEVEL_ERROR, "Error relaying data from second channel");
+                return -1;
+            }
+
+            if (sd_channel_write_data(c1, buf, received) != received) {
+                sd_log(LOG_LEVEL_ERROR, "Error relaying data to first channel");
+                return -1;
+            }
+        }
+
+        FD_ZERO(&read_fds);
+    }
 
     return 0;
 }
