@@ -42,17 +42,37 @@ static void usage(const char *prog)
     exit(-1);
 }
 
-static int request_connection(struct sd_channel *channel,
+static int initiate_connection(struct sd_channel *channel,
+        const char *host, const char *port, ConnectionType__Type type)
+{
+    ConnectionType conntype = CONNECTION_TYPE__INIT;
+
+    if (sd_channel_init_from_host(channel, host, port, SD_CHANNEL_TYPE_TCP) < 0) {
+        puts("Could not initialize channel");
+        return -1;
+    }
+
+    if (sd_channel_connect(channel) < 0) {
+        puts("Could not connect to server");
+        return -1;
+    }
+
+    conntype.type = type;
+    if (sd_channel_write_protobuf(channel, &conntype.base) < 0) {
+        puts("Could not send connection type");
+        return -1;
+    }
+
+    return 0;
+}
+
+static int send_request(struct sd_channel *channel,
         const struct params *params, int nparams)
 {
-    ConnectionType type = CONNECTION_TYPE__INIT;
     ConnectionRequestMessage request = CONNECTION_REQUEST_MESSAGE__INIT;
     ConnectionTokenMessage *token;
     char tokenhex[crypto_secretbox_KEYBYTES * 2 + 1];
     int i;
-
-    type.type = CONNECTION_TYPE__TYPE__REQUEST;
-    sd_channel_write_protobuf(channel, &type.base);
 
     if (initiate_encryption(channel, &keys, &remote_keys) < 0) {
         puts("Unable to initiate encryption");
@@ -157,17 +177,12 @@ static int cmd_request(int argc, char *argv[])
         return -1;
     }
 
-    if (sd_channel_init_from_host(&channel, host, port, SD_CHANNEL_TYPE_TCP) < 0) {
-        puts("Could not initialize channel");
+    if (initiate_connection(&channel, host, port, CONNECTION_TYPE__TYPE__REQUEST) < 0) {
+        puts("Could not establish connection");
         return -1;
     }
 
-    if (sd_channel_connect(&channel) < 0) {
-        puts("Could not connect to server");
-        return -1;
-    }
-
-    if (request_connection(&channel, params, nparams) < 0)
+    if (send_request(&channel, params, nparams) < 0)
         return -1;
 
     sd_channel_close(&channel);
@@ -177,7 +192,6 @@ static int cmd_request(int argc, char *argv[])
 
 static int cmd_connect(int argc, char *argv[])
 {
-    ConnectionType conntype = CONNECTION_TYPE__INIT;
     ConnectionInitiation initiation = CONNECTION_INITIATION__INIT;
     const char *token, *host, *port;
     struct sd_key_symmetric key;
@@ -203,19 +217,8 @@ static int cmd_connect(int argc, char *argv[])
     }
     errno = saved_errno;
 
-    if (sd_channel_init_from_host(&channel, host, port, SD_CHANNEL_TYPE_TCP) < 0) {
-        puts("Could not initialize channel");
-        return -1;
-    }
-
-    if (sd_channel_connect(&channel) < 0) {
-        puts("Could not connect to server");
-        return -1;
-    }
-
-    conntype.type = CONNECTION_TYPE__TYPE__CONNECT;
-    if (sd_channel_write_protobuf(&channel, &conntype.base) < 0) {
-        puts("Could not send connection type");
+    if (initiate_connection(&channel, host, port, CONNECTION_TYPE__TYPE__CONNECT) < 0) {
+        puts("Could not start connection");
         return -1;
     }
 
@@ -243,6 +246,9 @@ static int cmd_connect(int argc, char *argv[])
     while ((n = sd_channel_receive_data(&channel, buf, sizeof(buf))) > 0) {
         printf("%.*s", n, buf);
     }
+
+    sd_channel_close(&channel);
+
     return 0;
 }
 
