@@ -29,3 +29,6 @@ int sd_server_close(struct sd_server *server);
 
 int sd_server_listen(struct sd_server *server);
 int sd_server_accept(struct sd_server *server, struct sd_channel *out);
+
+int sd_server_get_address(struct sd_server *s,
+        char *host, size_t hostlen, char *port, size_t portlen);

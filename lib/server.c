@@ -22,6 +22,7 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <netdb.h>
 
 #include "lib/log.h"
 
@@ -122,4 +123,25 @@ int sd_server_accept(struct sd_server *s, struct sd_channel *out)
     }
 
     return sd_channel_init_from_fd(out, fd, addr, s->type);
+}
+
+int sd_server_get_address(struct sd_server *s,
+        char *host, size_t hostlen, char *port, size_t portlen)
+{
+    struct sockaddr_storage addr;
+    socklen_t addrlen;
+
+    addrlen = sizeof(addr);
+    if (getsockname(s->fd, (struct sockaddr *)&addr, &addrlen) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Could not get socket name: %s", strerror(errno));
+        return -1;
+    }
+
+    if (getnameinfo((struct sockaddr *) &addr,
+                addrlen, host, hostlen, port, portlen, 0) != 0) {
+        sd_log(LOG_LEVEL_ERROR, "Could not resolve name info: %s", strerror(errno));
+        return -1;
+    }
+
+    return 0;
 }
