@@ -74,11 +74,6 @@ static int send_request(struct sd_channel *channel,
     char tokenhex[crypto_secretbox_KEYBYTES * 2 + 1];
     int i;
 
-    if (initiate_encryption(channel, &keys, &remote_keys) < 0) {
-        puts("Unable to initiate encryption");
-        return -1;
-    }
-
     if (nparams) {
         ConnectionRequestMessage__Parameter **parameters =
             malloc(sizeof(ConnectionRequestMessage__Parameter *) * nparams);
@@ -179,6 +174,11 @@ static int cmd_request(int argc, char *argv[])
 
     if (initiate_connection(&channel, host, port, CONNECTION_TYPE__TYPE__REQUEST) < 0) {
         puts("Could not establish connection");
+        return -1;
+    }
+
+    if (initiate_encryption(&channel, &keys, &remote_keys) < 0) {
+        puts("Unable to initiate encryption");
         return -1;
     }
 
