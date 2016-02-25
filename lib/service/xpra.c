@@ -129,9 +129,9 @@ static int handle(struct sd_channel *channel,
         return -1;
     }
 
-    len = snprintf(NULL, 0, "tcp:localhost:%5s", port);
+    len = snprintf(NULL, 0, "tcp:localhost:%5s:100", port);
     args[2] = malloc(len);
-    len = snprintf(args[2], len, "tcp:localhost:%5s", port);
+    len = snprintf(args[2], len, "tcp:localhost:%5s:100", port);
 
     printf("Connecting to %s\n", args[2]);
 
@@ -159,6 +159,8 @@ static int handle(struct sd_channel *channel,
             sd_log(LOG_LEVEL_ERROR, "Could not relay xpra socket");
             return -1;
         }
+
+        sd_log(LOG_LEVEL_VERBOSE, "Xpra session terminated");
     } else {
         return -1;
     }
