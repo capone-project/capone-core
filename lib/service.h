@@ -26,6 +26,7 @@ struct sd_service_parameter {
     const char **values;
 };
 
+typedef int (*invoke_fn)(struct sd_channel *channel);
 typedef int (*handle_fn)(struct sd_channel *channel,
         struct sd_service_parameter **params, size_t nparams);
 typedef int (*parameters_fn)(const struct sd_service_parameter **out);
@@ -40,10 +41,12 @@ struct sd_service {
     char *location;
 
     version_fn version;
-    handle_fn handle;
     parameters_fn parameters;
+    handle_fn handle;
+    invoke_fn invoke;
 };
 
+int sd_service_from_type(struct sd_service *out, const char *type);
 int sd_service_from_config_file(struct sd_service *out, const char *name, const char *file);
 int sd_service_from_config(struct sd_service *out, const char *name, const struct cfg *cfg);
 int sd_service_from_section(struct sd_service *out, const struct cfg_section *section);
@@ -51,3 +54,4 @@ void sd_service_free(struct sd_service *service);
 
 int sd_services_from_config_file(struct sd_service **out, const char *file);
 int sd_services_from_config(struct sd_service **out, const struct cfg *cfg);
+

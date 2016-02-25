@@ -41,6 +41,18 @@ static int parameters(const struct sd_service_parameter **out)
     return ARRAY_SIZE(params);
 }
 
+static int invoke(struct sd_channel *channel)
+{
+    int n;
+    uint8_t buf[4096];
+
+    while ((n = sd_channel_receive_data(channel, buf, sizeof(buf))) > 0) {
+        printf("%.*s", n, buf);
+    }
+
+    return 0;
+}
+
 static int handle(struct sd_channel *channel,
         struct sd_service_parameter **params, size_t nparams)
 {
@@ -94,6 +106,7 @@ int sd_exec_init_service(struct sd_service *service)
 {
     service->version = version;
     service->handle = handle;
+    service->invoke = invoke;
     service->parameters = parameters;
 
     return 0;

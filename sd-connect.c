@@ -23,6 +23,7 @@
 
 #include "lib/common.h"
 #include "lib/channel.h"
+#include "lib/service.h"
 
 #include "proto/connect.pb-c.h"
 
@@ -38,7 +39,7 @@ static void usage(const char *prog)
 {
     printf("USAGE: %s (request|connect)\n"
             "\trequest <CONFIG> <KEY> <HOST> <PORT> [<PARAMETER>...]\n"
-            "\tconnect <SESSIONID> <TOKEN> <HOST> <PORT>\n", prog);
+            "\tconnect <SESSIONID> <TOKEN> <HOST> <PORT> <SERVICE>\n", prog);
     exit(-1);
 }
 
@@ -193,21 +194,26 @@ static int cmd_request(int argc, char *argv[])
 static int cmd_connect(int argc, char *argv[])
 {
     ConnectionInitiation initiation = CONNECTION_INITIATION__INIT;
+    struct sd_service service;
     const char *token, *host, *port;
     struct sd_key_symmetric key;
     struct sd_channel channel;
     uint8_t local_nonce[crypto_secretbox_NONCEBYTES],
             remote_nonce[crypto_secretbox_NONCEBYTES];
     uint32_t sessionid;
-    int saved_errno, n;
-    uint8_t buf[4096];
+    int saved_errno;
 
-    if (argc != 6)
+    if (argc != 7)
         usage(argv[0]);
 
     token = argv[3];
     host = argv[4];
     port = argv[5];
+
+    if (sd_service_from_type(&service, argv[6]) < 0) {
+        printf("Invalid service %s\n", argv[6]);
+        return -1;
+    }
 
     saved_errno = errno;
     sessionid = strtol(argv[2], NULL, 10);
@@ -243,8 +249,9 @@ static int cmd_connect(int argc, char *argv[])
         return -1;
     }
 
-    while ((n = sd_channel_receive_data(&channel, buf, sizeof(buf))) > 0) {
-        printf("%.*s", n, buf);
+    if (service.invoke(&channel) < 0) {
+        puts("Could not invoke service");
+        return -1;
     }
 
     sd_channel_close(&channel);

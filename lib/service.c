@@ -25,6 +25,25 @@
 #include "lib/service/x2x.h"
 #include "lib/service/xpra.h"
 
+static int fill_service_functions(struct sd_service *service, const char *type)
+{
+    if (!strcmp(type, "exec"))
+        return sd_exec_init_service(service);
+    if (!strcmp(type, "xpra"))
+        return sd_xpra_init_service(service);
+    if (!strcmp(type, "x2x"))
+        return sd_x2x_init_service(service);
+
+    return -1;
+}
+
+int sd_service_from_type(struct sd_service *out, const char *type)
+{
+    memset(out, 0, sizeof(struct sd_service));
+
+    return fill_service_functions(out, type);
+}
+
 int sd_services_from_config_file(struct sd_service **out, const char *file)
 {
     struct cfg cfg;
@@ -108,18 +127,6 @@ int sd_service_from_config(struct sd_service *out, const char *name, const struc
     return -1;
 }
 
-static int fill_service_functions(struct sd_service *service)
-{
-    if (!strcmp(service->subtype, "exec"))
-        return sd_exec_init_service(service);
-    if (!strcmp(service->subtype, "xpra"))
-        return sd_xpra_init_service(service);
-    if (!strcmp(service->subtype, "x2x"))
-        return sd_x2x_init_service(service);
-
-    return -1;
-}
-
 int sd_service_from_section(struct sd_service *out, const struct cfg_section *section)
 {
     struct sd_service service;
@@ -154,7 +161,7 @@ int sd_service_from_section(struct sd_service *out, const struct cfg_section *se
 
 #undef MAYBE_ADD_ENTRY
 
-    if (fill_service_functions(&service) < 0) {
+    if (fill_service_functions(&service, service.subtype) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Unknown service type '%s'", service.subtype);
         goto out_err;
     }
