@@ -77,20 +77,16 @@ static int invoke(struct sd_channel *channel)
             sd_log(LOG_LEVEL_ERROR, "Could not initialize xpra connection");
             return -1;
         }
-        puts("Connecting");
 
         if (sd_channel_connect(&xpra_channel) < 0) {
             sd_log(LOG_LEVEL_ERROR, "Could not connect to xpra service");
             return -1;
         }
 
-        puts("Connected");
-
         if (sd_channel_relay(channel, xpra_channel.fd) < 0) {
             sd_log(LOG_LEVEL_ERROR, "Could not relay xpra data");
             return -1;
         }
-        puts("Relayed");
     } else {
         return -1;
     }
