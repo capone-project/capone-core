@@ -26,7 +26,6 @@ struct sd_service_parameter {
     const char **values;
 };
 
-typedef void (*status_fn)(void);
 typedef int (*handle_fn)(struct sd_channel *channel,
         struct sd_service_parameter **params, size_t nparams);
 typedef int (*parameters_fn)(const struct sd_service_parameter **out);
@@ -40,7 +39,6 @@ struct sd_service {
     char *connectport;
     char *location;
 
-    status_fn status;
     version_fn version;
     handle_fn handle;
     parameters_fn parameters;

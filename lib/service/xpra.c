@@ -41,7 +41,6 @@ static int parameters(const struct sd_service_parameter **out)
 int sd_xpra_init_service(struct sd_service *service)
 {
     service->version = version;
-    service->status = NULL;
     service->handle = NULL;
     service->parameters = parameters;
 

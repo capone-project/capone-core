@@ -93,7 +93,6 @@ static int handle(struct sd_channel *channel,
 int sd_exec_init_service(struct sd_service *service)
 {
     service->version = version;
-    service->status = NULL;
     service->handle = handle;
     service->parameters = parameters;
 
