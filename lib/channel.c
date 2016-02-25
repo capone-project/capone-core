@@ -32,10 +32,11 @@
 #include <sodium/randombytes.h>
 
 #include "lib/log.h"
-
-#include "channel.h"
+#include "lib/common.h"
 
 #include "proto/envelope.pb-c.h"
+
+#include "channel.h"
 
 int getsock(struct sockaddr_storage *addr, const char *host,
         const char *port, enum sd_channel_type type)
@@ -408,45 +409,51 @@ int sd_channel_receive_protobuf(struct sd_channel *c, const ProtobufCMessageDesc
     return 0;
 }
 
-int sd_channel_relay(struct sd_channel *c1, struct sd_channel *c2)
+int sd_channel_relay(struct sd_channel *channel, int fd)
 {
-    fd_set fds, read_fds;
-    uint8_t buf[4096];
-    int received;
+    fd_set fds;
+    uint8_t buf[2048];
+    int received, nfd;
 
-    FD_ZERO(&fds);
-    FD_ZERO(&read_fds);
-    FD_SET(c1->fd, &fds);
-    FD_SET(c2->fd, &fds);
+    nfd = MAX(channel->fd, fd) + 1;
 
-    while (select(2, &fds, &read_fds, NULL, NULL) > 0) {
-        if (FD_ISSET(c1->fd, &read_fds)) {
-            received = sd_channel_receive_data(c1, buf, sizeof(buf));
+    while (1) {
+        FD_ZERO(&fds);
+        FD_SET(channel->fd, &fds);
+        FD_SET(fd, &fds);
+
+        if (select(nfd, &fds, NULL, NULL, NULL) <= 0) {
+            sd_log(LOG_LEVEL_ERROR, "Error selecting fds");
+            return -1;
+        }
+
+        if (FD_ISSET(channel->fd, &fds)) {
+            received = sd_channel_receive_data(channel, buf, sizeof(buf));
             if (received < 0) {
-                sd_log(LOG_LEVEL_ERROR, "Error relaying data from first channel");
+                sd_log(LOG_LEVEL_ERROR, "Error relaying data from channel");
                 return -1;
             }
 
-            if (sd_channel_write_data(c2, buf, sizeof(buf)) != received) {
-                sd_log(LOG_LEVEL_ERROR, "Error relaying data to second channel");
+            if (write(fd, buf, sizeof(buf)) != received) {
+                sd_log(LOG_LEVEL_ERROR, "Error relaying data to fd");
                 return -1;
             }
         }
 
-        if (FD_ISSET(c2->fd, &read_fds)) {
-            received = sd_channel_receive_data(c2, buf, sizeof(buf));
+        if (FD_ISSET(fd, &fds)) {
+            received = read(fd, buf, sizeof(buf));
             if (received < 0) {
-                sd_log(LOG_LEVEL_ERROR, "Error relaying data from second channel");
+                sd_log(LOG_LEVEL_ERROR, "Error relaying data from fd");
                 return -1;
             }
 
-            if (sd_channel_write_data(c1, buf, received) != received) {
-                sd_log(LOG_LEVEL_ERROR, "Error relaying data to first channel");
+            if (sd_channel_write_data(channel, buf, received) < 0) {
+                sd_log(LOG_LEVEL_ERROR, "Error relaying data to channel");
                 return -1;
             }
         }
 
-        FD_ZERO(&read_fds);
+        FD_ZERO(&fds);
     }
 
     return 0;

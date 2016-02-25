@@ -86,7 +86,7 @@ static int invoke(struct sd_channel *channel)
 
         puts("Connected");
 
-        if (sd_channel_relay(channel, &xpra_channel) < 0) {
+        if (sd_channel_relay(channel, xpra_channel.fd) < 0) {
             sd_log(LOG_LEVEL_ERROR, "Could not relay xpra data");
             return -1;
         }
@@ -155,7 +155,7 @@ static int handle(struct sd_channel *channel,
 
         sd_log(LOG_LEVEL_VERBOSE, "Received xpra connection");
 
-        if (sd_channel_relay(channel, &xpra_channel) < 0) {
+        if (sd_channel_relay(channel, xpra_channel.fd) < 0) {
             sd_log(LOG_LEVEL_ERROR, "Could not relay xpra socket");
             return -1;
         }
