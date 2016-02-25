@@ -15,9 +15,15 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <unistd.h>
+#include <string.h>
+#include <signal.h>
+
 #include "xpra.h"
 
 #include "lib/common.h"
+#include "lib/log.h"
+#include "lib/server.h"
 #include "lib/service.h"
 
 static const char *version(void)
@@ -38,10 +44,140 @@ static int parameters(const struct sd_service_parameter **out)
     return ARRAY_SIZE(params);
 }
 
+static int invoke(struct sd_channel *channel)
+{
+    struct sd_channel xpra_channel;
+    int pid;
+    char *args[] = {
+        "xpra",
+        "start",
+        ":100",
+        "--exit-with-child",
+        "--start-child=st",
+        "--bind-tcp=localhost:9999",
+        "--no-notifications",
+        "--no-daemon",
+        "--no-mdns",
+        NULL
+    };
+
+    pid = fork();
+    if (pid == 0) {
+        if (execvp("xpra", args) != 0) {
+            sd_log(LOG_LEVEL_ERROR, "Could not start xpra server");
+            return -1;
+        }
+
+        return 0;
+    } else if (pid > 0) {
+        sleep(5);
+
+        if (sd_channel_init_from_host(&xpra_channel,
+                    "localhost", "9999", SD_CHANNEL_TYPE_TCP) < 0) {
+            sd_log(LOG_LEVEL_ERROR, "Could not initialize xpra connection");
+            return -1;
+        }
+        puts("Connecting");
+
+        if (sd_channel_connect(&xpra_channel) < 0) {
+            sd_log(LOG_LEVEL_ERROR, "Could not connect to xpra service");
+            return -1;
+        }
+
+        puts("Connected");
+
+        if (sd_channel_relay(channel, &xpra_channel) < 0) {
+            sd_log(LOG_LEVEL_ERROR, "Could not relay xpra data");
+            return -1;
+        }
+        puts("Relayed");
+    } else {
+        return -1;
+    }
+
+    kill(pid, SIGKILL);
+
+    return 0;
+}
+
+static int handle(struct sd_channel *channel,
+        struct sd_service_parameter **params, size_t nparams)
+{
+    struct sd_server server;
+    struct sd_channel xpra_channel;
+    char port[10], *args[] = {
+        "xpra",
+        "attach",
+        NULL,
+        "--no-notifications",
+        NULL
+    };
+    int len, pid;
+
+    if (sd_server_init(&server, "localhost", NULL, SD_CHANNEL_TYPE_TCP) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Could not initialize xpra relay socket");
+        return -1;
+    }
+
+    if (sd_server_listen(&server) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Could not listen on xpra relay socket");
+        return -1;
+    }
+
+    if (sd_server_get_address(&server, NULL, 0, port, sizeof(port)) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Could not retrieve address of xpra relay socket");
+        return -1;
+    }
+
+    len = snprintf(NULL, 0, "tcp:localhost:%5s", port);
+    args[2] = malloc(len);
+    len = snprintf(args[2], len, "tcp:localhost:%5s", port);
+
+    printf("Connecting to %s\n", args[2]);
+
+    sleep(5);
+
+    pid = fork();
+    if (pid == 0) {
+        sleep(1);
+
+        if (execvp("xpra", args) != 0) {
+            sd_log(LOG_LEVEL_ERROR, "Unable to execute xpra client");
+            return -1;
+        }
+
+        return 0;
+    } else if (pid > 0) {
+        if (sd_server_accept(&server, &xpra_channel) < 0) {
+            sd_log(LOG_LEVEL_ERROR, "Could not accept xpra relay socket connection");
+            return -1;
+        }
+
+        sd_log(LOG_LEVEL_VERBOSE, "Received xpra connection");
+
+        if (sd_channel_relay(channel, &xpra_channel) < 0) {
+            sd_log(LOG_LEVEL_ERROR, "Could not relay xpra socket");
+            return -1;
+        }
+    } else {
+        return -1;
+    }
+
+    UNUSED(params);
+    UNUSED(nparams);
+
+    kill(pid, SIGKILL);
+    sd_log(LOG_LEVEL_VERBOSE, "Terminated xpra");
+    free(args[2]);
+
+    return 0;
+}
+
 int sd_xpra_init_service(struct sd_service *service)
 {
     service->version = version;
-    service->handle = NULL;
+    service->handle = handle;
+    service->invoke = invoke;
     service->parameters = parameters;
 
     return 0;
