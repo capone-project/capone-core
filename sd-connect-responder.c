@@ -19,10 +19,12 @@
 #include <sodium.h>
 
 #include "lib/common.h"
+#include "lib/log.h"
 #include "lib/server.h"
 #include "lib/service.h"
 
 #include "proto/connect.pb-c.h"
+#include "proto/query.pb-c.h"
 
 static struct session {
     uint32_t sessionid;
@@ -32,6 +34,45 @@ static uint32_t nsessions = 0;
 
 static struct sd_key_pair keys;
 static struct sd_service service;
+
+static int handle_query(struct sd_channel *channel)
+{
+    QueryResults results = QUERY_RESULTS__INIT;
+    QueryResults__Parameter **parameters;
+    const struct sd_service_parameter *params;
+    int i, n;
+
+    if (await_encryption(channel, &keys) < 0) {
+        puts("Unable to negotiate encryption");
+        return -1;
+    }
+
+    results.name = service.name;
+    results.type = service.type;
+    results.subtype = service.subtype;
+    results.version = (char *) service.version();
+    results.location = service.location;
+    results.port = service.connectport;
+
+    n = service.parameters(&params);
+    parameters = malloc(sizeof(QueryResults__Parameter *) * n);
+    for (i = 0; i < n; i++) {
+        QueryResults__Parameter *parameter = malloc(sizeof(QueryResults__Parameter));
+        query_results__parameter__init(parameter);
+
+        parameter->key = (char *) params[i].name;
+        parameter->n_value = params[i].numvalues;
+        parameter->value = (char **) params[i].values;
+
+        parameters[i] = parameter;
+    }
+    results.parameters = parameters;
+    results.n_parameters = n;
+
+    sd_channel_write_protobuf(channel, (ProtobufCMessage *) &results);
+
+    return 0;
+}
 
 static int handle_request(struct sd_channel *channel)
 {
@@ -169,10 +210,16 @@ int main(int argc, char *argv[])
         }
 
         switch (type->type) {
+            case CONNECTION_TYPE__TYPE__QUERY:
+                sd_log(LOG_LEVEL_DEBUG, "Received query");
+                handle_query(&channel);
+                break;
             case CONNECTION_TYPE__TYPE__REQUEST:
+                sd_log(LOG_LEVEL_DEBUG, "Received request");
                 handle_request(&channel);
                 break;
             case CONNECTION_TYPE__TYPE__CONNECT:
+                sd_log(LOG_LEVEL_DEBUG, "Received connect");
                 handle_connect(&channel);
                 break;
             case _CONNECTION_TYPE__TYPE_IS_INT_SIZE:

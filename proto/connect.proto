@@ -1,7 +1,8 @@
 message ConnectionType {
     enum Type {
-        REQUEST = 0;
-        CONNECT = 1;
+        QUERY = 0;
+        REQUEST = 1;
+        CONNECT = 2;
     };
 
     required Type type = 1;

@@ -26,6 +26,7 @@
 #include "lib/service.h"
 
 #include "proto/connect.pb-c.h"
+#include "proto/query.pb-c.h"
 
 struct params {
     const char *key;
@@ -38,6 +39,7 @@ static struct sd_key_public remote_keys;
 static void usage(const char *prog)
 {
     printf("USAGE: %s (request|connect)\n"
+            "\tquery <CONFIG> <KEY> <HOST> <PORT>\n"
             "\trequest <CONFIG> <KEY> <HOST> <PORT> [<PARAMETER>...]\n"
             "\tconnect <SESSIONID> <TOKEN> <HOST> <PORT> <SERVICE>\n", prog);
     exit(-1);
@@ -140,6 +142,90 @@ static int parse_params(struct params **out, int argc, char *argv[])
     *out = params;
 
     return i;
+}
+
+static int send_query(struct sd_channel *channel)
+{
+    QueryResults *result;
+    char pk[crypto_sign_PUBLICKEYBYTES * 2 + 1];
+    size_t i, j;
+
+    if (sd_channel_receive_protobuf(channel, &query_results__descriptor,
+            (ProtobufCMessage **) &result) < 0) {
+        puts("Could not receive query results");
+        return -1;
+    }
+
+    sodium_bin2hex(pk, sizeof(pk),
+            channel->remote_keys.sign, sizeof(channel->remote_keys.sign));
+
+    printf("%s\n"
+           "\tname:     %s\n"
+           "\ttype:     %s\n"
+           "\tsubtype:  %s\n"
+           "\tversion:  %s\n"
+           "\tlocation: %s\n"
+           "\tport:     %s\n",
+           pk,
+           result->name,
+           result->type,
+           result->subtype,
+           result->version,
+           result->location,
+           result->port);
+
+    for (i = 0; i < result->n_parameters; i++) {
+        QueryResults__Parameter *param = result->parameters[i];
+        printf("\tparam:    %s\n", param->key);
+
+        for (j = 0; j < param->n_value; j++)
+            printf("\t          %s\n", param->value[j]);
+    }
+
+    query_results__free_unpacked(result, NULL);
+
+    return 0;
+}
+
+static int cmd_query(int argc, char *argv[])
+{
+    struct sd_channel channel;
+    char *config, *key, *host, *port;
+
+    if (argc != 6)
+        usage(argv[0]);
+
+    config = argv[2];
+    key = argv[3];
+    host = argv[4];
+    port = argv[5];
+
+    if (sd_key_pair_from_config_file(&keys, config) < 0) {
+        puts("Could not parse config");
+        return -1;
+    }
+
+    if (sd_key_public_from_hex(&remote_keys, key) < 0) {
+        puts("Could not parse remote public key");
+        return -1;
+    }
+
+    if (initiate_connection(&channel, host, port, CONNECTION_TYPE__TYPE__QUERY) < 0) {
+        puts("Could not establish connection");
+        return -1;
+    }
+
+    if (initiate_encryption(&channel, &keys, &remote_keys) < 0) {
+        puts("Unable to initiate encryption");
+        return -1;
+    }
+
+    if (send_query(&channel) < 0)
+        return -1;
+
+    sd_channel_close(&channel);
+
+    return 0;
 }
 
 static int cmd_request(int argc, char *argv[])
@@ -280,6 +366,8 @@ int main(int argc, char *argv[])
         return -1;
     }
 
+    if (!strcmp(argv[1], "query"))
+        return cmd_query(argc, argv);
     if (!strcmp(argv[1], "request"))
         return cmd_request(argc, argv);
     else if (!strcmp(argv[1], "connect"))
