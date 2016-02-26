@@ -27,7 +27,7 @@ EXECUTABLES=sd-discover \
 			sd-discover-responder \
 			sd-genkey \
 			sd-connect \
-			sd-connect-responder
+			sd-server
 EXECUTABLES_OBJECTS=$(patsubst %,%.o,${EXECUTABLES})
 EXECUTABLES_LIBS=libsodium libprotobuf-c
 EXECUTABLES_CFLAGS=${CFLAGS} -I. $(shell pkg-config --cflags ${EXECUTABLES_LIBS})
