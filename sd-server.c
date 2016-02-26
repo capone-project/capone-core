@@ -24,7 +24,6 @@
 #include "lib/service.h"
 
 #include "proto/connect.pb-c.h"
-#include "proto/query.pb-c.h"
 
 static struct session {
     uint32_t sessionid;

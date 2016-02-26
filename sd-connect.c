@@ -26,7 +26,6 @@
 #include "lib/service.h"
 
 #include "proto/connect.pb-c.h"
-#include "proto/query.pb-c.h"
 
 struct params {
     const char *key;
