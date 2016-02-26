@@ -151,7 +151,7 @@ int main(int argc, char *argv[])
 
         service_message->name = services[i].name;
         service_message->type = services[i].type;
-        service_message->port = services[i].queryport;
+        service_message->port = services[i].port;
 
         service_messages[i] = service_message;
     }

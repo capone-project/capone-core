@@ -36,8 +36,7 @@ struct sd_service {
     char *name;
     char *type;
     char *subtype;
-    char *queryport;
-    char *connectport;
+    char *port;
     char *location;
 
     version_fn version;

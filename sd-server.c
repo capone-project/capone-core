@@ -51,7 +51,7 @@ static int handle_query(struct sd_channel *channel)
     results.subtype = service.subtype;
     results.version = (char *) service.version();
     results.location = service.location;
-    results.port = service.connectport;
+    results.port = service.port;
 
     n = service.parameters(&params);
     parameters = malloc(sizeof(QueryResults__Parameter *) * n);
@@ -183,7 +183,7 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    if (sd_server_init(&server, NULL, service.connectport, SD_CHANNEL_TYPE_TCP) < 0) {
+    if (sd_server_init(&server, NULL, service.port, SD_CHANNEL_TYPE_TCP) < 0) {
         puts("Could not set up server");
         return -1;
     }

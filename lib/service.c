@@ -151,8 +151,7 @@ int sd_service_from_section(struct sd_service *out, const struct cfg_section *se
         MAYBE_ADD_ENTRY(name, entry, value);
         MAYBE_ADD_ENTRY(type, entry, value);
         MAYBE_ADD_ENTRY(subtype, entry, value);
-        MAYBE_ADD_ENTRY(queryport, entry, value);
-        MAYBE_ADD_ENTRY(connectport, entry, value);
+        MAYBE_ADD_ENTRY(port, entry, value);
         MAYBE_ADD_ENTRY(location, entry, value);
 
         sd_log(LOG_LEVEL_ERROR, "Unknown service config '%s'", entry);
@@ -181,7 +180,6 @@ void sd_service_free(struct sd_service *service)
     free(service->name);
     free(service->type);
     free(service->subtype);
-    free(service->queryport);
-    free(service->connectport);
+    free(service->port);
     free(service->location);
 }
