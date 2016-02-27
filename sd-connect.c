@@ -32,8 +32,8 @@ struct params {
     const char *value;
 };
 
-static struct sd_key_pair keys;
-static struct sd_key_public remote_keys;
+static struct sd_sign_key_pair local_keys;
+static struct sd_sign_key_public remote_key;
 
 static void usage(const char *prog)
 {
@@ -156,7 +156,7 @@ static int send_query(struct sd_channel *channel)
     }
 
     sodium_bin2hex(pk, sizeof(pk),
-            channel->remote_keys.sign, sizeof(channel->remote_keys.sign));
+            channel->remote_key.data, sizeof(channel->remote_key.data));
 
     printf("%s\n"
            "\tname:     %s\n"
@@ -199,12 +199,12 @@ static int cmd_query(int argc, char *argv[])
     host = argv[4];
     port = argv[5];
 
-    if (sd_key_pair_from_config_file(&keys, config) < 0) {
-        puts("Could not parse config");
+    if (sd_sign_key_pair_from_config_file(&local_keys, config) < 0) {
+        puts("Could not parse sign keys");
         return -1;
     }
 
-    if (sd_key_public_from_hex(&remote_keys, key) < 0) {
+    if (sd_sign_key_public_from_hex(&remote_key, key) < 0) {
         puts("Could not parse remote public key");
         return -1;
     }
@@ -214,7 +214,7 @@ static int cmd_query(int argc, char *argv[])
         return -1;
     }
 
-    if (initiate_encryption(&channel, &keys, &remote_keys) < 0) {
+    if (initiate_encryption(&channel, &local_keys, &remote_key) < 0) {
         puts("Unable to initiate encryption");
         return -1;
     }
@@ -248,12 +248,12 @@ static int cmd_request(int argc, char *argv[])
         return -1;
     }
 
-    if (sd_key_pair_from_config_file(&keys, config) < 0) {
+    if (sd_sign_key_pair_from_config_file(&local_keys, config) < 0) {
         puts("Could not parse config");
         return -1;
     }
 
-    if (sd_key_public_from_hex(&remote_keys, key) < 0) {
+    if (sd_sign_key_public_from_hex(&remote_key, key) < 0) {
         puts("Could not parse remote public key");
         return -1;
     }
@@ -263,7 +263,7 @@ static int cmd_request(int argc, char *argv[])
         return -1;
     }
 
-    if (initiate_encryption(&channel, &keys, &remote_keys) < 0) {
+    if (initiate_encryption(&channel, &local_keys, &remote_key) < 0) {
         puts("Unable to initiate encryption");
         return -1;
     }
@@ -281,7 +281,7 @@ static int initiate_session(struct sd_channel *channel, const char *token, int s
     ConnectionInitiation initiation = CONNECTION_INITIATION__INIT;
     uint8_t local_nonce[crypto_secretbox_NONCEBYTES],
             remote_nonce[crypto_secretbox_NONCEBYTES];
-    struct sd_key_symmetric key;
+    struct sd_symmetric_key key;
 
     initiation.sessionid = sessionid;
     if (sd_channel_write_protobuf(channel, &initiation.base) < 0 ) {
@@ -289,7 +289,7 @@ static int initiate_session(struct sd_channel *channel, const char *token, int s
         return -1;
     }
 
-    if (sd_key_symmetric_from_hex(&key, token) < 0) {
+    if (sd_symmetric_key_from_hex(&key, token) < 0) {
         puts("Could not retrieve symmetric key");
         return -1;
     }

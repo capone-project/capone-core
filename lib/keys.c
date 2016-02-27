@@ -22,12 +22,10 @@
 
 #include "keys.h"
 
-int sd_key_pair_from_config_file(struct sd_key_pair *out, const char *file)
+int sd_sign_key_pair_from_config_file(struct sd_sign_key_pair *out, const char *file)
 {
-    uint8_t sign_pk[crypto_sign_ed25519_PUBLICKEYBYTES];
-    uint8_t sign_sk[crypto_sign_ed25519_SECRETKEYBYTES];
-    uint8_t box_pk[crypto_scalarmult_curve25519_BYTES];
-    uint8_t box_sk[crypto_scalarmult_curve25519_BYTES];
+    uint8_t sign_pk[crypto_sign_PUBLICKEYBYTES],
+            sign_sk[crypto_sign_SECRETKEYBYTES];
     struct cfg cfg;
     char *value;
 
@@ -58,19 +56,8 @@ int sd_key_pair_from_config_file(struct sd_key_pair *out, const char *file)
     free(value);
     value = NULL;
 
-    if (crypto_sign_ed25519_pk_to_curve25519(box_pk, sign_pk) < 0) {
-        puts("Could not convert public key to curve52219");
-        goto out_err;
-    }
-    if (crypto_sign_ed25519_sk_to_curve25519(box_sk, sign_sk) < 0) {
-        puts("Could not convert public key to curve52219");
-        goto out_err;
-    }
-
-    memcpy(out->pk.sign, sign_pk, sizeof(sign_pk));
-    memcpy(out->sk.sign, sign_sk, sizeof(sign_sk));
-    memcpy(out->pk.box, box_pk, sizeof(box_pk));
-    memcpy(out->sk.box, box_sk, sizeof(box_sk));
+    memcpy(out->pk.data, sign_pk, sizeof(sign_pk));
+    memcpy(out->sk.data, sign_sk, sizeof(sign_sk));
 
     cfg_free(&cfg);
 
@@ -83,72 +70,64 @@ out_err:
     return -1;
 }
 
-int sd_key_public_from_hex(struct sd_key_public *out, const char *hex)
+int sd_sign_key_public_from_hex(struct sd_sign_key_public *out, const char *hex)
 {
-    int len;
-    uint8_t sign_pk[crypto_sign_ed25519_PUBLICKEYBYTES],
-        box_pk[crypto_scalarmult_curve25519_BYTES];
+    int hexlen;
 
-    len = strlen(hex);
-    if (len != 2 * crypto_sign_PUBLICKEYBYTES) {
-        sd_log(LOG_LEVEL_ERROR, "Passed in buffer does not match required public key length");
+    hexlen = strlen(hex);
+    if (hexlen != crypto_sign_PUBLICKEYBYTES * 2) {
+        sd_log(LOG_LEVEL_ERROR, "Hex length does not match required public sign key length");
         return -1;
     }
 
-    if (sodium_hex2bin(sign_pk, sizeof(sign_pk), hex, len, NULL, NULL, NULL) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not decode hex");
+    return sodium_hex2bin(out->data, sizeof(out->data), hex, hexlen, NULL, NULL, NULL);
+}
+
+int sd_sign_key_public_from_bin(struct sd_sign_key_public *out, uint8_t *pk, size_t pklen)
+{
+    if (pklen != crypto_sign_PUBLICKEYBYTES) {
+        sd_log(LOG_LEVEL_ERROR, "Passed in buffer does not match required public sign key length");
         return -1;
     }
 
-    if (crypto_sign_ed25519_pk_to_curve25519(box_pk, sign_pk) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not convert public key to curve52219");
-        return -1;
-    }
-
-    memcpy(out->box, box_pk, sizeof(out->box));
-    memcpy(out->sign, sign_pk, sizeof(out->sign));
+    memcpy(out->data, pk, sizeof(out->data));
 
     return 0;
 }
 
-int sd_key_public_from_bin(struct sd_key_public *out, uint8_t *data, size_t len)
+int sd_encrypt_key_pair_generate(struct sd_encrypt_key_pair *out)
 {
-    uint8_t box_pk[crypto_scalarmult_curve25519_BYTES];
+    return crypto_box_keypair(out->pk.data, out->sk.data);
+}
 
-    if (len != crypto_sign_PUBLICKEYBYTES) {
-        sd_log(LOG_LEVEL_ERROR, "Passed in buffer does not match required public key length");
+int sd_encrypt_key_public_from_bin(struct sd_encrypt_key_public *out, uint8_t *pk, size_t pklen)
+{
+    if (pklen != crypto_box_PUBLICKEYBYTES) {
+        sd_log(LOG_LEVEL_ERROR, "Passed in buffer does not match required public encrypt key length");
         return -1;
     }
 
-    if (crypto_sign_ed25519_pk_to_curve25519(box_pk, data) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not convert public key to curve52219");
-        return -1;
-    }
-
-    memcpy(out->box, box_pk, sizeof(out->box));
-    memcpy(out->sign, data, len);
+    memcpy(out->data, pk, sizeof(out->data));
 
     return 0;
 }
 
-int sd_key_symmetric_from_hex(struct sd_key_symmetric *out, const char *hex)
+int sd_symmetric_key_generate(struct sd_symmetric_key *out)
 {
-    int len;
-    uint8_t key[crypto_secretbox_KEYBYTES];
-
-    len = strlen(hex);
-    if (len != 2 * crypto_secretbox_KEYBYTES) {
-        sd_log(LOG_LEVEL_ERROR, "Passed in buffer does not match required symmetric key length");
-        return -1;
-    }
-
-    if (sodium_hex2bin(key, sizeof(key), hex, len, NULL, NULL, NULL) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not decode hex");
-        return -1;
-    }
-
-    memcpy(out->key, key, sizeof(out->key));
-
+    randombytes(out->data, sizeof(out->data));
     return 0;
+}
+
+int sd_symmetric_key_from_hex(struct sd_symmetric_key *out, const char *hex)
+{
+    int hexlen;
+
+    hexlen = strlen(hex);
+    if (hexlen != crypto_secretbox_KEYBYTES * 2) {
+        sd_log(LOG_LEVEL_ERROR, "Hex length does not match required symmetric key length");
+        return -1;
+    }
+
+    return sodium_hex2bin(out->data, sizeof(out->data), hex, hexlen, NULL, NULL, NULL);
 
 }

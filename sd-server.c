@@ -27,11 +27,11 @@
 
 static struct session {
     uint32_t sessionid;
-    struct sd_key_symmetric key;
+    struct sd_symmetric_key session_key;
 } *sessions = NULL;
 static uint32_t nsessions = 0;
 
-static struct sd_key_pair keys;
+static struct sd_sign_key_pair local_keys;
 static struct sd_service service;
 
 static int handle_query(struct sd_channel *channel)
@@ -39,9 +39,10 @@ static int handle_query(struct sd_channel *channel)
     QueryResults results = QUERY_RESULTS__INIT;
     QueryResults__Parameter **parameters;
     const struct sd_service_parameter *params;
+    struct sd_sign_key_public remote_key;
     int i, n;
 
-    if (await_encryption(channel, &keys) < 0) {
+    if (await_encryption(channel, &local_keys, &remote_key) < 0) {
         puts("Unable to negotiate encryption");
         return -1;
     }
@@ -77,12 +78,15 @@ static int handle_request(struct sd_channel *channel)
 {
     ConnectionRequestMessage *request;
     ConnectionTokenMessage token = CONNECTION_TOKEN_MESSAGE__INIT;
-    uint8_t key[crypto_secretbox_KEYBYTES];
+    struct sd_sign_key_public remote_sign_key;
+    struct sd_symmetric_key session_key;
 
-    if (await_encryption(channel, &keys) < 0) {
+    if (await_encryption(channel, &local_keys, &remote_sign_key) < 0) {
         puts("Unable to await encryption");
         return -1;
     }
+
+    /* TODO: verify entity is allowed to access service */
 
     if (sd_channel_receive_protobuf(channel,
             &connection_request_message__descriptor,
@@ -91,9 +95,13 @@ static int handle_request(struct sd_channel *channel)
         return -1;
     }
 
-    randombytes_buf(key, sizeof(key));
-    token.token.data = key;
-    token.token.len = sizeof(key);
+    if (sd_symmetric_key_generate(&session_key) < 0) {
+        puts("Unable to generate sesson session_key");
+        return -1;
+    }
+
+    token.token.data = session_key.data;
+    token.token.len = sizeof(session_key.data);
     token.sessionid = randombytes_random();
 
     if (sd_channel_write_protobuf(channel, &token.base) < 0) {
@@ -104,7 +112,7 @@ static int handle_request(struct sd_channel *channel)
     nsessions += 1;
     sessions = realloc(sessions, nsessions * sizeof(struct session));
     sessions[nsessions - 1].sessionid = token.sessionid;
-    memcpy(sessions[nsessions - 1].key.key, key, sizeof(key));
+    memcpy(sessions[nsessions - 1].session_key.data, session_key.data, sizeof(session_key));
 
     return 0;
 }
@@ -141,7 +149,7 @@ static int handle_connect(struct sd_channel *channel)
     sodium_increment(local_nonce, sizeof(local_nonce));
 
     if (sd_channel_set_crypto_symmetric(channel,
-                &session->key, local_nonce, remote_nonce) < 0) {
+                &session->session_key, local_nonce, remote_nonce) < 0) {
         puts("Could not enable symmetric encryption");
         return -1;
     }
@@ -178,7 +186,7 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    if (sd_key_pair_from_config_file(&keys, config) < 0) {
+    if (sd_sign_key_pair_from_config_file(&local_keys, config) < 0) {
         puts("Could not parse config");
         return -1;
     }

@@ -34,8 +34,6 @@
 #include "lib/log.h"
 #include "lib/common.h"
 
-#include "proto/envelope.pb-c.h"
-
 #include "channel.h"
 
 int getsock(struct sockaddr_storage *addr, const char *host,
@@ -111,7 +109,6 @@ int sd_channel_init_from_fd(struct sd_channel *c,
         int fd, struct sockaddr_storage addr, enum sd_channel_type type)
 {
     memset(c, 0, sizeof(struct sd_channel));
-    c->nonce_offset = 2;
 
     c->fd = fd;
     c->type = type;
@@ -124,7 +121,7 @@ int sd_channel_init_from_fd(struct sd_channel *c,
 int sd_channel_set_crypto_none(struct sd_channel *c)
 {
     memset(&c->local_keys, 0, sizeof(c->local_keys));
-    memset(&c->remote_keys, 0, sizeof(c->remote_keys));
+    memset(&c->remote_key, 0, sizeof(c->remote_key));
     memset(&c->key, 0, sizeof(c->key));
 
     c->crypto = SD_CHANNEL_CRYPTO_NONE;
@@ -133,14 +130,14 @@ int sd_channel_set_crypto_none(struct sd_channel *c)
 }
 
 int sd_channel_set_crypto_asymmetric(struct sd_channel *c,
-        const struct sd_key_pair *local_keys,
-        const struct sd_key_public *remote_keys,
+        const struct sd_encrypt_key_pair *local_keys,
+        const struct sd_encrypt_key_public *remote_key,
         uint8_t *local_nonce, uint8_t *remote_nonce)
 {
     memset(&c->key, 0, sizeof(c->key));
 
     memcpy(&c->local_keys, local_keys, sizeof(c->local_keys));
-    memcpy(&c->remote_keys, remote_keys, sizeof(c->remote_keys));
+    memcpy(&c->remote_key, remote_key, sizeof(c->remote_key));
 
     memcpy(c->local_nonce, local_nonce, sizeof(c->local_nonce));
     memcpy(c->remote_nonce, remote_nonce, sizeof(c->remote_nonce));
@@ -151,11 +148,11 @@ int sd_channel_set_crypto_asymmetric(struct sd_channel *c,
 }
 
 int sd_channel_set_crypto_symmetric(struct sd_channel *c,
-        const struct sd_key_symmetric *key,
+        const struct sd_symmetric_key *key,
         uint8_t *local_nonce, uint8_t *remote_nonce)
 {
     memset(&c->local_keys, 0, sizeof(c->key));
-    memset(&c->remote_keys, 0, sizeof(c->key));
+    memset(&c->remote_key, 0, sizeof(c->key));
 
     memcpy(&c->key, key, sizeof(c->key));
 
@@ -196,7 +193,6 @@ int sd_channel_write_data(struct sd_channel *c, uint8_t *data, uint32_t datalen)
 {
     uint8_t msg[4096 + crypto_box_MACBYTES];
     ssize_t ret;
-    int i;
 
     switch (c->crypto) {
         case SD_CHANNEL_CRYPTO_NONE:
@@ -216,14 +212,14 @@ int sd_channel_write_data(struct sd_channel *c, uint8_t *data, uint32_t datalen)
             }
 
             if (crypto_box_easy(msg, data, datalen,
-                    c->local_nonce, c->remote_keys.box, c->local_keys.sk.box) < 0) {
+                    c->local_nonce, c->remote_key.data, c->local_keys.sk.data) < 0) {
                 sd_log(LOG_LEVEL_ERROR, "Unable to encrypt msg");
                 return -1;
             }
             datalen = datalen + crypto_box_MACBYTES;
 
-            for (i = 0; i < c->nonce_offset; i++)
-                sodium_increment(c->local_nonce, crypto_box_NONCEBYTES);
+            sodium_increment(c->local_nonce, crypto_box_NONCEBYTES);
+            sodium_increment(c->local_nonce, crypto_box_NONCEBYTES);
 
             break;
         case SD_CHANNEL_CRYPTO_SYMMETRIC:
@@ -233,14 +229,14 @@ int sd_channel_write_data(struct sd_channel *c, uint8_t *data, uint32_t datalen)
                 return -1;
             }
 
-            if (crypto_secretbox_easy(msg, data, datalen, c->local_nonce, c->key.key) < 0) {
+            if (crypto_secretbox_easy(msg, data, datalen, c->local_nonce, c->key.data) < 0) {
                 sd_log(LOG_LEVEL_ERROR, "Unable to encrypt msg");
                 return -1;
             }
             datalen = datalen + crypto_secretbox_MACBYTES;
 
-            for (i = 0; i < c->nonce_offset; i++)
-                sodium_increment(c->local_nonce, crypto_secretbox_NONCEBYTES);
+            sodium_increment(c->local_nonce, crypto_secretbox_NONCEBYTES);
+            sodium_increment(c->local_nonce, crypto_secretbox_NONCEBYTES);
 
             break;
         default:
@@ -306,7 +302,6 @@ ssize_t sd_channel_receive_data(struct sd_channel *c, uint8_t *out, size_t maxle
     uint8_t buf[4096];
     uint32_t len;
     ssize_t ret;
-    int i;
 
     ret = recv(c->fd, (uint8_t *) &len, sizeof(uint32_t) / sizeof(uint8_t), 0);
     if (ret < 0) {
@@ -351,14 +346,14 @@ ssize_t sd_channel_receive_data(struct sd_channel *c, uint8_t *out, size_t maxle
             }
 
             if (crypto_box_open_easy(out, buf, len, c->remote_nonce,
-                        c->remote_keys.box, c->local_keys.sk.box) != 0) {
+                        c->remote_key.data, c->local_keys.sk.data) != 0) {
                 sd_log(LOG_LEVEL_ERROR, "Unable to decrypt message");
                 return -1;
             }
             len = len - crypto_box_MACBYTES;
 
-            for (i = 0; i < c->nonce_offset; i++)
-                sodium_increment(c->remote_nonce, crypto_box_NONCEBYTES);
+            sodium_increment(c->remote_nonce, crypto_box_NONCEBYTES);
+            sodium_increment(c->remote_nonce, crypto_box_NONCEBYTES);
 
             break;
         case SD_CHANNEL_CRYPTO_SYMMETRIC:
@@ -369,14 +364,14 @@ ssize_t sd_channel_receive_data(struct sd_channel *c, uint8_t *out, size_t maxle
             }
 
             if (crypto_secretbox_open_easy(out, buf, len, c->remote_nonce,
-                        c->key.key) != 0) {
+                        c->key.data) != 0) {
                 sd_log(LOG_LEVEL_ERROR, "Unable to decrypt message");
                 return -1;
             }
             len = len - crypto_secretbox_MACBYTES;
 
-            for (i = 0; i < c->nonce_offset; i++)
-                sodium_increment(c->remote_nonce, crypto_secretbox_NONCEBYTES);
+            sodium_increment(c->remote_nonce, crypto_secretbox_NONCEBYTES);
+            sodium_increment(c->remote_nonce, crypto_secretbox_NONCEBYTES);
 
             break;
         default:

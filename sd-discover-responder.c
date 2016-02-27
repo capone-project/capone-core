@@ -36,14 +36,12 @@
 #include "proto/discovery.pb-c.h"
 
 static AnnounceMessage announce_message;
-static struct sd_key_pair keys;
+static struct sd_sign_key_public local_key;
 
 #define LISTEN_PORT 6667
 
 static void announce(struct sockaddr_storage addr, uint32_t port)
 {
-    Envelope *env = NULL;
-
     struct sd_channel channel;
     char host[128], service[16];
 
@@ -54,24 +52,18 @@ static void announce(struct sockaddr_storage addr, uint32_t port)
     }
     snprintf(service, sizeof(service), "%u", port);
 
-    if (pack_signed_protobuf(&env, (ProtobufCMessage *) &announce_message, &keys, NULL) < 0) {
-        puts("Could not create signed envelope");
-        return;
-    }
-
     if (sd_channel_init_from_host(&channel, host, service, SD_CHANNEL_TYPE_UDP) < 0) {
         puts("Could not initialize channel");
         return;
     }
 
-    if (sd_channel_write_protobuf(&channel, (ProtobufCMessage *) env) < 0) {
-        puts("Could not write protobuf");
+    if (sd_channel_write_protobuf(&channel, &announce_message.base) < 0) {
+        puts("Could not write announce message");
         return;
     }
 
     puts("Sent announce");
 
-    envelope__free_unpacked(env, NULL);
     sd_channel_close(&channel);
 }
 
@@ -79,8 +71,7 @@ static void handle_discover()
 {
     struct sd_server server;
     struct sd_channel channel;
-    DiscoverMessage *msg;
-    Envelope *env;
+    DiscoverMessage *discover;
 
     if (sd_server_init(&server, NULL, "6667", SD_CHANNEL_TYPE_UDP) < 0) {
         puts("Unable to init listening channel");
@@ -95,24 +86,17 @@ static void handle_discover()
             goto out;
         }
 
-        if (sd_channel_receive_protobuf(&channel, &envelope__descriptor,
-                (ProtobufCMessage **) &env) < 0) {
-            puts("Unable to receive protobuf");
-            goto out;
-        }
-
-        if (unpack_signed_protobuf(&discover_message__descriptor,
-                    (ProtobufCMessage **) &msg, env, NULL) < 0) {
-            puts("Received invalid signed envelope");
+        if (sd_channel_receive_protobuf(&channel, &discover_message__descriptor,
+                (ProtobufCMessage **) &discover) < 0) {
+            puts("Unable to receive envelope");
             goto out;
         }
 
         sd_log(LOG_LEVEL_DEBUG, "Received discovery message");
 
-        announce(channel.addr, msg->port);
+        announce(channel.addr, discover->port);
 
-        discover_message__free_unpacked(msg, NULL);
-        envelope__free_unpacked(env, NULL);
+        discover_message__free_unpacked(discover, NULL);
     }
 
 out:
@@ -123,6 +107,7 @@ int main(int argc, char *argv[])
 {
     AnnounceMessage__Service **service_messages;
     struct sd_service *services;
+    struct sd_sign_key_pair keys;
     int i, numservices;
 
     if (sodium_init() < 0) {
@@ -134,15 +119,22 @@ int main(int argc, char *argv[])
         return 0;
     }
 
-    if (sd_key_pair_from_config_file(&keys, argv[1]) < 0)
+    if (sd_sign_key_pair_from_config_file(&keys, argv[1]) < 0) {
+        puts("Unable to read local keys");
         return -1;
-    if ((numservices = sd_services_from_config_file(&services, argv[1])) <= 0)
+    }
+    memcpy(&local_key.data, &keys.pk.data, sizeof(local_key.data));
+    sodium_memzero(&keys, sizeof(keys));
+
+    if ((numservices = sd_services_from_config_file(&services, argv[1])) <= 0) {
+        puts("Unable to read service configuration");
         return -1;
+    }
 
     announce_message__init(&announce_message);
     announce_message.version = VERSION;
-    announce_message.pubkey.data = keys.pk.sign;
-    announce_message.pubkey.len = sizeof(keys.pk.sign);
+    announce_message.sign_key.data = local_key.data;
+    announce_message.sign_key.len = sizeof(local_key.data);
 
     service_messages = malloc(sizeof(AnnounceMessage__Service *) * numservices);
     for (i = 0; i < numservices; i++) {

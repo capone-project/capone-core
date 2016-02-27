@@ -34,24 +34,19 @@
 
 #define LISTEN_PORT 6668
 
-static uint8_t rpk[crypto_box_PUBLICKEYBYTES];
-static struct sd_key_pair keys;
+static struct sd_sign_key_pair local_keys;
 
 static void probe(void *payload)
 {
     DiscoverMessage msg = DISCOVER_MESSAGE__INIT;
-    Envelope *env;
     struct sd_channel channel;
 
     UNUSED(payload);
 
     msg.version = VERSION;
     msg.port = LISTEN_PORT;
-
-    if (pack_signed_protobuf(&env, (ProtobufCMessage *) &msg, &keys, NULL) < 0) {
-        puts("Unable to sign protobuf");
-        goto out;
-    }
+    msg.sign_key.data = local_keys.pk.data;
+    msg.sign_key.len = sizeof(local_keys.pk.data);
 
     if (sd_channel_init_from_host(&channel, "224.0.0.1", "6667", SD_CHANNEL_TYPE_UDP) < 0) {
         puts("Unable to initialize channel");
@@ -59,7 +54,7 @@ static void probe(void *payload)
     }
 
     while (true) {
-        if (sd_channel_write_protobuf(&channel, (ProtobufCMessage *) env) < 0) {
+        if (sd_channel_write_protobuf(&channel, &msg.base) < 0) {
             puts("Unable to write protobuf");
             goto out;
         }
@@ -75,11 +70,11 @@ out:
 
 static void handle_announce()
 {
-    char pubkey[sizeof(keys.pk.sign) * 2 + 1];
+    struct sd_sign_key_public remote_key;
     struct sd_server server;
     struct sd_channel channel;
-    AnnounceMessage *msg = NULL;
-    Envelope *env = NULL;
+    char hex[sizeof(remote_key.data) * 2 + 1];
+    AnnounceMessage *announce = NULL;
     unsigned i;
 
     if (sd_server_init(&server, NULL, "6668", SD_CHANNEL_TYPE_UDP) < 0) {
@@ -93,33 +88,30 @@ static void handle_announce()
     }
 
     if (sd_channel_receive_protobuf(&channel,
-                (ProtobufCMessageDescriptor *) &envelope__descriptor,
-                (ProtobufCMessage **) &env) < 0) {
+                (ProtobufCMessageDescriptor *) &announce_message__descriptor,
+                (ProtobufCMessage **) &announce) < 0) {
         puts("Unable to receive protobuf");
         goto out;
     }
 
-    if (unpack_signed_protobuf(&announce_message__descriptor,
-                (ProtobufCMessage **) &msg, env, NULL) < 0) {
-        puts("Unable to unpack signed protobuf");
+    if (sd_sign_key_public_from_bin(&remote_key,
+                announce->sign_key.data, announce->sign_key.len) < 0) {
+        puts("Unable to retrieve remote sign key");
         goto out;
     }
 
-    memcpy(rpk, msg->pubkey.data, sizeof(rpk));
+    sodium_bin2hex(hex, sizeof(hex), remote_key.data, sizeof(remote_key.data));
 
-    sodium_bin2hex(pubkey, sizeof(pubkey), msg->pubkey.data, msg->pubkey.len);
+    printf("%s (v%s)\n", hex, announce->version);
 
-    printf("%s (v%s)\n", pubkey, msg->version);
-
-    for (i = 0; i < msg->n_services; i++) {
-        AnnounceMessage__Service *service = msg->services[i];
+    for (i = 0; i < announce->n_services; i++) {
+        AnnounceMessage__Service *service = announce->services[i];
 
         printf("\t%s -> %s (%s)\n", service->port, service->name, service->type);
     }
 
 out:
-    announce_message__free_unpacked(msg, NULL);
-    envelope__free_unpacked(env, NULL);
+    announce_message__free_unpacked(announce, NULL);
     sd_channel_close(&channel);
 }
 
@@ -136,7 +128,7 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    if (sd_key_pair_from_config_file(&keys, argv[1]) < 0) {
+    if (sd_sign_key_pair_from_config_file(&local_keys, argv[1]) < 0) {
         puts("Could not parse config");
         return -1;
     }

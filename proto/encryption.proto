@@ -1,3 +1,5 @@
-message EncryptionNegotiationMessage {
-    required bytes nonce = 1;
+message SessionKeyMessage {
+    required bytes signature = 1;
+    required bytes sign_pk = 2;
+    required bytes encrypt_pk = 3;
 }

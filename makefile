@@ -3,7 +3,6 @@ include config.mk
 PROTOBUF=proto/connect.proto \
 		 proto/discovery.proto \
 		 proto/encryption.proto \
-		 proto/envelope.proto \
 		 proto/test.proto
 PROTOBUF_SOURCES=$(patsubst %.proto,%.pb-c.c,${PROTOBUF})
 PROTOBUF_HEADERS=$(patsubst %.proto,%.pb-c.h,${PROTOBUF})

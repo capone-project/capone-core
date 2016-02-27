@@ -17,27 +17,40 @@
 
 #include <sodium.h>
 
-struct sd_key_secret {
-    uint8_t sign[crypto_sign_ed25519_SECRETKEYBYTES];
-    uint8_t box[crypto_scalarmult_curve25519_BYTES];
+struct sd_sign_key_secret {
+    uint8_t data[crypto_sign_SECRETKEYBYTES];
+};
+struct sd_sign_key_public {
+    uint8_t data[crypto_sign_PUBLICKEYBYTES];
+};
+struct sd_sign_key_pair {
+    struct sd_sign_key_secret sk;
+    struct sd_sign_key_public pk;
 };
 
-struct sd_key_public {
-    uint8_t sign[crypto_sign_ed25519_PUBLICKEYBYTES];
-    uint8_t box[crypto_scalarmult_curve25519_BYTES];
+struct sd_encrypt_key_secret {
+    uint8_t data[crypto_box_SECRETKEYBYTES];
+};
+struct sd_encrypt_key_public {
+    uint8_t data[crypto_box_PUBLICKEYBYTES];
+};
+struct sd_encrypt_key_pair {
+    struct sd_encrypt_key_secret sk;
+    struct sd_encrypt_key_public pk;
 };
 
-struct sd_key_pair {
-    struct sd_key_secret sk;
-    struct sd_key_public pk;
+struct sd_symmetric_key {
+    uint8_t data[crypto_secretbox_KEYBYTES];
 };
 
-int sd_key_pair_from_config_file(struct sd_key_pair *out, const char *file);
-int sd_key_public_from_hex(struct sd_key_public *out, const char *hex);
-int sd_key_public_from_bin(struct sd_key_public *out, uint8_t *data, size_t len);
+int sd_sign_key_pair_from_config_file(struct sd_sign_key_pair *out, const char *file);
+int sd_sign_key_public_from_hex(struct sd_sign_key_public *out, const char *hex);
+int sd_sign_key_public_from_bin(struct sd_sign_key_public *out,
+        uint8_t *pk, size_t pklen);
 
-struct sd_key_symmetric {
-    uint8_t key[crypto_secretbox_KEYBYTES];
-};
+int sd_encrypt_key_pair_generate(struct sd_encrypt_key_pair *out);
+int sd_encrypt_key_public_from_bin(struct sd_encrypt_key_public *out,
+        uint8_t *pk, size_t pklen);
 
-int sd_key_symmetric_from_hex(struct sd_key_symmetric *out, const char *hex);
+int sd_symmetric_key_generate(struct sd_symmetric_key *out);
+int sd_symmetric_key_from_hex(struct sd_symmetric_key *out, const char *hex);
