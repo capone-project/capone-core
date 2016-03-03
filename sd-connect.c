@@ -156,7 +156,7 @@ static int send_query(struct sd_channel *channel)
     }
 
     sodium_bin2hex(pk, sizeof(pk),
-            channel->remote_key.data, sizeof(channel->remote_key.data));
+            remote_key.data, sizeof(remote_key.data));
 
     printf("%s\n"
            "\tname:     %s\n"
