@@ -37,6 +37,23 @@ static uint32_t nwhitelistkeys;
 static struct sd_sign_key_pair local_keys;
 static struct sd_service service;
 
+static int is_whitelisted(const struct sd_sign_key_public *key)
+{
+    uint32_t i;
+
+    if (nwhitelistkeys == 0) {
+        return 1;
+    }
+
+    for (i = 0; i < nwhitelistkeys; i++) {
+        if (!memcmp(key->data, whitelistkeys[i].data, sizeof(key->data))) {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
 static int handle_query(struct sd_channel *channel)
 {
     QueryResults results = QUERY_RESULTS__INIT;
@@ -47,6 +64,11 @@ static int handle_query(struct sd_channel *channel)
 
     if (await_encryption(channel, &local_keys, &remote_key) < 0) {
         puts("Unable to negotiate encryption");
+        return -1;
+    }
+
+    if (!is_whitelisted(&remote_key)) {
+        puts("Received connection from unknown signature key");
         return -1;
     }
 
@@ -89,7 +111,10 @@ static int handle_request(struct sd_channel *channel)
         return -1;
     }
 
-    /* TODO: verify entity is allowed to access service */
+    if (!is_whitelisted(&remote_sign_key)) {
+        puts("Received connection from unknown signature key");
+        return -1;
+    }
 
     if (sd_channel_receive_protobuf(channel,
             &connection_request_message__descriptor,
