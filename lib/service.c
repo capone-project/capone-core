@@ -162,6 +162,16 @@ int sd_service_from_section(struct sd_service *out, const struct cfg_section *se
 
 #undef MAYBE_ADD_ENTRY
 
+    if (service.name == NULL ||
+            service.type == NULL ||
+            service.subtype == NULL ||
+            service.port == NULL ||
+            service.location == NULL)
+    {
+        sd_log(LOG_LEVEL_ERROR, "Not all service parameters were set");
+        goto out_err;
+    }
+
     if (fill_service_functions(&service, service.subtype) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Unknown service type '%s'", service.subtype);
         goto out_err;
