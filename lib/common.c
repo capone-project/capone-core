@@ -124,8 +124,11 @@ int initiate_encryption(struct sd_channel *channel,
     struct sd_encrypt_key_pair local_keys;
     struct sd_encrypt_key_public received_encrypt_key;
     struct sd_sign_key_public received_sign_key;
+    struct sd_symmetric_key shared_key;
     uint8_t local_nonce[crypto_box_NONCEBYTES],
-            remote_nonce[crypto_box_NONCEBYTES];
+            remote_nonce[crypto_box_NONCEBYTES],
+            scalarmult[crypto_scalarmult_BYTES];
+    crypto_generichash_state hash;
 
     if (sd_encrypt_key_pair_generate(&local_keys) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Unable to generate key pair");
@@ -147,12 +150,28 @@ int initiate_encryption(struct sd_channel *channel,
         return -1;
     }
 
+    if (crypto_scalarmult(scalarmult, local_keys.sk.data, received_encrypt_key.data) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Unable to perform scalarmultiplication");
+        return -1;
+    }
+
+    if (crypto_generichash_init(&hash, NULL, 0, sizeof(shared_key.data)) < 0 ||
+            crypto_generichash_update(&hash, scalarmult, sizeof(scalarmult)) < 0 ||
+            crypto_generichash_update(&hash, local_keys.pk.data, sizeof(local_keys.pk.data)) < 0 ||
+            crypto_generichash_update(&hash, received_encrypt_key.data, sizeof(received_encrypt_key.data)) < 0 ||
+            crypto_generichash_final(&hash, shared_key.data, sizeof(shared_key.data)) < 0)
+    {
+        sd_log(LOG_LEVEL_ERROR, "Unable to calculate h(q || pk1 || pk2)");
+        return -1;
+    }
+
+    sodium_memzero(&local_keys, sizeof(local_keys));
+
     memset(local_nonce, 0, sizeof(local_nonce));
     memset(remote_nonce, 0, sizeof(remote_nonce));
     sodium_increment(remote_nonce, sizeof(remote_nonce));
 
-    if (sd_channel_set_crypto_asymmetric(channel, &local_keys, &received_encrypt_key,
-                local_nonce, remote_nonce) < 0) {
+    if (sd_channel_set_crypto_symmetric(channel, &shared_key, local_nonce, remote_nonce) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Could not enable encryption");
         return -1;
     }
@@ -166,8 +185,11 @@ int await_encryption(struct sd_channel *channel,
 {
     struct sd_encrypt_key_pair local_keys;
     struct sd_encrypt_key_public remote_key;
+    struct sd_symmetric_key shared_key;
     uint8_t local_nonce[crypto_box_NONCEBYTES],
-            remote_nonce[crypto_box_NONCEBYTES];
+            remote_nonce[crypto_box_NONCEBYTES],
+            scalarmult[crypto_scalarmult_BYTES];
+    crypto_generichash_state hash;
 
     if (sd_encrypt_key_pair_generate(&local_keys) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Unable to generate key pair");
@@ -184,12 +206,28 @@ int await_encryption(struct sd_channel *channel,
         return -1;
     }
 
+    if (crypto_scalarmult(scalarmult, local_keys.sk.data, remote_key.data) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Unable to perform scalarmultiplication");
+        return -1;
+    }
+
+    if (crypto_generichash_init(&hash, NULL, 0, sizeof(shared_key.data)) < 0 ||
+            crypto_generichash_update(&hash, scalarmult, sizeof(scalarmult)) < 0 ||
+            crypto_generichash_update(&hash, remote_key.data, sizeof(remote_key.data)) < 0 ||
+            crypto_generichash_update(&hash, local_keys.pk.data, sizeof(local_keys.pk.data)) < 0 ||
+            crypto_generichash_final(&hash, shared_key.data, sizeof(shared_key.data)) < 0)
+    {
+        sd_log(LOG_LEVEL_ERROR, "Unable to calculate h(q || pk1 || pk2)");
+        return -1;
+    }
+
+    sodium_memzero(&local_keys, sizeof(local_keys));
+
     memset(local_nonce, 0, sizeof(local_nonce));
     sodium_increment(local_nonce, sizeof(local_nonce));
     memset(remote_nonce, 0, sizeof(remote_nonce));
 
-    if (sd_channel_set_crypto_asymmetric(channel,
-                &local_keys, &remote_key, local_nonce, remote_nonce) < 0) {
+    if (sd_channel_set_crypto_symmetric(channel, &shared_key, local_nonce, remote_nonce) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Could not enable encryption");
         return -1;
     }
