@@ -15,10 +15,15 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <string.h>
+
 #include "lib/common.h"
 #include "lib/service.h"
 
 #include "test.h"
+
+static struct cfg cfg;
+static struct sd_service service;
 
 static const char *single_value[] = {
     "foo"
@@ -35,7 +40,95 @@ static int setup()
 
 static int teardown()
 {
+    cfg_free(&cfg);
+    sd_service_free(&service);
     return 0;
+}
+
+static void test_service_from_config()
+{
+    static char *service_config =
+        "[service]\n"
+        "name=foo\n"
+        "type=bar\n"
+        "subtype=exec\n"
+        "location=space\n"
+        "port=7777\n";
+
+    assert_success(cfg_parse_string(&cfg, service_config, strlen(service_config)));
+    assert_success(sd_service_from_config(&service, "foo", &cfg));
+
+    /* Assert values */
+    assert_string_equal(service.name, "foo");
+    assert_string_equal(service.type, "bar");
+    assert_string_equal(service.subtype, "exec");
+    assert_string_equal(service.location, "space");
+    assert_string_equal(service.port, "7777");
+
+    /* Check function pointers */
+    assert_non_null(service.handle);
+    assert_non_null(service.invoke);
+    assert_non_null(service.parameters);
+    assert_non_null(service.version);
+}
+
+static void test_invalid_service_from_config_fails()
+{
+    static char *service_config =
+        "[service]\n"
+        "name=foo\n"
+        "type=bar\n"
+        "subtype=exec\n"
+        "location=space\n"
+        "port=7777\n"
+        "invalidparameter=invalidvalue";
+
+    assert_success(cfg_parse_string(&cfg, service_config, strlen(service_config)));
+    assert_failure(sd_service_from_config(&service, "foo", &cfg));
+}
+
+static void test_incomplete_service_from_config_fails()
+{
+    static char *service_config =
+        "[service]\n"
+        "name=foo\n"
+        /* "type=bar\n" */
+        "subtype=exec\n"
+        "location=space\n"
+        "port=7777\n";
+
+    assert_success(cfg_parse_string(&cfg, service_config, strlen(service_config)));
+    assert_failure(sd_service_from_config(&service, "foo", &cfg));
+}
+
+static void test_services_from_config()
+{
+    struct sd_service *services;
+
+    static char *service_config =
+        "[service]\n"
+        "name=foo\n"
+        "type=foo\n"
+        "subtype=exec\n"
+        "location=space\n"
+        "port=7777\n"
+        "\n"
+        "[service]\n"
+        "name=bar\n"
+        "type=bar\n"
+        "subtype=xpra\n"
+        "location=space\n"
+        "port=8888";
+
+    assert_success(cfg_parse_string(&cfg, service_config, strlen(service_config)));
+    assert_int_equal(sd_services_from_config(&services, &cfg), 2);
+
+    assert_string_equal(services[0].name, "foo");
+    assert_string_equal(services[1].name, "bar");
+
+    sd_service_free(&services[0]);
+    sd_service_free(&services[1]);
+    free(services);
 }
 
 static void test_getting_single_value()
@@ -172,6 +265,11 @@ static void test_getting_multiple_values_with_multiple_values_and_args()
 int service_test_run_suite(void)
 {
     const struct CMUnitTest tests[] = {
+        test(test_service_from_config),
+        test(test_invalid_service_from_config_fails),
+        test(test_incomplete_service_from_config_fails),
+        test(test_services_from_config),
+
         test(test_getting_single_value),
         test(test_getting_single_value_with_different_params),
         test(test_getting_value_for_parameter_with_zero_values_fails),
