@@ -19,7 +19,6 @@
 #include "lib/common.h"
 
 #include "test.h"
-#include "cfg.h"
 
 #define assert_cfg_section(c, n, expected) do {                     \
         assert_string_equal((c).sections[(n)].name, (expected)); \

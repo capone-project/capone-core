@@ -18,7 +18,6 @@
 #include "lib/server.h"
 
 #include "test.h"
-#include "server.h"
 
 static struct sd_server server;
 static struct sd_channel channel;

@@ -27,7 +27,6 @@
 #include "proto/test.pb-c.h"
 
 #include "test.h"
-#include "channel.h"
 
 static struct sd_symmetric_key key;
 static struct sd_channel channel, remote;

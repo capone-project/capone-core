@@ -19,11 +19,11 @@
 
 #include "lib/log.h"
 
-#include "cfg.h"
-#include "channel.h"
-#include "server.h"
-
 #include "test.h"
+
+extern int cfg_test_run_suite(void);
+extern int channel_test_run_suite(void);
+extern int server_test_run_suite(void);
 
 int main(int argc, char *argv[])
 {
