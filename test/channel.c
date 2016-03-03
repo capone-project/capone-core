@@ -54,22 +54,9 @@ static void stub_sockets(struct sd_channel *local, struct sd_channel *remote)
     getsockname(sockets[1], (struct sockaddr *) &remote->addr, &addrlen);
 }
 
-static int setup_tcp()
-{
-    channel.type = remote.type = type = SD_CHANNEL_TYPE_TCP;
-    return 0;
-}
-
-static int setup_udp()
-{
-    channel.type = remote.type = type = SD_CHANNEL_TYPE_TCP;
-    return 0;
-}
-
 static int setup()
 {
-    sd_channel_disable_encryption(&channel);
-    sd_channel_disable_encryption(&remote);
+    channel.type = remote.type = type = SD_CHANNEL_TYPE_TCP;
     return 0;
 }
 
@@ -313,6 +300,19 @@ static void write_encrypted_message_with_response()
     assert_string_equal(m2, buf);
 }
 
+static void write_encrypted_message_with_invalid_nonces_fails()
+{
+    unsigned char m[] = "test", buf[sizeof(m)];
+
+    stub_sockets(&channel, &remote);
+
+    sd_channel_enable_encryption(&channel, &key, 0);
+    sd_channel_enable_encryption(&remote, &key, 0);
+
+    assert_success(sd_channel_write_data(&channel, m, sizeof(m)));
+    assert_failure(sd_channel_receive_data(&remote, buf, sizeof(buf)));
+}
+
 static void connect_fails_without_other_side()
 {
     assert_success(sd_channel_init_from_host(&channel, "127.0.0.1", "8080", type));
@@ -321,7 +321,7 @@ static void connect_fails_without_other_side()
 
 int channel_test_run_suite(void)
 {
-    const struct CMUnitTest shared_tests[] = {
+    const struct CMUnitTest tests[] = {
         test(initialization_sets_socket),
         test(initialization_sets_type),
         test(close_resets_sockets_to_invalid_values),
@@ -330,8 +330,7 @@ int channel_test_run_suite(void)
         test(init_address_to_127001),
         test(init_address_to_empty_address),
         test(init_address_to_invalid_address),
-    };
-    const struct CMUnitTest tcp_tests[] = {
+
         test(write_data),
         test(write_some_data),
         test(receive_fails_with_too_small_buffer),
@@ -343,12 +342,11 @@ int channel_test_run_suite(void)
         test(write_multiple_encrypted_messages),
         test(write_encrypted_messages_increments_nonce),
         test(write_encrypted_message_with_response),
+        test(write_encrypted_message_with_invalid_nonces_fails),
         test(connect_fails_without_other_side),
     };
 
     sd_symmetric_key_generate(&key);
 
-    return execute_test_suite("channel_tcp_shared", shared_tests, setup_tcp, NULL) ||
-           execute_test_suite("channel_udp_shared", shared_tests, setup_udp, NULL) ||
-           execute_test_suite("channel_tcp", tcp_tests, setup_tcp, NULL);
+    return execute_test_suite("channel", tests, setup, teardown);
 }
