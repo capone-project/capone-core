@@ -21,7 +21,6 @@
 
 #include "cfg.h"
 #include "channel.h"
-#include "common.h"
 #include "server.h"
 
 #include "test.h"
@@ -40,7 +39,6 @@ int main(int argc, char *argv[])
 
     cfg_test_run_suite();
     channel_test_run_suite();
-    common_test_run_suite();
     server_test_run_suite();
 
     return 0;
