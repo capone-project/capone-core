@@ -97,7 +97,7 @@ static int invoke(struct sd_channel *channel)
 }
 
 static int handle(struct sd_channel *channel,
-        struct sd_service_parameter **params, size_t nparams)
+        const struct sd_service_parameter *params, size_t nparams)
 {
     struct sd_server server;
     struct sd_channel xpra_channel;

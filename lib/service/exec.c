@@ -33,7 +33,8 @@ static int parameters(const struct sd_service_parameter **out)
 {
     static const struct sd_service_parameter params[] = {
         { "command", 0, NULL },
-        { "args", 0, NULL },
+        { "arg", 0, NULL },
+        { "env", 0, NULL },
     };
 
     *out = params;
@@ -54,24 +55,29 @@ static int invoke(struct sd_channel *channel)
 }
 
 static int handle(struct sd_channel *channel,
-        struct sd_service_parameter **params, size_t nparams)
+        const struct sd_service_parameter *params, size_t nparams)
 {
-    char *cmd, *args[] = { NULL };
-    size_t i;
-    int pid, fds[2];
+    const char *cmd, **args, **env;
+    char **argv = NULL, **envp = NULL;
+    int pid, fds[2], nargs, nenv;
 
-    for (i = 0; i < nparams; i++) {
-        struct sd_service_parameter *param = params[i];
-
-        /* TODO: proper validation of params */
-        if (!strcmp(param->name, "command")) {
-            cmd = (char *) param->name;
-        }
+    if (sd_service_parameters_get_value(&cmd, "command", params, nparams) < 0) {
+        puts("Missing 'command' parameter");
+        return -1;
     }
 
-    if (cmd == NULL) {
-        puts("Unable to handle command");
-        return -1;
+    nargs = sd_service_parameters_get_values(&args, "arg", params, nparams);
+    if (nargs > 0) {
+        argv = malloc(sizeof(char * const) * nargs + 1);
+        memcpy(argv, args, sizeof(char *) * nargs);
+        argv[nargs] = NULL;
+    }
+
+    nenv = sd_service_parameters_get_values(&env, "env", params, nparams);
+    if (nenv > 0) {
+        envp = malloc(sizeof(char * const) * nenv + 1);
+        memcpy(envp, args, sizeof(char *) * nenv);
+        envp[nenv] = NULL;
     }
 
     if (pipe(fds) < 0) {
@@ -85,7 +91,7 @@ static int handle(struct sd_channel *channel,
         close(fds[0]);
         close(fds[1]);
 
-        execvp("ls", args);
+        execvpe(cmd, argv, envp);
     } else if (pid > 0) {
         uint8_t buf[4096];
         int ret;

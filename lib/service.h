@@ -28,7 +28,7 @@ struct sd_service_parameter {
 
 typedef int (*invoke_fn)(struct sd_channel *channel);
 typedef int (*handle_fn)(struct sd_channel *channel,
-        struct sd_service_parameter **params, size_t nparams);
+        const struct sd_service_parameter *params, size_t nparams);
 typedef int (*parameters_fn)(const struct sd_service_parameter **out);
 typedef const char *(*version_fn)(void);
 
