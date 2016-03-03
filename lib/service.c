@@ -184,6 +184,8 @@ void sd_service_free(struct sd_service *service)
     free(service->subtype);
     free(service->port);
     free(service->location);
+
+    memset(service, 0, sizeof(struct sd_service));
 }
 
 int sd_service_parameters_get_value(const char **out, const char *value, const struct sd_service_parameter *parameters, size_t n)
