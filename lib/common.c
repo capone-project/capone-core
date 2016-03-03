@@ -79,7 +79,7 @@ static int send_session_key(struct sd_channel *channel,
     return 0;
 }
 
-int receive_session_key(struct sd_channel *channel,
+static int receive_session_key(struct sd_channel *channel,
         struct sd_sign_key_public *remote_sign_key,
         struct sd_encrypt_key_public *remote_encrypt_key)
 {
