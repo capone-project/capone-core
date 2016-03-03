@@ -29,9 +29,7 @@
 #include "test.h"
 #include "channel.h"
 
-static uint8_t local_nonce[crypto_box_NONCEBYTES],
-               remote_nonce[crypto_box_NONCEBYTES];
-static struct sd_key_pair channel_keys, remote_keys;
+static struct sd_symmetric_key key;
 static struct sd_channel channel, remote;
 static enum sd_channel_type type;
 
@@ -70,9 +68,8 @@ static int setup_udp()
 
 static int setup()
 {
-    sd_channel_set_crypto_none(&channel);
-    sd_channel_set_crypto_none(&remote);
-    channel.nonce_offset = remote.nonce_offset = 2;
+    sd_channel_disable_encryption(&channel);
+    sd_channel_disable_encryption(&remote);
     return 0;
 }
 
@@ -244,10 +241,8 @@ static void write_encrypted_data()
 
     stub_sockets(&channel, &remote);
 
-    sd_channel_set_crypto_asymmetric(&channel, &channel_keys, &remote_keys.pk,
-            local_nonce, remote_nonce);
-    sd_channel_set_crypto_asymmetric(&remote, &remote_keys, &channel_keys.pk,
-            remote_nonce, local_nonce);
+    sd_channel_enable_encryption(&channel, &key, 0);
+    sd_channel_enable_encryption(&remote, &key, 1);
 
     assert_success(sd_channel_write_data(&channel, msg, sizeof(msg)));
     assert_int_equal(sd_channel_receive_data(&remote, buf, sizeof(buf)), sizeof(msg));
@@ -262,10 +257,8 @@ static void write_multiple_encrypted_messages()
 
     stub_sockets(&channel, &remote);
 
-    sd_channel_set_crypto_asymmetric(&channel, &channel_keys, &remote_keys.pk,
-            local_nonce, remote_nonce);
-    sd_channel_set_crypto_asymmetric(&remote, &remote_keys, &channel_keys.pk,
-            remote_nonce, local_nonce);
+    sd_channel_enable_encryption(&channel, &key, 0);
+    sd_channel_enable_encryption(&remote, &key, 1);
 
     assert_success(sd_channel_write_data(&channel, m1, sizeof(m1)));
     assert_int_equal(sd_channel_receive_data(&remote, buf, sizeof(buf)), sizeof(m1));
@@ -284,10 +277,8 @@ static void write_encrypted_messages_increments_nonce()
 
     stub_sockets(&channel, &remote);
 
-    sd_channel_set_crypto_asymmetric(&channel, &channel_keys, &remote_keys.pk,
-            local_nonce, remote_nonce);
-    sd_channel_set_crypto_asymmetric(&remote, &remote_keys, &channel_keys.pk,
-            remote_nonce, local_nonce);
+    sd_channel_enable_encryption(&channel, &key, 0);
+    sd_channel_enable_encryption(&remote, &key, 1);
 
     memcpy(nonce, channel.local_nonce, sizeof(nonce));
     assert_success(sd_channel_write_data(&channel, m1, sizeof(m1)));
@@ -310,10 +301,8 @@ static void write_encrypted_message_with_response()
 
     stub_sockets(&channel, &remote);
 
-    sd_channel_set_crypto_asymmetric(&channel, &channel_keys, &remote_keys.pk,
-            local_nonce, remote_nonce);
-    sd_channel_set_crypto_asymmetric(&remote, &remote_keys, &channel_keys.pk,
-            remote_nonce, local_nonce);
+    sd_channel_enable_encryption(&channel, &key, 0);
+    sd_channel_enable_encryption(&remote, &key, 1);
 
     assert_success(sd_channel_write_data(&channel, m1, sizeof(m1)));
     assert_int_equal(sd_channel_receive_data(&remote, buf, sizeof(buf)), sizeof(m1));
@@ -357,10 +346,7 @@ int channel_test_run_suite(void)
         test(connect_fails_without_other_side),
     };
 
-    crypto_box_keypair(channel_keys.pk.box, channel_keys.sk.box);
-    crypto_box_keypair(remote_keys.pk.box, remote_keys.sk.box);
-    randombytes(local_nonce, sizeof(local_nonce));
-    randombytes(remote_nonce, sizeof(remote_nonce));
+    sd_symmetric_key_generate(&key);
 
     return execute_test_suite("channel_tcp_shared", shared_tests, setup_tcp, NULL) ||
            execute_test_suite("channel_udp_shared", shared_tests, setup_udp, NULL) ||
