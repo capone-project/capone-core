@@ -40,6 +40,11 @@ enum sd_channel_crypto {
     SD_CHANNEL_CRYPTO_SYMMETRIC,
 };
 
+enum sd_channel_nonce {
+    SD_CHANNEL_NONCE_CLIENT,
+    SD_CHANNEL_NONCE_SERVER,
+};
+
 struct sd_channel {
     int fd;
     struct sockaddr_storage addr;
@@ -60,7 +65,7 @@ int sd_channel_close(struct sd_channel *c);
 
 int sd_channel_disable_encryption(struct sd_channel *c);
 int sd_channel_enable_encryption(struct sd_channel *c,
-        const struct sd_symmetric_key *key, size_t initial_nonce);
+        const struct sd_symmetric_key *key, enum sd_channel_nonce nonce);
 
 int sd_channel_connect(struct sd_channel *c);
 
