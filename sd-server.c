@@ -31,6 +31,9 @@ static struct session {
 } *sessions = NULL;
 static uint32_t nsessions = 0;
 
+static struct sd_sign_key_public *whitelistkeys;
+static uint32_t nwhitelistkeys;
+
 static struct sd_sign_key_pair local_keys;
 static struct sd_service service;
 
@@ -155,19 +158,69 @@ static int handle_connect(struct sd_channel *channel)
     return 0;
 }
 
+static int read_whitelist(struct sd_sign_key_public **out, const char *file)
+{
+    struct sd_sign_key_public *keys = NULL;
+    FILE *stream = NULL;
+    char *line = NULL;
+    size_t nkeys = 0, length;
+    ssize_t read;
+
+    *out = NULL;
+
+    stream = fopen(file, "r");
+    if (stream == NULL)
+        return -1;
+
+    while ((read = getline(&line, &length, stream)) != -1) {
+        if (line[read - 1] == '\n')
+            line[read - 1] = '\0';
+
+        keys = realloc(keys, sizeof(struct sd_sign_key_public) * ++nkeys);
+        if (sd_sign_key_public_from_hex(&keys[nkeys - 1], line) < 0) {
+            printf("Invalid key '%s'\n", line);
+            return -1;
+        }
+    }
+    free(line);
+
+    if (!feof(stream)) {
+        fclose(stream);
+        free(keys);
+        return -1;
+    }
+
+    fclose(stream);
+    *out = keys;
+
+    return nkeys;
+}
+
 int main(int argc, char *argv[])
 {
     const char *config, *servicename;
     struct sd_server server;
     struct sd_channel channel;
+    int ret;
 
-    if (argc != 3) {
-        printf("USAGE: %s <CONFIG> <SERVICENAME>\n", argv[0]);
+    if (argc < 3 || argc > 4) {
+        printf("USAGE: %s <CONFIG> <SERVICENAME> [<CLIENT_WHITELIST>]\n", argv[0]);
         return -1;
     }
 
     config = argv[1];
     servicename = argv[2];
+
+    if (argc == 4) {
+        ret = read_whitelist(&whitelistkeys, argv[3]);
+        if (ret < 0) {
+            puts("Could not read client whitelist");
+            return -1;
+        }
+        nwhitelistkeys = ret;
+
+        printf("Read %d keys from whitelist\n", nwhitelistkeys);
+    }
 
     if (sodium_init() < 0) {
         puts("Could not init libsodium");
