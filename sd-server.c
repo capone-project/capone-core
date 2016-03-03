@@ -28,6 +28,9 @@
 static struct session {
     uint32_t sessionid;
     struct sd_symmetric_key session_key;
+
+    struct sd_service_parameter *parameters;
+    size_t nparameters;
 } *sessions = NULL;
 static uint32_t nsessions = 0;
 
@@ -99,12 +102,37 @@ static int handle_query(struct sd_channel *channel)
     return 0;
 }
 
+static int convert_params(struct sd_service_parameter **out, const ConnectionRequestMessage *msg)
+{
+    struct sd_service_parameter *params;
+    size_t i;
+
+    *out = NULL;
+
+    params = malloc(sizeof(struct sd_service_parameter) * msg->n_parameters);
+    for (i = 0; i < msg->n_parameters; i++) {
+        params[i].name = msg->parameters[i]->key;
+        msg->parameters[i]->key = NULL;
+
+        params[i].values = malloc(sizeof(char *));
+        params[i].values[0] = msg->parameters[i]->value;
+        msg->parameters[i]->value = NULL;
+
+        params[i].nvalues = 1;
+    }
+
+    *out = params;
+
+    return 0;
+}
+
 static int handle_request(struct sd_channel *channel)
 {
     ConnectionRequestMessage *request;
     ConnectionTokenMessage token = CONNECTION_TOKEN_MESSAGE__INIT;
     struct sd_sign_key_public remote_sign_key;
     struct sd_symmetric_key session_key;
+    struct sd_service_parameter *params;
 
     if (await_encryption(channel, &local_keys, &remote_sign_key) < 0) {
         puts("Unable to await encryption");
@@ -137,10 +165,17 @@ static int handle_request(struct sd_channel *channel)
         return -1;
     }
 
+    if (convert_params(&params, request) < 0) {
+        puts("Unable to convert parameters");
+        return -1;
+    }
+
     nsessions += 1;
     sessions = realloc(sessions, nsessions * sizeof(struct session));
     sessions[nsessions - 1].sessionid = token.sessionid;
     memcpy(sessions[nsessions - 1].session_key.data, session_key.data, sizeof(session_key));
+    sessions[nsessions - 1].nparameters = request->n_parameters;
+    sessions[nsessions - 1].parameters = params;
 
     return 0;
 }
@@ -175,7 +210,7 @@ static int handle_connect(struct sd_channel *channel)
         return -1;
     }
 
-    if (service.handle(channel, NULL, 0) < 0) {
+    if (service.handle(channel, session->parameters, session->nparameters) < 0) {
         puts("Service could not handle connection");
         return -1;
     }
