@@ -58,10 +58,9 @@ int sd_channel_init_from_fd(struct sd_channel *c,
         int fd, struct sockaddr_storage addr, enum sd_channel_type type);
 int sd_channel_close(struct sd_channel *c);
 
-int sd_channel_set_crypto_none(struct sd_channel *c);
-int sd_channel_set_crypto_symmetric(struct sd_channel *c,
-        const struct sd_symmetric_key *key,
-        uint8_t *local_nonce, uint8_t *remote_nonce);
+int sd_channel_disable_encryption(struct sd_channel *c);
+int sd_channel_enable_encryption(struct sd_channel *c,
+        const struct sd_symmetric_key *key, size_t initial_nonce);
 
 int sd_channel_connect(struct sd_channel *c);
 

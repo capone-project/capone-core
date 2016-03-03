@@ -121,8 +121,6 @@ static int handle_connect(struct sd_channel *channel)
 {
     ConnectionInitiation *initiation;
     struct session *session;
-    uint8_t local_nonce[crypto_secretbox_NONCEBYTES],
-            remote_nonce[crypto_secretbox_NONCEBYTES];
     uint32_t i;
 
     if (sd_channel_receive_protobuf(channel,
@@ -144,12 +142,7 @@ static int handle_connect(struct sd_channel *channel)
         return -1;
     }
 
-    memset(local_nonce, 0, sizeof(local_nonce));
-    memset(remote_nonce, 0, sizeof(local_nonce));
-    sodium_increment(local_nonce, sizeof(local_nonce));
-
-    if (sd_channel_set_crypto_symmetric(channel,
-                &session->session_key, local_nonce, remote_nonce) < 0) {
+    if (sd_channel_enable_encryption(channel, &session->session_key, 1) < 0) {
         puts("Could not enable symmetric encryption");
         return -1;
     }

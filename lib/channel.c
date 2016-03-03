@@ -118,7 +118,7 @@ int sd_channel_init_from_fd(struct sd_channel *c,
     return 0;
 }
 
-int sd_channel_set_crypto_none(struct sd_channel *c)
+int sd_channel_disable_encryption(struct sd_channel *c)
 {
     memset(&c->key, 0, sizeof(c->key));
 
@@ -127,14 +127,20 @@ int sd_channel_set_crypto_none(struct sd_channel *c)
     return 0;
 }
 
-int sd_channel_set_crypto_symmetric(struct sd_channel *c,
-        const struct sd_symmetric_key *key,
-        uint8_t *local_nonce, uint8_t *remote_nonce)
+int sd_channel_enable_encryption(struct sd_channel *c,
+        const struct sd_symmetric_key *key, size_t initial_nonce)
 {
+    size_t i;
+
     memcpy(&c->key, key, sizeof(c->key));
 
-    memcpy(c->local_nonce, local_nonce, sizeof(c->local_nonce));
-    memcpy(c->remote_nonce, remote_nonce, sizeof(c->remote_nonce));
+    memset(c->local_nonce, 0, sizeof(c->local_nonce));
+    for (i = 0; i < initial_nonce; i++)
+        sodium_increment(c->local_nonce, sizeof(c->local_nonce));
+
+    memcpy(c->remote_nonce, c->local_nonce, sizeof(c->remote_nonce));
+    sodium_increment(c->remote_nonce, sizeof(c->remote_nonce));
+
 
     c->crypto = SD_CHANNEL_CRYPTO_SYMMETRIC;
 

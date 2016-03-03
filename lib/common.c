@@ -125,9 +125,7 @@ int initiate_encryption(struct sd_channel *channel,
     struct sd_encrypt_key_public received_encrypt_key;
     struct sd_sign_key_public received_sign_key;
     struct sd_symmetric_key shared_key;
-    uint8_t local_nonce[crypto_box_NONCEBYTES],
-            remote_nonce[crypto_box_NONCEBYTES],
-            scalarmult[crypto_scalarmult_BYTES];
+    uint8_t scalarmult[crypto_scalarmult_BYTES];
     crypto_generichash_state hash;
 
     if (sd_encrypt_key_pair_generate(&local_keys) < 0) {
@@ -167,11 +165,7 @@ int initiate_encryption(struct sd_channel *channel,
 
     sodium_memzero(&local_keys, sizeof(local_keys));
 
-    memset(local_nonce, 0, sizeof(local_nonce));
-    memset(remote_nonce, 0, sizeof(remote_nonce));
-    sodium_increment(remote_nonce, sizeof(remote_nonce));
-
-    if (sd_channel_set_crypto_symmetric(channel, &shared_key, local_nonce, remote_nonce) < 0) {
+    if (sd_channel_enable_encryption(channel, &shared_key, 0) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Could not enable encryption");
         return -1;
     }
@@ -186,9 +180,7 @@ int await_encryption(struct sd_channel *channel,
     struct sd_encrypt_key_pair local_keys;
     struct sd_encrypt_key_public remote_key;
     struct sd_symmetric_key shared_key;
-    uint8_t local_nonce[crypto_box_NONCEBYTES],
-            remote_nonce[crypto_box_NONCEBYTES],
-            scalarmult[crypto_scalarmult_BYTES];
+    uint8_t scalarmult[crypto_scalarmult_BYTES];
     crypto_generichash_state hash;
 
     if (sd_encrypt_key_pair_generate(&local_keys) < 0) {
@@ -223,11 +215,7 @@ int await_encryption(struct sd_channel *channel,
 
     sodium_memzero(&local_keys, sizeof(local_keys));
 
-    memset(local_nonce, 0, sizeof(local_nonce));
-    sodium_increment(local_nonce, sizeof(local_nonce));
-    memset(remote_nonce, 0, sizeof(remote_nonce));
-
-    if (sd_channel_set_crypto_symmetric(channel, &shared_key, local_nonce, remote_nonce) < 0) {
+    if (sd_channel_enable_encryption(channel, &shared_key, 1) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Could not enable encryption");
         return -1;
     }
