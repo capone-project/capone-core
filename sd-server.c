@@ -86,7 +86,7 @@ static int handle_query(struct sd_channel *channel)
         query_results__parameter__init(parameter);
 
         parameter->key = (char *) params[i].name;
-        parameter->n_value = params[i].numvalues;
+        parameter->n_value = params[i].nvalues;
         parameter->value = (char **) params[i].values;
 
         parameters[i] = parameter;

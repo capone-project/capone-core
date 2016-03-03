@@ -16,9 +16,11 @@
  */
 
 #include <assert.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "lib/common.h"
 #include "lib/log.h"
 #include "lib/service.h"
 #include "lib/service/exec.h"
@@ -182,4 +184,58 @@ void sd_service_free(struct sd_service *service)
     free(service->subtype);
     free(service->port);
     free(service->location);
+}
+
+int sd_service_parameters_get_value(const char **out, const char *value, const struct sd_service_parameter *parameters, size_t n)
+{
+    const char **values;
+    int nvalues;
+
+    *out = NULL;
+
+    nvalues = sd_service_parameters_get_values(&values, value, parameters, n);
+    if (nvalues < 0) {
+        sd_log(LOG_LEVEL_WARNING, "Could not retrieve parameter value '%s'", value);
+        goto out_err;
+    } else if (nvalues == 0) {
+        sd_log(LOG_LEVEL_WARNING, "Requested parameter value '%s' not present", value);
+        goto out_err;
+    } else if (nvalues > 1) {
+        sd_log(LOG_LEVEL_WARNING, "Requested parameter value '%s' has more than one value", value);
+        goto out_err;
+    }
+
+    *out = values[0];
+    free(values);
+
+    return 0;
+
+out_err:
+    free(values);
+    return -1;
+}
+
+int sd_service_parameters_get_values(const char ***out, const char *value, const struct sd_service_parameter *parameters, size_t n)
+{
+    const struct sd_service_parameter *param;
+    const char **values = NULL;
+    int nvalues = 0;
+    size_t i, j;
+
+    *out = NULL;
+
+    for (i = 0; i < n; i++) {
+        param = &parameters[i];
+
+        if (!strcmp(param->name, value) && param->nvalues > 0) {
+            values = realloc(values, sizeof(char *) * (nvalues + param->nvalues));
+
+            for (j = 0; j < param->nvalues; j++)
+                values[nvalues++] = param->values[j];
+        }
+    }
+
+    *out = values;
+
+    return nvalues;
 }

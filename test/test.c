@@ -24,6 +24,7 @@
 extern int cfg_test_run_suite(void);
 extern int channel_test_run_suite(void);
 extern int server_test_run_suite(void);
+extern int service_test_run_suite(void);
 
 int main(int argc, char *argv[])
 {
@@ -40,6 +41,7 @@ int main(int argc, char *argv[])
     cfg_test_run_suite();
     channel_test_run_suite();
     server_test_run_suite();
+    service_test_run_suite();
 
     return 0;
 }
