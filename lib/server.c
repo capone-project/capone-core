@@ -102,11 +102,18 @@ int sd_server_accept(struct sd_server *s, struct sd_channel *out)
 
     switch (s->type) {
         case SD_CHANNEL_TYPE_TCP:
-            fd = accept(s->fd, (struct sockaddr*) &addr, &addrsize);
-            if (fd < 0) {
-                sd_log(LOG_LEVEL_ERROR, "Could not accept connection: %s",
-                        strerror(errno));
-                return -1;
+            while (1) {
+                fd = accept(s->fd, (struct sockaddr*) &addr, &addrsize);
+
+                if (fd < 0) {
+                    if (errno == EAGAIN || errno == EINTR)
+                        continue;
+                    sd_log(LOG_LEVEL_ERROR, "Could not accept connection: %s",
+                            strerror(errno));
+                    return -1;
+                }
+
+                break;
             }
             break;
         case SD_CHANNEL_TYPE_UDP:
