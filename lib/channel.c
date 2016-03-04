@@ -401,7 +401,10 @@ int sd_channel_relay(struct sd_channel *channel, int nfds, ...)
 
         if (FD_ISSET(channel->fd, &fds)) {
             received = sd_channel_receive_data(channel, buf, sizeof(buf));
-            if (received < 0) {
+            if (received == 0) {
+                sd_log(LOG_LEVEL_VERBOSE, "Channel closed, stopping relay");
+                return 0;
+            } else if (received < 0) {
                 sd_log(LOG_LEVEL_ERROR, "Error relaying data from channel");
                 return -1;
             }
@@ -418,7 +421,10 @@ int sd_channel_relay(struct sd_channel *channel, int nfds, ...)
 
             if (FD_ISSET(fd, &fds)) {
                 received = read(fd, buf, sizeof(buf));
-                if (received < 0) {
+                if (received == 0) {
+                    sd_log(LOG_LEVEL_VERBOSE, "File descriptor closed, stopping relay");
+                    return 0;
+                } else if (received < 0) {
                     sd_log(LOG_LEVEL_ERROR, "Error relaying data from fd");
                     return -1;
                 }
