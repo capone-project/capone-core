@@ -18,6 +18,7 @@
 #include <errno.h>
 #include <string.h>
 #include <stdbool.h>
+#include <stdarg.h>
 
 #include <unistd.h>
 #include <sys/select.h>
@@ -359,20 +360,41 @@ int sd_channel_receive_protobuf(struct sd_channel *c, const ProtobufCMessageDesc
     return 0;
 }
 
-int sd_channel_relay(struct sd_channel *channel, int fd)
+int sd_channel_relay(struct sd_channel *channel, int nfds, ...)
 {
     fd_set fds;
     uint8_t buf[2048];
-    int received, nfd;
+    int received, maxfd, infd, fd, i;
+    va_list ap;
 
-    nfd = MAX(channel->fd, fd) + 1;
+    if (nfds <= 0) {
+        sd_log(LOG_LEVEL_ERROR, "Relay called with nfds == 0");
+        return -1;
+    }
+
+    maxfd = channel->fd;
+    va_start(ap, nfds);
+    for (i = 0; i < nfds; i++) {
+        fd = va_arg(ap, int);
+        maxfd = MAX(maxfd, fd);
+
+        if (i == 0)
+            infd = fd;
+    }
+    va_end(ap);
 
     while (1) {
         FD_ZERO(&fds);
         FD_SET(channel->fd, &fds);
-        FD_SET(fd, &fds);
 
-        if (select(nfd, &fds, NULL, NULL, NULL) <= 0) {
+        va_start(ap, nfds);
+        for (i = 0; i < nfds; i++) {
+            fd = va_arg(ap, int);
+            FD_SET(fd, &fds);
+        }
+        va_end(ap);
+
+        if (select(maxfd + 1, &fds, NULL, NULL, NULL) <= 0) {
             sd_log(LOG_LEVEL_ERROR, "Error selecting fds");
             return -1;
         }
@@ -384,26 +406,30 @@ int sd_channel_relay(struct sd_channel *channel, int fd)
                 return -1;
             }
 
-            if (write(fd, buf, received) != received) {
+            if (write(infd, buf, received) != received) {
                 sd_log(LOG_LEVEL_ERROR, "Error relaying data to fd: %s", strerror(errno));
                 return -1;
             }
         }
 
-        if (FD_ISSET(fd, &fds)) {
-            received = read(fd, buf, sizeof(buf));
-            if (received < 0) {
-                sd_log(LOG_LEVEL_ERROR, "Error relaying data from fd");
-                return -1;
-            }
+        va_start(ap, nfds);
+        for (i = 0; i < nfds; i++) {
+            fd = va_arg(ap, int);
 
-            if (sd_channel_write_data(channel, buf, received) < 0) {
-                sd_log(LOG_LEVEL_ERROR, "Error relaying data to channel");
-                return -1;
+            if (FD_ISSET(fd, &fds)) {
+                received = read(fd, buf, sizeof(buf));
+                if (received < 0) {
+                    sd_log(LOG_LEVEL_ERROR, "Error relaying data from fd");
+                    return -1;
+                }
+
+                if (sd_channel_write_data(channel, buf, received) < 0) {
+                    sd_log(LOG_LEVEL_ERROR, "Error relaying data to channel");
+                    return -1;
+                }
             }
         }
-
-        FD_ZERO(&fds);
+        va_end(ap);
     }
 
     return 0;

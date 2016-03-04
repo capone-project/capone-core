@@ -74,4 +74,4 @@ ssize_t sd_channel_receive_data(struct sd_channel *c, uint8_t *buf, size_t maxle
 int sd_channel_write_protobuf(struct sd_channel *c, ProtobufCMessage *msg);
 int sd_channel_receive_protobuf(struct sd_channel *c, const ProtobufCMessageDescriptor *descr, ProtobufCMessage **msg);
 
-int sd_channel_relay(struct sd_channel *c1, int fd);
+int sd_channel_relay(struct sd_channel *c, int nfds, ...);
