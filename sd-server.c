@@ -16,6 +16,11 @@
  */
 
 #include <string.h>
+
+#include <signal.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+
 #include <sodium.h>
 
 #include "lib/common.h"
@@ -256,6 +261,27 @@ static int read_whitelist(struct sd_sign_key_public **out, const char *file)
     return nkeys;
 }
 
+static void
+sigchild_handler(int sig)
+{
+    int status;
+    UNUSED(sig);
+    while (waitpid(-1, &status, WNOHANG) > 0);
+}
+
+static int setup_signals(void)
+{
+    struct sigaction sigchld_action;
+
+    sigemptyset(&sigchld_action.sa_mask);
+    sigchld_action.sa_flags = 0;
+    sigchld_action.sa_handler = sigchild_handler;
+
+    sigaction(SIGCHLD, &sigchld_action, NULL);
+
+    return 0;
+}
+
 int main(int argc, char *argv[])
 {
     const char *config, *servicename;
@@ -280,6 +306,11 @@ int main(int argc, char *argv[])
         nwhitelistkeys = ret;
 
         printf("Read %d keys from whitelist\n", nwhitelistkeys);
+    }
+
+    if (setup_signals() < 0) {
+        puts("Could not set up signal handlers");
+        return -1;
     }
 
     if (sodium_init() < 0) {
