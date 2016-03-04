@@ -30,14 +30,16 @@
 
 #include "proto/connect.pb-c.h"
 
+struct session;
 static struct session {
     uint32_t sessionid;
     struct sd_symmetric_key session_key;
 
     struct sd_service_parameter *parameters;
     size_t nparameters;
+
+    struct session *next;
 } *sessions = NULL;
-static uint32_t nsessions = 0;
 
 static struct sd_sign_key_public *whitelistkeys;
 static uint32_t nwhitelistkeys;
@@ -138,6 +140,7 @@ static int handle_request(struct sd_channel *channel)
     struct sd_sign_key_public remote_sign_key;
     struct sd_symmetric_key session_key;
     struct sd_service_parameter *params;
+    struct session *session;
 
     if (await_encryption(channel, &local_keys, &remote_sign_key) < 0) {
         puts("Unable to await encryption");
@@ -175,12 +178,13 @@ static int handle_request(struct sd_channel *channel)
         return -1;
     }
 
-    nsessions += 1;
-    sessions = realloc(sessions, nsessions * sizeof(struct session));
-    sessions[nsessions - 1].sessionid = token.sessionid;
-    memcpy(sessions[nsessions - 1].session_key.data, session_key.data, sizeof(session_key));
-    sessions[nsessions - 1].nparameters = request->n_parameters;
-    sessions[nsessions - 1].parameters = params;
+    session = malloc(sizeof(struct session));
+    session->sessionid = token.sessionid;
+    session->parameters = params;
+    session->nparameters = request->n_parameters;
+    memcpy(session->session_key.data, session_key.data, sizeof(session_key));
+    session->next = sessions;
+    sessions = session;
 
     return 0;
 }
@@ -189,7 +193,6 @@ static int handle_connect(struct sd_channel *channel)
 {
     ConnectionInitiation *initiation;
     struct session *session;
-    uint32_t i;
 
     if (sd_channel_receive_protobuf(channel,
                 &connection_initiation__descriptor,
@@ -198,12 +201,9 @@ static int handle_connect(struct sd_channel *channel)
         return -1;
     }
 
-    for (i = 0; i < nsessions; i++) {
-        if (sessions[i].sessionid == initiation->sessionid) {
-            session = &sessions[i];
+    for (session = sessions; session; session = session->next)
+        if (session->sessionid == initiation->sessionid)
             break;
-        }
-    }
 
     if (session == NULL) {
         puts("Could not find session for client");
