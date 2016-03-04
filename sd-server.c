@@ -118,13 +118,9 @@ static int convert_params(struct sd_service_parameter **out, const ConnectionReq
 
     params = malloc(sizeof(struct sd_service_parameter) * msg->n_parameters);
     for (i = 0; i < msg->n_parameters; i++) {
-        params[i].name = msg->parameters[i]->key;
-        msg->parameters[i]->key = NULL;
-
+        params[i].name = strdup(msg->parameters[i]->key);
         params[i].values = malloc(sizeof(char *));
-        params[i].values[0] = msg->parameters[i]->value;
-        msg->parameters[i]->value = NULL;
-
+        params[i].values[0] = strdup(msg->parameters[i]->value);
         params[i].nvalues = 1;
     }
 
@@ -177,6 +173,7 @@ static int handle_request(struct sd_channel *channel)
         puts("Unable to convert parameters");
         return -1;
     }
+    connection_request_message__free_unpacked(request, NULL);
 
     session = malloc(sizeof(struct session));
     session->sessionid = token.sessionid;
@@ -192,7 +189,7 @@ static int handle_request(struct sd_channel *channel)
 static int handle_connect(struct sd_channel *channel)
 {
     ConnectionInitiation *initiation;
-    struct session *session;
+    struct session *session, *prev = NULL;
 
     if (sd_channel_receive_protobuf(channel,
                 &connection_initiation__descriptor,
@@ -201,14 +198,22 @@ static int handle_connect(struct sd_channel *channel)
         return -1;
     }
 
-    for (session = sessions; session; session = session->next)
+    for (session = sessions; session; session = session->next) {
         if (session->sessionid == initiation->sessionid)
             break;
+        prev = session;
+    }
+    connection_initiation__free_unpacked(initiation, NULL);
 
     if (session == NULL) {
         puts("Could not find session for client");
         return -1;
     }
+
+    if (prev == NULL)
+        sessions = session->next;
+    else
+        prev->next = session->next;
 
     if (sd_channel_enable_encryption(channel, &session->session_key, 1) < 0) {
         puts("Could not enable symmetric encryption");
@@ -219,6 +224,9 @@ static int handle_connect(struct sd_channel *channel)
         puts("Service could not handle connection");
         return -1;
     }
+
+    sd_service_parameters_free(session->parameters, session->nparameters);
+    free(session);
 
     return 0;
 }
