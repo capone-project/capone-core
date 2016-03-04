@@ -296,15 +296,25 @@ sigchild_handler(int sig)
     while (waitpid(-1, &status, WNOHANG) > 0);
 }
 
+static void
+exit_handler(int sig)
+{
+    kill(0, sig);
+    exit(0);
+}
+
 static int setup_signals(void)
 {
-    struct sigaction sigchld_action;
+    struct sigaction sa;
 
-    sigemptyset(&sigchld_action.sa_mask);
-    sigchld_action.sa_flags = 0;
-    sigchld_action.sa_handler = sigchild_handler;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;
+    sa.sa_handler = sigchild_handler;
+    sigaction(SIGCHLD, &sa, NULL);
 
-    sigaction(SIGCHLD, &sigchld_action, NULL);
+    sa.sa_handler = exit_handler;
+    sigaction(SIGINT, &sa, NULL);
+    sigaction(SIGKILL, &sa, NULL);
 
     return 0;
 }
