@@ -87,7 +87,7 @@ static void exec(const char *cmd,
 
     execvp(cmd, argv);
 
-    exit(0);
+    _exit(0);
 }
 
 static int handle(struct sd_channel *channel,
