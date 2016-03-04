@@ -41,6 +41,12 @@ static struct session {
     struct session *next;
 } *sessions = NULL;
 
+struct service_args {
+    struct sd_channel *channel;
+    struct sd_service_parameter *parameters;
+    size_t nparameters;
+};
+
 static struct sd_sign_key_public *whitelistkeys;
 static uint32_t nwhitelistkeys;
 
@@ -186,10 +192,23 @@ static int handle_request(struct sd_channel *channel)
     return 0;
 }
 
+static void handle_service(void *payload)
+{
+    struct service_args *args = (struct service_args *) payload;
+
+    if (service.handle(args->channel, args->parameters, args->nparameters) < 0) {
+        puts("Service could not handle connection");
+        exit(-1);
+    }
+
+    exit(0);
+}
+
 static int handle_connect(struct sd_channel *channel)
 {
     ConnectionInitiation *initiation;
     struct session *session, *prev = NULL;
+    struct service_args args;
 
     if (sd_channel_receive_protobuf(channel,
                 &connection_initiation__descriptor,
@@ -220,10 +239,10 @@ static int handle_connect(struct sd_channel *channel)
         return -1;
     }
 
-    if (service.handle(channel, session->parameters, session->nparameters) < 0) {
-        puts("Service could not handle connection");
-        return -1;
-    }
+    args.channel = channel;
+    args.parameters = session->parameters;
+    args.nparameters = session->nparameters;
+    spawn(handle_service, &args);
 
     sd_service_parameters_free(session->parameters, session->nparameters);
     free(session);
