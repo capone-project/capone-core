@@ -1,0 +1,16 @@
+message CapabilityRequest {
+    message Parameter {
+        required string key = 1;
+        required string value = 2;
+    }
+
+    required bytes requester = 1;
+    required bytes identity = 2;
+    required bytes service = 3;
+    repeated Parameter parameters = 4;
+}
+
+message Capability {
+    required bytes token = 1;
+    required uint32 sessionid = 2;
+}
