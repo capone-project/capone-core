@@ -262,7 +262,7 @@ static int read_whitelist(struct sd_sign_key_public **out, const char *file)
 
         keys = realloc(keys, sizeof(struct sd_sign_key_public) * ++nkeys);
         if (sd_sign_key_public_from_hex(&keys[nkeys - 1], line) < 0) {
-            printf("Invalid key '%s'\n", line);
+            sd_log(LOG_LEVEL_ERROR, "Invalid key '%s'", line);
             return -1;
         }
     }
@@ -334,36 +334,36 @@ int main(int argc, char *argv[])
         }
         nwhitelistkeys = ret;
 
-        printf("Read %d keys from whitelist\n", nwhitelistkeys);
+        sd_log(LOG_LEVEL_VERBOSE, "Read %d keys from whitelist", nwhitelistkeys);
     }
 
     if (setup_signals() < 0) {
-        puts("Could not set up signal handlers");
+        sd_log(LOG_LEVEL_ERROR, "Could not set up signal handlers");
         return -1;
     }
 
     if (sodium_init() < 0) {
-        puts("Could not init libsodium");
+        sd_log(LOG_LEVEL_ERROR, "Could not init libsodium");
         return -1;
     }
 
     if (sd_service_from_config_file(&service, servicename, config) < 0) {
-        puts("Could not parse services");
+        sd_log(LOG_LEVEL_ERROR, "Could not parse services");
         return -1;
     }
 
     if (sd_sign_key_pair_from_config_file(&local_keys, config) < 0) {
-        puts("Could not parse config");
+        sd_log(LOG_LEVEL_ERROR, "Could not parse config");
         return -1;
     }
 
     if (sd_server_init(&server, NULL, service.port, SD_CHANNEL_TYPE_TCP) < 0) {
-        puts("Could not set up server");
+        sd_log(LOG_LEVEL_ERROR, "Could not set up server");
         return -1;
     }
 
     if (sd_server_listen(&server) < 0) {
-        puts("Could not start listening");
+        sd_log(LOG_LEVEL_ERROR, "Could not start listening");
         return -1;
     }
 
@@ -371,14 +371,14 @@ int main(int argc, char *argv[])
         ConnectionType *type;
 
         if (sd_server_accept(&server, &channel) < 0) {
-            puts("Could not accept connection");
+            sd_log(LOG_LEVEL_ERROR, "Could not accept connection");
             return -1;
         }
 
         if (sd_channel_receive_protobuf(&channel,
                     (ProtobufCMessageDescriptor *) &connection_type__descriptor,
                     (ProtobufCMessage **) &type) < 0) {
-            puts("Failed receiving connection type");
+            sd_log(LOG_LEVEL_ERROR, "Failed receiving connection type");
             return -1;
         }
 
@@ -399,7 +399,7 @@ int main(int argc, char *argv[])
                 break;
             case _CONNECTION_TYPE__TYPE_IS_INT_SIZE:
             default:
-                printf("Unknown connection envelope type %d\n", type->type);
+                sd_log(LOG_LEVEL_ERROR, "Unknown connection envelope type %d", type->type);
                 break;
         }
 
