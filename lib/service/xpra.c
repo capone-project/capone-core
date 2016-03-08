@@ -53,12 +53,34 @@ static int invoke(struct sd_channel *channel, int argc, char **argv)
 
     port = argv[1];
 
-    recv(channel->fd, buf, sizeof(buf), MSG_PEEK);
+    if (sd_channel_init_from_host(&xpra_channel, "localhost", port, SD_CHANNEL_TYPE_TCP) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Could not initialize local xpra channel");
+        return -1;
+    }
 
-    /* TODO: determine correct port */
-    sd_channel_init_from_host(&xpra_channel, "localhost", port, SD_CHANNEL_TYPE_TCP);
-    sd_channel_connect(&xpra_channel);
-    sd_channel_relay(channel, 1, xpra_channel.fd);
+    /* As xpra uses a timeout waiting for initial data when
+     * connecting to the service we have to make sure that the
+     * remote side has already started the connection from the
+     * xpra client. As such, we wait for the first byte to appear
+     * and when it does, we do the actual connection to the xpra
+     * server.
+     */
+    if (recv(channel->fd, buf, sizeof(buf), MSG_PEEK) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Could not await xpra connection");
+        return -1;
+    }
+
+    if (sd_channel_connect(&xpra_channel) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Could not connect to local xpra server");
+        return -1;
+    }
+
+    if (sd_channel_relay(channel, 1, xpra_channel.fd) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Could not relay data from xpra connection");
+        return -1;
+    }
+
+    sd_channel_close(&xpra_channel);
 
     return 0;
 }
