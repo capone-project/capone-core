@@ -14,6 +14,7 @@ LIBRARY_SOURCES=lib/cfg.c \
 				lib/channel.c \
 				lib/keys.c \
 				lib/log.c \
+				lib/proto.c \
 				lib/server.c \
 				lib/service.c \
 				lib/service/capabilities.c \

@@ -24,17 +24,6 @@
 
 typedef void (*thread_fn)(void *);
 
-struct sd_channel;
-struct sd_sign_key_pair;
-struct sd_sign_key_public;
-
 int spawn(thread_fn fn, void *payload);
-
-int initiate_encryption(struct sd_channel *channel,
-        const struct sd_sign_key_pair *sign_keys,
-        const struct sd_sign_key_public *remote_sign_key);
-int await_encryption(struct sd_channel *channel,
-        const struct sd_sign_key_pair *sign_keys,
-        struct sd_sign_key_public *remote_sign_key);
 
 #endif

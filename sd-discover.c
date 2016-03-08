@@ -28,6 +28,7 @@
 #include "lib/common.h"
 #include "lib/cfg.h"
 #include "lib/log.h"
+#include "lib/proto.h"
 #include "lib/server.h"
 
 #include "proto/discovery.pb-c.h"

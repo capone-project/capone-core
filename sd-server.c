@@ -25,15 +25,9 @@
 
 #include "lib/common.h"
 #include "lib/log.h"
+#include "lib/proto.h"
 #include "lib/server.h"
 #include "lib/service.h"
-
-#include "proto/connect.pb-c.h"
-
-struct service_args {
-    struct sd_channel *channel;
-    struct sd_service_session *session;
-};
 
 static struct sd_sign_key_public *whitelistkeys;
 static uint32_t nwhitelistkeys;
@@ -42,205 +36,6 @@ static struct sd_sign_key_pair local_keys;
 static struct sd_service service;
 
 static struct sd_service_session *sessions = NULL;
-
-static int is_whitelisted(const struct sd_sign_key_public *key)
-{
-    uint32_t i;
-
-    if (nwhitelistkeys == 0) {
-        return 1;
-    }
-
-    for (i = 0; i < nwhitelistkeys; i++) {
-        if (!memcmp(key->data, whitelistkeys[i].data, sizeof(key->data))) {
-            return 1;
-        }
-    }
-
-    return 0;
-}
-
-static int handle_query(struct sd_channel *channel)
-{
-    QueryResults results = QUERY_RESULTS__INIT;
-    QueryResults__Parameter **parameters;
-    const struct sd_service_parameter *params;
-    struct sd_sign_key_public remote_key;
-    int i, n;
-
-    if (await_encryption(channel, &local_keys, &remote_key) < 0) {
-        puts("Unable to negotiate encryption");
-        return -1;
-    }
-
-    if (!is_whitelisted(&remote_key)) {
-        puts("Received connection from unknown signature key");
-        return -1;
-    }
-
-    results.name = service.name;
-    results.type = service.type;
-    results.subtype = service.subtype;
-    results.version = (char *) service.version();
-    results.location = service.location;
-    results.port = service.port;
-
-    n = service.parameters(&params);
-    parameters = malloc(sizeof(QueryResults__Parameter *) * n);
-    for (i = 0; i < n; i++) {
-        QueryResults__Parameter *parameter = malloc(sizeof(QueryResults__Parameter));
-        query_results__parameter__init(parameter);
-
-        parameter->key = (char *) params[i].name;
-        parameter->n_value = params[i].nvalues;
-        parameter->value = (char **) params[i].values;
-
-        parameters[i] = parameter;
-    }
-    results.parameters = parameters;
-    results.n_parameters = n;
-
-    sd_channel_write_protobuf(channel, (ProtobufCMessage *) &results);
-
-    return 0;
-}
-
-static int convert_params(struct sd_service_parameter **out, const ConnectionRequestMessage *msg)
-{
-    struct sd_service_parameter *params;
-    size_t i;
-
-    *out = NULL;
-
-    params = malloc(sizeof(struct sd_service_parameter) * msg->n_parameters);
-    for (i = 0; i < msg->n_parameters; i++) {
-        params[i].name = strdup(msg->parameters[i]->key);
-        params[i].values = malloc(sizeof(char *));
-        params[i].values[0] = strdup(msg->parameters[i]->value);
-        params[i].nvalues = 1;
-    }
-
-    *out = params;
-
-    return 0;
-}
-
-static int handle_request(struct sd_channel *channel)
-{
-    ConnectionRequestMessage *request;
-    ConnectionTokenMessage token = CONNECTION_TOKEN_MESSAGE__INIT;
-    struct sd_sign_key_public remote_sign_key;
-    struct sd_symmetric_key session_key;
-    struct sd_service_parameter *params;
-    struct sd_service_session *session;
-
-    if (await_encryption(channel, &local_keys, &remote_sign_key) < 0) {
-        puts("Unable to await encryption");
-        return -1;
-    }
-
-    if (!is_whitelisted(&remote_sign_key)) {
-        puts("Received connection from unknown signature key");
-        return -1;
-    }
-
-    if (sd_channel_receive_protobuf(channel,
-            &connection_request_message__descriptor,
-            (ProtobufCMessage **) &request) < 0) {
-        puts("Unable to receive request");
-        return -1;
-    }
-
-    if (sd_symmetric_key_generate(&session_key) < 0) {
-        puts("Unable to generate sesson session_key");
-        return -1;
-    }
-
-    token.token.data = session_key.data;
-    token.token.len = sizeof(session_key.data);
-    token.sessionid = randombytes_random();
-
-    if (sd_channel_write_protobuf(channel, &token.base) < 0) {
-        puts("Unable to send connection token");
-        return -1;
-    }
-
-    if (convert_params(&params, request) < 0) {
-        puts("Unable to convert parameters");
-        return -1;
-    }
-    connection_request_message__free_unpacked(request, NULL);
-
-    session = malloc(sizeof(struct sd_service_session));
-    session->sessionid = token.sessionid;
-    session->parameters = params;
-    session->nparameters = request->n_parameters;
-    memcpy(session->session_key.data, session_key.data, sizeof(session_key.data));
-    memcpy(session->identity.data, remote_sign_key.data, sizeof(session->identity.data));
-    session->next = sessions;
-    sessions = session;
-
-    return 0;
-}
-
-static void handle_service(void *payload)
-{
-    struct service_args *args = (struct service_args *) payload;
-
-    if (service.handle(args->channel, args->session) < 0)
-    {
-        puts("Service could not handle connection");
-        exit(-1);
-    }
-
-    exit(0);
-}
-
-static int handle_connect(struct sd_channel *channel)
-{
-    ConnectionInitiation *initiation;
-    struct sd_service_session *session, *prev = NULL;
-    struct service_args args;
-
-    if (sd_channel_receive_protobuf(channel,
-                &connection_initiation__descriptor,
-                (ProtobufCMessage **) &initiation) < 0) {
-        puts("Could not receive connection initiation");
-        return -1;
-    }
-
-    for (session = sessions; session; session = session->next) {
-        if (session->sessionid == initiation->sessionid)
-            break;
-        prev = session;
-    }
-    connection_initiation__free_unpacked(initiation, NULL);
-
-    if (session == NULL) {
-        puts("Could not find session for client");
-        return -1;
-    }
-
-    if (prev == NULL)
-        sessions = session->next;
-    else
-        prev->next = session->next;
-
-    if (sd_channel_enable_encryption(channel, &session->session_key, 1) < 0) {
-        puts("Could not enable symmetric encryption");
-        return -1;
-    }
-
-    session->next = NULL;
-    args.channel = channel;
-    args.session = session;
-    spawn(handle_service, &args);
-
-    sd_service_parameters_free(session->parameters, session->nparameters);
-    free(session);
-
-    return 0;
-}
 
 static int read_whitelist(struct sd_sign_key_public **out, const char *file)
 {
@@ -368,42 +163,53 @@ int main(int argc, char *argv[])
     }
 
     while (1) {
-        ConnectionType *type;
+        enum sd_connection_type type;
+        struct sd_service_session *session;
 
         if (sd_server_accept(&server, &channel) < 0) {
             sd_log(LOG_LEVEL_ERROR, "Could not accept connection");
             return -1;
         }
 
-        if (sd_channel_receive_protobuf(&channel,
-                    (ProtobufCMessageDescriptor *) &connection_type__descriptor,
-                    (ProtobufCMessage **) &type) < 0) {
-            sd_log(LOG_LEVEL_ERROR, "Failed receiving connection type");
+        if (sd_proto_receive_connection_type(&type, &channel) < 0) {
+            sd_log(LOG_LEVEL_ERROR, "Could not receive connection type");
             return -1;
         }
 
-        switch (type->type) {
-            case CONNECTION_TYPE__TYPE__QUERY:
+        switch (type) {
+            case SD_CONNECTION_TYPE_QUERY:
                 sd_log(LOG_LEVEL_DEBUG, "Received query");
-                handle_query(&channel);
+
+                if (sd_proto_answer_query(&channel,
+                            &service, &local_keys, whitelistkeys, nwhitelistkeys) < 0)
+                {
+                    sd_log(LOG_LEVEL_ERROR, "Received invalid query");
+                }
+
                 sd_channel_close(&channel);
                 break;
-            case CONNECTION_TYPE__TYPE__REQUEST:
+            case SD_CONNECTION_TYPE_REQUEST:
                 sd_log(LOG_LEVEL_DEBUG, "Received request");
-                handle_request(&channel);
+
+                if (sd_proto_answer_request(&session,
+                            &channel, &local_keys, whitelistkeys, nwhitelistkeys) < 0)
+                {
+                    sd_log(LOG_LEVEL_ERROR, "Received invalid request");
+                } else {
+                    session->next = sessions;
+                    sessions = session;
+                }
+
                 sd_channel_close(&channel);
                 break;
-            case CONNECTION_TYPE__TYPE__CONNECT:
+            case SD_CONNECTION_TYPE_CONNECT:
                 sd_log(LOG_LEVEL_DEBUG, "Received connect");
-                handle_connect(&channel);
+                sd_proto_handle_session(&channel, &service, sessions);
                 break;
-            case _CONNECTION_TYPE__TYPE_IS_INT_SIZE:
             default:
-                sd_log(LOG_LEVEL_ERROR, "Unknown connection envelope type %d", type->type);
+                sd_log(LOG_LEVEL_ERROR, "Unknown connection envelope type %d", type);
                 break;
         }
-
-        connection_type__free_unpacked(type, NULL);
     }
 
     sd_server_close(&server);

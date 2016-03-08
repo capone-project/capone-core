@@ -19,18 +19,10 @@
 #include <string.h>
 #include <stdio.h>
 #include <sodium.h>
-#include <inttypes.h>
 
-#include "lib/common.h"
 #include "lib/channel.h"
+#include "lib/proto.h"
 #include "lib/service.h"
-
-#include "proto/connect.pb-c.h"
-
-struct params {
-    const char *key;
-    const char *value;
-};
 
 static struct sd_sign_key_pair local_keys;
 static struct sd_sign_key_public remote_key;
@@ -44,87 +36,12 @@ static void usage(const char *prog)
     exit(-1);
 }
 
-static int initiate_connection(struct sd_channel *channel,
-        const char *host, const char *port, ConnectionType__Type type)
+static int parse_params(struct sd_params **out, int argc, char *argv[])
 {
-    ConnectionType conntype = CONNECTION_TYPE__INIT;
-
-    if (sd_channel_init_from_host(channel, host, port, SD_CHANNEL_TYPE_TCP) < 0) {
-        puts("Could not initialize channel");
-        return -1;
-    }
-
-    if (sd_channel_connect(channel) < 0) {
-        puts("Could not connect to server");
-        return -1;
-    }
-
-    conntype.type = type;
-    if (sd_channel_write_protobuf(channel, &conntype.base) < 0) {
-        puts("Could not send connection type");
-        return -1;
-    }
-
-    return 0;
-}
-
-static int send_request(struct sd_channel *channel,
-        const struct params *params, int nparams)
-{
-    ConnectionRequestMessage request = CONNECTION_REQUEST_MESSAGE__INIT;
-    ConnectionTokenMessage *token;
-    char tokenhex[crypto_secretbox_KEYBYTES * 2 + 1];
+    struct sd_params *params;
     int i;
 
-    if (nparams) {
-        ConnectionRequestMessage__Parameter **parameters =
-            malloc(sizeof(ConnectionRequestMessage__Parameter *) * nparams);
-
-        for (i = 0; i < nparams; i++) {
-            ConnectionRequestMessage__Parameter *param =
-                malloc(sizeof(ConnectionRequestMessage__Parameter));
-            connection_request_message__parameter__init(param);
-
-            param->key = (char *) params[i].key;
-            param->value = (char *) params[i].value;
-
-            parameters[i] = param;
-        }
-
-        request.parameters = parameters;
-        request.n_parameters = nparams;
-    } else {
-        request.parameters = NULL;
-        request.n_parameters = 0;
-    }
-
-    if (sd_channel_write_protobuf(channel, &request.base) < 0) {
-        puts("Unable to send connection request");
-        return -1;
-    }
-
-    if (sd_channel_receive_protobuf(channel,
-            &connection_token_message__descriptor,
-            (ProtobufCMessage **) &token) < 0) {
-        puts("Unable to receive token");
-        return -1;
-    }
-    assert(token->token.len == crypto_secretbox_KEYBYTES);
-
-    sodium_bin2hex(tokenhex, sizeof(tokenhex),
-            token->token.data, token->token.len);
-    printf("token:     %s\n"
-           "sessionid: %"PRIu32"\n", tokenhex, token->sessionid);
-
-    return 0;
-}
-
-static int parse_params(struct params **out, int argc, char *argv[])
-{
-    struct params *params;
-    int i;
-
-    params = malloc(sizeof(struct params) * argc);
+    params = malloc(sizeof(struct sd_params) * argc);
 
     for (i = 0; i < argc; i++) {
         char *line = argv[i], *key, *value;
@@ -141,49 +58,6 @@ static int parse_params(struct params **out, int argc, char *argv[])
     *out = params;
 
     return i;
-}
-
-static int send_query(struct sd_channel *channel)
-{
-    QueryResults *result;
-    char pk[crypto_sign_PUBLICKEYBYTES * 2 + 1];
-    size_t i, j;
-
-    if (sd_channel_receive_protobuf(channel, &query_results__descriptor,
-            (ProtobufCMessage **) &result) < 0) {
-        puts("Could not receive query results");
-        return -1;
-    }
-
-    sodium_bin2hex(pk, sizeof(pk),
-            remote_key.data, sizeof(remote_key.data));
-
-    printf("%s\n"
-           "\tname:     %s\n"
-           "\ttype:     %s\n"
-           "\tsubtype:  %s\n"
-           "\tversion:  %s\n"
-           "\tlocation: %s\n"
-           "\tport:     %s\n",
-           pk,
-           result->name,
-           result->type,
-           result->subtype,
-           result->version,
-           result->location,
-           result->port);
-
-    for (i = 0; i < result->n_parameters; i++) {
-        QueryResults__Parameter *param = result->parameters[i];
-        printf("\tparam:    %s\n", param->key);
-
-        for (j = 0; j < param->n_value; j++)
-            printf("\t          %s\n", param->value[j]);
-    }
-
-    query_results__free_unpacked(result, NULL);
-
-    return 0;
 }
 
 static int cmd_query(int argc, char *argv[])
@@ -209,17 +83,17 @@ static int cmd_query(int argc, char *argv[])
         return -1;
     }
 
-    if (initiate_connection(&channel, host, port, CONNECTION_TYPE__TYPE__QUERY) < 0) {
+    if (sd_proto_initiate_connection_type(&channel, host, port, SD_CONNECTION_TYPE_QUERY) < 0) {
         puts("Could not establish connection");
         return -1;
     }
 
-    if (initiate_encryption(&channel, &local_keys, &remote_key) < 0) {
+    if (sd_proto_initiate_encryption(&channel, &local_keys, &remote_key) < 0) {
         puts("Unable to initiate encryption");
         return -1;
     }
 
-    if (send_query(&channel) < 0)
+    if (sd_proto_send_query(&channel, &remote_key) < 0)
         return -1;
 
     sd_channel_close(&channel);
@@ -231,7 +105,7 @@ static int cmd_request(int argc, char *argv[])
 {
     const char *config, *key, *host, *port;
     struct sd_channel channel;
-    struct params *params;
+    struct sd_params *params;
     int nparams;
 
     if (argc < 6) {
@@ -258,44 +132,20 @@ static int cmd_request(int argc, char *argv[])
         return -1;
     }
 
-    if (initiate_connection(&channel, host, port, CONNECTION_TYPE__TYPE__REQUEST) < 0) {
+    if (sd_proto_initiate_connection_type(&channel, host, port, SD_CONNECTION_TYPE_REQUEST) < 0) {
         puts("Could not establish connection");
         return -1;
     }
 
-    if (initiate_encryption(&channel, &local_keys, &remote_key) < 0) {
+    if (sd_proto_initiate_encryption(&channel, &local_keys, &remote_key) < 0) {
         puts("Unable to initiate encryption");
         return -1;
     }
 
-    if (send_request(&channel, params, nparams) < 0)
+    if (sd_proto_send_request(&channel, params, nparams) < 0)
         return -1;
 
     sd_channel_close(&channel);
-
-    return 0;
-}
-
-static int initiate_session(struct sd_channel *channel, const char *token, int sessionid)
-{
-    ConnectionInitiation initiation = CONNECTION_INITIATION__INIT;
-    struct sd_symmetric_key key;
-
-    initiation.sessionid = sessionid;
-    if (sd_channel_write_protobuf(channel, &initiation.base) < 0 ) {
-        puts("Could not initiate session");
-        return -1;
-    }
-
-    if (sd_symmetric_key_from_hex(&key, token) < 0) {
-        puts("Could not retrieve symmetric key");
-        return -1;
-    }
-
-    if (sd_channel_enable_encryption(channel, &key, 0) < 0) {
-        puts("Could not enable symmetric encryption");
-        return -1;
-    }
 
     return 0;
 }
@@ -328,12 +178,12 @@ static int cmd_connect(int argc, char *argv[])
     }
     errno = saved_errno;
 
-    if (initiate_connection(&channel, host, port, CONNECTION_TYPE__TYPE__CONNECT) < 0) {
+    if (sd_proto_initiate_connection_type(&channel, host, port, SD_CONNECTION_TYPE_CONNECT) < 0) {
         puts("Could not start connection");
         return -1;
     }
 
-    if (initiate_session(&channel, token, sessionid) < 0) {
+    if (sd_proto_initiate_session(&channel, token, sessionid) < 0) {
         puts("Could not connect to session");
         return -1;
     }
