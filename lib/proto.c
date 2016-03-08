@@ -43,14 +43,14 @@ static int is_whitelisted(const struct sd_sign_key_public *key,
         const struct sd_sign_key_public *whitelist,
         size_t nwhitelist);
 static int convert_params(struct sd_service_parameter **out,
-        const ConnectionRequestMessage *msg);
+        const SessionRequestMessage *msg);
 static void handle_service(void *payload);
 
 int sd_proto_initiate_connection_type(struct sd_channel *channel,
         const char *host, const char *port,
         enum sd_connection_type type)
 {
-    ConnectionType conntype = CONNECTION_TYPE__INIT;
+    ConnectionInitiationMessage conntype = CONNECTION_INITIATION_MESSAGE__INIT;
 
     if (sd_channel_init_from_host(channel, host, port, SD_CHANNEL_TYPE_TCP) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Could not initialize channel");
@@ -64,13 +64,13 @@ int sd_proto_initiate_connection_type(struct sd_channel *channel,
 
     switch (type) {
         case SD_CONNECTION_TYPE_CONNECT:
-            conntype.type = CONNECTION_TYPE__TYPE__CONNECT;
+            conntype.type = CONNECTION_INITIATION_MESSAGE__TYPE__CONNECT;
             break;
         case SD_CONNECTION_TYPE_REQUEST:
-            conntype.type = CONNECTION_TYPE__TYPE__REQUEST;
+            conntype.type = CONNECTION_INITIATION_MESSAGE__TYPE__REQUEST;
             break;
         case SD_CONNECTION_TYPE_QUERY:
-            conntype.type = CONNECTION_TYPE__TYPE__QUERY;
+            conntype.type = CONNECTION_INITIATION_MESSAGE__TYPE__QUERY;
             break;
         default:
             sd_log(LOG_LEVEL_ERROR, "Unknown connection type");
@@ -88,33 +88,33 @@ int sd_proto_initiate_connection_type(struct sd_channel *channel,
 int sd_proto_receive_connection_type(enum sd_connection_type *out,
         struct sd_channel *channel)
 {
-    ConnectionType *type;
+    ConnectionInitiationMessage *initiation;
     int ret = 0;;
 
     if (sd_channel_receive_protobuf(channel,
-                (ProtobufCMessageDescriptor *) &connection_type__descriptor,
-                (ProtobufCMessage **) &type) < 0) {
+                (ProtobufCMessageDescriptor *) &connection_initiation_message__descriptor,
+                (ProtobufCMessage **) &initiation) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Failed receiving connection type");
         return -1;
     }
 
-    switch (type->type) {
-        case CONNECTION_TYPE__TYPE__QUERY:
+    switch (initiation->type) {
+        case CONNECTION_INITIATION_MESSAGE__TYPE__QUERY:
             *out = SD_CONNECTION_TYPE_QUERY;
             break;
-        case CONNECTION_TYPE__TYPE__REQUEST:
+        case CONNECTION_INITIATION_MESSAGE__TYPE__REQUEST:
             *out = SD_CONNECTION_TYPE_REQUEST;
             break;
-        case CONNECTION_TYPE__TYPE__CONNECT:
+        case CONNECTION_INITIATION_MESSAGE__TYPE__CONNECT:
             *out = SD_CONNECTION_TYPE_CONNECT;
             break;
-        case _CONNECTION_TYPE__TYPE_IS_INT_SIZE:
+        case _CONNECTION_INITIATION_MESSAGE__TYPE_IS_INT_SIZE:
         default:
             ret = -1;
             break;
     }
 
-    connection_type__free_unpacked(type, NULL);
+    connection_initiation_message__free_unpacked(initiation, NULL);
 
     return ret;
 }
@@ -175,9 +175,9 @@ int sd_proto_initiate_encryption(struct sd_channel *channel,
     return 0;
 }
 
-int sd_proto_initiate_session(struct sd_channel *channel, const char *token, int sessionid)
+int sd_proto_initiate_session(struct sd_channel *channel, const char *sessionkey, int sessionid)
 {
-    ConnectionInitiation initiation = CONNECTION_INITIATION__INIT;
+    SessionInitiationMessage initiation = SESSION_INITIATION_MESSAGE__INIT;
     struct sd_symmetric_key key;
 
     initiation.sessionid = sessionid;
@@ -186,7 +186,7 @@ int sd_proto_initiate_session(struct sd_channel *channel, const char *token, int
         return -1;
     }
 
-    if (sd_symmetric_key_from_hex(&key, token) < 0) {
+    if (sd_symmetric_key_from_hex(&key, sessionkey) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Could not retrieve symmetric key");
         return -1;
     }
@@ -203,12 +203,12 @@ int sd_proto_handle_session(struct sd_channel *channel,
         struct sd_service *service,
         struct sd_service_session *sessions)
 {
-    ConnectionInitiation *initiation;
+    SessionInitiationMessage *initiation;
     struct sd_service_session *session, *prev = NULL;
     struct service_args args;
 
     if (sd_channel_receive_protobuf(channel,
-                &connection_initiation__descriptor,
+                &session_initiation_message__descriptor,
                 (ProtobufCMessage **) &initiation) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Could not receive connection initiation");
         return -1;
@@ -219,7 +219,7 @@ int sd_proto_handle_session(struct sd_channel *channel,
             break;
         prev = session;
     }
-    connection_initiation__free_unpacked(initiation, NULL);
+    session_initiation_message__free_unpacked(initiation, NULL);
 
     if (session == NULL) {
         sd_log(LOG_LEVEL_ERROR, "Could not find session for client");
@@ -252,8 +252,8 @@ int sd_proto_send_request(struct sd_service_session *out,
         struct sd_channel *channel,
         const struct sd_service_parameter *params, size_t nparams)
 {
-    ConnectionRequestMessage request = CONNECTION_REQUEST_MESSAGE__INIT;
-    ConnectionTokenMessage *token;
+    SessionRequestMessage request = SESSION_REQUEST_MESSAGE__INIT;
+    SessionMessage *session;
     size_t i;
 
     memset(out, 0, sizeof(struct sd_service_session));
@@ -285,15 +285,15 @@ int sd_proto_send_request(struct sd_service_session *out,
     }
 
     if (sd_channel_receive_protobuf(channel,
-            &connection_token_message__descriptor,
-            (ProtobufCMessage **) &token) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Unable to receive token");
+            &session_message__descriptor,
+            (ProtobufCMessage **) &session) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Unable to receive session");
         return -1;
     }
-    assert(token->token.len == crypto_secretbox_KEYBYTES);
+    assert(session->sessionkey.len == crypto_secretbox_KEYBYTES);
 
-    out->sessionid = token->sessionid;
-    memcpy(&out->session_key, token->token.data, token->token.len);
+    out->sessionid = session->sessionid;
+    memcpy(&out->session_key, session->sessionkey.data, session->sessionkey.len);
 
     return 0;
 }
@@ -447,8 +447,8 @@ int sd_proto_answer_request(struct sd_service_session **out,
         const struct sd_sign_key_public *whitelist,
         size_t nwhitelist)
 {
-    ConnectionRequestMessage *request;
-    ConnectionTokenMessage token = CONNECTION_TOKEN_MESSAGE__INIT;
+    SessionRequestMessage *request;
+    SessionMessage session_message = SESSION_MESSAGE__INIT;
     struct sd_sign_key_public remote_sign_key;
     struct sd_symmetric_key session_key;
     struct sd_service_parameter *params;
@@ -465,7 +465,7 @@ int sd_proto_answer_request(struct sd_service_session **out,
     }
 
     if (sd_channel_receive_protobuf(channel,
-            &connection_request_message__descriptor,
+            &session_request_message__descriptor,
             (ProtobufCMessage **) &request) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Unable to receive request");
         return -1;
@@ -476,12 +476,12 @@ int sd_proto_answer_request(struct sd_service_session **out,
         return -1;
     }
 
-    token.token.data = session_key.data;
-    token.token.len = sizeof(session_key.data);
-    token.sessionid = randombytes_random();
+    session_message.sessionkey.data = session_key.data;
+    session_message.sessionkey.len = sizeof(session_key.data);
+    session_message.sessionid = randombytes_random();
 
-    if (sd_channel_write_protobuf(channel, &token.base) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Unable to send connection token");
+    if (sd_channel_write_protobuf(channel, &session_message.base) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Unable to send connection session");
         return -1;
     }
 
@@ -489,10 +489,10 @@ int sd_proto_answer_request(struct sd_service_session **out,
         sd_log(LOG_LEVEL_ERROR, "Unable to convert parameters");
         return -1;
     }
-    connection_request_message__free_unpacked(request, NULL);
+    session_request_message__free_unpacked(request, NULL);
 
     session = malloc(sizeof(struct sd_service_session));
-    session->sessionid = token.sessionid;
+    session->sessionid = session_message.sessionid;
     session->parameters = params;
     session->nparameters = request->n_parameters;
     memcpy(session->session_key.data, session_key.data, sizeof(session_key.data));
@@ -594,7 +594,7 @@ static int is_whitelisted(const struct sd_sign_key_public *key,
     return 0;
 }
 
-static int convert_params(struct sd_service_parameter **out, const ConnectionRequestMessage *msg)
+static int convert_params(struct sd_service_parameter **out, const SessionRequestMessage *msg)
 {
     struct sd_service_parameter *params;
     size_t i, j;

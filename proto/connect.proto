@@ -1,4 +1,4 @@
-message ConnectionType {
+message ConnectionInitiationMessage {
     enum Type {
         QUERY = 0;
         REQUEST = 1;
@@ -23,19 +23,15 @@ message QueryResults {
     repeated Parameter parameters = 7;
 }
 
-message ConnectionRequestMessage {
+message SessionRequestMessage {
     repeated Parameter parameters = 1;
 }
 
-message ConnectionTokenMessage {
-    required bytes token = 1;
+message SessionMessage {
+    required bytes sessionkey = 1;
     required uint32 sessionid = 2;
 }
 
-message ConnectionInitiation {
+message SessionInitiationMessage {
     required uint32 sessionid = 1;
-}
-
-message ConnectMessage {
-    required bytes token = 1;
 }
