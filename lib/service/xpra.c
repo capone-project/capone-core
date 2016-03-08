@@ -86,7 +86,7 @@ static int invoke(struct sd_channel *channel, int argc, char **argv)
 }
 
 static int handle(struct sd_channel *channel,
-        const struct sd_service_parameter *params, size_t nparams)
+        const struct sd_service_session *session)
 {
     struct sd_server server;
     struct sd_channel xpra_channel;
@@ -98,6 +98,8 @@ static int handle(struct sd_channel *channel,
         NULL
     };
     int len, pid;
+
+    UNUSED(session);
 
     if (sd_server_init(&server, "localhost", NULL, SD_CHANNEL_TYPE_TCP) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Could not initialize xpra relay socket");
@@ -139,9 +141,6 @@ static int handle(struct sd_channel *channel,
     } else {
         return -1;
     }
-
-    UNUSED(params);
-    UNUSED(nparams);
 
     kill(pid, SIGKILL);
     sd_log(LOG_LEVEL_VERBOSE, "Terminated xpra");

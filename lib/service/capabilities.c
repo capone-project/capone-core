@@ -25,8 +25,14 @@ static const char *version(void)
 
 static int parameters(const struct sd_service_parameter **out)
 {
-    *out = NULL;
-    return 0;
+    static const struct sd_service_parameter params[] = {
+        { "for-identity", 0, NULL },
+        { "for-service", 0, NULL },
+        { "parameters", 0, NULL },
+    };
+
+    *out = params;
+    return ARRAY_SIZE(params);
 }
 
 static int invoke(struct sd_channel *channel, int argc, char **argv)
@@ -38,11 +44,10 @@ static int invoke(struct sd_channel *channel, int argc, char **argv)
 }
 
 static int handle(struct sd_channel *channel,
-        const struct sd_service_parameter *params, size_t nparams)
+        const struct sd_service_session *session)
 {
     UNUSED(channel);
-    UNUSED(params);
-    UNUSED(nparams);
+    UNUSED(session);
     return 0;
 }
 

@@ -30,21 +30,9 @@
 
 #include "proto/connect.pb-c.h"
 
-struct session;
-static struct session {
-    uint32_t sessionid;
-    struct sd_symmetric_key session_key;
-
-    struct sd_service_parameter *parameters;
-    size_t nparameters;
-
-    struct session *next;
-} *sessions = NULL;
-
 struct service_args {
     struct sd_channel *channel;
-    struct sd_service_parameter *parameters;
-    size_t nparameters;
+    struct sd_service_session *session;
 };
 
 static struct sd_sign_key_public *whitelistkeys;
@@ -52,6 +40,8 @@ static uint32_t nwhitelistkeys;
 
 static struct sd_sign_key_pair local_keys;
 static struct sd_service service;
+
+static struct sd_service_session *sessions = NULL;
 
 static int is_whitelisted(const struct sd_sign_key_public *key)
 {
@@ -142,7 +132,7 @@ static int handle_request(struct sd_channel *channel)
     struct sd_sign_key_public remote_sign_key;
     struct sd_symmetric_key session_key;
     struct sd_service_parameter *params;
-    struct session *session;
+    struct sd_service_session *session;
 
     if (await_encryption(channel, &local_keys, &remote_sign_key) < 0) {
         puts("Unable to await encryption");
@@ -181,11 +171,12 @@ static int handle_request(struct sd_channel *channel)
     }
     connection_request_message__free_unpacked(request, NULL);
 
-    session = malloc(sizeof(struct session));
+    session = malloc(sizeof(struct sd_service_session));
     session->sessionid = token.sessionid;
     session->parameters = params;
     session->nparameters = request->n_parameters;
-    memcpy(session->session_key.data, session_key.data, sizeof(session_key));
+    memcpy(session->session_key.data, session_key.data, sizeof(session_key.data));
+    memcpy(session->identity.data, remote_sign_key.data, sizeof(session->identity.data));
     session->next = sessions;
     sessions = session;
 
@@ -196,7 +187,8 @@ static void handle_service(void *payload)
 {
     struct service_args *args = (struct service_args *) payload;
 
-    if (service.handle(args->channel, args->parameters, args->nparameters) < 0) {
+    if (service.handle(args->channel, args->session) < 0)
+    {
         puts("Service could not handle connection");
         exit(-1);
     }
@@ -207,7 +199,7 @@ static void handle_service(void *payload)
 static int handle_connect(struct sd_channel *channel)
 {
     ConnectionInitiation *initiation;
-    struct session *session, *prev = NULL;
+    struct sd_service_session *session, *prev = NULL;
     struct service_args args;
 
     if (sd_channel_receive_protobuf(channel,
@@ -239,9 +231,9 @@ static int handle_connect(struct sd_channel *channel)
         return -1;
     }
 
+    session->next = NULL;
     args.channel = channel;
-    args.parameters = session->parameters;
-    args.nparameters = session->nparameters;
+    args.session = session;
     spawn(handle_service, &args);
 
     sd_service_parameters_free(session->parameters, session->nparameters);
