@@ -386,10 +386,12 @@ int main(int argc, char *argv[])
             case CONNECTION_TYPE__TYPE__QUERY:
                 sd_log(LOG_LEVEL_DEBUG, "Received query");
                 handle_query(&channel);
+                sd_channel_close(&channel);
                 break;
             case CONNECTION_TYPE__TYPE__REQUEST:
                 sd_log(LOG_LEVEL_DEBUG, "Received request");
                 handle_request(&channel);
+                sd_channel_close(&channel);
                 break;
             case CONNECTION_TYPE__TYPE__CONNECT:
                 sd_log(LOG_LEVEL_DEBUG, "Received connect");
@@ -401,7 +403,6 @@ int main(int argc, char *argv[])
                 break;
         }
 
-        sd_channel_close(&channel);
         connection_type__free_unpacked(type, NULL);
     }
 
