@@ -43,16 +43,20 @@ static int parameters(const struct sd_service_parameter **out)
 
 static int invoke(struct sd_channel *channel, int argc, char **argv)
 {
-    char buf[1];
+    char buf[1], *port;
     struct sd_channel xpra_channel;
 
-    UNUSED(argc);
-    UNUSED(argv);
+    if (argc != 2 || strcmp(argv[0], "--port")) {
+        puts("Usage: xpra --port <PORT>");
+        return -1;
+    }
+
+    port = argv[1];
 
     recv(channel->fd, buf, sizeof(buf), MSG_PEEK);
 
     /* TODO: determine correct port */
-    sd_channel_init_from_host(&xpra_channel, "localhost", "9999", SD_CHANNEL_TYPE_TCP);
+    sd_channel_init_from_host(&xpra_channel, "localhost", port, SD_CHANNEL_TYPE_TCP);
     sd_channel_connect(&xpra_channel);
     sd_channel_relay(channel, 1, xpra_channel.fd);
 
