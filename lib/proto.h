@@ -48,7 +48,8 @@ int sd_proto_answer_query(struct sd_channel *channel,
         const struct sd_sign_key_public *whitelist,
         size_t nwhitelist);
 
-int sd_proto_send_request(struct sd_channel *channel,
+int sd_proto_send_request(struct sd_service_session *out,
+        struct sd_channel *channel,
         const struct sd_service_parameter *params, size_t nparams);
 int sd_proto_answer_request(struct sd_service_session **out,
         struct sd_channel *channel,

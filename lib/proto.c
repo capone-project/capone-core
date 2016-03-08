@@ -16,7 +16,6 @@
  */
 
 #include <string.h>
-#include <inttypes.h>
 
 #include "lib/common.h"
 #include "lib/channel.h"
@@ -249,13 +248,15 @@ int sd_proto_handle_session(struct sd_channel *channel,
     return 0;
 }
 
-int sd_proto_send_request(struct sd_channel *channel,
+int sd_proto_send_request(struct sd_service_session *out,
+        struct sd_channel *channel,
         const struct sd_service_parameter *params, size_t nparams)
 {
     ConnectionRequestMessage request = CONNECTION_REQUEST_MESSAGE__INIT;
     ConnectionTokenMessage *token;
-    char tokenhex[crypto_secretbox_KEYBYTES * 2 + 1];
     size_t i;
+
+    memset(out, 0, sizeof(struct sd_service_session));
 
     if (nparams) {
         Parameter **parameters = malloc(sizeof(Parameter *) * nparams);
@@ -291,10 +292,8 @@ int sd_proto_send_request(struct sd_channel *channel,
     }
     assert(token->token.len == crypto_secretbox_KEYBYTES);
 
-    sodium_bin2hex(tokenhex, sizeof(tokenhex),
-            token->token.data, token->token.len);
-    printf("token:     %s\n"
-           "sessionid: %"PRIu32"\n", tokenhex, token->sessionid);
+    out->sessionid = token->sessionid;
+    memcpy(&out->session_key, token->token.data, token->token.len);
 
     return 0;
 }

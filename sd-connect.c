@@ -19,6 +19,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <sodium.h>
+#include <inttypes.h>
 
 #include "lib/channel.h"
 #include "lib/proto.h"
@@ -105,8 +106,10 @@ static int cmd_query(int argc, char *argv[])
 
 static int cmd_request(int argc, char *argv[])
 {
+    char sessionkey_hex[crypto_secretbox_KEYBYTES * 2 + 1];
     const char *config, *key, *host, *port;
     struct sd_service_parameter *params;
+    struct sd_service_session session;
     struct sd_channel channel;
     int nparams;
 
@@ -144,8 +147,15 @@ static int cmd_request(int argc, char *argv[])
         return -1;
     }
 
-    if (sd_proto_send_request(&channel, params, nparams) < 0)
+    if (sd_proto_send_request(&session, &channel, params, nparams) < 0) {
+        puts("Unable to request session");
         return -1;
+    }
+
+    sodium_bin2hex(sessionkey_hex, sizeof(sessionkey_hex),
+            session.session_key.data, sizeof(session.session_key.data));
+    printf("sessionkey: %s\n"
+           "sessionid:  %"PRIu32"\n", sessionkey_hex, session.sessionid);
 
     sd_channel_close(&channel);
 
