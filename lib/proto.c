@@ -54,12 +54,12 @@ int sd_proto_initiate_connection_type(struct sd_channel *channel,
     ConnectionType conntype = CONNECTION_TYPE__INIT;
 
     if (sd_channel_init_from_host(channel, host, port, SD_CHANNEL_TYPE_TCP) < 0) {
-        puts("Could not initialize channel");
+        sd_log(LOG_LEVEL_ERROR, "Could not initialize channel");
         return -1;
     }
 
     if (sd_channel_connect(channel) < 0) {
-        puts("Could not connect to server");
+        sd_log(LOG_LEVEL_ERROR, "Could not connect to server");
         return -1;
     }
 
@@ -79,7 +79,7 @@ int sd_proto_initiate_connection_type(struct sd_channel *channel,
     }
 
     if (sd_channel_write_protobuf(channel, &conntype.base) < 0) {
-        puts("Could not send connection type");
+        sd_log(LOG_LEVEL_ERROR, "Could not send connection type");
         return -1;
     }
 
@@ -183,17 +183,17 @@ int sd_proto_initiate_session(struct sd_channel *channel, const char *token, int
 
     initiation.sessionid = sessionid;
     if (sd_channel_write_protobuf(channel, &initiation.base) < 0 ) {
-        puts("Could not initiate session");
+        sd_log(LOG_LEVEL_ERROR, "Could not initiate session");
         return -1;
     }
 
     if (sd_symmetric_key_from_hex(&key, token) < 0) {
-        puts("Could not retrieve symmetric key");
+        sd_log(LOG_LEVEL_ERROR, "Could not retrieve symmetric key");
         return -1;
     }
 
     if (sd_channel_enable_encryption(channel, &key, 0) < 0) {
-        puts("Could not enable symmetric encryption");
+        sd_log(LOG_LEVEL_ERROR, "Could not enable symmetric encryption");
         return -1;
     }
 
@@ -211,7 +211,7 @@ int sd_proto_handle_session(struct sd_channel *channel,
     if (sd_channel_receive_protobuf(channel,
                 &connection_initiation__descriptor,
                 (ProtobufCMessage **) &initiation) < 0) {
-        puts("Could not receive connection initiation");
+        sd_log(LOG_LEVEL_ERROR, "Could not receive connection initiation");
         return -1;
     }
 
@@ -223,7 +223,7 @@ int sd_proto_handle_session(struct sd_channel *channel,
     connection_initiation__free_unpacked(initiation, NULL);
 
     if (session == NULL) {
-        puts("Could not find session for client");
+        sd_log(LOG_LEVEL_ERROR, "Could not find session for client");
         return -1;
     }
 
@@ -233,7 +233,7 @@ int sd_proto_handle_session(struct sd_channel *channel,
         prev->next = session->next;
 
     if (sd_channel_enable_encryption(channel, &session->session_key, 1) < 0) {
-        puts("Could not enable symmetric encryption");
+        sd_log(LOG_LEVEL_ERROR, "Could not enable symmetric encryption");
         return -1;
     }
 
@@ -280,14 +280,14 @@ int sd_proto_send_request(struct sd_channel *channel,
     }
 
     if (sd_channel_write_protobuf(channel, &request.base) < 0) {
-        puts("Unable to send connection request");
+        sd_log(LOG_LEVEL_ERROR, "Unable to send connection request");
         return -1;
     }
 
     if (sd_channel_receive_protobuf(channel,
             &connection_token_message__descriptor,
             (ProtobufCMessage **) &token) < 0) {
-        puts("Unable to receive token");
+        sd_log(LOG_LEVEL_ERROR, "Unable to receive token");
         return -1;
     }
     assert(token->token.len == crypto_secretbox_KEYBYTES);
@@ -309,7 +309,7 @@ int sd_proto_send_query(struct sd_channel *channel,
 
     if (sd_channel_receive_protobuf(channel, &query_results__descriptor,
             (ProtobufCMessage **) &result) < 0) {
-        puts("Could not receive query results");
+        sd_log(LOG_LEVEL_ERROR, "Could not receive query results");
         return -1;
     }
 
@@ -407,12 +407,12 @@ int sd_proto_answer_query(struct sd_channel *channel,
     int i, n;
 
     if (sd_proto_await_encryption(channel, local_keys, &remote_key) < 0) {
-        puts("Unable to negotiate encryption");
+        sd_log(LOG_LEVEL_ERROR, "Unable to negotiate encryption");
         return -1;
     }
 
     if (!is_whitelisted(&remote_key, whitelist, nwhitelist)) {
-        puts("Received connection from unknown signature key");
+        sd_log(LOG_LEVEL_ERROR, "Received connection from unknown signature key");
         return -1;
     }
 
@@ -457,24 +457,24 @@ int sd_proto_answer_request(struct sd_service_session **out,
     struct sd_service_session *session;
 
     if (sd_proto_await_encryption(channel, local_keys, &remote_sign_key) < 0) {
-        puts("Unable to await encryption");
+        sd_log(LOG_LEVEL_ERROR, "Unable to await encryption");
         return -1;
     }
 
     if (!is_whitelisted(&remote_sign_key, whitelist, nwhitelist)) {
-        puts("Received connection from unknown signature key");
+        sd_log(LOG_LEVEL_ERROR, "Received connection from unknown signature key");
         return -1;
     }
 
     if (sd_channel_receive_protobuf(channel,
             &connection_request_message__descriptor,
             (ProtobufCMessage **) &request) < 0) {
-        puts("Unable to receive request");
+        sd_log(LOG_LEVEL_ERROR, "Unable to receive request");
         return -1;
     }
 
     if (sd_symmetric_key_generate(&session_key) < 0) {
-        puts("Unable to generate sesson session_key");
+        sd_log(LOG_LEVEL_ERROR, "Unable to generate sesson session_key");
         return -1;
     }
 
@@ -483,12 +483,12 @@ int sd_proto_answer_request(struct sd_service_session **out,
     token.sessionid = randombytes_random();
 
     if (sd_channel_write_protobuf(channel, &token.base) < 0) {
-        puts("Unable to send connection token");
+        sd_log(LOG_LEVEL_ERROR, "Unable to send connection token");
         return -1;
     }
 
     if (convert_params(&params, request) < 0) {
-        puts("Unable to convert parameters");
+        sd_log(LOG_LEVEL_ERROR, "Unable to convert parameters");
         return -1;
     }
     connection_request_message__free_unpacked(request, NULL);
@@ -621,7 +621,7 @@ static void handle_service(void *payload)
     struct service_args *args = (struct service_args *) payload;
 
     if (args->service->handle(args->channel, args->session) < 0) {
-        puts("Service could not handle connection");
+        sd_log(LOG_LEVEL_ERROR, "Service could not handle connection");
         exit(-1);
     }
 
