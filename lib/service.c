@@ -23,12 +23,15 @@
 #include "lib/common.h"
 #include "lib/log.h"
 #include "lib/service.h"
+#include "lib/service/capabilities.h"
 #include "lib/service/exec.h"
 #include "lib/service/x2x.h"
 #include "lib/service/xpra.h"
 
 static int fill_service_functions(struct sd_service *service, const char *type)
 {
+    if (!strcmp(type, "capabilities"))
+        return sd_capabilities_init_service(service);
     if (!strcmp(type, "exec"))
         return sd_exec_init_service(service);
     if (!strcmp(type, "xpra"))
