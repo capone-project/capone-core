@@ -15,10 +15,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <stdint.h>
+#ifndef SD_LIB_CHANNEL_H
+#define SD_LIB_CHANNEL_H
 
 #include <sys/socket.h>
-#include <sys/types.h>
 
 #include <protobuf-c/protobuf-c.h>
 
@@ -75,3 +75,5 @@ int sd_channel_write_protobuf(struct sd_channel *c, ProtobufCMessage *msg);
 int sd_channel_receive_protobuf(struct sd_channel *c, const ProtobufCMessageDescriptor *descr, ProtobufCMessage **msg);
 
 int sd_channel_relay(struct sd_channel *c, int nfds, ...);
+
+#endif

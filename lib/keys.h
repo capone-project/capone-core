@@ -15,6 +15,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifndef SD_LIB_KEYS_H
+#define SD_LIB_KEYS_H
+
 #include <sodium.h>
 
 struct sd_sign_key_secret {
@@ -54,3 +57,5 @@ int sd_encrypt_key_public_from_bin(struct sd_encrypt_key_public *out,
 
 int sd_symmetric_key_generate(struct sd_symmetric_key *out);
 int sd_symmetric_key_from_hex(struct sd_symmetric_key *out, const char *hex);
+
+#endif

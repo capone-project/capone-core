@@ -15,6 +15,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifndef SD_LIB_SERVICE_H
+#define SD_LIB_SERVICE_H
+
 #include "lib/cfg.h"
 
 struct sd_channel;
@@ -57,3 +60,5 @@ int sd_services_from_config(struct sd_service **out, const struct cfg *cfg);
 int sd_service_parameters_get_value(const char **out, const char *value, const struct sd_service_parameter *parameters, size_t n);
 int sd_service_parameters_get_values(const char ***out, const char *value, const struct sd_service_parameter *parameters, size_t n);
 void sd_service_parameters_free(struct sd_service_parameter *params, size_t nparams);
+
+#endif

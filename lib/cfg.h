@@ -15,6 +15,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifndef SD_LIB_CFG_H
+#define SD_LIB_CFG_H
+
 #include <stdint.h>
 #include <stddef.h>
 
@@ -49,3 +52,5 @@ const struct cfg_entry *cfg_get_entry(const struct cfg_section *s, const char *n
 
 char *cfg_get_str_value(const struct cfg *c, const char *section, const char *key);
 int cfg_get_int_value(const struct cfg *c, const char *section, const char *key);
+
+#endif

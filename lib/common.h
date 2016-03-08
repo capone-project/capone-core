@@ -15,6 +15,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifndef SD_LIB_COMMON_H
+#define SD_LIB_COMMON_H
+
 #define MAX(a, b) ((a) >= (b) ? (a) : (b))
 #define UNUSED(x) (void)(x)
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
@@ -33,3 +36,5 @@ int initiate_encryption(struct sd_channel *channel,
 int await_encryption(struct sd_channel *channel,
         const struct sd_sign_key_pair *sign_keys,
         struct sd_sign_key_public *remote_sign_key);
+
+#endif

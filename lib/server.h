@@ -15,6 +15,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifndef SD_LIB_SERVER_H
+#define SD_LIB_SERVER_H
+
 #include "lib/channel.h"
 
 struct sd_server {
@@ -32,3 +35,5 @@ int sd_server_accept(struct sd_server *server, struct sd_channel *out);
 
 int sd_server_get_address(struct sd_server *s,
         char *host, size_t hostlen, char *port, size_t portlen);
+
+#endif

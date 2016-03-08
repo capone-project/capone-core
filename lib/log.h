@@ -15,6 +15,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifndef SD_LIB_LOG_H
+#define SD_LIB_LOG_H
+
 enum log_level {
     LOG_LEVEL_DEBUG,
     LOG_LEVEL_VERBOSE,
@@ -25,3 +28,5 @@ enum log_level {
 
 void sd_log(enum log_level lvl, const char *msgformat, ...);
 void sd_log_set_level(enum log_level lvl);
+
+#endif
