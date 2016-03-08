@@ -43,8 +43,11 @@ static int parameters(const struct sd_service_parameter **out)
     return ARRAY_SIZE(params);
 }
 
-static int invoke(struct sd_channel *channel)
+static int invoke(struct sd_channel *channel, int argc, char **argv)
 {
+    UNUSED(argc);
+    UNUSED(argv);
+
     if (sd_channel_relay(channel, 1, STDOUT_FILENO) < 0) {
         return -1;
     }

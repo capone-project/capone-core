@@ -41,10 +41,13 @@ static int parameters(const struct sd_service_parameter **out)
     return ARRAY_SIZE(params);
 }
 
-static int invoke(struct sd_channel *channel)
+static int invoke(struct sd_channel *channel, int argc, char **argv)
 {
     char buf[1];
     struct sd_channel xpra_channel;
+
+    UNUSED(argc);
+    UNUSED(argv);
 
     recv(channel->fd, buf, sizeof(buf), MSG_PEEK);
 

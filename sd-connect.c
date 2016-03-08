@@ -308,7 +308,7 @@ static int cmd_connect(int argc, char *argv[])
     uint32_t sessionid;
     int saved_errno;
 
-    if (argc != 7)
+    if (argc < 7)
         usage(argv[0]);
 
     token = argv[3];
@@ -338,7 +338,7 @@ static int cmd_connect(int argc, char *argv[])
         return -1;
     }
 
-    if (service.invoke(&channel) < 0) {
+    if (service.invoke(&channel, argc - 7, argv + 7) < 0) {
         puts("Could not invoke service");
         return -1;
     }
