@@ -250,26 +250,25 @@ int sd_proto_handle_session(struct sd_channel *channel,
 }
 
 int sd_proto_send_request(struct sd_channel *channel,
-        const struct sd_params *params, int nparams)
+        const struct sd_service_parameter *params, size_t nparams)
 {
     ConnectionRequestMessage request = CONNECTION_REQUEST_MESSAGE__INIT;
     ConnectionTokenMessage *token;
     char tokenhex[crypto_secretbox_KEYBYTES * 2 + 1];
-    int i;
+    size_t i;
 
     if (nparams) {
-        ConnectionRequestMessage__Parameter **parameters =
-            malloc(sizeof(ConnectionRequestMessage__Parameter *) * nparams);
+        Parameter **parameters = malloc(sizeof(Parameter *) * nparams);
 
         for (i = 0; i < nparams; i++) {
-            ConnectionRequestMessage__Parameter *param =
-                malloc(sizeof(ConnectionRequestMessage__Parameter));
-            connection_request_message__parameter__init(param);
+            Parameter *parameter = malloc(sizeof(Parameter));
+            parameter__init(parameter);
 
-            param->key = (char *) params[i].key;
-            param->value = (char *) params[i].value;
+            parameter->key = (char *) params[i].key;
+            parameter->values = (char **) params[i].values;
+            parameter->n_values = params[i].nvalues;
 
-            parameters[i] = param;
+            parameters[i] = parameter;
         }
 
         request.parameters = parameters;
@@ -332,11 +331,11 @@ int sd_proto_send_query(struct sd_channel *channel,
            result->port);
 
     for (i = 0; i < result->n_parameters; i++) {
-        QueryResults__Parameter *param = result->parameters[i];
+        Parameter *param = result->parameters[i];
         printf("\tparam:    %s\n", param->key);
 
-        for (j = 0; j < param->n_value; j++)
-            printf("\t          %s\n", param->value[j]);
+        for (j = 0; j < param->n_values; j++)
+            printf("\t          %s\n", param->values[j]);
     }
 
     query_results__free_unpacked(result, NULL);
@@ -401,7 +400,7 @@ int sd_proto_answer_query(struct sd_channel *channel,
         size_t nwhitelist)
 {
     QueryResults results = QUERY_RESULTS__INIT;
-    QueryResults__Parameter **parameters;
+    Parameter **parameters;
     const struct sd_service_parameter *params;
     struct sd_sign_key_public remote_key;
     int i, n;
@@ -424,14 +423,14 @@ int sd_proto_answer_query(struct sd_channel *channel,
     results.port = service->port;
 
     n = service->parameters(&params);
-    parameters = malloc(sizeof(QueryResults__Parameter *) * n);
+    parameters = malloc(sizeof(Parameter *) * n);
     for (i = 0; i < n; i++) {
-        QueryResults__Parameter *parameter = malloc(sizeof(QueryResults__Parameter));
-        query_results__parameter__init(parameter);
+        Parameter *parameter = malloc(sizeof(Parameter));
+        parameter__init(parameter);
 
-        parameter->key = (char *) params[i].name;
-        parameter->n_value = params[i].nvalues;
-        parameter->value = (char **) params[i].values;
+        parameter->key = (char *) params[i].key;
+        parameter->n_values  = params[i].nvalues;
+        parameter->values = (char **) params[i].values;
 
         parameters[i] = parameter;
     }
@@ -599,16 +598,21 @@ static int is_whitelisted(const struct sd_sign_key_public *key,
 static int convert_params(struct sd_service_parameter **out, const ConnectionRequestMessage *msg)
 {
     struct sd_service_parameter *params;
-    size_t i;
+    size_t i, j;
 
     *out = NULL;
 
     params = malloc(sizeof(struct sd_service_parameter) * msg->n_parameters);
     for (i = 0; i < msg->n_parameters; i++) {
-        params[i].name = strdup(msg->parameters[i]->key);
-        params[i].values = malloc(sizeof(char *));
-        params[i].values[0] = strdup(msg->parameters[i]->value);
-        params[i].nvalues = 1;
+        Parameter *msgparam = msg->parameters[i];
+
+        params[i].key = strdup(msgparam->key);
+        params[i].values = malloc(sizeof(char *) * msgparam->n_values);
+
+        for (j = 0; j < msgparam->n_values; j++) {
+            params[i].values[j] = strdup(msgparam->values[j]);
+        }
+        params[i].nvalues = msgparam->n_values;
     }
 
     *out = params;

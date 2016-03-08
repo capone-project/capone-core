@@ -27,11 +27,6 @@ enum sd_connection_type {
     SD_CONNECTION_TYPE_REQUEST,
 };
 
-struct sd_params {
-    const char *key;
-    const char *value;
-};
-
 int sd_proto_initiate_connection_type(struct sd_channel *channel,
         const char *host, const char *port,
         enum sd_connection_type type);
@@ -54,7 +49,7 @@ int sd_proto_answer_query(struct sd_channel *channel,
         size_t nwhitelist);
 
 int sd_proto_send_request(struct sd_channel *channel,
-        const struct sd_params *params, int nparams);
+        const struct sd_service_parameter *params, size_t nparams);
 int sd_proto_answer_request(struct sd_service_session **out,
         struct sd_channel *channel,
         const struct sd_sign_key_pair *local_keys,

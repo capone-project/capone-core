@@ -36,12 +36,12 @@ static void usage(const char *prog)
     exit(-1);
 }
 
-static int parse_params(struct sd_params **out, int argc, char *argv[])
+static int parse_params(struct sd_service_parameter **out, int argc, char *argv[])
 {
-    struct sd_params *params;
+    struct sd_service_parameter *params;
     int i;
 
-    params = malloc(sizeof(struct sd_params) * argc);
+    params = malloc(sizeof(struct sd_service_parameter) * argc);
 
     for (i = 0; i < argc; i++) {
         char *line = argv[i], *key, *value;
@@ -52,7 +52,9 @@ static int parse_params(struct sd_params **out, int argc, char *argv[])
             return -1;
 
         params[i].key = key;
-        params[i].value = value;
+        params[i].values = malloc(sizeof(char *));
+        params[i].values[0] = value;
+        params[i].nvalues = 1;
     }
 
     *out = params;
@@ -104,8 +106,8 @@ static int cmd_query(int argc, char *argv[])
 static int cmd_request(int argc, char *argv[])
 {
     const char *config, *key, *host, *port;
+    struct sd_service_parameter *params;
     struct sd_channel channel;
-    struct sd_params *params;
     int nparams;
 
     if (argc < 6) {

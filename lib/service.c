@@ -242,7 +242,7 @@ int sd_service_parameters_get_values(const char ***out, const char *value, const
     for (i = 0; i < n; i++) {
         param = &parameters[i];
 
-        if (!strcmp(param->name, value) && param->nvalues > 0) {
+        if (!strcmp(param->key, value) && param->nvalues > 0) {
             values = realloc(values, sizeof(char *) * (nvalues + param->nvalues));
 
             for (j = 0; j < param->nvalues; j++)

@@ -24,7 +24,7 @@
 struct sd_channel;
 
 struct sd_service_parameter {
-    const char *name;
+    const char *key;
 
     size_t nvalues;
     const char **values;
