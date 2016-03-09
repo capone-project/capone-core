@@ -263,7 +263,17 @@ static int invoke(struct sd_channel *channel, int argc, char **argv)
 static int handle_register(struct sd_channel *channel,
         const struct sd_service_session *session)
 {
-    int n = registrants->nregistrants;
+    int i, n = registrants->nregistrants;
+
+    /* TODO: handle locking */
+    for (i = 0; i < n; i++) {
+        if (sd_channel_is_closed(&registrants->registrants[i].channel)) {
+            memmove(&registrants->registrants[i], &registrants->registrants[i + 1], (n - i - 1) * sizeof(struct registrant));
+            i--;
+            n--;
+            sd_log(LOG_LEVEL_ERROR, "Removed identiy\n");
+        }
+    }
 
     registrants->nregistrants++;
     memcpy(&registrants->registrants[n].channel, channel, sizeof(struct sd_channel));
