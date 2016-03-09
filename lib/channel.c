@@ -21,6 +21,8 @@
 #include <stdarg.h>
 
 #include <unistd.h>
+#include <sys/time.h>
+#include <sys/ioctl.h>
 #include <sys/select.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -161,6 +163,27 @@ int sd_channel_close(struct sd_channel *c)
     c->fd = -1;
 
     return 0;
+}
+
+bool sd_channel_is_closed(struct sd_channel *c)
+{
+    struct timeval tv = { .0 };
+    fd_set fds;
+    int n = 0;
+
+    if (c->fd < 0)
+        return false;
+
+    FD_ZERO(&fds);
+    FD_SET(c->fd, &fds);
+
+    select(c->fd + 1, &fds, 0, 0, &tv);
+    if (!FD_ISSET(c->fd, &fds))
+        return false;
+
+    ioctl(c->fd, FIONREAD, &n);
+
+    return n == 0;
 }
 
 int sd_channel_connect(struct sd_channel *c)

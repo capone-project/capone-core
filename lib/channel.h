@@ -19,6 +19,7 @@
 #define SD_LIB_CHANNEL_H
 
 #include <sys/socket.h>
+#include <stdbool.h>
 
 #include <protobuf-c/protobuf-c.h>
 
@@ -62,6 +63,8 @@ int sd_channel_init_from_host(struct sd_channel *c,
 int sd_channel_init_from_fd(struct sd_channel *c,
         int fd, struct sockaddr_storage addr, enum sd_channel_type type);
 int sd_channel_close(struct sd_channel *c);
+
+bool sd_channel_is_closed(struct sd_channel *c);
 
 int sd_channel_disable_encryption(struct sd_channel *c);
 int sd_channel_enable_encryption(struct sd_channel *c,
