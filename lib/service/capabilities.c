@@ -21,11 +21,15 @@
 
 #include <stdbool.h>
 #include <string.h>
+#include <inttypes.h>
 
 #include "proto/capabilities.pb-c.h"
 
+#include "lib/cfg.h"
 #include "lib/channel.h"
 #include "lib/common.h"
+#include "lib/keys.h"
+#include "lib/proto.h"
 #include "lib/service.h"
 #include "lib/log.h"
 
@@ -58,19 +62,103 @@ static int parameters(const struct sd_service_parameter **out)
     return ARRAY_SIZE(params);
 }
 
-static int request_token(struct sd_channel *channel, CapabilityRequest *request)
+static int request_capability(struct sd_channel *channel, const CapabilityRequest *request, const struct cfg *cfg)
 {
-    UNUSED(channel);
-    UNUSED(request);
-    return 0;
+    Capability cap = CAPABILITY__INIT;
+    char service_hex[crypto_sign_PUBLICKEYBYTES * 2 + 1];
+    char *host = NULL, *port = NULL;
+    struct sd_channel service_channel;
+    struct sd_sign_key_pair local_keys;
+    struct sd_sign_key_public remote_key;
+    struct sd_service_session session;
+    struct sd_service_parameter *params = NULL;
+    size_t i;
+    int ret = 0;
+
+    if (request->n_parameters) {
+        params = malloc(sizeof(struct sd_service_parameter) * request->n_parameters);
+        for (i = 0; i < request->n_parameters; i++) {
+            params[i].key = request->parameters[i]->key;
+            params[i].values = (const char **) &request->parameters[i]->value;
+            params[i].nvalues = 1;
+        }
+    }
+
+    sodium_bin2hex(service_hex, sizeof(service_hex),
+            request->service.data, request->service.len);
+
+    if ((host = cfg_get_str_value(cfg, service_hex, "address")) == NULL) {
+        sd_log(LOG_LEVEL_ERROR, "Unable to parse address for remote service");
+        ret = -1;
+        goto out;
+    }
+    if ((port = cfg_get_str_value(cfg, service_hex, "port")) == NULL) {
+        sd_log(LOG_LEVEL_ERROR, "Unable to parse port for remote service");
+        ret = -1;
+        goto out;
+    }
+
+    if ((ret = sd_sign_key_pair_from_config(&local_keys, cfg)) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Unable to retrieve local key pair from config");
+        goto out;
+    }
+    if ((ret = sd_sign_key_public_from_bin(&remote_key, request->service.data, request->service.len)) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Unable to parse public key from remote service");
+        goto out;
+    }
+
+    if ((ret = sd_proto_initiate_connection_type(&service_channel, host, port, SD_CONNECTION_TYPE_REQUEST)) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Unable to initiate connection type to remote service");
+        goto out;
+    }
+    if ((ret = sd_proto_initiate_encryption(&service_channel, &local_keys, &remote_key)) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Unable to initiate encryption with remote service");
+        goto out;
+    }
+    if ((ret = sd_proto_send_request(&session, &service_channel, params, request->n_parameters)) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Unable to send request to remote service");
+        goto out;
+    }
+
+    cap.sessionid = session.sessionid;
+    cap.sessionkey.data = session.session_key.data;
+    cap.sessionkey.len = sizeof(session.session_key.data);
+    cap.identity.data = local_keys.pk.data;
+    cap.identity.len = sizeof(local_keys.pk.data);
+    cap.service.data = remote_key.data;
+    cap.service.len = sizeof(remote_key.data);
+    if ((ret = sd_channel_write_protobuf(channel, &cap.base)) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Unable to send requested capability");
+        goto out;
+    }
+
+out:
+    sd_channel_close(&service_channel);
+
+    free(params);
+    free(host);
+    free(port);
+
+    return ret;
 }
 
-static int invoke_register(struct sd_channel *channel)
+static int invoke_register(struct sd_channel *channel, int argc, char **argv)
 {
     CapabilityRequest *request;
+    struct cfg cfg;
     char identity_hex[crypto_sign_PUBLICKEYBYTES * 2 + 1],
          service_hex[crypto_sign_PUBLICKEYBYTES * 2 + 1];
     size_t i;
+
+    if (argc != 1) {
+        puts("USAGE: register <CONFIG>");
+        return -1;
+    }
+
+    if (cfg_parse(&cfg, argv[0]) < 0) {
+        puts("Could not find config");
+        return -1;
+    }
 
     while (true) {
         if (sd_channel_receive_protobuf(channel, &capability_request__descriptor,
@@ -101,7 +189,7 @@ static int invoke_register(struct sd_channel *channel)
             int c = getchar();
 
             if (c == 'y') {
-                if (request_token(channel, request) < 0)
+                if (request_capability(channel, request, &cfg) < 0)
                     sd_log(LOG_LEVEL_ERROR, "Unable to relay capability");
                 else
                     printf("Accepted capability request from %s\n", identity_hex);
@@ -112,8 +200,6 @@ static int invoke_register(struct sd_channel *channel)
             }
         }
 
-        /* TODO: send request to the third party server */
-
         capability_request__free_unpacked(request, NULL);
     }
 
@@ -123,6 +209,9 @@ static int invoke_register(struct sd_channel *channel)
 static int invoke_request(struct sd_channel *channel)
 {
     Capability *capability;
+    char identity[crypto_sign_PUBLICKEYBYTES * 2 + 1],
+         service[crypto_sign_PUBLICKEYBYTES * 2 + 1],
+         sessionkey[crypto_secretbox_KEYBYTES * 2 + 1];
 
     if (sd_channel_receive_protobuf(channel, &capability__descriptor,
                 (ProtobufCMessage **) &capability) < 0)
@@ -131,6 +220,19 @@ static int invoke_request(struct sd_channel *channel)
         return -1;
     }
 
+    sodium_bin2hex(identity, sizeof(identity),
+            capability->identity.data, capability->identity.len);
+    sodium_bin2hex(service, sizeof(service),
+            capability->service.data, capability->service.len);
+    sodium_bin2hex(sessionkey, sizeof(sessionkey),
+            capability->sessionkey.data, capability->sessionkey.len);
+
+    printf("identity:   %s\n"
+           "service:    %s\n"
+           "sessionid:  %"PRIu32"\n"
+           "sessionkey: %s\n",
+           identity, service, capability->sessionid, sessionkey);
+
     capability__free_unpacked(capability, NULL);
 
     return 0;
@@ -138,13 +240,13 @@ static int invoke_request(struct sd_channel *channel)
 
 static int invoke(struct sd_channel *channel, int argc, char **argv)
 {
-    if (argc != 1) {
+    if (argc < 1) {
         puts("USAGE: capabilities (register|request)");
         return -1;
     }
 
     if (!strcmp(argv[0], "register"))
-        return invoke_register(channel);
+        return invoke_register(channel, argc - 1, argv + 1);
     else if (!strcmp(argv[0], "request"))
         return invoke_request(channel);
     else {

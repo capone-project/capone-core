@@ -22,18 +22,13 @@
 
 #include "keys.h"
 
-int sd_sign_key_pair_from_config_file(struct sd_sign_key_pair *out, const char *file)
+int sd_sign_key_pair_from_config(struct sd_sign_key_pair *out, const struct cfg *cfg)
 {
     uint8_t sign_pk[crypto_sign_PUBLICKEYBYTES],
             sign_sk[crypto_sign_SECRETKEYBYTES];
-    struct cfg cfg;
     char *value;
 
-    if (cfg_parse(&cfg, file) < 0) {
-        return -1;
-    }
-
-    value = cfg_get_str_value(&cfg, "core", "public_key");
+    value = cfg_get_str_value(cfg, "core", "public_key");
     if (value == NULL) {
         puts("Could not retrieve public key from config");
         goto out_err;
@@ -44,7 +39,7 @@ int sd_sign_key_pair_from_config_file(struct sd_sign_key_pair *out, const char *
     }
     free(value);
 
-    value = cfg_get_str_value(&cfg, "core", "secret_key");
+    value = cfg_get_str_value(cfg, "core", "secret_key");
     if (value == NULL) {
         puts("Could not retrieve secret key from config");
         goto out_err;
@@ -59,15 +54,33 @@ int sd_sign_key_pair_from_config_file(struct sd_sign_key_pair *out, const char *
     memcpy(out->pk.data, sign_pk, sizeof(sign_pk));
     memcpy(out->sk.data, sign_sk, sizeof(sign_sk));
 
-    cfg_free(&cfg);
-
     return 0;
 
 out_err:
     free(value);
-    cfg_free(&cfg);
 
     return -1;
+}
+
+int sd_sign_key_pair_from_config_file(struct sd_sign_key_pair *out, const char *file)
+{
+    struct cfg cfg;
+    int ret = 0;
+
+    if (cfg_parse(&cfg, file) < 0) {
+        ret = -1;
+        goto out;
+    }
+
+    if (sd_sign_key_pair_from_config(out, &cfg) < 0) {
+        ret = -1;
+        goto out;
+    }
+
+out:
+    cfg_free(&cfg);
+
+    return ret;
 }
 
 int sd_sign_key_public_from_hex(struct sd_sign_key_public *out, const char *hex)
