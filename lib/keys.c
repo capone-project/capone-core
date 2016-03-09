@@ -96,7 +96,7 @@ int sd_sign_key_public_from_hex(struct sd_sign_key_public *out, const char *hex)
     return sodium_hex2bin(out->data, sizeof(out->data), hex, hexlen, NULL, NULL, NULL);
 }
 
-int sd_sign_key_public_from_bin(struct sd_sign_key_public *out, uint8_t *pk, size_t pklen)
+int sd_sign_key_public_from_bin(struct sd_sign_key_public *out, const uint8_t *pk, size_t pklen)
 {
     if (pklen != crypto_sign_PUBLICKEYBYTES) {
         sd_log(LOG_LEVEL_ERROR, "Passed in buffer does not match required public sign key length");
@@ -106,6 +106,22 @@ int sd_sign_key_public_from_bin(struct sd_sign_key_public *out, uint8_t *pk, siz
     memcpy(out->data, pk, sizeof(out->data));
 
     return 0;
+}
+
+int sd_sign_key_hex_from_bin(struct sd_sign_key_hex *out, const uint8_t *pk, size_t pklen)
+{
+    struct sd_sign_key_public key;
+
+    if (sd_sign_key_public_from_bin(&key, pk, pklen) < 0)
+        return -1;
+
+    sd_sign_key_hex_from_key(out, &key);
+    return 0;
+}
+
+void sd_sign_key_hex_from_key(struct sd_sign_key_hex *out, const struct sd_sign_key_public *key)
+{
+    sodium_bin2hex(out->data, sizeof(out->data), key->data, sizeof(key->data));
 }
 
 int sd_encrypt_key_pair_generate(struct sd_encrypt_key_pair *out)
@@ -142,5 +158,32 @@ int sd_symmetric_key_from_hex(struct sd_symmetric_key *out, const char *hex)
     }
 
     return sodium_hex2bin(out->data, sizeof(out->data), hex, hexlen, NULL, NULL, NULL);
+}
 
+int sd_symmetric_key_from_bin(struct sd_symmetric_key *out, const uint8_t *key, size_t keylen)
+{
+    if (keylen != crypto_secretbox_KEYBYTES) {
+        sd_log(LOG_LEVEL_ERROR, "Passed in buffer does not match required symmetric key length");
+        return -1;
+    }
+
+    memcpy(out->data, key, sizeof(out->data));
+
+    return 0;
+}
+
+int sd_symmetric_key_hex_from_bin(struct sd_symmetric_key_hex *out, const uint8_t *data, size_t datalen)
+{
+    struct sd_symmetric_key key;
+
+    if (sd_symmetric_key_from_bin(&key, data, datalen) < 0)
+        return -1;
+
+    sd_symmetric_key_hex_from_key(out, &key);
+    return 0;
+}
+
+void sd_symmetric_key_hex_from_key(struct sd_symmetric_key_hex *out, const struct sd_symmetric_key *key)
+{
+    sodium_bin2hex(out->data, sizeof(out->data), key->data, sizeof(key->data));
 }

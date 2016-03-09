@@ -71,10 +71,9 @@ out:
 
 static void handle_announce()
 {
-    struct sd_sign_key_public remote_key;
+    struct sd_sign_key_hex remote_key;
     struct sd_server server;
     struct sd_channel channel;
-    char hex[sizeof(remote_key.data) * 2 + 1];
     AnnounceMessage *announce = NULL;
     unsigned i;
 
@@ -95,15 +94,14 @@ static void handle_announce()
         goto out;
     }
 
-    if (sd_sign_key_public_from_bin(&remote_key,
-                announce->sign_key.data, announce->sign_key.len) < 0) {
+    if (sd_sign_key_hex_from_bin(&remote_key,
+                announce->sign_key.data, announce->sign_key.len) < 0)
+    {
         puts("Unable to retrieve remote sign key");
         goto out;
     }
 
-    sodium_bin2hex(hex, sizeof(hex), remote_key.data, sizeof(remote_key.data));
-
-    printf("%s (v%s)\n", hex, announce->version);
+    printf("%s (v%s)\n", remote_key.data, announce->version);
 
     for (i = 0; i < announce->n_services; i++) {
         AnnounceMessage__Service *service = announce->services[i];

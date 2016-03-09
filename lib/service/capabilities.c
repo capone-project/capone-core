@@ -65,8 +65,8 @@ static int parameters(const struct sd_service_parameter **out)
 static int request_capability(struct sd_channel *channel, const CapabilityRequest *request, const struct cfg *cfg)
 {
     Capability cap = CAPABILITY__INIT;
-    char service_hex[crypto_sign_PUBLICKEYBYTES * 2 + 1];
     char *host = NULL, *port = NULL;
+    struct sd_sign_key_hex service_hex;
     struct sd_channel service_channel;
     struct sd_sign_key_pair local_keys;
     struct sd_sign_key_public remote_key;
@@ -84,15 +84,18 @@ static int request_capability(struct sd_channel *channel, const CapabilityReques
         }
     }
 
-    sodium_bin2hex(service_hex, sizeof(service_hex),
-            request->service.data, request->service.len);
+    if (sd_sign_key_hex_from_bin(&service_hex, request->service.data, request->service.len) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Invalid service key length");
+        ret = -1;
+        goto out;
+    }
 
-    if ((host = cfg_get_str_value(cfg, service_hex, "address")) == NULL) {
+    if ((host = cfg_get_str_value(cfg, service_hex.data, "address")) == NULL) {
         sd_log(LOG_LEVEL_ERROR, "Unable to parse address for remote service");
         ret = -1;
         goto out;
     }
-    if ((port = cfg_get_str_value(cfg, service_hex, "port")) == NULL) {
+    if ((port = cfg_get_str_value(cfg, service_hex.data, "port")) == NULL) {
         sd_log(LOG_LEVEL_ERROR, "Unable to parse port for remote service");
         ret = -1;
         goto out;
@@ -145,9 +148,8 @@ out:
 static int invoke_register(struct sd_channel *channel, int argc, char **argv)
 {
     CapabilityRequest *request;
+    struct sd_sign_key_hex identity, service;
     struct cfg cfg;
-    char identity_hex[crypto_sign_PUBLICKEYBYTES * 2 + 1],
-         service_hex[crypto_sign_PUBLICKEYBYTES * 2 + 1];
     size_t i;
 
     if (argc != 1) {
@@ -168,16 +170,16 @@ static int invoke_register(struct sd_channel *channel, int argc, char **argv)
             return -1;
         }
 
-        if (sodium_bin2hex(identity_hex, sizeof(identity_hex),
-                    request->requester.data, request->requester.len) == NULL ||
-                sodium_bin2hex(service_hex, sizeof(service_hex),
-                    request->service.data, request->service.len) == NULL)
+        if (sd_sign_key_hex_from_bin(&identity,
+                    request->requester.data, request->requester.len) < 0 ||
+                sd_sign_key_hex_from_bin(&service,
+                    request->service.data, request->service.len) < 0)
         {
             sd_log(LOG_LEVEL_ERROR, "Unable to parse remote keys");
             return -1;
         }
 
-        printf("request from %s\n        service: %s\n", identity_hex, service_hex);
+        printf("request from %s\n        service: %s\n", identity.data, service.data);
         for (i = 0; i < request->n_parameters; i++) {
             CapabilityRequest__Parameter *param = request->parameters[i];
 
@@ -192,7 +194,7 @@ static int invoke_register(struct sd_channel *channel, int argc, char **argv)
                 if (request_capability(channel, request, &cfg) < 0)
                     sd_log(LOG_LEVEL_ERROR, "Unable to relay capability");
                 else
-                    printf("Accepted capability request from %s\n", identity_hex);
+                    printf("Accepted capability request from %s\n", identity.data);
 
                 break;
             } else if (c == 'n') {
@@ -209,9 +211,8 @@ static int invoke_register(struct sd_channel *channel, int argc, char **argv)
 static int invoke_request(struct sd_channel *channel)
 {
     Capability *capability;
-    char identity[crypto_sign_PUBLICKEYBYTES * 2 + 1],
-         service[crypto_sign_PUBLICKEYBYTES * 2 + 1],
-         sessionkey[crypto_secretbox_KEYBYTES * 2 + 1];
+    struct sd_sign_key_hex identity_hex, service_hex;
+    struct sd_symmetric_key_hex session_hex;
 
     if (sd_channel_receive_protobuf(channel, &capability__descriptor,
                 (ProtobufCMessage **) &capability) < 0)
@@ -220,18 +221,22 @@ static int invoke_request(struct sd_channel *channel)
         return -1;
     }
 
-    sodium_bin2hex(identity, sizeof(identity),
-            capability->identity.data, capability->identity.len);
-    sodium_bin2hex(service, sizeof(service),
-            capability->service.data, capability->service.len);
-    sodium_bin2hex(sessionkey, sizeof(sessionkey),
-            capability->sessionkey.data, capability->sessionkey.len);
+    if (sd_sign_key_hex_from_bin(&identity_hex,
+                capability->identity.data, capability->identity.len) < 0 ||
+            sd_sign_key_hex_from_bin(&service_hex,
+                capability->service.data, capability->service.len) < 0 ||
+            sd_symmetric_key_hex_from_bin(&session_hex,
+                capability->sessionkey.data, capability->sessionkey.len) < 0)
+    {
+        sd_log(LOG_LEVEL_ERROR, "Unable to parse capability keys");
+        return -1;
+    }
 
     printf("identity:   %s\n"
            "service:    %s\n"
            "sessionid:  %"PRIu32"\n"
            "sessionkey: %s\n",
-           identity, service, capability->sessionid, sessionkey);
+           identity_hex.data, service_hex.data, capability->sessionid, session_hex.data);
 
     capability__free_unpacked(capability, NULL);
 
