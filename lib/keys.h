@@ -20,6 +20,8 @@
 
 #include <sodium.h>
 
+#include "lib/cfg.h"
+
 struct sd_sign_key_secret {
     uint8_t data[crypto_sign_SECRETKEYBYTES];
 };
