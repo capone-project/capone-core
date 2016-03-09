@@ -15,6 +15,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <semaphore.h>
 #include <sys/types.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
@@ -42,6 +43,7 @@ static struct {
     } registrants[MAX_REGISTRANTS];
     int nregistrants;
 } *registrants;
+sem_t semaphore;
 
 static const char *version(void)
 {
@@ -186,9 +188,12 @@ static int invoke_register(struct sd_channel *channel, int argc, char **argv)
             printf("        param: %s=%s\n", param->key, param->value);
         }
 
-        printf("Accept? [y/n] ");
         while (true) {
-            int c = getchar();
+            int c;
+
+            printf("Accept? [y/n] ");
+
+            c = getchar();
 
             if (c == 'y') {
                 if (request_capability(channel, request, &cfg) < 0)
@@ -263,23 +268,18 @@ static int invoke(struct sd_channel *channel, int argc, char **argv)
 static int handle_register(struct sd_channel *channel,
         const struct sd_service_session *session)
 {
-    int i, n = registrants->nregistrants;
+    int n;
 
-    /* TODO: handle locking */
-    for (i = 0; i < n; i++) {
-        if (sd_channel_is_closed(&registrants->registrants[i].channel)) {
-            memmove(&registrants->registrants[i], &registrants->registrants[i + 1], (n - i - 1) * sizeof(struct registrant));
-            i--;
-            n--;
-            sd_log(LOG_LEVEL_ERROR, "Removed identiy\n");
-        }
-    }
+    sem_wait(&semaphore);
 
-    registrants->nregistrants++;
+    n = registrants->nregistrants++;
+
     memcpy(&registrants->registrants[n].channel, channel, sizeof(struct sd_channel));
     memcpy(&registrants->registrants[n].identity, &session->identity, sizeof(session->identity));
 
     sd_log(LOG_LEVEL_VERBOSE, "%d identities registered", n + 1);
+
+    sem_post(&semaphore);
 
     return 0;
 }
@@ -293,7 +293,7 @@ static int handle_request(struct sd_channel *channel,
     const char *remote_entity_hex, *remote_service_hex;
     struct sd_sign_key_public remote_identity, remote_service;
     struct registrant *registrant;
-    int i;
+    int i, n;
 
     sd_service_parameters_get_value(&remote_entity_hex, "request-for-identity", session->parameters, session->nparameters);
     if (sd_sign_key_public_from_hex(&remote_identity, remote_entity_hex)) {
@@ -307,12 +307,24 @@ static int handle_request(struct sd_channel *channel,
         return -1;
     }
 
+    sem_wait(&semaphore);
+    for (i = 0; i < n; i++) {
+        if (sd_channel_is_closed(&registrants->registrants[i].channel)) {
+            memmove(&registrants->registrants[i], &registrants->registrants[i + 1], (n - i - 1) * sizeof(struct registrant));
+            i--;
+            n--;
+            sd_log(LOG_LEVEL_ERROR, "Removed identiy\n");
+        }
+    }
+
+    n = registrants->nregistrants;
     for (i = 0; i < registrants->nregistrants; i++) {
         if (!memcmp(registrants->registrants[i].identity.data, remote_identity.data, sizeof(remote_identity.data))) {
             registrant = &registrants->registrants[i];
             break;
         }
     }
+    sem_post(&semaphore);
 
     if (registrant == NULL) {
         sd_log(LOG_LEVEL_ERROR, "Identity specified in capability request is not registered");
@@ -375,6 +387,7 @@ int sd_capabilities_init_service(struct sd_service *service)
 {
     int shmid;
 
+    sem_init(&semaphore, 0, 1);
     shmid = shmget(IPC_PRIVATE, sizeof(*registrants), IPC_CREAT | IPC_EXCL | 0600);
     if (shmid == -1) {
         sd_log(LOG_LEVEL_ERROR, "Unable to map registrant count");
