@@ -201,6 +201,7 @@ int sd_channel_connect(struct sd_channel *c)
 int sd_channel_write_data(struct sd_channel *c, uint8_t *data, uint32_t datalen)
 {
     uint8_t msg[4096 + crypto_box_MACBYTES];
+    uint32_t nl;
     ssize_t ret;
 
     switch (c->crypto) {
@@ -235,17 +236,19 @@ int sd_channel_write_data(struct sd_channel *c, uint8_t *data, uint32_t datalen)
             return -1;
     }
 
+    nl = htonl(datalen);
+
     switch (c->type) {
         case SD_CHANNEL_TYPE_TCP:
             /* prefix with data length */
             /* TODO: encrypt length */
-            ret = send(c->fd, (uint8_t *) &datalen, sizeof(uint32_t) / sizeof(uint8_t), 0);
+            ret = send(c->fd, (uint8_t *) &nl, sizeof(uint32_t) / sizeof(uint8_t), 0);
             ret = send(c->fd, msg, datalen, 0);
             break;
         case SD_CHANNEL_TYPE_UDP:
             /* prefix with data length */
             /* TODO: encrypt length */
-            ret = sendto(c->fd, (uint8_t *) &datalen, sizeof(uint32_t) / sizeof(uint8_t), 0,
+            ret = sendto(c->fd, (uint8_t *) &nl, sizeof(uint32_t) / sizeof(uint8_t), 0,
                     (struct sockaddr *) &c->addr, sizeof(c->addr));
             ret = sendto(c->fd, msg, datalen, 0,
                     (struct sockaddr *) &c->addr, sizeof(c->addr));
@@ -306,6 +309,8 @@ ssize_t sd_channel_receive_data(struct sd_channel *c, uint8_t *out, size_t maxle
         sd_log(LOG_LEVEL_ERROR, "Invalid data length %d received", ret);
         return -1;
     }
+
+    len = ntohl(len);
 
     if (len > sizeof(buf)) {
         sd_log(LOG_LEVEL_ERROR, "Data length exceeds buffer");
