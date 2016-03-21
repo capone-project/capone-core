@@ -75,6 +75,18 @@ int sd_server_close(struct sd_server *server)
     return 0;
 }
 
+int sd_server_enable_broadcast(struct sd_server *server)
+{
+    int val = 1;
+
+    if (setsockopt(server->fd, SOL_SOCKET, SO_BROADCAST, &val, sizeof(val)) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Unable to set option on socket: %s", strerror(errno));
+        return -1;
+    }
+
+    return 0;
+}
+
 int sd_server_listen(struct sd_server *s)
 {
     int fd;

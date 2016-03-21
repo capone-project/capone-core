@@ -82,6 +82,11 @@ static void handle_announce()
         goto out;
     }
 
+    if (sd_server_enable_broadcast(&server) < 0) {
+        puts("Unable to enable broadcasting");
+        goto out;
+    }
+
     if (sd_server_accept(&server, &channel) < 0) {
         puts("Unable to accept connection");
         goto out;

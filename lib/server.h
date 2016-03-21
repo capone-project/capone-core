@@ -30,6 +30,8 @@ int sd_server_init(struct sd_server *server,
         const char *host, const char *port, enum sd_channel_type type);
 int sd_server_close(struct sd_server *server);
 
+int sd_server_enable_broadcast(struct sd_server *server);
+
 int sd_server_listen(struct sd_server *server);
 int sd_server_accept(struct sd_server *server, struct sd_channel *out);
 
