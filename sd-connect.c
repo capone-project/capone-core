@@ -21,6 +21,7 @@
 #include <sodium.h>
 #include <inttypes.h>
 
+#include "lib/common.h"
 #include "lib/channel.h"
 #include "lib/proto.h"
 #include "lib/service.h"
@@ -168,7 +169,6 @@ static int cmd_connect(int argc, char *argv[])
     const char *token, *host, *port;
     struct sd_channel channel;
     uint32_t sessionid;
-    int saved_errno;
 
     if (argc < 7)
         usage(argv[0]);
@@ -182,13 +182,10 @@ static int cmd_connect(int argc, char *argv[])
         return -1;
     }
 
-    saved_errno = errno;
-    sessionid = strtol(argv[2], NULL, 10);
-    if (errno != 0) {
+    if (parse_uint32t(&sessionid, argv[2]) < 0) {
         printf("Invalid session ID %s\n", argv[2]);
         return -1;
     }
-    errno = saved_errno;
 
     if (sd_proto_initiate_connection_type(&channel, host, port, SD_CONNECTION_TYPE_CONNECT) < 0) {
         puts("Could not start connection");

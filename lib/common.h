@@ -18,6 +18,8 @@
 #ifndef SD_LIB_COMMON_H
 #define SD_LIB_COMMON_H
 
+#include <inttypes.h>
+
 #define MAX(a, b) ((a) >= (b) ? (a) : (b))
 #define UNUSED(x) (void)(x)
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
@@ -25,5 +27,6 @@
 typedef void (*thread_fn)(void *);
 
 int spawn(thread_fn fn, void *payload);
+int parse_uint32t(uint32_t *out, const char *num);
 
 #endif

@@ -43,3 +43,23 @@ int spawn(thread_fn fn, void *payload)
         return -1;
     }
 }
+
+int parse_uint32t(uint32_t *out, const char *num)
+{
+    int saved_errno;
+    int ret = 0;
+
+    saved_errno = errno;
+    errno = 0;
+
+    *out = strtol(num, NULL, 10);
+    if (errno != 0) {
+        sd_log(LOG_LEVEL_ERROR, "Invalid session ID %s", num);
+        ret = -1;
+        goto out;
+    }
+
+out:
+    errno = saved_errno;
+    return ret;
+}
