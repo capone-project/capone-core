@@ -46,8 +46,8 @@ static int invoke(struct sd_channel *channel, int argc, char **argv)
     char buf[1], *port;
     struct sd_channel xpra_channel;
 
-    if (argc != 2 || strcmp(argv[0], "--port")) {
-        puts("Usage: xpra --port <PORT>");
+    if (argc != 2 || strcmp(argv[0], "port")) {
+        puts("Usage: xpra port <PORT>");
         return -1;
     }
 
