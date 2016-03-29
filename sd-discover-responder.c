@@ -17,7 +17,6 @@
 
 #include <errno.h>
 #include <stdbool.h>
-#include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -53,16 +52,16 @@ static void announce(struct sockaddr_storage addr, uint32_t port)
     snprintf(service, sizeof(service), "%u", port);
 
     if (sd_channel_init_from_host(&channel, host, service, SD_CHANNEL_TYPE_UDP) < 0) {
-        puts("Could not initialize channel");
+        sd_log(LOG_LEVEL_ERROR,"Could not initialize channel");
         return;
     }
 
     if (sd_channel_write_protobuf(&channel, &announce_message.base) < 0) {
-        puts("Could not write announce message");
+        sd_log(LOG_LEVEL_ERROR, "Could not write announce message");
         return;
     }
 
-    puts("Sent announce");
+    sd_log(LOG_LEVEL_DEBUG, "Sent announce");
 
     sd_channel_close(&channel);
 }
@@ -74,7 +73,7 @@ static void handle_discover()
     DiscoverMessage *discover;
 
     if (sd_server_init(&server, NULL, "6667", SD_CHANNEL_TYPE_UDP) < 0) {
-        puts("Unable to init listening channel");
+        sd_log(LOG_LEVEL_ERROR, "Unable to init listening channel");
         return;
     }
 
@@ -82,13 +81,13 @@ static void handle_discover()
         waitpid(-1, NULL, WNOHANG);
 
         if (sd_server_accept(&server, &channel) < 0) {
-            puts("Unable to accept connection");
+            sd_log(LOG_LEVEL_ERROR, "Unable to accept connection");
             goto out;
         }
 
         if (sd_channel_receive_protobuf(&channel, &discover_message__descriptor,
                 (ProtobufCMessage **) &discover) < 0) {
-            puts("Unable to receive envelope");
+            sd_log(LOG_LEVEL_ERROR, "Unable to receive envelope");
             goto out;
         }
 
@@ -120,14 +119,14 @@ int main(int argc, char *argv[])
     }
 
     if (sd_sign_key_pair_from_config_file(&keys, argv[1]) < 0) {
-        puts("Unable to read local keys");
+        sd_log(LOG_LEVEL_ERROR, "Unable to read local keys");
         return -1;
     }
     memcpy(&local_key.data, &keys.pk.data, sizeof(local_key.data));
     sodium_memzero(&keys, sizeof(keys));
 
     if ((numservices = sd_services_from_config_file(&services, argv[1])) <= 0) {
-        puts("Unable to read service configuration");
+        sd_log(LOG_LEVEL_ERROR, "Unable to read service configuration");
         return -1;
     }
 
