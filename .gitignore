@@ -1,3 +1,5 @@
+*.o
+
 /proto/*.pb-c.c
 /proto/*.pb-c.h
 
