@@ -173,7 +173,8 @@ int main(int argc, char *argv[])
 
         if (sd_proto_receive_connection_type(&type, &channel) < 0) {
             sd_log(LOG_LEVEL_ERROR, "Could not receive connection type");
-            return -1;
+            sd_channel_close(&channel);
+            continue;
         }
 
         switch (type) {
@@ -208,7 +209,8 @@ int main(int argc, char *argv[])
                 break;
             default:
                 sd_log(LOG_LEVEL_ERROR, "Unknown connection envelope type %d", type);
-                break;
+                sd_channel_close(&channel);
+                continue;
         }
     }
 
