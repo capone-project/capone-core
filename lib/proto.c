@@ -119,6 +119,65 @@ int sd_proto_receive_connection_type(enum sd_connection_type *out,
     return ret;
 }
 
+static int send_key_signature(struct sd_channel *channel,
+        const struct sd_sign_key_pair *sign_keys,
+        const struct sd_symmetric_key *ephemeral_key)
+{
+    uint8_t signature[crypto_sign_BYTES];
+    EphemeralKeySignatureMessage msg = EPHEMERAL_KEY_SIGNATURE_MESSAGE__INIT;
+
+    if (crypto_sign_detached(signature, NULL,
+            ephemeral_key->data, sizeof(ephemeral_key->data),
+            sign_keys->sk.data) < 0)
+    {
+        sd_log(LOG_LEVEL_ERROR, "Unable to sign ephemeral key");
+        return -1;
+    }
+
+    msg.signature.data = signature;
+    msg.signature.len = sizeof(signature);
+
+    if (sd_channel_write_protobuf(channel, &msg.base) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Received invalid ephemeral key signature");
+        return -1;
+    }
+
+    return 0;
+}
+
+static int receive_key_signature(struct sd_channel *channel,
+        const struct sd_sign_key_public *verify_key,
+        const struct sd_symmetric_key *ephemeral_key)
+{
+    EphemeralKeySignatureMessage *msg = NULL;
+
+    if (sd_channel_receive_protobuf(channel,
+            &ephemeral_key_signature_message__descriptor,
+            (ProtobufCMessage **) &msg) < 0)
+    {
+        sd_log(LOG_LEVEL_ERROR, "Unable to receive ephemeral key signature");
+        goto out_err;
+    }
+
+    if (msg->signature.len != crypto_sign_BYTES) {
+        sd_log(LOG_LEVEL_ERROR, "Received signature's length does not match");
+        goto out_err;
+    }
+
+    if (crypto_sign_verify_detached(msg->signature.data, ephemeral_key->data,
+                sizeof(ephemeral_key->data), verify_key->data) < 0)
+    {
+        sd_log(LOG_LEVEL_ERROR, "Ephemeral key signature is invalid");
+        goto out_err;
+    }
+
+    return 0;
+
+out_err:
+    ephemeral_key_signature_message__free_unpacked(msg, NULL);
+    return -1;
+}
+
 int sd_proto_initiate_encryption(struct sd_channel *channel,
         const struct sd_sign_key_pair *sign_keys,
         const struct sd_sign_key_public *remote_sign_key)
@@ -166,6 +225,16 @@ int sd_proto_initiate_encryption(struct sd_channel *channel,
     }
 
     sodium_memzero(&local_keys, sizeof(local_keys));
+
+    if (send_key_signature(channel, sign_keys, &shared_key) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Unable to send ephemeral key signature");
+        return -1;
+    }
+
+    if (receive_key_signature(channel, remote_sign_key, &shared_key) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Unable to receive ephemeral key signature");
+        return -1;
+    }
 
     if (sd_channel_enable_encryption(channel, &shared_key, 0) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Could not enable encryption");
@@ -383,6 +452,16 @@ int sd_proto_await_encryption(struct sd_channel *channel,
     }
 
     sodium_memzero(&local_keys, sizeof(local_keys));
+
+    if (send_key_signature(channel, sign_keys, &shared_key) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Unable to send ephemeral key signature");
+        return -1;
+    }
+
+    if (receive_key_signature(channel, remote_sign_key, &shared_key) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Unable to receive ephemeral key signature");
+        return -1;
+    }
 
     if (sd_channel_enable_encryption(channel, &shared_key, 1) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Could not enable encryption");

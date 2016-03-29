@@ -3,3 +3,7 @@ message SessionKeyMessage {
     required bytes sign_pk = 2;
     required bytes encrypt_pk = 3;
 }
+
+message EphemeralKeySignatureMessage {
+    required bytes signature = 1;
+}
