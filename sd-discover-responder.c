@@ -43,10 +43,13 @@ static void announce(struct sockaddr_storage addr, uint32_t port)
 {
     struct sd_channel channel;
     char host[128], service[16];
+    int ret;
 
-    if (getnameinfo((struct sockaddr *) &addr, sizeof(addr),
-                host, sizeof(host), NULL, 0, 0) != 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not extract address");
+    if ((ret = getnameinfo((struct sockaddr *) &addr, sizeof(addr),
+                host, sizeof(host), NULL, 0, 0)) != 0)
+    {
+        sd_log(LOG_LEVEL_ERROR, "Could not extract address: %s",
+                gai_strerror(ret));
         return;
     }
     snprintf(service, sizeof(service), "%u", port);
