@@ -151,6 +151,7 @@ static int handle(struct sd_channel *channel,
 
 int sd_xpra_init_service(struct sd_service *service)
 {
+    service->category = "Display";
     service->version = version;
     service->handle = handle;
     service->invoke = invoke;

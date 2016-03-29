@@ -48,7 +48,7 @@ typedef const char *(*version_fn)(void);
 
 struct sd_service {
     char *name;
-    char *type;
+    char *category;
     char *subtype;
     char *port;
     char *location;

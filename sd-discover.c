@@ -111,7 +111,7 @@ static void handle_announce()
     for (i = 0; i < announce->n_services; i++) {
         AnnounceMessage__Service *service = announce->services[i];
 
-        printf("\t%s -> %s (%s)\n", service->port, service->name, service->type);
+        printf("\t%s -> %s (%s)\n", service->port, service->name, service->category);
     }
 
 out:

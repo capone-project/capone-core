@@ -29,7 +29,7 @@
 #include "lib/service/x2x.h"
 #include "lib/service/xpra.h"
 
-static int fill_service_functions(struct sd_service *service, const char *type)
+static int fill_service(struct sd_service *service, const char *type)
 {
     if (!strcmp(type, "capabilities"))
         return sd_capabilities_init_service(service);
@@ -49,7 +49,7 @@ int sd_service_from_type(struct sd_service *out, const char *type)
 {
     memset(out, 0, sizeof(struct sd_service));
 
-    return fill_service_functions(out, type);
+    return fill_service(out, type);
 }
 
 int sd_services_from_config_file(struct sd_service **out, const char *file)
@@ -144,7 +144,7 @@ int sd_service_from_section(struct sd_service *out, const struct cfg_section *se
 
 #define MAYBE_ADD_ENTRY(field, entry, value)                                    \
     if (!strcmp(#field, entry)) {                                               \
-        if (service.field != NULL) {                                            \
+        if (service.field != NULL) {                                         \
             sd_log(LOG_LEVEL_ERROR, "Service config has been specified twice"); \
             goto out_err;                                                       \
         }                                                                       \
@@ -157,7 +157,6 @@ int sd_service_from_section(struct sd_service *out, const struct cfg_section *se
             *value = section->entries[i].value;
 
         MAYBE_ADD_ENTRY(name, entry, value);
-        MAYBE_ADD_ENTRY(type, entry, value);
         MAYBE_ADD_ENTRY(subtype, entry, value);
         MAYBE_ADD_ENTRY(port, entry, value);
         MAYBE_ADD_ENTRY(location, entry, value);
@@ -169,7 +168,6 @@ int sd_service_from_section(struct sd_service *out, const struct cfg_section *se
 #undef MAYBE_ADD_ENTRY
 
     if (service.name == NULL ||
-            service.type == NULL ||
             service.subtype == NULL ||
             service.port == NULL ||
             service.location == NULL)
@@ -178,7 +176,7 @@ int sd_service_from_section(struct sd_service *out, const struct cfg_section *se
         goto out_err;
     }
 
-    if (fill_service_functions(&service, service.subtype) < 0) {
+    if (fill_service(&service, service.subtype) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Unknown service type '%s'", service.subtype);
         goto out_err;
     }
@@ -196,7 +194,7 @@ out_err:
 void sd_service_free(struct sd_service *service)
 {
     free(service->name);
-    free(service->type);
+    free(service->category);
     free(service->subtype);
     free(service->port);
     free(service->location);

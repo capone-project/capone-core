@@ -157,6 +157,7 @@ out:
 
 int sd_exec_init_service(struct sd_service *service)
 {
+    service->category = "Shell";
     service->version = version;
     service->handle = handle;
     service->invoke = invoke;

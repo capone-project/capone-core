@@ -15,7 +15,7 @@ message Parameter {
 
 message QueryResults {
     required string name = 1;
-    required string type = 2;
+    required string category = 2;
     required string subtype = 3;
     required string version = 4;
     required string location = 5;

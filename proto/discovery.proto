@@ -1,7 +1,7 @@
 message AnnounceMessage {
     message Service {
         required string name = 1;
-        required string type = 2;
+        required string category = 2;
         required string port = 3;
     }
 

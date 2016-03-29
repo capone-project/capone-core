@@ -396,6 +396,7 @@ int sd_capabilities_init_service(struct sd_service *service)
     registrants = shmat(shmid, NULL, 0);
     memset(registrants, 0, sizeof(*registrants));
 
+    service->category = "Capabilities";
     service->version = version;
     service->handle = handle;
     service->invoke = invoke;

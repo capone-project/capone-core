@@ -142,7 +142,7 @@ int main(int argc, char *argv[])
         announce_message__service__init(service_message);
 
         service_message->name = services[i].name;
-        service_message->type = services[i].type;
+        service_message->category = services[i].category;
         service_message->port = services[i].port;
 
         service_messages[i] = service_message;

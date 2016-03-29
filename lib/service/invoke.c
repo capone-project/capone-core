@@ -124,6 +124,7 @@ out:
 
 int sd_invoke_init_service(struct sd_service *service)
 {
+    service->category = "Invoke";
     service->version = version;
     service->handle = handle;
     service->invoke = invoke;
