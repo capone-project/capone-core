@@ -88,7 +88,8 @@ static void handle_discover()
         if (sd_channel_receive_protobuf(&channel, &discover_message__descriptor,
                 (ProtobufCMessage **) &discover) < 0) {
             sd_log(LOG_LEVEL_ERROR, "Unable to receive envelope");
-            goto out;
+            sd_channel_close(&channel);
+            continue;
         }
 
         sd_log(LOG_LEVEL_DEBUG, "Received discovery message");
