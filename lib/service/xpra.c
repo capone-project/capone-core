@@ -116,7 +116,7 @@ static int handle(struct sd_channel *channel,
         return -1;
     }
 
-    len = snprintf(NULL, 0, "tcp:localhost:%5s:100", port);
+    len = snprintf(NULL, 0, "tcp:localhost:%5s:100", port) + 1;
     args[2] = malloc(len);
     len = snprintf(args[2], len, "tcp:localhost:%5s:100", port);
 
