@@ -295,18 +295,18 @@ ssize_t sd_channel_receive_data(struct sd_channel *c, uint8_t *out, size_t maxle
 {
     uint8_t buf[4096];
     uint32_t len;
-    ssize_t ret;
+    ssize_t received, total;
 
-    ret = recv(c->fd, (uint8_t *) &len, sizeof(uint32_t) / sizeof(uint8_t), 0);
-    if (ret < 0) {
+    received = recv(c->fd, (uint8_t *) &len, sizeof(uint32_t) / sizeof(uint8_t), 0);
+    if (received < 0) {
         sd_log(LOG_LEVEL_ERROR, "Could not receive data length: %s",
                 strerror(errno));
         return -1;
-    } else if (ret == 0) {
+    } else if (received == 0) {
         sd_log(LOG_LEVEL_VERBOSE, "Channel closed down");
         return 0;
-    } else if (ret != sizeof(uint32_t) / sizeof(uint8_t)) {
-        sd_log(LOG_LEVEL_ERROR, "Invalid data length %d received", ret);
+    } else if (received != sizeof(uint32_t) / sizeof(uint8_t)) {
+        sd_log(LOG_LEVEL_ERROR, "Invalid data length %d received", received);
         return -1;
     }
 
@@ -317,17 +317,20 @@ ssize_t sd_channel_receive_data(struct sd_channel *c, uint8_t *out, size_t maxle
         return -1;
     }
 
-    ret = recv(c->fd, buf, len, 0);
-    if (ret < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not receive data: %s",
-                strerror(errno));
-        return -1;
-    } else if (ret == 0) {
-        sd_log(LOG_LEVEL_VERBOSE, "Channel closed down");
-        return 0;
-    } else if (ret != len) {
-        sd_log(LOG_LEVEL_ERROR, "Unexpected size received");
-        return -1;
+    total = 0;
+    while (total != len) {
+        received = recv(c->fd, buf + total, len - total, 0);
+
+        if (received < 0) {
+            sd_log(LOG_LEVEL_ERROR, "Could not receive data: %s",
+                    strerror(errno));
+            return -1;
+        } else if (received == 0) {
+            sd_log(LOG_LEVEL_VERBOSE, "Channel closed down");
+            return 0;
+        }
+
+        total += received;
     }
 
     switch (c->crypto) {
