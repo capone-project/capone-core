@@ -157,7 +157,7 @@ int sd_service_from_section(struct sd_service *out, const struct cfg_section *se
             *value = section->entries[i].value;
 
         MAYBE_ADD_ENTRY(name, entry, value);
-        MAYBE_ADD_ENTRY(subtype, entry, value);
+        MAYBE_ADD_ENTRY(type, entry, value);
         MAYBE_ADD_ENTRY(port, entry, value);
         MAYBE_ADD_ENTRY(location, entry, value);
 
@@ -168,7 +168,7 @@ int sd_service_from_section(struct sd_service *out, const struct cfg_section *se
 #undef MAYBE_ADD_ENTRY
 
     if (service.name == NULL ||
-            service.subtype == NULL ||
+            service.type == NULL ||
             service.port == NULL ||
             service.location == NULL)
     {
@@ -176,8 +176,8 @@ int sd_service_from_section(struct sd_service *out, const struct cfg_section *se
         goto out_err;
     }
 
-    if (fill_service(&service, service.subtype) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Unknown service type '%s'", service.subtype);
+    if (fill_service(&service, service.type) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Unknown service type '%s'", service.type);
         goto out_err;
     }
 
@@ -195,7 +195,7 @@ void sd_service_free(struct sd_service *service)
 {
     free(service->name);
     free(service->category);
-    free(service->subtype);
+    free(service->type);
     free(service->port);
     free(service->location);
 

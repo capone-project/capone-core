@@ -317,14 +317,14 @@ int sd_proto_send_query(struct sd_channel *channel,
     printf("%s\n"
            "\tname:     %s\n"
            "\tcategory: %s\n"
-           "\tsubtype:  %s\n"
+           "\ttype:     %s\n"
            "\tversion:  %s\n"
            "\tlocation: %s\n"
            "\tport:     %s\n",
            pk,
            result->name,
            result->category,
-           result->subtype,
+           result->type,
            result->version,
            result->location,
            result->port);
@@ -416,7 +416,7 @@ int sd_proto_answer_query(struct sd_channel *channel,
 
     results.name = service->name;
     results.category = service->category;
-    results.subtype = service->subtype;
+    results.type = service->type;
     results.version = (char *) service->version();
     results.location = service->location;
     results.port = service->port;

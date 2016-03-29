@@ -16,7 +16,7 @@ message Parameter {
 message QueryResults {
     required string name = 1;
     required string category = 2;
-    required string subtype = 3;
+    required string type = 3;
     required string version = 4;
     required string location = 5;
     required string port = 6;
