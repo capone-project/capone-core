@@ -198,76 +198,101 @@ int sd_channel_connect(struct sd_channel *c)
     return 0;
 }
 
-int sd_channel_write_data(struct sd_channel *c, uint8_t *data, uint32_t datalen)
+static int write_data(struct sd_channel *c, uint8_t *data, uint32_t datalen)
 {
-    uint8_t msg[4096 + crypto_box_MACBYTES];
-    uint32_t nl;
-    ssize_t ret;
+    ssize_t ret, written = 0;
 
-    switch (c->crypto) {
-        case SD_CHANNEL_CRYPTO_NONE:
-            if (datalen > sizeof(msg)) {
-                sd_log(LOG_LEVEL_ERROR,
-                        "Data buffer bigger then internal buffer");
+    while (written != datalen) {
+        switch (c->type) {
+            case SD_CHANNEL_TYPE_TCP:
+                ret = send(c->fd, data + written, datalen - written, 0);
+                break;
+            case SD_CHANNEL_TYPE_UDP:
+                ret = sendto(c->fd, data + written, datalen - written, 0,
+                        (struct sockaddr *) &c->addr, sizeof(c->addr));
+                break;
+            default:
+                sd_log(LOG_LEVEL_ERROR, "Unknown channel type");
                 return -1;
-            }
+        }
 
-            memcpy(msg, data, datalen);
-            break;
-        case SD_CHANNEL_CRYPTO_SYMMETRIC:
-            if (datalen > sizeof(msg) - crypto_secretbox_MACBYTES) {
-                sd_log(LOG_LEVEL_ERROR,
-                        "Data buffer bigger then internal buffer");
-                return -1;
-            }
-
-            if (crypto_secretbox_easy(msg, data, datalen, c->local_nonce, c->key.data) < 0) {
-                sd_log(LOG_LEVEL_ERROR, "Unable to encrypt msg");
-                return -1;
-            }
-            datalen = datalen + crypto_secretbox_MACBYTES;
-
-            sodium_increment(c->local_nonce, crypto_secretbox_NONCEBYTES);
-            sodium_increment(c->local_nonce, crypto_secretbox_NONCEBYTES);
-
-            break;
-        default:
-            sd_log(LOG_LEVEL_ERROR, "Unknown crypto type");
+        if (ret < 0) {
+            sd_log(LOG_LEVEL_ERROR, "Could not send data: %s",
+                    strerror(errno));
             return -1;
-    }
+        }
 
-    nl = htonl(datalen);
-
-    switch (c->type) {
-        case SD_CHANNEL_TYPE_TCP:
-            /* prefix with data length */
-            /* TODO: encrypt length */
-            ret = send(c->fd, (uint8_t *) &nl, sizeof(uint32_t) / sizeof(uint8_t), 0);
-            ret = send(c->fd, msg, datalen, 0);
-            break;
-        case SD_CHANNEL_TYPE_UDP:
-            /* prefix with data length */
-            /* TODO: encrypt length */
-            ret = sendto(c->fd, (uint8_t *) &nl, sizeof(uint32_t) / sizeof(uint8_t), 0,
-                    (struct sockaddr *) &c->addr, sizeof(c->addr));
-            ret = sendto(c->fd, msg, datalen, 0,
-                    (struct sockaddr *) &c->addr, sizeof(c->addr));
-            break;
-        default:
-            sd_log(LOG_LEVEL_ERROR, "Unknown channel type");
-            return -1;
-    }
-
-    if (ret < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not send data: %s",
-                strerror(errno));
-        return -1;
-    } else if ((size_t) ret != datalen) {
-        sd_log(LOG_LEVEL_ERROR, "Buffer not wholly transmittedd");
-        return -1;
+        written += ret;
     }
 
     return 0;
+}
+
+static int write_encrypted_data(struct sd_channel *c, uint8_t *data, uint32_t datalen)
+{
+    uint8_t cipher[512], plain[512 - crypto_secretbox_MACBYTES];
+    size_t written = 0, offset;
+
+    *((uint32_t *) &plain[0]) = htonl(datalen);
+    offset = 4;
+
+    while (written != datalen) {
+        size_t len = MIN(sizeof(plain) - offset, datalen);
+        memset(plain + offset, 0, sizeof(plain) - offset);
+        memcpy(plain + offset, data + written, len);
+
+        if (crypto_secretbox_easy(cipher, plain, sizeof(plain), c->local_nonce, c->key.data) < 0) {
+            sd_log(LOG_LEVEL_ERROR, "Unable to encrypt message");
+            return -1;
+        }
+        sodium_increment(c->local_nonce, crypto_secretbox_NONCEBYTES);
+        sodium_increment(c->local_nonce, crypto_secretbox_NONCEBYTES);
+
+        if (write_data(c, cipher, sizeof(cipher)) < 0) {
+            sd_log(LOG_LEVEL_ERROR, "Unable to write encrypted data");
+            return -1;
+        }
+        written += len;
+    }
+
+    return 0;
+}
+
+static int write_unencrypted_data(struct sd_channel *c, uint8_t *data, uint32_t datalen)
+{
+    uint8_t buf[512];
+    size_t written = 0, offset;
+
+    *((uint32_t *) &buf[0]) = htonl(datalen);
+    offset = 4;
+
+    while (written < datalen) {
+        size_t len = MIN(sizeof(buf) - offset, datalen);
+        memset(buf + offset, 0, sizeof(buf) - offset);
+        memcpy(buf + offset, data + written, len);
+
+        if (write_data(c, buf, sizeof(buf)) < 0) {
+            return -1;
+        }
+
+        written += len;
+        offset = 0;
+    }
+
+    return 0;
+}
+
+int sd_channel_write_data(struct sd_channel *c, uint8_t *data, uint32_t datalen)
+{
+    switch (c->crypto) {
+        case SD_CHANNEL_CRYPTO_NONE:
+            return write_unencrypted_data(c, data, datalen);
+        case SD_CHANNEL_CRYPTO_SYMMETRIC:
+            return write_encrypted_data(c, data, datalen);
+        default:
+            sd_log(LOG_LEVEL_ERROR, "Unknown encryption type");
+            return -1;
+    }
 }
 
 int sd_channel_write_protobuf(struct sd_channel *c, ProtobufCMessage *msg)
@@ -291,82 +316,109 @@ int sd_channel_write_protobuf(struct sd_channel *c, ProtobufCMessage *msg)
     return sd_channel_write_data(c, buf, size);
 }
 
-ssize_t sd_channel_receive_data(struct sd_channel *c, uint8_t *out, size_t maxlen)
+static int receive_data(struct sd_channel *c, uint8_t *out, size_t len)
 {
-    uint8_t buf[4096];
-    uint32_t len;
-    ssize_t received, total;
+    ssize_t ret;
+    size_t received = 0;
 
-    received = recv(c->fd, (uint8_t *) &len, sizeof(uint32_t) / sizeof(uint8_t), 0);
-    if (received < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not receive data length: %s",
-                strerror(errno));
-        return -1;
-    } else if (received == 0) {
-        sd_log(LOG_LEVEL_VERBOSE, "Channel closed down");
-        return 0;
-    } else if (received != sizeof(uint32_t) / sizeof(uint8_t)) {
-        sd_log(LOG_LEVEL_ERROR, "Invalid data length %d received", received);
-        return -1;
-    }
-
-    len = ntohl(len);
-
-    if (len > sizeof(buf)) {
-        sd_log(LOG_LEVEL_ERROR, "Data length exceeds buffer");
-        return -1;
-    }
-
-    total = 0;
-    while (total != len) {
-        received = recv(c->fd, buf + total, len - total, 0);
-
-        if (received < 0) {
-            sd_log(LOG_LEVEL_ERROR, "Could not receive data: %s",
-                    strerror(errno));
+    while (received != len) {
+        ret = recv(c->fd, out + received, len - received, 0);
+        if (ret < 0) {
             return -1;
-        } else if (received == 0) {
-            sd_log(LOG_LEVEL_VERBOSE, "Channel closed down");
-            return 0;
         }
 
-        total += received;
+        received += ret;
     }
 
+    return 0;
+}
+
+static int receive_encrypted_data(struct sd_channel *c, uint8_t *out, size_t maxlen)
+{
+    uint8_t cipher[512], plain[512 - crypto_secretbox_MACBYTES];
+    uint32_t pkglen;
+    size_t received = 0;
+
+    if (receive_data(c, cipher, sizeof(cipher)) < 0) {
+        return -1;
+    }
+
+    if (crypto_secretbox_open_easy(plain, cipher, sizeof(cipher),
+                c->remote_nonce, c->key.data) < 0)
+    {
+        return -1;
+    }
+    sodium_increment(c->remote_nonce, crypto_secretbox_NONCEBYTES);
+    sodium_increment(c->remote_nonce, crypto_secretbox_NONCEBYTES);
+
+    pkglen = ntohl(*((uint32_t *) &plain[0]));
+    if (pkglen > maxlen) {
+        return -1;
+    }
+
+    received += MIN(pkglen, sizeof(plain) - 4);
+    memcpy(out, plain + 4, received);
+
+    while (received < pkglen) {
+        if (receive_data(c, cipher, sizeof(cipher)) < 0) {
+            return -1;
+        }
+
+        if (crypto_secretbox_open_easy(plain, cipher, sizeof(cipher),
+                    c->remote_nonce, c->key.data) < 0)
+        {
+            return -1;
+        }
+        sodium_increment(c->remote_nonce, crypto_secretbox_NONCEBYTES);
+        sodium_increment(c->remote_nonce, crypto_secretbox_NONCEBYTES);
+
+        memcpy(out + received, plain, MIN(pkglen - received, sizeof(plain)));
+        received += MIN(pkglen - received, sizeof(plain));
+    }
+
+    return received;
+}
+
+static int receive_unencrypted_data(struct sd_channel *c, uint8_t *out, size_t maxlen)
+{
+    uint8_t buf[512];
+    uint32_t pkglen;
+    size_t received = 0;
+
+    if (receive_data(c, buf, sizeof(buf)) < 0) {
+        return -1;
+    }
+
+    pkglen = ntohl(*((uint32_t *) &buf[0]));
+    if (pkglen > maxlen) {
+        return -1;
+    }
+
+    received += MIN(pkglen, sizeof(buf) - 4);
+    memcpy(out, buf + 4, received);
+
+    while (received < pkglen) {
+        if (receive_data(c, buf, sizeof(buf)) < 0) {
+            return -1;
+        }
+
+        memcpy(out + received, buf, MIN(pkglen - received, sizeof(buf)));
+        received += MIN(pkglen - received, sizeof(buf));
+    }
+
+    return received;
+}
+
+ssize_t sd_channel_receive_data(struct sd_channel *c, uint8_t *out, size_t maxlen)
+{
     switch (c->crypto) {
         case SD_CHANNEL_CRYPTO_NONE:
-            if ((size_t) len > maxlen) {
-                sd_log(LOG_LEVEL_ERROR,
-                        "Data buffer bigger then internal buffer");
-                return -1;
-            }
-
-            memcpy(out, buf, len);
-            break;
+            return receive_unencrypted_data(c, out, maxlen);
         case SD_CHANNEL_CRYPTO_SYMMETRIC:
-            if ((size_t) len - crypto_secretbox_MACBYTES > maxlen) {
-                sd_log(LOG_LEVEL_ERROR,
-                        "Data buffer bigger then internal buffer");
-                return -1;
-            }
-
-            if (crypto_secretbox_open_easy(out, buf, len, c->remote_nonce,
-                        c->key.data) != 0) {
-                sd_log(LOG_LEVEL_ERROR, "Unable to decrypt message");
-                return -1;
-            }
-            len = len - crypto_secretbox_MACBYTES;
-
-            sodium_increment(c->remote_nonce, crypto_secretbox_NONCEBYTES);
-            sodium_increment(c->remote_nonce, crypto_secretbox_NONCEBYTES);
-
-            break;
+            return receive_encrypted_data(c, out, maxlen);
         default:
-            sd_log(LOG_LEVEL_ERROR, "Unknown crypto type");
-            return -1;
+            assert(false);
     }
-
-    return len;
 }
 
 int sd_channel_receive_protobuf(struct sd_channel *c, const ProtobufCMessageDescriptor *descr, ProtobufCMessage **msg)
