@@ -515,7 +515,10 @@ int sd_proto_answer_query(struct sd_channel *channel,
     results.parameters = parameters;
     results.n_parameters = n;
 
-    sd_channel_write_protobuf(channel, (ProtobufCMessage *) &results);
+    if (sd_channel_write_protobuf(channel, (ProtobufCMessage *) &results) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Could not send query results");
+        return -1;
+    }
 
     return 0;
 }
