@@ -50,8 +50,7 @@ static void test_service_from_config()
     static char *service_config =
         "[service]\n"
         "name=foo\n"
-        "type=bar\n"
-        "subtype=exec\n"
+        "type=exec\n"
         "location=space\n"
         "port=7777\n";
 
@@ -60,8 +59,8 @@ static void test_service_from_config()
 
     /* Assert values */
     assert_string_equal(service.name, "foo");
-    assert_string_equal(service.type, "bar");
-    assert_string_equal(service.subtype, "exec");
+    assert_string_equal(service.type, "exec");
+    assert_string_equal(service.category, "Shell");
     assert_string_equal(service.location, "space");
     assert_string_equal(service.port, "7777");
 
@@ -77,8 +76,7 @@ static void test_invalid_service_from_config_fails()
     static char *service_config =
         "[service]\n"
         "name=foo\n"
-        "type=bar\n"
-        "subtype=exec\n"
+        "type=exec\n"
         "location=space\n"
         "port=7777\n"
         "invalidparameter=invalidvalue";
@@ -92,8 +90,6 @@ static void test_incomplete_service_from_config_fails()
     static char *service_config =
         "[service]\n"
         "name=foo\n"
-        /* "type=bar\n" */
-        "subtype=exec\n"
         "location=space\n"
         "port=7777\n";
 
@@ -108,15 +104,13 @@ static void test_services_from_config()
     static char *service_config =
         "[service]\n"
         "name=foo\n"
-        "type=foo\n"
-        "subtype=exec\n"
+        "type=exec\n"
         "location=space\n"
         "port=7777\n"
         "\n"
         "[service]\n"
         "name=bar\n"
-        "type=bar\n"
-        "subtype=xpra\n"
+        "type=xpra\n"
         "location=space\n"
         "port=8888";
 
@@ -282,5 +276,5 @@ int service_test_run_suite(void)
         test(test_getting_multiple_values_with_multiple_values_and_args),
     };
 
-    return execute_test_suite("service", tests, NULL, NULL);
+    return execute_test_suite("service", tests, setup, teardown);
 }
