@@ -194,7 +194,6 @@ out_err:
 void sd_service_free(struct sd_service *service)
 {
     free(service->name);
-    free(service->category);
     free(service->type);
     free(service->port);
     free(service->location);
