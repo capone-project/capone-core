@@ -38,10 +38,13 @@ int main(int argc, char *argv[])
     else
         sd_log_set_level(LOG_LEVEL_NONE);
 
-    cfg_test_run_suite();
-    channel_test_run_suite();
-    server_test_run_suite();
-    service_test_run_suite();
+    if (cfg_test_run_suite() < 0 ||
+            channel_test_run_suite() < 0 ||
+            server_test_run_suite() < 0 ||
+            service_test_run_suite() < 0)
+    {
+        return -1;
+    }
 
     return 0;
 }
