@@ -225,74 +225,52 @@ static int write_data(struct sd_channel *c, uint8_t *data, uint32_t datalen)
         written += ret;
     }
 
-    return 0;
-}
-
-static int write_encrypted_data(struct sd_channel *c, uint8_t *data, uint32_t datalen)
-{
-    uint8_t cipher[512], plain[512 - crypto_secretbox_MACBYTES];
-    size_t written = 0, offset;
-
-    *((uint32_t *) &plain[0]) = htonl(datalen);
-    offset = 4;
-
-    while (written != datalen) {
-        size_t len = MIN(sizeof(plain) - offset, datalen);
-        memset(plain + offset, 0, sizeof(plain) - offset);
-        memcpy(plain + offset, data + written, len);
-
-        if (crypto_secretbox_easy(cipher, plain, sizeof(plain), c->local_nonce, c->key.data) < 0) {
-            sd_log(LOG_LEVEL_ERROR, "Unable to encrypt message");
-            return -1;
-        }
-        sodium_increment(c->local_nonce, crypto_secretbox_NONCEBYTES);
-        sodium_increment(c->local_nonce, crypto_secretbox_NONCEBYTES);
-
-        if (write_data(c, cipher, sizeof(cipher)) < 0) {
-            sd_log(LOG_LEVEL_ERROR, "Unable to write encrypted data");
-            return -1;
-        }
-        written += len;
-    }
-
-    return 0;
-}
-
-static int write_unencrypted_data(struct sd_channel *c, uint8_t *data, uint32_t datalen)
-{
-    uint8_t buf[512];
-    size_t written = 0, offset;
-
-    *((uint32_t *) &buf[0]) = htonl(datalen);
-    offset = 4;
-
-    while (written < datalen) {
-        size_t len = MIN(sizeof(buf) - offset, datalen);
-        memset(buf + offset, 0, sizeof(buf) - offset);
-        memcpy(buf + offset, data + written, len);
-
-        if (write_data(c, buf, sizeof(buf)) < 0) {
-            return -1;
-        }
-
-        written += len;
-        offset = 0;
-    }
-
-    return 0;
+    return written;
 }
 
 int sd_channel_write_data(struct sd_channel *c, uint8_t *data, uint32_t datalen)
 {
-    switch (c->crypto) {
-        case SD_CHANNEL_CRYPTO_NONE:
-            return write_unencrypted_data(c, data, datalen);
-        case SD_CHANNEL_CRYPTO_SYMMETRIC:
-            return write_encrypted_data(c, data, datalen);
-        default:
-            sd_log(LOG_LEVEL_ERROR, "Unknown encryption type");
+    uint8_t block[512], plain[512];
+    size_t written = 0, offset;
+    uint32_t networklen;
+
+    networklen = htonl(datalen);
+    memcpy(plain, &networklen, sizeof(networklen));
+    offset = 4;
+
+    while (offset || written != datalen) {
+        size_t len;
+        if (c->crypto == SD_CHANNEL_CRYPTO_SYMMETRIC) {
+            len = MIN(datalen - written, sizeof(plain) - offset - crypto_secretbox_MACBYTES);
+        } else {
+            len = MIN(datalen - written, sizeof(plain) - offset);
+        }
+
+        memset(plain + offset, 0, sizeof(plain) - offset);
+        memcpy(plain + offset, data + written, len);
+
+        if (c->crypto == SD_CHANNEL_CRYPTO_SYMMETRIC) {
+            if (crypto_secretbox_easy(block, plain, sizeof(plain) - crypto_secretbox_MACBYTES,
+                        c->local_nonce, c->key.data) < 0) {
+                sd_log(LOG_LEVEL_ERROR, "Unable to encrypt message");
+                return -1;
+            }
+            sodium_increment(c->local_nonce, crypto_secretbox_NONCEBYTES);
+            sodium_increment(c->local_nonce, crypto_secretbox_NONCEBYTES);
+        } else {
+            memcpy(block, plain, sizeof(plain));
+        }
+
+        if (write_data(c, block, sizeof(block)) < 0) {
+            sd_log(LOG_LEVEL_ERROR, "Unable to write encrypted data");
             return -1;
+        }
+        written += len;
+
+        offset = 0;
     }
+
+    return written;
 }
 
 int sd_channel_write_protobuf(struct sd_channel *c, ProtobufCMessage *msg)
@@ -330,95 +308,57 @@ static int receive_data(struct sd_channel *c, uint8_t *out, size_t len)
         received += ret;
     }
 
-    return 0;
-}
-
-static int receive_encrypted_data(struct sd_channel *c, uint8_t *out, size_t maxlen)
-{
-    uint8_t cipher[512], plain[512 - crypto_secretbox_MACBYTES];
-    uint32_t pkglen;
-    size_t received = 0;
-
-    if (receive_data(c, cipher, sizeof(cipher)) < 0) {
-        return -1;
-    }
-
-    if (crypto_secretbox_open_easy(plain, cipher, sizeof(cipher),
-                c->remote_nonce, c->key.data) < 0)
-    {
-        return -1;
-    }
-    sodium_increment(c->remote_nonce, crypto_secretbox_NONCEBYTES);
-    sodium_increment(c->remote_nonce, crypto_secretbox_NONCEBYTES);
-
-    pkglen = ntohl(*((uint32_t *) &plain[0]));
-    if (pkglen > maxlen) {
-        return -1;
-    }
-
-    received += MIN(pkglen, sizeof(plain) - 4);
-    memcpy(out, plain + 4, received);
-
-    while (received < pkglen) {
-        if (receive_data(c, cipher, sizeof(cipher)) < 0) {
-            return -1;
-        }
-
-        if (crypto_secretbox_open_easy(plain, cipher, sizeof(cipher),
-                    c->remote_nonce, c->key.data) < 0)
-        {
-            return -1;
-        }
-        sodium_increment(c->remote_nonce, crypto_secretbox_NONCEBYTES);
-        sodium_increment(c->remote_nonce, crypto_secretbox_NONCEBYTES);
-
-        memcpy(out + received, plain, MIN(pkglen - received, sizeof(plain)));
-        received += MIN(pkglen - received, sizeof(plain));
-    }
-
-    return received;
-}
-
-static int receive_unencrypted_data(struct sd_channel *c, uint8_t *out, size_t maxlen)
-{
-    uint8_t buf[512];
-    uint32_t pkglen;
-    size_t received = 0;
-
-    if (receive_data(c, buf, sizeof(buf)) < 0) {
-        return -1;
-    }
-
-    pkglen = ntohl(*((uint32_t *) &buf[0]));
-    if (pkglen > maxlen) {
-        return -1;
-    }
-
-    received += MIN(pkglen, sizeof(buf) - 4);
-    memcpy(out, buf + 4, received);
-
-    while (received < pkglen) {
-        if (receive_data(c, buf, sizeof(buf)) < 0) {
-            return -1;
-        }
-
-        memcpy(out + received, buf, MIN(pkglen - received, sizeof(buf)));
-        received += MIN(pkglen - received, sizeof(buf));
-    }
-
     return received;
 }
 
 ssize_t sd_channel_receive_data(struct sd_channel *c, uint8_t *out, size_t maxlen)
 {
-    switch (c->crypto) {
-        case SD_CHANNEL_CRYPTO_NONE:
-            return receive_unencrypted_data(c, out, maxlen);
-        case SD_CHANNEL_CRYPTO_SYMMETRIC:
-            return receive_encrypted_data(c, out, maxlen);
-        default:
-            assert(false);
+    uint8_t plain[512], block[512];
+    uint32_t pkglen, received = 0, offset = sizeof(uint32_t);
+
+    while (offset || received < pkglen) {
+        uint32_t networklen, blocklen;
+
+        if (receive_data(c, block, sizeof(block)) < 0) {
+            sd_log(LOG_LEVEL_ERROR, "Unable to receive data");
+            return -1;
+        }
+
+        if (c->crypto == SD_CHANNEL_CRYPTO_SYMMETRIC) {
+            if (crypto_secretbox_open_easy(plain, block, sizeof(block),
+                        c->remote_nonce, c->key.data) < 0)
+            {
+                sd_log(LOG_LEVEL_ERROR, "Unable to decrypt received block");
+                return -1;
+            }
+            sodium_increment(c->remote_nonce, crypto_secretbox_NONCEBYTES);
+            sodium_increment(c->remote_nonce, crypto_secretbox_NONCEBYTES);
+        } else {
+            memcpy(plain, block, sizeof(block));
+        }
+
+        if (offset) {
+            memcpy(&networklen, plain, sizeof(networklen));
+            pkglen = ntohl(networklen);
+            if (pkglen > maxlen) {
+                sd_log(LOG_LEVEL_ERROR, "Received package length exceeds maxlen");
+                return -1;
+            }
+        }
+
+        if (c->crypto == SD_CHANNEL_CRYPTO_SYMMETRIC) {
+            blocklen = MIN(pkglen - received, sizeof(plain) - offset - crypto_secretbox_NONCEBYTES);
+        } else {
+            blocklen = MIN(pkglen - received, sizeof(plain) - offset);
+        }
+
+        memcpy(out + received, plain + offset, blocklen);
+
+        received += blocklen;
+        offset = 0;
     }
+
+    return received;
 }
 
 int sd_channel_receive_protobuf(struct sd_channel *c, const ProtobufCMessageDescriptor *descr, ProtobufCMessage **msg)
