@@ -387,7 +387,7 @@ int sd_channel_relay(struct sd_channel *channel, int nfds, ...)
 {
     fd_set fds;
     uint8_t buf[2048];
-    int received, maxfd, infd, fd, i;
+    int written, received, maxfd, infd, fd, i, ret;
     va_list ap;
 
     if (nfds <= 0) {
@@ -432,9 +432,14 @@ int sd_channel_relay(struct sd_channel *channel, int nfds, ...)
                 return -1;
             }
 
-            if (write(infd, buf, received) != received) {
-                sd_log(LOG_LEVEL_ERROR, "Error relaying data to fd: %s", strerror(errno));
-                return -1;
+            written = 0;
+            while (written != received) {
+                ret = write(infd, buf, received);
+                if (ret < 0) {
+                    sd_log(LOG_LEVEL_ERROR, "Error relaying data to fd: %s", strerror(errno));
+                    return -1;
+                }
+                written += ret;
             }
         }
 
