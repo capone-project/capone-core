@@ -236,6 +236,23 @@ static void write_encrypted_data()
     assert_string_equal(msg, buf);
 }
 
+static void write_some_encrypted_data()
+{
+    unsigned char msg[2048], buf[sizeof(msg)];
+
+    memset(msg, 1, sizeof(msg));
+
+    stub_sockets(&channel, &remote);
+
+    sd_channel_enable_encryption(&channel, &key, 0);
+    sd_channel_enable_encryption(&remote, &key, 1);
+
+    assert_success(sd_channel_write_data(&channel, msg, sizeof(msg)));
+    assert_int_equal(sd_channel_receive_data(&remote, buf, sizeof(buf)), sizeof(msg));
+
+    assert_memory_equal(msg, buf, sizeof(msg));
+}
+
 static void write_multiple_encrypted_messages()
 {
     unsigned char m1[] = "test", m2[] = "somewhatlongermessage",
@@ -338,6 +355,7 @@ int channel_test_run_suite(void)
         test(write_with_response),
         test(write_protobuf),
         test(write_encrypted_data),
+        test(write_some_encrypted_data),
         test(write_multiple_encrypted_messages),
         test(write_encrypted_messages_increments_nonce),
         test(write_encrypted_message_with_response),

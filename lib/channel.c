@@ -343,7 +343,7 @@ ssize_t sd_channel_receive_data(struct sd_channel *c, uint8_t *out, size_t maxle
         }
 
         if (c->crypto == SD_CHANNEL_CRYPTO_SYMMETRIC) {
-            blocklen = MIN(pkglen - received, sizeof(block) - offset - crypto_secretbox_NONCEBYTES);
+            blocklen = MIN(pkglen - received, sizeof(block) - offset - crypto_secretbox_MACBYTES);
         } else {
             blocklen = MIN(pkglen - received, sizeof(block) - offset);
         }
