@@ -268,7 +268,7 @@ int sd_channel_write_data(struct sd_channel *c, uint8_t *data, uint32_t datalen)
         offset = 0;
     }
 
-    return written;
+    return 0;
 }
 
 int sd_channel_write_protobuf(struct sd_channel *c, ProtobufCMessage *msg)
