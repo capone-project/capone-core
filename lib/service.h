@@ -42,7 +42,7 @@ struct sd_service_session {
 };
 
 typedef int (*invoke_fn)(struct sd_channel *channel, int argc, char **argv);
-typedef int (*handle_fn)(struct sd_channel *channel, const struct sd_service_session *session);
+typedef int (*handle_fn)(struct sd_channel *channel, const struct sd_service_session *session, const struct cfg *cfg);
 typedef int (*parameters_fn)(const struct sd_service_parameter **out);
 typedef const char *(*version_fn)(void);
 

@@ -94,12 +94,15 @@ static void exec(const char *cmd,
 }
 
 static int handle(struct sd_channel *channel,
-        const struct sd_service_session *session)
+        const struct sd_service_session *session,
+        const struct cfg *cfg)
 {
     const char *cmd, **args = NULL, **envs = NULL;
     int pid, nargs, nenvs;
     int stdout_fds[2] = { -1, -1 }, stderr_fds[2] = { -1, -1 };
     int error = 0;
+
+    UNUSED(cfg);
 
     if (sd_service_parameters_get_value(&cmd, "command", session->parameters, session->nparameters) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Missing 'command' parameter");

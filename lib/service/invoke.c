@@ -56,12 +56,15 @@ static int invoke(struct sd_channel *channel, int argc, char **argv)
 }
 
 static int handle(struct sd_channel *channel,
-        const struct sd_service_session *session)
+        const struct sd_service_session *session,
+        const struct cfg *cfg)
 {
     const char *service_identity, *service_address, *service_type,
           *service_port, *sessionid_string, *sessionkey;
     const char **service_params = NULL;
     struct sd_service service;
+    struct sd_sign_key_pair local_keys;
+    struct sd_sign_key_public remote_key;
     struct sd_channel remote_channel;
     uint32_t sessionid;
     size_t nparams;
@@ -91,6 +94,16 @@ static int handle(struct sd_channel *channel,
         goto out;
     }
 
+    if (sd_sign_key_pair_from_config(&local_keys, cfg) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Could not parse config");
+        goto out;
+    }
+
+    if (sd_sign_key_public_from_hex(&remote_key, service_identity) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Could not parse remote public key");
+        goto out;
+    }
+
     if (parse_uint32t(&sessionid, sessionid_string) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Invalid session ID");
         goto out;
@@ -101,7 +114,8 @@ static int handle(struct sd_channel *channel,
         goto out;
     }
 
-    if (sd_proto_initiate_connection_type(&remote_channel, service_address, service_port, SD_CONNECTION_TYPE_CONNECT) < 0) {
+    if (sd_proto_initiate_connection(&remote_channel, service_address, service_port,
+                &local_keys, &remote_key, SD_CONNECTION_TYPE_CONNECT) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Could not start invoke connection");
         goto out;
     }

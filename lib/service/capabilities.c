@@ -112,12 +112,9 @@ static int request_capability(struct sd_channel *channel, const CapabilityReques
         goto out;
     }
 
-    if ((ret = sd_proto_initiate_connection_type(&service_channel, host, port, SD_CONNECTION_TYPE_REQUEST)) < 0) {
+    if ((ret = sd_proto_initiate_connection(&service_channel, host, port,
+                    &local_keys, &remote_key, SD_CONNECTION_TYPE_REQUEST)) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Unable to initiate connection type to remote service");
-        goto out;
-    }
-    if ((ret = sd_proto_initiate_encryption(&service_channel, &local_keys, &remote_key)) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Unable to initiate encryption with remote service");
         goto out;
     }
     if ((ret = sd_proto_send_request(&session, &service_channel, params, request->n_parameters)) < 0) {
@@ -360,9 +357,12 @@ static int handle_request(struct sd_channel *channel,
 }
 
 static int handle(struct sd_channel *channel,
-        const struct sd_service_session *session)
+        const struct sd_service_session *session,
+        const struct cfg *cfg)
 {
     const char *mode;
+
+    UNUSED(cfg);
 
     if (sd_service_parameters_get_value(&mode, "mode",
                 session->parameters, session->nparameters) < 0)

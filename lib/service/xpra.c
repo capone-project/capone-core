@@ -87,7 +87,8 @@ static int invoke(struct sd_channel *channel, int argc, char **argv)
 }
 
 static int handle(struct sd_channel *channel,
-        const struct sd_service_session *session)
+        const struct sd_service_session *session,
+        const struct cfg *cfg)
 {
     struct sd_server server;
     struct sd_channel xpra_channel;
@@ -100,6 +101,7 @@ static int handle(struct sd_channel *channel,
     };
     int len, pid;
 
+    UNUSED(cfg);
     UNUSED(session);
 
     if (sd_server_init(&server, "127.0.0.1", NULL, SD_CHANNEL_TYPE_TCP) < 0) {

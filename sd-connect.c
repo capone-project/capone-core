@@ -34,7 +34,7 @@ static void usage(const char *prog)
     printf("USAGE: %s (request|connect)\n"
             "\tquery <CONFIG> <KEY> <HOST> <PORT>\n"
             "\trequest <CONFIG> <KEY> <HOST> <PORT> [<PARAMETER>...]\n"
-            "\tconnect <SESSIONID> <TOKEN> <HOST> <PORT> <SERVICE>\n", prog);
+            "\tconnect <CONFIG> <KEY> <HOST> <PORT> <SERVICE> <SESSIONID> <TOKEN>\n", prog);
     exit(-1);
 }
 
@@ -87,13 +87,9 @@ static int cmd_query(int argc, char *argv[])
         return -1;
     }
 
-    if (sd_proto_initiate_connection_type(&channel, host, port, SD_CONNECTION_TYPE_QUERY) < 0) {
+    if (sd_proto_initiate_connection(&channel, host, port,
+                &local_keys, &remote_key, SD_CONNECTION_TYPE_QUERY) < 0) {
         puts("Could not establish connection");
-        return -1;
-    }
-
-    if (sd_proto_initiate_encryption(&channel, &local_keys, &remote_key) < 0) {
-        puts("Unable to initiate encryption");
         return -1;
     }
 
@@ -138,13 +134,9 @@ static int cmd_request(int argc, char *argv[])
         return -1;
     }
 
-    if (sd_proto_initiate_connection_type(&channel, host, port, SD_CONNECTION_TYPE_REQUEST) < 0) {
+    if (sd_proto_initiate_connection(&channel, host, port,
+                &local_keys, &remote_key, SD_CONNECTION_TYPE_REQUEST) < 0) {
         puts("Could not establish connection");
-        return -1;
-    }
-
-    if (sd_proto_initiate_encryption(&channel, &local_keys, &remote_key) < 0) {
-        puts("Unable to initiate encryption");
         return -1;
     }
 
@@ -165,29 +157,45 @@ static int cmd_request(int argc, char *argv[])
 
 static int cmd_connect(int argc, char *argv[])
 {
+    const char *config, *key, *host, *port, *service_type, *session, *token;
+    struct sd_sign_key_public remote_key;
     struct sd_service service;
-    const char *token, *host, *port;
     struct sd_channel channel;
     uint32_t sessionid;
 
-    if (argc < 7)
+    if (argc < 8)
         usage(argv[0]);
 
-    token = argv[3];
+    config = argv[2];
+    key = argv[3];
     host = argv[4];
     port = argv[5];
+    service_type = argv[6];
+    session = argv[7];
+    token = argv[8];
 
-    if (sd_service_from_type(&service, argv[6]) < 0) {
-        printf("Invalid service %s\n", argv[6]);
+    if (sd_sign_key_pair_from_config_file(&local_keys, config) < 0) {
+        puts("Could not parse config");
         return -1;
     }
 
-    if (parse_uint32t(&sessionid, argv[2]) < 0) {
-        printf("Invalid session ID %s\n", argv[2]);
+    if (sd_sign_key_public_from_hex(&remote_key, key) < 0) {
+        puts("Could not parse remote public key");
         return -1;
     }
 
-    if (sd_proto_initiate_connection_type(&channel, host, port, SD_CONNECTION_TYPE_CONNECT) < 0) {
+    if (sd_service_from_type(&service, service_type) < 0) {
+        printf("Invalid service %s\n", service_type);
+        return -1;
+    }
+
+    if (parse_uint32t(&sessionid, session) < 0) {
+        printf("Invalid session ID %s\n", session);
+        return -1;
+    }
+
+    if (sd_proto_initiate_connection(&channel, host, port,
+                &local_keys, &remote_key, SD_CONNECTION_TYPE_CONNECT) < 0) {
         puts("Could not start connection");
         return -1;
     }
@@ -197,7 +205,7 @@ static int cmd_connect(int argc, char *argv[])
         return -1;
     }
 
-    if (service.invoke(&channel, argc - 7, argv + 7) < 0) {
+    if (service.invoke(&channel, argc - 8, argv + 8) < 0) {
         puts("Could not invoke service");
         return -1;
     }

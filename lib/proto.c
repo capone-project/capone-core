@@ -28,6 +28,7 @@
 #include "proto.h"
 
 struct service_args {
+    struct cfg *cfg;
     struct sd_service *service;
     struct sd_channel *channel;
     struct sd_service_session *session;
@@ -46,8 +47,11 @@ static int convert_params(struct sd_service_parameter **out,
         const SessionRequestMessage *msg);
 static void handle_service(void *payload);
 
-int sd_proto_initiate_connection_type(struct sd_channel *channel,
-        const char *host, const char *port,
+int sd_proto_initiate_connection(struct sd_channel *channel,
+        const char *host,
+        const char *port,
+        const struct sd_sign_key_pair *local_keys,
+        const struct sd_sign_key_public *remote_key,
         enum sd_connection_type type)
 {
     ConnectionInitiationMessage conntype = CONNECTION_INITIATION_MESSAGE__INIT;
@@ -59,6 +63,11 @@ int sd_proto_initiate_connection_type(struct sd_channel *channel,
 
     if (sd_channel_connect(channel) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Could not connect to server");
+        return -1;
+    }
+
+    if (sd_proto_initiate_encryption(channel, local_keys, remote_key) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Unable to initiate encryption");
         return -1;
     }
 
@@ -270,7 +279,8 @@ int sd_proto_initiate_session(struct sd_channel *channel, const char *sessionkey
 
 int sd_proto_handle_session(struct sd_channel *channel,
         struct sd_service *service,
-        struct sd_service_session *sessions)
+        struct sd_service_session *sessions,
+        struct cfg *cfg)
 {
     SessionInitiationMessage *initiation;
     struct sd_service_session *session, *prev = NULL;
@@ -306,6 +316,7 @@ int sd_proto_handle_session(struct sd_channel *channel,
     }
 
     session->next = NULL;
+    args.cfg = cfg;
     args.channel = channel;
     args.session = session;
     args.service = service;
@@ -473,7 +484,6 @@ int sd_proto_await_encryption(struct sd_channel *channel,
 
 int sd_proto_answer_query(struct sd_channel *channel,
         const struct sd_service *service,
-        const struct sd_sign_key_pair *local_keys,
         const struct sd_sign_key_public *whitelist,
         size_t nwhitelist)
 {
@@ -482,11 +492,6 @@ int sd_proto_answer_query(struct sd_channel *channel,
     const struct sd_service_parameter *params;
     struct sd_sign_key_public remote_key;
     int i, n;
-
-    if (sd_proto_await_encryption(channel, local_keys, &remote_key) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Unable to negotiate encryption");
-        return -1;
-    }
 
     if (!is_whitelisted(&remote_key, whitelist, nwhitelist)) {
         sd_log(LOG_LEVEL_ERROR, "Received connection from unknown signature key");
@@ -525,7 +530,6 @@ int sd_proto_answer_query(struct sd_channel *channel,
 
 int sd_proto_answer_request(struct sd_service_session **out,
         struct sd_channel *channel,
-        const struct sd_sign_key_pair *local_keys,
         const struct sd_sign_key_public *whitelist,
         size_t nwhitelist)
 {
@@ -535,11 +539,6 @@ int sd_proto_answer_request(struct sd_service_session **out,
     struct sd_symmetric_key session_key;
     struct sd_service_parameter *params;
     struct sd_service_session *session;
-
-    if (sd_proto_await_encryption(channel, local_keys, &remote_sign_key) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Unable to await encryption");
-        return -1;
-    }
 
     if (!is_whitelisted(&remote_sign_key, whitelist, nwhitelist)) {
         sd_log(LOG_LEVEL_ERROR, "Received connection from unknown signature key");
@@ -705,7 +704,7 @@ static void handle_service(void *payload)
 {
     struct service_args *args = (struct service_args *) payload;
 
-    if (args->service->handle(args->channel, args->session) < 0) {
+    if (args->service->handle(args->channel, args->session, args->cfg) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Service could not handle connection");
         exit(-1);
     }

@@ -27,8 +27,11 @@ enum sd_connection_type {
     SD_CONNECTION_TYPE_REQUEST,
 };
 
-int sd_proto_initiate_connection_type(struct sd_channel *channel,
-        const char *host, const char *port,
+int sd_proto_initiate_connection(struct sd_channel *channel,
+        const char *host,
+        const char *port,
+        const struct sd_sign_key_pair *local_keys,
+        const struct sd_sign_key_public *remote_key,
         enum sd_connection_type type);
 int sd_proto_receive_connection_type(enum sd_connection_type *out,
         struct sd_channel *channel);
@@ -44,7 +47,6 @@ int sd_proto_send_query(struct sd_channel *channel,
         struct sd_sign_key_public *remote_key);
 int sd_proto_answer_query(struct sd_channel *channel,
         const struct sd_service *service,
-        const struct sd_sign_key_pair *local_keys,
         const struct sd_sign_key_public *whitelist,
         size_t nwhitelist);
 
@@ -53,7 +55,6 @@ int sd_proto_send_request(struct sd_service_session *out,
         const struct sd_service_parameter *params, size_t nparams);
 int sd_proto_answer_request(struct sd_service_session **out,
         struct sd_channel *channel,
-        const struct sd_sign_key_pair *local_keys,
         const struct sd_sign_key_public *whitelist,
         size_t nwhitelist);
 
@@ -61,6 +62,7 @@ int sd_proto_initiate_session(struct sd_channel *channel,
         const char *token, int sessionid);
 int sd_proto_handle_session(struct sd_channel *channel,
         struct sd_service *service,
-        struct sd_service_session *sessions);
+        struct sd_service_session *sessions,
+        struct cfg *cfg);
 
 #endif

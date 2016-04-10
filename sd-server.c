@@ -108,9 +108,10 @@ static int setup_signals(void)
 
 int main(int argc, char *argv[])
 {
-    const char *config, *servicename;
+    const char *servicename;
     struct sd_server server;
     struct sd_channel channel;
+    struct cfg cfg;
     int ret;
 
     if (argc < 3 || argc > 4) {
@@ -118,8 +119,12 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    config = argv[1];
     servicename = argv[2];
+
+    if (cfg_parse(&cfg, argv[1]) < 0) {
+        puts("Could not parse config");
+        return -1;
+    }
 
     if (argc == 4) {
         ret = read_whitelist(&whitelistkeys, argv[3]);
@@ -142,12 +147,12 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    if (sd_service_from_config_file(&service, servicename, config) < 0) {
+    if (sd_service_from_config(&service, servicename, &cfg) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Could not parse services");
         return -1;
     }
 
-    if (sd_sign_key_pair_from_config_file(&local_keys, config) < 0) {
+    if (sd_sign_key_pair_from_config(&local_keys, &cfg) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Could not parse config");
         return -1;
     }
@@ -165,9 +170,15 @@ int main(int argc, char *argv[])
     while (1) {
         enum sd_connection_type type;
         struct sd_service_session *session;
+        struct sd_sign_key_public remote_key;
 
         if (sd_server_accept(&server, &channel) < 0) {
             sd_log(LOG_LEVEL_ERROR, "Could not accept connection");
+            return -1;
+        }
+
+        if (sd_proto_await_encryption(&channel, &local_keys, &remote_key) < 0) {
+            sd_log(LOG_LEVEL_ERROR, "Unable to negotiate encryption");
             return -1;
         }
 
@@ -182,7 +193,7 @@ int main(int argc, char *argv[])
                 sd_log(LOG_LEVEL_DEBUG, "Received query");
 
                 if (sd_proto_answer_query(&channel,
-                            &service, &local_keys, whitelistkeys, nwhitelistkeys) < 0)
+                            &service, whitelistkeys, nwhitelistkeys) < 0)
                 {
                     sd_log(LOG_LEVEL_ERROR, "Received invalid query");
                 }
@@ -193,7 +204,7 @@ int main(int argc, char *argv[])
                 sd_log(LOG_LEVEL_DEBUG, "Received request");
 
                 if (sd_proto_answer_request(&session,
-                            &channel, &local_keys, whitelistkeys, nwhitelistkeys) < 0)
+                            &channel, whitelistkeys, nwhitelistkeys) < 0)
                 {
                     sd_log(LOG_LEVEL_ERROR, "Received invalid request");
                 } else {
@@ -205,7 +216,7 @@ int main(int argc, char *argv[])
                 break;
             case SD_CONNECTION_TYPE_CONNECT:
                 sd_log(LOG_LEVEL_DEBUG, "Received connect");
-                sd_proto_handle_session(&channel, &service, sessions);
+                sd_proto_handle_session(&channel, &service, sessions, &cfg);
                 break;
             default:
                 sd_log(LOG_LEVEL_ERROR, "Unknown connection envelope type %d", type);
