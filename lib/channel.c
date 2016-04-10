@@ -430,7 +430,7 @@ int sd_channel_relay(struct sd_channel *channel, int nfds, ...)
 
             written = 0;
             while (written != received) {
-                ret = write(infd, buf, received);
+                ret = write(infd, buf + written, received - written);
                 if (ret < 0) {
                     sd_log(LOG_LEVEL_ERROR, "Error relaying data to fd: %s", strerror(errno));
                     return -1;
