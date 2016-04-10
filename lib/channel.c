@@ -230,35 +230,33 @@ static int write_data(struct sd_channel *c, uint8_t *data, uint32_t datalen)
 
 int sd_channel_write_data(struct sd_channel *c, uint8_t *data, uint32_t datalen)
 {
-    uint8_t block[512], plain[512];
+    uint8_t block[512];
     size_t written = 0, offset;
     uint32_t networklen;
 
     networklen = htonl(datalen);
-    memcpy(plain, &networklen, sizeof(networklen));
+    memcpy(block, &networklen, sizeof(networklen));
     offset = 4;
 
     while (offset || written != datalen) {
-        size_t len;
+        uint32_t len;
         if (c->crypto == SD_CHANNEL_CRYPTO_SYMMETRIC) {
-            len = MIN(datalen - written, sizeof(plain) - offset - crypto_secretbox_MACBYTES);
+            len = MIN(datalen - written, sizeof(block) - offset - crypto_secretbox_MACBYTES);
         } else {
-            len = MIN(datalen - written, sizeof(plain) - offset);
+            len = MIN(datalen - written, sizeof(block) - offset);
         }
 
-        memset(plain + offset, 0, sizeof(plain) - offset);
-        memcpy(plain + offset, data + written, len);
+        memset(block + offset, 0, sizeof(block) - offset);
+        memcpy(block + offset, data + written, len);
 
         if (c->crypto == SD_CHANNEL_CRYPTO_SYMMETRIC) {
-            if (crypto_secretbox_easy(block, plain, sizeof(plain) - crypto_secretbox_MACBYTES,
+            if (crypto_secretbox_easy(block, block, sizeof(block) - crypto_secretbox_MACBYTES,
                         c->local_nonce, c->key.data) < 0) {
                 sd_log(LOG_LEVEL_ERROR, "Unable to encrypt message");
                 return -1;
             }
             sodium_increment(c->local_nonce, crypto_secretbox_NONCEBYTES);
             sodium_increment(c->local_nonce, crypto_secretbox_NONCEBYTES);
-        } else {
-            memcpy(block, plain, sizeof(plain));
         }
 
         if (write_data(c, block, sizeof(block)) < 0) {
@@ -313,7 +311,7 @@ static int receive_data(struct sd_channel *c, uint8_t *out, size_t len)
 
 ssize_t sd_channel_receive_data(struct sd_channel *c, uint8_t *out, size_t maxlen)
 {
-    uint8_t plain[512], block[512];
+    uint8_t block[512];
     uint32_t pkglen, received = 0, offset = sizeof(uint32_t);
 
     while (offset || received < pkglen) {
@@ -325,7 +323,7 @@ ssize_t sd_channel_receive_data(struct sd_channel *c, uint8_t *out, size_t maxle
         }
 
         if (c->crypto == SD_CHANNEL_CRYPTO_SYMMETRIC) {
-            if (crypto_secretbox_open_easy(plain, block, sizeof(block),
+            if (crypto_secretbox_open_easy(block, block, sizeof(block),
                         c->remote_nonce, c->key.data) < 0)
             {
                 sd_log(LOG_LEVEL_ERROR, "Unable to decrypt received block");
@@ -333,12 +331,10 @@ ssize_t sd_channel_receive_data(struct sd_channel *c, uint8_t *out, size_t maxle
             }
             sodium_increment(c->remote_nonce, crypto_secretbox_NONCEBYTES);
             sodium_increment(c->remote_nonce, crypto_secretbox_NONCEBYTES);
-        } else {
-            memcpy(plain, block, sizeof(block));
         }
 
         if (offset) {
-            memcpy(&networklen, plain, sizeof(networklen));
+            memcpy(&networklen, block, sizeof(networklen));
             pkglen = ntohl(networklen);
             if (pkglen > maxlen) {
                 sd_log(LOG_LEVEL_ERROR, "Received package length exceeds maxlen");
@@ -347,12 +343,12 @@ ssize_t sd_channel_receive_data(struct sd_channel *c, uint8_t *out, size_t maxle
         }
 
         if (c->crypto == SD_CHANNEL_CRYPTO_SYMMETRIC) {
-            blocklen = MIN(pkglen - received, sizeof(plain) - offset - crypto_secretbox_NONCEBYTES);
+            blocklen = MIN(pkglen - received, sizeof(block) - offset - crypto_secretbox_NONCEBYTES);
         } else {
-            blocklen = MIN(pkglen - received, sizeof(plain) - offset);
+            blocklen = MIN(pkglen - received, sizeof(block) - offset);
         }
 
-        memcpy(out + received, plain + offset, blocklen);
+        memcpy(out + received, block + offset, blocklen);
 
         received += blocklen;
         offset = 0;
