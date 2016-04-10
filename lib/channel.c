@@ -216,7 +216,7 @@ static int write_data(struct sd_channel *c, uint8_t *data, uint32_t datalen)
                 return -1;
         }
 
-        if (ret < 0) {
+        if (ret <= 0) {
             sd_log(LOG_LEVEL_ERROR, "Could not send data: %s",
                     strerror(errno));
             return -1;
@@ -299,7 +299,7 @@ static int receive_data(struct sd_channel *c, uint8_t *out, size_t len)
 
     while (received != len) {
         ret = recv(c->fd, out + received, len - received, 0);
-        if (ret < 0) {
+        if (ret <= 0) {
             return -1;
         }
 
@@ -424,14 +424,14 @@ int sd_channel_relay(struct sd_channel *channel, int nfds, ...)
                 sd_log(LOG_LEVEL_VERBOSE, "Channel closed, stopping relay");
                 return 0;
             } else if (received < 0) {
-                sd_log(LOG_LEVEL_ERROR, "Error relaying data from channel");
+                sd_log(LOG_LEVEL_ERROR, "Error relaying data from channel: %s", strerror(errno));
                 return -1;
             }
 
             written = 0;
             while (written != received) {
                 ret = write(infd, buf + written, received - written);
-                if (ret < 0) {
+                if (ret <= 0) {
                     sd_log(LOG_LEVEL_ERROR, "Error relaying data to fd: %s", strerror(errno));
                     return -1;
                 }
