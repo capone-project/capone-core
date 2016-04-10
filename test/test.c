@@ -17,6 +17,7 @@
 
 #include <string.h>
 
+#include "lib/common.h"
 #include "lib/log.h"
 
 #include "test.h"
@@ -26,8 +27,17 @@ extern int channel_test_run_suite(void);
 extern int server_test_run_suite(void);
 extern int service_test_run_suite(void);
 
+static int (*suite_fns[])(void) = {
+    cfg_test_run_suite,
+    channel_test_run_suite,
+    server_test_run_suite,
+    service_test_run_suite,
+};
+
 int main(int argc, char *argv[])
 {
+    size_t i, failed, failed_tests = 0, failed_suites = 0;
+
     if (argc != 1 && (argc == 2 && strcmp(argv[1], "--verbose"))) {
         printf("USAGE: %s [--verbose]", argv[0]);
         return -1;
@@ -38,12 +48,19 @@ int main(int argc, char *argv[])
     else
         sd_log_set_level(LOG_LEVEL_NONE);
 
-    if (cfg_test_run_suite() < 0 ||
-            channel_test_run_suite() < 0 ||
-            server_test_run_suite() < 0 ||
-            service_test_run_suite() < 0)
-    {
-        return -1;
+    for (i = 0; i < ARRAY_SIZE(suite_fns); i++) {
+        failed = suite_fns[i]();
+
+        if (failed != 0) {
+            failed_tests += failed;
+            failed_suites++;
+        }
+    }
+
+    if (failed_suites) {
+        printf("[========]\n[  FAILED  ] %lu/%lu test suite(s) failed\n",
+                failed_suites, ARRAY_SIZE(suite_fns));
+        printf("[  FAILED  ] %lu test(s) failed\n", failed_tests);
     }
 
     return 0;
