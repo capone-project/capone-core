@@ -34,7 +34,7 @@ static void usage(const char *prog)
     printf("USAGE: %s (request|connect)\n"
             "\tquery <CONFIG> <KEY> <HOST> <PORT>\n"
             "\trequest <CONFIG> <KEY> <HOST> <PORT> [<PARAMETER>...]\n"
-            "\tconnect <CONFIG> <KEY> <HOST> <PORT> <SERVICE> <SESSIONID> <TOKEN>\n", prog);
+            "\tconnect <CONFIG> <KEY> <HOST> <PORT> <SERVICE> <SESSIONID>\n", prog);
     exit(-1);
 }
 
@@ -103,7 +103,6 @@ static int cmd_query(int argc, char *argv[])
 
 static int cmd_request(int argc, char *argv[])
 {
-    char sessionkey_hex[crypto_secretbox_KEYBYTES * 2 + 1];
     const char *config, *key, *host, *port;
     struct sd_service_parameter *params;
     struct sd_service_session session;
@@ -140,15 +139,12 @@ static int cmd_request(int argc, char *argv[])
         return -1;
     }
 
-    if (sd_proto_send_request(&session, &channel, params, nparams) < 0) {
+    if (sd_proto_send_request(&session, &channel, &local_keys.pk, params, nparams) < 0) {
         puts("Unable to request session");
         return -1;
     }
 
-    sodium_bin2hex(sessionkey_hex, sizeof(sessionkey_hex),
-            session.session_key.data, sizeof(session.session_key.data));
-    printf("sessionkey: %s\n"
-           "sessionid:  %"PRIu32"\n", sessionkey_hex, session.sessionid);
+    printf("sessionid:  %"PRIu32"\n", session.sessionid);
 
     sd_channel_close(&channel);
 
@@ -157,7 +153,7 @@ static int cmd_request(int argc, char *argv[])
 
 static int cmd_connect(int argc, char *argv[])
 {
-    const char *config, *key, *host, *port, *service_type, *session, *token;
+    const char *config, *key, *host, *port, *service_type, *session;
     struct sd_sign_key_public remote_key;
     struct sd_service service;
     struct sd_channel channel;
@@ -172,7 +168,6 @@ static int cmd_connect(int argc, char *argv[])
     port = argv[5];
     service_type = argv[6];
     session = argv[7];
-    token = argv[8];
 
     if (sd_sign_key_pair_from_config_file(&local_keys, config) < 0) {
         puts("Could not parse config");
@@ -200,7 +195,7 @@ static int cmd_connect(int argc, char *argv[])
         return -1;
     }
 
-    if (sd_proto_initiate_session(&channel, token, sessionid) < 0) {
+    if (sd_proto_initiate_session(&channel, sessionid) < 0) {
         puts("Could not connect to session");
         return -1;
     }

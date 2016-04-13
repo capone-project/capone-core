@@ -64,7 +64,10 @@ static int parameters(const struct sd_service_parameter **out)
     return ARRAY_SIZE(params);
 }
 
-static int request_capability(struct sd_channel *channel, const CapabilityRequest *request, const struct cfg *cfg)
+static int relay_capability_request(struct sd_channel *channel,
+        const struct sd_sign_key_public *requester_key,
+        const CapabilityRequest *request,
+        const struct cfg *cfg)
 {
     Capability cap = CAPABILITY__INIT;
     char *host = NULL, *port = NULL;
@@ -117,16 +120,14 @@ static int request_capability(struct sd_channel *channel, const CapabilityReques
         sd_log(LOG_LEVEL_ERROR, "Unable to initiate connection type to remote service");
         goto out;
     }
-    if ((ret = sd_proto_send_request(&session, &service_channel, params, request->n_parameters)) < 0) {
+    if ((ret = sd_proto_send_request(&session, &service_channel, requester_key,
+                    params, request->n_parameters)) < 0)
+    {
         sd_log(LOG_LEVEL_ERROR, "Unable to send request to remote service");
         goto out;
     }
 
     cap.sessionid = session.sessionid;
-    cap.sessionkey.data = session.session_key.data;
-    cap.sessionkey.len = sizeof(session.session_key.data);
-    cap.identity.data = local_keys.pk.data;
-    cap.identity.len = sizeof(local_keys.pk.data);
     cap.service.data = remote_key.data;
     cap.service.len = sizeof(remote_key.data);
     if ((ret = sd_channel_write_protobuf(channel, &cap.base)) < 0) {
@@ -147,7 +148,8 @@ out:
 static int invoke_register(struct sd_channel *channel, int argc, char **argv)
 {
     CapabilityRequest *request;
-    struct sd_sign_key_hex identity, service;
+    struct sd_sign_key_hex requester, service;
+    struct sd_sign_key_public requester_key;
     struct cfg cfg;
     size_t i;
 
@@ -169,7 +171,9 @@ static int invoke_register(struct sd_channel *channel, int argc, char **argv)
             return -1;
         }
 
-        if (sd_sign_key_hex_from_bin(&identity,
+        if (sd_sign_key_public_from_bin(&requester_key,
+                    request->requester.data, request->requester.len) < 0 ||
+                sd_sign_key_hex_from_bin(&requester,
                     request->requester.data, request->requester.len) < 0 ||
                 sd_sign_key_hex_from_bin(&service,
                     request->service.data, request->service.len) < 0)
@@ -178,7 +182,7 @@ static int invoke_register(struct sd_channel *channel, int argc, char **argv)
             return -1;
         }
 
-        printf("request from %s\n        service: %s\n", identity.data, service.data);
+        printf("request from %s\n        service: %s\n", requester.data, service.data);
         for (i = 0; i < request->n_parameters; i++) {
             CapabilityRequest__Parameter *param = request->parameters[i];
 
@@ -193,10 +197,10 @@ static int invoke_register(struct sd_channel *channel, int argc, char **argv)
             c = getchar();
 
             if (c == 'y') {
-                if (request_capability(channel, request, &cfg) < 0)
+                if (relay_capability_request(channel, &requester_key, request, &cfg) < 0)
                     sd_log(LOG_LEVEL_ERROR, "Unable to relay capability");
                 else
-                    printf("Accepted capability request from %s\n", identity.data);
+                    printf("Accepted capability request from %s\n", requester.data);
 
                 break;
             } else if (c == 'n') {

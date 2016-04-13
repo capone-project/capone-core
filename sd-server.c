@@ -204,7 +204,7 @@ int main(int argc, char *argv[])
                 sd_log(LOG_LEVEL_DEBUG, "Received request");
 
                 if (sd_proto_answer_request(&session,
-                            &channel, whitelistkeys, nwhitelistkeys) < 0)
+                            &channel, &remote_key, whitelistkeys, nwhitelistkeys) < 0)
                 {
                     sd_log(LOG_LEVEL_ERROR, "Received invalid request");
                 } else {
@@ -216,7 +216,7 @@ int main(int argc, char *argv[])
                 break;
             case SD_CONNECTION_TYPE_CONNECT:
                 sd_log(LOG_LEVEL_DEBUG, "Received connect");
-                sd_proto_handle_session(&channel, &service, sessions, &cfg);
+                sd_proto_handle_session(&channel, &remote_key, &service, sessions, &cfg);
                 break;
             default:
                 sd_log(LOG_LEVEL_ERROR, "Unknown connection envelope type %d", type);

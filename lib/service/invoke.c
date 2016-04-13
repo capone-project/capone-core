@@ -60,7 +60,7 @@ static int handle(struct sd_channel *channel,
         const struct cfg *cfg)
 {
     const char *service_identity, *service_address, *service_type,
-          *service_port, *sessionid_string, *sessionkey;
+          *service_port, *sessionid_string;
     const char **service_params = NULL;
     struct sd_service service;
     struct sd_sign_key_pair local_keys;
@@ -81,14 +81,12 @@ static int handle(struct sd_channel *channel,
             "service-type", session->parameters, session->nparameters);
     sd_service_parameters_get_value(&sessionid_string,
             "sessionid", session->parameters, session->nparameters);
-    sd_service_parameters_get_value(&sessionkey,
-            "sessionkey", session->parameters, session->nparameters);
 
     nparams = sd_service_parameters_get_values(&service_params,
             "service-args", session->parameters, session->nparameters);
 
     if (service_identity == NULL || service_address == NULL || service_type == NULL
-            || service_port == NULL || sessionid_string == NULL || sessionkey == NULL)
+            || service_port == NULL || sessionid_string == NULL)
     {
         sd_log(LOG_LEVEL_ERROR, "Not all parameters were set");
         goto out;
@@ -120,7 +118,7 @@ static int handle(struct sd_channel *channel,
         goto out;
     }
 
-    if (sd_proto_initiate_session(&remote_channel, sessionkey, sessionid) < 0) {
+    if (sd_proto_initiate_session(&remote_channel, sessionid) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Could not connect to session");
         goto out;
     }

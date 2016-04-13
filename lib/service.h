@@ -32,7 +32,6 @@ struct sd_service_parameter {
 
 struct sd_service_session {
     uint32_t sessionid;
-    struct sd_symmetric_key session_key;
     struct sd_sign_key_public identity;
 
     struct sd_service_parameter *parameters;

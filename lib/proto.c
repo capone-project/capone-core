@@ -253,10 +253,9 @@ int sd_proto_initiate_encryption(struct sd_channel *channel,
     return 0;
 }
 
-int sd_proto_initiate_session(struct sd_channel *channel, const char *sessionkey, int sessionid)
+int sd_proto_initiate_session(struct sd_channel *channel, int sessionid)
 {
     SessionInitiationMessage initiation = SESSION_INITIATION_MESSAGE__INIT;
-    struct sd_symmetric_key key;
 
     initiation.sessionid = sessionid;
     if (sd_channel_write_protobuf(channel, &initiation.base) < 0 ) {
@@ -264,20 +263,11 @@ int sd_proto_initiate_session(struct sd_channel *channel, const char *sessionkey
         return -1;
     }
 
-    if (sd_symmetric_key_from_hex(&key, sessionkey) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not retrieve symmetric key");
-        return -1;
-    }
-
-    if (sd_channel_enable_encryption(channel, &key, 0) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not enable symmetric encryption");
-        return -1;
-    }
-
     return 0;
 }
 
 int sd_proto_handle_session(struct sd_channel *channel,
+        const struct sd_sign_key_public *remote_key,
         struct sd_service *service,
         struct sd_service_session *sessions,
         struct cfg *cfg)
@@ -294,7 +284,8 @@ int sd_proto_handle_session(struct sd_channel *channel,
     }
 
     for (session = sessions; session; session = session->next) {
-        if (session->sessionid == initiation->sessionid)
+        if (session->sessionid == initiation->sessionid &&
+                memcmp(remote_key->data, session->identity.data, sizeof(remote_key->data)) == 0)
             break;
         prev = session;
     }
@@ -309,11 +300,6 @@ int sd_proto_handle_session(struct sd_channel *channel,
         sessions = session->next;
     else
         prev->next = session->next;
-
-    if (sd_channel_enable_encryption(channel, &session->session_key, 1) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not enable symmetric encryption");
-        return -1;
-    }
 
     session->next = NULL;
     args.cfg = cfg;
@@ -330,6 +316,7 @@ int sd_proto_handle_session(struct sd_channel *channel,
 
 int sd_proto_send_request(struct sd_service_session *out,
         struct sd_channel *channel,
+        const struct sd_sign_key_public *requester,
         const struct sd_service_parameter *params, size_t nparams)
 {
     SessionRequestMessage request = SESSION_REQUEST_MESSAGE__INIT;
@@ -337,6 +324,9 @@ int sd_proto_send_request(struct sd_service_session *out,
     size_t i;
 
     memset(out, 0, sizeof(struct sd_service_session));
+
+    request.identity.data = (uint8_t *) requester->data;
+    request.identity.len = sizeof(requester->data);
 
     if (nparams) {
         Parameter **parameters = malloc(sizeof(Parameter *) * nparams);
@@ -370,10 +360,9 @@ int sd_proto_send_request(struct sd_service_session *out,
         sd_log(LOG_LEVEL_ERROR, "Unable to receive session");
         return -1;
     }
-    assert(session->sessionkey.len == crypto_secretbox_KEYBYTES);
 
     out->sessionid = session->sessionid;
-    memcpy(&out->session_key, session->sessionkey.data, session->sessionkey.len);
+    memcpy(out->identity.data, requester->data, sizeof(out->identity.data));
 
     return 0;
 }
@@ -530,39 +519,34 @@ int sd_proto_answer_query(struct sd_channel *channel,
 
 int sd_proto_answer_request(struct sd_service_session **out,
         struct sd_channel *channel,
+        const struct sd_sign_key_public *remote_key,
         const struct sd_sign_key_public *whitelist,
         size_t nwhitelist)
 {
     SessionRequestMessage *request;
     SessionMessage session_message = SESSION_MESSAGE__INIT;
-    struct sd_sign_key_public remote_sign_key;
-    struct sd_symmetric_key session_key;
+    struct sd_sign_key_public identity_key;
+    struct sd_sign_key_hex identity_hex;
     struct sd_service_parameter *params;
     struct sd_service_session *session;
 
-    if (!is_whitelisted(&remote_sign_key, whitelist, nwhitelist)) {
+    if (!is_whitelisted(remote_key, whitelist, nwhitelist)) {
         sd_log(LOG_LEVEL_ERROR, "Received connection from unknown signature key");
         return -1;
     }
 
     if (sd_channel_receive_protobuf(channel,
             &session_request_message__descriptor,
-            (ProtobufCMessage **) &request) < 0) {
+            (ProtobufCMessage **) &request) < 0)
+    {
         sd_log(LOG_LEVEL_ERROR, "Unable to receive request");
         return -1;
     }
 
-    if (sd_symmetric_key_generate(&session_key) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Unable to generate sesson session_key");
-        return -1;
-    }
-
-    session_message.sessionkey.data = session_key.data;
-    session_message.sessionkey.len = sizeof(session_key.data);
-    session_message.sessionid = randombytes_random();
-
-    if (sd_channel_write_protobuf(channel, &session_message.base) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Unable to send connection session");
+    if (sd_sign_key_public_from_bin(&identity_key,
+                request->identity.data, request->identity.len) < 0)
+    {
+        sd_log(LOG_LEVEL_ERROR, "Unable to parse identity key");
         return -1;
     }
 
@@ -572,13 +556,23 @@ int sd_proto_answer_request(struct sd_service_session **out,
     }
     session_request_message__free_unpacked(request, NULL);
 
+    session_message.sessionid = randombytes_random();
+
+    if (sd_channel_write_protobuf(channel, &session_message.base) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Unable to send connection session");
+        return -1;
+    }
+
     session = malloc(sizeof(struct sd_service_session));
     session->sessionid = session_message.sessionid;
     session->parameters = params;
     session->nparameters = request->n_parameters;
-    memcpy(session->session_key.data, session_key.data, sizeof(session_key.data));
-    memcpy(session->identity.data, remote_sign_key.data, sizeof(session->identity.data));
+    memcpy(session->identity.data, identity_key.data, sizeof(session->identity.data));
     session->next = NULL;
+
+    sd_sign_key_hex_from_key(&identity_hex, &identity_key);
+    sd_log(LOG_LEVEL_DEBUG, "Created session %lu for %s", session_message.sessionid,
+            identity_hex.data);
 
     *out = session;
 
