@@ -105,7 +105,7 @@ static int cmd_request(int argc, char *argv[])
 {
     const char *config, *key, *host, *port;
     struct sd_service_parameter *params;
-    struct sd_service_session session;
+    struct sd_session session;
     struct sd_channel channel;
     int nparams;
 

@@ -50,12 +50,11 @@ int sd_proto_answer_query(struct sd_channel *channel,
         const struct sd_sign_key_public *whitelist,
         size_t nwhitelist);
 
-int sd_proto_send_request(struct sd_service_session *out,
+int sd_proto_send_request(struct sd_session *out,
         struct sd_channel *channel,
         const struct sd_sign_key_public *requester,
         const struct sd_service_parameter *params, size_t nparams);
-int sd_proto_answer_request(struct sd_service_session **out,
-        struct sd_channel *channel,
+int sd_proto_answer_request(struct sd_channel *channel,
         const struct sd_sign_key_public *remote_key,
         const struct sd_sign_key_public *whitelist,
         size_t nwhitelist);
@@ -64,7 +63,6 @@ int sd_proto_initiate_session(struct sd_channel *channel, int sessionid);
 int sd_proto_handle_session(struct sd_channel *channel,
         const struct sd_sign_key_public *remote_key,
         struct sd_service *service,
-        struct sd_service_session *sessions,
         struct cfg *cfg);
 
 #endif

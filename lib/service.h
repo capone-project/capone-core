@@ -20,6 +20,7 @@
 
 #include "lib/cfg.h"
 #include "lib/keys.h"
+#include "lib/session.h"
 
 struct sd_channel;
 
@@ -30,18 +31,8 @@ struct sd_service_parameter {
     const char **values;
 };
 
-struct sd_service_session {
-    uint32_t sessionid;
-    struct sd_sign_key_public identity;
-
-    struct sd_service_parameter *parameters;
-    size_t nparameters;
-
-    struct sd_service_session *next;
-};
-
 typedef int (*invoke_fn)(struct sd_channel *channel, int argc, char **argv);
-typedef int (*handle_fn)(struct sd_channel *channel, const struct sd_service_session *session, const struct cfg *cfg);
+typedef int (*handle_fn)(struct sd_channel *channel, const struct sd_session *session, const struct cfg *cfg);
 typedef int (*parameters_fn)(const struct sd_service_parameter **out);
 typedef const char *(*version_fn)(void);
 

@@ -22,7 +22,8 @@ LIBRARY_SOURCES=lib/cfg.c \
 				lib/service/exec.c \
 				lib/service/invoke.c \
 				lib/service/x2x.c \
-				lib/service/xpra.c
+				lib/service/xpra.c \
+				lib/session.c
 LIBRARY_HEADERS=$(patsubst %.c,%.h,${LIBRARY_SOURCES})
 LIBRARY_OBJECTS=$(patsubst %.c,%.o,${LIBRARY_SOURCES})
 

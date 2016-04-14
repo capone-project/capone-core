@@ -35,8 +35,6 @@ static uint32_t nwhitelistkeys;
 static struct sd_sign_key_pair local_keys;
 static struct sd_service service;
 
-static struct sd_service_session *sessions = NULL;
-
 static int read_whitelist(struct sd_sign_key_public **out, const char *file)
 {
     struct sd_sign_key_public *keys = NULL;
@@ -147,6 +145,11 @@ int main(int argc, char *argv[])
         return -1;
     }
 
+    if (sd_sessions_init() < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Could not initialize sessions");
+        return -1;
+    }
+
     if (sd_service_from_config(&service, servicename, &cfg) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Could not parse services");
         return -1;
@@ -169,7 +172,6 @@ int main(int argc, char *argv[])
 
     while (1) {
         enum sd_connection_type type;
-        struct sd_service_session *session;
         struct sd_sign_key_public remote_key;
 
         if (sd_server_accept(&server, &channel) < 0) {
@@ -203,20 +205,17 @@ int main(int argc, char *argv[])
             case SD_CONNECTION_TYPE_REQUEST:
                 sd_log(LOG_LEVEL_DEBUG, "Received request");
 
-                if (sd_proto_answer_request(&session,
-                            &channel, &remote_key, whitelistkeys, nwhitelistkeys) < 0)
+                if (sd_proto_answer_request(&channel, &remote_key,
+                            whitelistkeys, nwhitelistkeys) < 0)
                 {
                     sd_log(LOG_LEVEL_ERROR, "Received invalid request");
-                } else {
-                    session->next = sessions;
-                    sessions = session;
                 }
 
                 sd_channel_close(&channel);
                 break;
             case SD_CONNECTION_TYPE_CONNECT:
                 sd_log(LOG_LEVEL_DEBUG, "Received connect");
-                sd_proto_handle_session(&channel, &remote_key, &service, sessions, &cfg);
+                sd_proto_handle_session(&channel, &remote_key, &service, &cfg);
                 break;
             default:
                 sd_log(LOG_LEVEL_ERROR, "Unknown connection envelope type %d", type);

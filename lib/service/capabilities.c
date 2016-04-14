@@ -75,7 +75,7 @@ static int relay_capability_request(struct sd_channel *channel,
     struct sd_channel service_channel;
     struct sd_sign_key_pair local_keys;
     struct sd_sign_key_public remote_key;
-    struct sd_service_session session;
+    struct sd_session session;
     struct sd_service_parameter *params = NULL;
     size_t i;
     int ret = 0;
@@ -267,7 +267,7 @@ static int invoke(struct sd_channel *channel, int argc, char **argv)
 }
 
 static int handle_register(struct sd_channel *channel,
-        const struct sd_service_session *session)
+        const struct sd_session *session)
 {
     int n;
 
@@ -286,7 +286,7 @@ static int handle_register(struct sd_channel *channel,
 }
 
 static int handle_request(struct sd_channel *channel,
-        const struct sd_service_session *session)
+        const struct sd_session *session)
 {
     CapabilityRequest request = CAPABILITY_REQUEST__INIT;
     Capability *capability;
@@ -362,7 +362,7 @@ static int handle_request(struct sd_channel *channel,
 }
 
 static int handle(struct sd_channel *channel,
-        const struct sd_service_session *session,
+        const struct sd_session *session,
         const struct cfg *cfg)
 {
     const char *mode;

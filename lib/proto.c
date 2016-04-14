@@ -20,6 +20,7 @@
 #include "lib/common.h"
 #include "lib/channel.h"
 #include "lib/log.h"
+#include "lib/session.h"
 
 #include "proto/connect.pb-c.h"
 
@@ -29,7 +30,7 @@ struct service_args {
     struct cfg *cfg;
     struct sd_service *service;
     struct sd_channel *channel;
-    struct sd_service_session *session;
+    struct sd_session *session;
 };
 
 static int is_whitelisted(const struct sd_sign_key_public *key,
@@ -136,11 +137,10 @@ int sd_proto_initiate_session(struct sd_channel *channel, int sessionid)
 int sd_proto_handle_session(struct sd_channel *channel,
         const struct sd_sign_key_public *remote_key,
         struct sd_service *service,
-        struct sd_service_session *sessions,
         struct cfg *cfg)
 {
     SessionInitiationMessage *initiation;
-    struct sd_service_session *session, *prev = NULL;
+    struct sd_session session;
     struct service_args args;
 
     if (sd_channel_receive_protobuf(channel,
@@ -150,38 +150,23 @@ int sd_proto_handle_session(struct sd_channel *channel,
         return -1;
     }
 
-    for (session = sessions; session; session = session->next) {
-        if (session->sessionid == initiation->sessionid &&
-                memcmp(remote_key->data, session->identity.data, sizeof(remote_key->data)) == 0)
-            break;
-        prev = session;
-    }
-    session_initiation_message__free_unpacked(initiation, NULL);
-
-    if (session == NULL) {
+    if (sd_sessions_remove(&session, initiation->sessionid, remote_key) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Could not find session for client");
         return -1;
     }
 
-    if (prev == NULL)
-        sessions = session->next;
-    else
-        prev->next = session->next;
-
-    session->next = NULL;
     args.cfg = cfg;
     args.channel = channel;
-    args.session = session;
+    args.session = &session;
     args.service = service;
     spawn(handle_service, &args);
 
-    sd_service_parameters_free(session->parameters, session->nparameters);
-    free(session);
+    sd_session_free(&session);
 
     return 0;
 }
 
-int sd_proto_send_request(struct sd_service_session *out,
+int sd_proto_send_request(struct sd_session *out,
         struct sd_channel *channel,
         const struct sd_sign_key_public *requester,
         const struct sd_service_parameter *params, size_t nparams)
@@ -190,7 +175,7 @@ int sd_proto_send_request(struct sd_service_session *out,
     SessionMessage *session;
     size_t i;
 
-    memset(out, 0, sizeof(struct sd_service_session));
+    memset(out, 0, sizeof(struct sd_session));
 
     request.identity.data = (uint8_t *) requester->data;
     request.identity.len = sizeof(requester->data);
@@ -324,8 +309,7 @@ int sd_proto_answer_query(struct sd_channel *channel,
     return 0;
 }
 
-int sd_proto_answer_request(struct sd_service_session **out,
-        struct sd_channel *channel,
+int sd_proto_answer_request(struct sd_channel *channel,
         const struct sd_sign_key_public *remote_key,
         const struct sd_sign_key_public *whitelist,
         size_t nwhitelist)
@@ -333,9 +317,7 @@ int sd_proto_answer_request(struct sd_service_session **out,
     SessionRequestMessage *request;
     SessionMessage session_message = SESSION_MESSAGE__INIT;
     struct sd_sign_key_public identity_key;
-    struct sd_sign_key_hex identity_hex;
     struct sd_service_parameter *params;
-    struct sd_service_session *session;
 
     if (!is_whitelisted(remote_key, whitelist, nwhitelist)) {
         sd_log(LOG_LEVEL_ERROR, "Received connection from unknown signature key");
@@ -370,18 +352,7 @@ int sd_proto_answer_request(struct sd_service_session **out,
         return -1;
     }
 
-    session = malloc(sizeof(struct sd_service_session));
-    session->sessionid = session_message.sessionid;
-    session->parameters = params;
-    session->nparameters = request->n_parameters;
-    memcpy(session->identity.data, identity_key.data, sizeof(session->identity.data));
-    session->next = NULL;
-
-    sd_sign_key_hex_from_key(&identity_hex, &identity_key);
-    sd_log(LOG_LEVEL_DEBUG, "Created session %lu for %s", session_message.sessionid,
-            identity_hex.data);
-
-    *out = session;
+    sd_sessions_add(session_message.sessionid, &identity_key, params, request->n_parameters);
 
     return 0;
 }

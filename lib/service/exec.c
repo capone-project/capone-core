@@ -94,7 +94,7 @@ static void exec(const char *cmd,
 }
 
 static int handle(struct sd_channel *channel,
-        const struct sd_service_session *session,
+        const struct sd_session *session,
         const struct cfg *cfg)
 {
     const char *cmd, **args = NULL, **envs = NULL;
