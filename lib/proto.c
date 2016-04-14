@@ -26,19 +26,11 @@
 
 #include "proto.h"
 
-struct service_args {
-    struct cfg *cfg;
-    struct sd_service *service;
-    struct sd_channel *channel;
-    struct sd_session session;
-};
-
 static int is_whitelisted(const struct sd_sign_key_public *key,
         const struct sd_sign_key_public *whitelist,
         size_t nwhitelist);
 static int convert_params(struct sd_service_parameter **out,
         const SessionRequestMessage *msg);
-static void *handle_service(void *payload);
 
 int sd_proto_initiate_connection(struct sd_channel *channel,
         const char *host,
@@ -136,12 +128,11 @@ int sd_proto_initiate_session(struct sd_channel *channel, int sessionid)
 
 int sd_proto_handle_session(struct sd_channel *channel,
         const struct sd_sign_key_public *remote_key,
-        struct sd_service *service,
-        struct cfg *cfg)
+        const struct sd_service *service,
+        const struct cfg *cfg)
 {
     SessionInitiationMessage *initiation;
     struct sd_session session;
-    struct service_args *args;
 
     if (sd_channel_receive_protobuf(channel,
                 &session_initiation_message__descriptor,
@@ -155,13 +146,12 @@ int sd_proto_handle_session(struct sd_channel *channel,
         return -1;
     }
 
-    args = malloc(sizeof(struct service_args));
-    args->cfg = cfg;
-    args->channel = channel;
-    args->service = service;
-    memcpy(&args->session, &session, sizeof(session));
+    if (service->handle(channel, &session, cfg) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Service could not handle connection");
+        return -1;
+    }
 
-    sd_spawn(NULL, handle_service, args);
+    sd_session_free(&session);
 
     return 0;
 }
@@ -399,20 +389,4 @@ static int convert_params(struct sd_service_parameter **out, const SessionReques
     *out = params;
 
     return 0;
-}
-
-static void *handle_service(void *payload)
-{
-    struct service_args *args = (struct service_args *) payload;
-
-    if (args->service->handle(args->channel, &args->session, args->cfg) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Service could not handle connection");
-        return NULL;
-    }
-
-    sd_channel_close(args->channel);
-    sd_session_free(&args->session);
-    free(payload);
-
-    return NULL;
 }

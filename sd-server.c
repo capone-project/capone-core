@@ -29,6 +29,11 @@
 #include "lib/server.h"
 #include "lib/service.h"
 
+struct handle_connection_args {
+    const struct cfg *cfg;
+    struct sd_channel channel;
+};
+
 static struct sd_sign_key_public *whitelistkeys;
 static uint32_t nwhitelistkeys;
 
@@ -104,69 +109,72 @@ static int setup_signals(void)
     return 0;
 }
 
-static void handle_connection(struct cfg *cfg, struct sd_channel *channel)
+static void *handle_connection(void *payload)
 {
-    enum sd_connection_type type;
+    struct handle_connection_args *args = (struct handle_connection_args *) payload;
     struct sd_sign_key_public remote_key;
+    enum sd_connection_type type;
 
-    if (sd_proto_await_encryption(channel, &local_keys, &remote_key) < 0) {
+    if (sd_proto_await_encryption(&args->channel, &local_keys, &remote_key) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Unable to negotiate encryption");
-        sd_channel_close(channel);
-        return;
+        sd_channel_close(&args->channel);
+        goto out;
     }
 
-    if (sd_proto_receive_connection_type(&type, channel) < 0) {
+    if (sd_proto_receive_connection_type(&type, &args->channel) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Could not receive connection type");
-        sd_channel_close(channel);
-        return;
+        sd_channel_close(&args->channel);
+        goto out;
     }
 
     switch (type) {
         case SD_CONNECTION_TYPE_QUERY:
             sd_log(LOG_LEVEL_DEBUG, "Received query");
 
-            if (sd_proto_answer_query(channel,
+            if (sd_proto_answer_query(&args->channel,
                         &service, whitelistkeys, nwhitelistkeys) < 0)
             {
                 sd_log(LOG_LEVEL_ERROR, "Received invalid query");
             }
 
-            sd_channel_close(channel);
-            return;
+            sd_channel_close(&args->channel);
+            goto out;
         case SD_CONNECTION_TYPE_REQUEST:
             sd_log(LOG_LEVEL_DEBUG, "Received request");
 
-            if (sd_proto_answer_request(channel, &remote_key,
+            if (sd_proto_answer_request(&args->channel, &remote_key,
                         whitelistkeys, nwhitelistkeys) < 0)
             {
                 sd_log(LOG_LEVEL_ERROR, "Received invalid request");
             }
 
-            sd_channel_close(channel);
-            return;
+            sd_channel_close(&args->channel);
+            goto out;
         case SD_CONNECTION_TYPE_CONNECT:
             sd_log(LOG_LEVEL_DEBUG, "Received connect");
 
-            if (sd_proto_handle_session(channel, &remote_key, &service, cfg) < 0)
+            if (sd_proto_handle_session(&args->channel, &remote_key, &service, args->cfg) < 0)
             {
                 sd_log(LOG_LEVEL_ERROR, "Received invalid connect");
-                sd_channel_close(channel);
             }
 
-            /* channel is being closed by the session handler */
-            return;
+            sd_channel_close(&args->channel);
+            goto out;
         default:
             sd_log(LOG_LEVEL_ERROR, "Unknown connection envelope type %d", type);
-            sd_channel_close(channel);
-            return;
+            sd_channel_close(&args->channel);
+            goto out;
     }
+
+out:
+    free(payload);
+    return NULL;
 }
 
 int main(int argc, char *argv[])
 {
     const char *servicename;
     struct sd_server server;
-    struct sd_channel channel;
     struct cfg cfg;
     int ret;
 
@@ -229,12 +237,16 @@ int main(int argc, char *argv[])
     }
 
     while (1) {
-        if (sd_server_accept(&server, &channel) < 0) {
+        struct handle_connection_args *args = malloc(sizeof(*args));;
+
+        if (sd_server_accept(&server, &args->channel) < 0) {
             sd_log(LOG_LEVEL_ERROR, "Could not accept connection");
             return -1;
         }
 
-        handle_connection(&cfg, &channel);
+        args->cfg = &cfg;
+
+        sd_spawn(NULL, handle_connection, args);
     }
 
     sd_server_close(&server);
