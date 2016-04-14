@@ -200,7 +200,8 @@ int sd_channel_connect(struct sd_channel *c)
 
 static int write_data(struct sd_channel *c, uint8_t *data, uint32_t datalen)
 {
-    ssize_t ret, written = 0;
+    ssize_t ret;
+    uint32_t written = 0;
 
     while (written != datalen) {
         switch (c->type) {
