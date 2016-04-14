@@ -87,7 +87,7 @@ enum line_type {
     LINE_TYPE_EMPTY,
     LINE_TYPE_SECTION,
     LINE_TYPE_CONFIG,
-    LINE_TYPE_INVALID,
+    LINE_TYPE_INVALID
 };
 
 static int parse_section(char *section, size_t maxlen, const char *line, size_t len)

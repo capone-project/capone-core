@@ -23,7 +23,7 @@ enum log_level {
     LOG_LEVEL_VERBOSE,
     LOG_LEVEL_WARNING,
     LOG_LEVEL_ERROR,
-    LOG_LEVEL_NONE,
+    LOG_LEVEL_NONE
 };
 
 void sd_log(enum log_level lvl, const char *msgformat, ...);

@@ -293,7 +293,7 @@ static int handle_request(struct sd_channel *channel,
 
     const char *remote_entity_hex, *remote_service_hex;
     struct sd_sign_key_public remote_identity, remote_service;
-    struct registrant *registrant;
+    struct registrant *registrant = NULL;
     int i, n;
 
     sd_service_parameters_get_value(&remote_entity_hex, "request-for-identity", session->parameters, session->nparameters);
@@ -309,6 +309,8 @@ static int handle_request(struct sd_channel *channel,
     }
 
     sem_wait(&semaphore);
+    n = registrants->nregistrants;
+
     for (i = 0; i < n; i++) {
         if (sd_channel_is_closed(&registrants->registrants[i].channel)) {
             memmove(&registrants->registrants[i], &registrants->registrants[i + 1], (n - i - 1) * sizeof(struct registrant));
@@ -318,8 +320,7 @@ static int handle_request(struct sd_channel *channel,
         }
     }
 
-    n = registrants->nregistrants;
-    for (i = 0; i < registrants->nregistrants; i++) {
+    for (i = 0; i < n; i++) {
         if (!memcmp(registrants->registrants[i].identity.data, remote_identity.data, sizeof(remote_identity.data))) {
             registrant = &registrants->registrants[i];
             break;

@@ -228,4 +228,6 @@ int main(int argc, char *argv[])
         return cmd_connect(argc, argv);
 
     usage(argv[0]);
+
+    return 0;
 }

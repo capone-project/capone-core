@@ -43,7 +43,7 @@ void sd_log(enum log_level lvl, const char *msgformat, ...)
 
     t = time(NULL);
     tm = localtime(&t);
-    strftime(date, sizeof(date), "%T", tm);
+    strftime(date, sizeof(date), "%H:%M:%S", tm);
 
     va_start(ap, msgformat);
     vsnprintf(msg, sizeof(msg), msgformat, ap);

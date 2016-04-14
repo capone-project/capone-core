@@ -33,17 +33,17 @@ typedef size_t (size_fn)(const void *protobuf);
 
 enum sd_channel_type {
     SD_CHANNEL_TYPE_UDP,
-    SD_CHANNEL_TYPE_TCP,
+    SD_CHANNEL_TYPE_TCP
 };
 
 enum sd_channel_crypto {
     SD_CHANNEL_CRYPTO_NONE,
-    SD_CHANNEL_CRYPTO_SYMMETRIC,
+    SD_CHANNEL_CRYPTO_SYMMETRIC
 };
 
 enum sd_channel_nonce {
     SD_CHANNEL_NONCE_CLIENT,
-    SD_CHANNEL_NONCE_SERVER,
+    SD_CHANNEL_NONCE_SERVER
 };
 
 struct sd_channel {

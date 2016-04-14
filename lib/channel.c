@@ -167,7 +167,7 @@ int sd_channel_close(struct sd_channel *c)
 
 bool sd_channel_is_closed(struct sd_channel *c)
 {
-    struct timeval tv = { .0 };
+    struct timeval tv = { 0, 0 };
     fd_set fds;
     int n = 0;
 

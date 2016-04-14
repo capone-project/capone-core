@@ -24,7 +24,7 @@
 enum sd_connection_type {
     SD_CONNECTION_TYPE_QUERY,
     SD_CONNECTION_TYPE_CONNECT,
-    SD_CONNECTION_TYPE_REQUEST,
+    SD_CONNECTION_TYPE_REQUEST
 };
 
 int sd_proto_initiate_connection(struct sd_channel *channel,
