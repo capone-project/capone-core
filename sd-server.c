@@ -111,12 +111,14 @@ static void handle_connection(struct cfg *cfg, struct sd_channel *channel)
 
     if (sd_proto_await_encryption(channel, &local_keys, &remote_key) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Unable to negotiate encryption");
-        goto out;
+        sd_channel_close(channel);
+        return;
     }
 
     if (sd_proto_receive_connection_type(&type, channel) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Could not receive connection type");
-        goto out;
+        sd_channel_close(channel);
+        return;
     }
 
     switch (type) {
@@ -127,9 +129,10 @@ static void handle_connection(struct cfg *cfg, struct sd_channel *channel)
                         &service, whitelistkeys, nwhitelistkeys) < 0)
             {
                 sd_log(LOG_LEVEL_ERROR, "Received invalid query");
-                goto out;
             }
-            break;
+
+            sd_channel_close(channel);
+            return;
         case SD_CONNECTION_TYPE_REQUEST:
             sd_log(LOG_LEVEL_DEBUG, "Received request");
 
@@ -137,24 +140,26 @@ static void handle_connection(struct cfg *cfg, struct sd_channel *channel)
                         whitelistkeys, nwhitelistkeys) < 0)
             {
                 sd_log(LOG_LEVEL_ERROR, "Received invalid request");
-                goto out;
             }
-            break;
+
+            sd_channel_close(channel);
+            return;
         case SD_CONNECTION_TYPE_CONNECT:
             sd_log(LOG_LEVEL_DEBUG, "Received connect");
+
             if (sd_proto_handle_session(channel, &remote_key, &service, cfg) < 0)
             {
                 sd_log(LOG_LEVEL_ERROR, "Received invalid connect");
-                goto out;
+                sd_channel_close(channel);
             }
-            break;
+
+            /* channel is being closed by the session handler */
+            return;
         default:
             sd_log(LOG_LEVEL_ERROR, "Unknown connection envelope type %d", type);
-            goto out;
+            sd_channel_close(channel);
+            return;
     }
-
-out:
-    sd_channel_close(channel);
 }
 
 int main(int argc, char *argv[])

@@ -30,7 +30,7 @@ struct service_args {
     struct cfg *cfg;
     struct sd_service *service;
     struct sd_channel *channel;
-    struct sd_session *session;
+    struct sd_session session;
 };
 
 static int is_whitelisted(const struct sd_sign_key_public *key,
@@ -38,7 +38,7 @@ static int is_whitelisted(const struct sd_sign_key_public *key,
         size_t nwhitelist);
 static int convert_params(struct sd_service_parameter **out,
         const SessionRequestMessage *msg);
-static void handle_service(void *payload);
+static void *handle_service(void *payload);
 
 int sd_proto_initiate_connection(struct sd_channel *channel,
         const char *host,
@@ -141,7 +141,7 @@ int sd_proto_handle_session(struct sd_channel *channel,
 {
     SessionInitiationMessage *initiation;
     struct sd_session session;
-    struct service_args args;
+    struct service_args *args;
 
     if (sd_channel_receive_protobuf(channel,
                 &session_initiation_message__descriptor,
@@ -155,13 +155,13 @@ int sd_proto_handle_session(struct sd_channel *channel,
         return -1;
     }
 
-    args.cfg = cfg;
-    args.channel = channel;
-    args.session = &session;
-    args.service = service;
-    spawn(handle_service, &args);
+    args = malloc(sizeof(struct service_args));
+    args->cfg = cfg;
+    args->channel = channel;
+    args->service = service;
+    memcpy(&args->session, &session, sizeof(session));
 
-    sd_session_free(&session);
+    sd_spawn(NULL, handle_service, args);
 
     return 0;
 }
@@ -401,14 +401,18 @@ static int convert_params(struct sd_service_parameter **out, const SessionReques
     return 0;
 }
 
-static void handle_service(void *payload)
+static void *handle_service(void *payload)
 {
     struct service_args *args = (struct service_args *) payload;
 
-    if (args->service->handle(args->channel, args->session, args->cfg) < 0) {
+    if (args->service->handle(args->channel, &args->session, args->cfg) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Service could not handle connection");
-        exit(-1);
+        return NULL;
     }
 
-    exit(0);
+    sd_channel_close(args->channel);
+    sd_session_free(&args->session);
+    free(payload);
+
+    return NULL;
 }

@@ -37,7 +37,7 @@
 
 static struct sd_sign_key_pair local_keys;
 
-static void probe(void *payload)
+static void *probe(void *payload)
 {
     DiscoverMessage msg = DISCOVER_MESSAGE__INIT;
     struct sd_channel channel;
@@ -67,6 +67,8 @@ static void probe(void *payload)
 
 out:
     sd_channel_close(&channel);
+
+    return NULL;
 }
 
 static void handle_announce()
@@ -121,7 +123,7 @@ out:
 
 int main(int argc, char *argv[])
 {
-    int pid;
+    struct sd_thread t;
 
     if (sodium_init() < 0) {
         return -1;
@@ -137,11 +139,10 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    pid = spawn(probe, NULL);
+    sd_spawn(&t, probe, NULL);
     handle_announce();
 
-    kill(pid, SIGTERM);
-    waitpid(-1, NULL, 0);
+    sd_kill(&t);
 
     return 0;
 }

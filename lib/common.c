@@ -27,21 +27,16 @@
 
 #include "common.h"
 
-int spawn(thread_fn fn, void *payload)
+int sd_spawn(struct sd_thread *t, thread_fn fn, void *payload)
 {
-    int pid = fork();
+    pthread_t stub;
 
-    if (pid == 0) {
-        /* child */
-        fn(payload);
-        exit(0);
-    } else if (pid > 0) {
-        /* parent */
-        return pid;
-    } else {
-        printf("Could not spawn function: %s\n", strerror(errno));
-        return -1;
-    }
+    return pthread_create(t ? &t->t : &stub, NULL, fn, payload);
+}
+
+int sd_kill(struct sd_thread *t)
+{
+    return pthread_cancel(t->t);
 }
 
 int parse_uint32t(uint32_t *out, const char *num)

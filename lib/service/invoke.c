@@ -47,10 +47,9 @@ static int parameters(const struct sd_service_parameter **out)
 
 static int invoke(struct sd_channel *channel, int argc, char **argv)
 {
-    sd_channel_close(channel);
-
     UNUSED(argc);
     UNUSED(argv);
+    UNUSED(channel);
 
     return 0;
 }
@@ -69,7 +68,7 @@ static int handle(struct sd_channel *channel,
     uint32_t sessionid;
     size_t nparams;
 
-    sd_channel_close(channel);
+    UNUSED(channel);
 
     sd_service_parameters_get_value(&service_identity,
             "service-identity", session->parameters, session->nparameters);
@@ -130,7 +129,6 @@ static int handle(struct sd_channel *channel,
 
 out:
     free(service_params);
-    sd_channel_close(&remote_channel);
     return 0;
 }
 

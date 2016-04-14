@@ -53,7 +53,6 @@ static int invoke(struct sd_channel *channel, int argc, char **argv)
 
     port = argv[1];
 
-
     if (sd_channel_init_from_host(&xpra_channel, "127.0.0.1", port, SD_CHANNEL_TYPE_TCP) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Could not initialize local xpra channel");
         return -1;
