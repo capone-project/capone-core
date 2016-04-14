@@ -56,7 +56,7 @@ int sd_sessions_init(void)
     return 0;
 }
 
-int sd_sessions_add(int sessionid,
+int sd_sessions_add(uint32_t sessionid,
         const struct sd_sign_key_public *identity,
         struct sd_service_parameter *params,
         size_t nparams)
