@@ -107,6 +107,9 @@ int sd_sessions_remove(struct sd_session *out,
         if (s->sessionid == sessionid &&
                 memcmp(s->identity.data, identity->data, sizeof(identity->data)) == 0)
         {
+            memcpy(out, &sessions->sessions[i], sizeof(*out));
+            memset(&sessions->sessions[i], 0, sizeof(sessions->sessions[i]));
+
             sessions->used[i] = 0;
             break;
         }
@@ -118,9 +121,6 @@ int sd_sessions_remove(struct sd_session *out,
         sd_log(LOG_LEVEL_ERROR, "Session not found");
         return -1;
     }
-
-    memcpy(out, &sessions->sessions[i], sizeof(*out));
-    memset(&sessions->sessions[i], 0, sizeof(sessions->sessions[i]));
 
     return 0;
 }
