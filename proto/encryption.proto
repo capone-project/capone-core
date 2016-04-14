@@ -1,9 +1,11 @@
-message SessionKeyMessage {
+message SignedKey {
     required bytes signature = 1;
     required bytes sign_pk = 2;
     required bytes encrypt_pk = 3;
 }
 
-message EphemeralKeySignatureMessage {
+message SignedKeys {
     required bytes signature = 1;
+    required bytes sender_pk = 2;
+    required bytes receiver_pk = 3;
 }
