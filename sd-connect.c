@@ -66,8 +66,10 @@ static int parse_params(struct sd_service_parameter **out, int argc, char *argv[
 
 static int cmd_query(int argc, char *argv[])
 {
+    struct sd_query_results results;
     struct sd_channel channel;
     char *config, *key, *host, *port;
+    size_t i, j;
 
     if (argc != 6)
         usage(argv[0]);
@@ -93,9 +95,36 @@ static int cmd_query(int argc, char *argv[])
         return -1;
     }
 
-    if (sd_proto_send_query(&channel, &remote_key) < 0)
+    if (sd_proto_send_query(&results, &channel) < 0) {
+        puts("Could not query service");
         return -1;
+    }
 
+    printf("%s\n"
+            "\tname:     %s\n"
+            "\tcategory: %s\n"
+            "\ttype:     %s\n"
+            "\tversion:  %s\n"
+            "\tlocation: %s\n"
+            "\tport:     %s\n",
+            key,
+            results.name,
+            results.category,
+            results.type,
+            results.version,
+            results.location,
+            results.port);
+
+    for (i = 0; i < results.nparams; i++) {
+        struct sd_service_parameter *param = &results.params[i];
+
+        printf("\tparam:    %s\n", param->key);
+
+        for (j = 0; j < param->nvalues; j++)
+            printf("\t          %s\n", param->values[j]);
+    }
+
+    sd_query_results_free(&results);
     sd_channel_close(&channel);
 
     return 0;

@@ -27,6 +27,17 @@ enum sd_connection_type {
     SD_CONNECTION_TYPE_REQUEST
 };
 
+struct sd_query_results {
+    char *name;
+    char *category;
+    char *type;
+    char *version;
+    char *location;
+    char *port;
+    struct sd_service_parameter *params;
+    size_t nparams;
+};
+
 int sd_proto_initiate_connection(struct sd_channel *channel,
         const char *host,
         const char *port,
@@ -43,12 +54,13 @@ int sd_proto_await_encryption(struct sd_channel *channel,
         const struct sd_sign_key_pair *sign_keys,
         struct sd_sign_key_public *remote_sign_key);
 
-int sd_proto_send_query(struct sd_channel *channel,
-        struct sd_sign_key_public *remote_key);
+int sd_proto_send_query(struct sd_query_results *out,
+        struct sd_channel *channel);
 int sd_proto_answer_query(struct sd_channel *channel,
         const struct sd_service *service,
         const struct sd_sign_key_public *whitelist,
         size_t nwhitelist);
+void sd_query_results_free(struct sd_query_results *results);
 
 int sd_proto_send_request(struct sd_session *out,
         struct sd_channel *channel,

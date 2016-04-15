@@ -30,7 +30,8 @@ static int is_whitelisted(const struct sd_sign_key_public *key,
         const struct sd_sign_key_public *whitelist,
         size_t nwhitelist);
 static int convert_params(struct sd_service_parameter **out,
-        const SessionRequestMessage *msg);
+        Parameter **params,
+        size_t nparams);
 
 int sd_proto_initiate_connection(struct sd_channel *channel,
         const char *host,
@@ -209,46 +210,37 @@ int sd_proto_send_request(struct sd_session *out,
     return 0;
 }
 
-int sd_proto_send_query(struct sd_channel *channel,
-        struct sd_sign_key_public *remote_key)
+int sd_proto_send_query(struct sd_query_results *out,
+        struct sd_channel *channel)
 {
-    QueryResults *result;
-    char pk[crypto_sign_PUBLICKEYBYTES * 2 + 1];
-    size_t i, j;
+    QueryResults *msg;
+    struct sd_query_results results;
 
     if (sd_channel_receive_protobuf(channel, &query_results__descriptor,
-            (ProtobufCMessage **) &result) < 0) {
+            (ProtobufCMessage **) &msg) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Could not receive query results");
         return -1;
     }
 
-    sodium_bin2hex(pk, sizeof(pk),
-            remote_key->data, sizeof(remote_key->data));
+    results.name = msg->name;
+    msg->name = NULL;
+    results.category = msg->category;
+    msg->category = NULL;
+    results.type = msg->type;
+    msg->type = NULL;
+    results.version = msg->version;
+    msg->version = NULL;
+    results.location = msg->location;
+    msg->location = NULL;
+    results.port = msg->port;
+    msg->port = NULL;
 
-    printf("%s\n"
-           "\tname:     %s\n"
-           "\tcategory: %s\n"
-           "\ttype:     %s\n"
-           "\tversion:  %s\n"
-           "\tlocation: %s\n"
-           "\tport:     %s\n",
-           pk,
-           result->name,
-           result->category,
-           result->type,
-           result->version,
-           result->location,
-           result->port);
+    convert_params(&results.params, msg->parameters, msg->n_parameters);
+    results.nparams = msg->n_parameters;
 
-    for (i = 0; i < result->n_parameters; i++) {
-        Parameter *param = result->parameters[i];
-        printf("\tparam:    %s\n", param->key);
+    query_results__free_unpacked(msg, NULL);
 
-        for (j = 0; j < param->n_values; j++)
-            printf("\t          %s\n", param->values[j]);
-    }
-
-    query_results__free_unpacked(result, NULL);
+    memcpy(out, &results, sizeof(*out));
 
     return 0;
 }
@@ -299,6 +291,11 @@ int sd_proto_answer_query(struct sd_channel *channel,
     return 0;
 }
 
+void sd_query_results_free(struct sd_query_results *results)
+{
+    sd_service_parameters_free(results->params, results->nparams);
+}
+
 int sd_proto_answer_request(struct sd_channel *channel,
         const struct sd_sign_key_public *remote_key,
         const struct sd_sign_key_public *whitelist,
@@ -329,7 +326,7 @@ int sd_proto_answer_request(struct sd_channel *channel,
         return -1;
     }
 
-    if (convert_params(&params, request) < 0) {
+    if (convert_params(&params, request->parameters, request->n_parameters) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Unable to convert parameters");
         return -1;
     }
@@ -366,16 +363,17 @@ static int is_whitelisted(const struct sd_sign_key_public *key,
     return 0;
 }
 
-static int convert_params(struct sd_service_parameter **out, const SessionRequestMessage *msg)
+static int convert_params(struct sd_service_parameter **out,
+        Parameter **parameters, size_t nparams)
 {
     struct sd_service_parameter *params;
     size_t i, j;
 
     *out = NULL;
 
-    params = malloc(sizeof(struct sd_service_parameter) * msg->n_parameters);
-    for (i = 0; i < msg->n_parameters; i++) {
-        Parameter *msgparam = msg->parameters[i];
+    params = malloc(sizeof(struct sd_service_parameter) * nparams);
+    for (i = 0; i < nparams; i++) {
+        Parameter *msgparam = parameters[i];
 
         params[i].key = strdup(msgparam->key);
         params[i].values = malloc(sizeof(char *) * msgparam->n_values);
