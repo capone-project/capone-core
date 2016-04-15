@@ -39,6 +39,11 @@ int sd_kill(struct sd_thread *t)
     return pthread_cancel(t->t);
 }
 
+int sd_join(struct sd_thread *t, void **out)
+{
+    return pthread_join(t->t, out);
+}
+
 int parse_uint32t(uint32_t *out, const char *num)
 {
     int saved_errno;

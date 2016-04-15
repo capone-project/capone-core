@@ -34,6 +34,7 @@ struct sd_thread {
 
 int sd_spawn(struct sd_thread *t, thread_fn fn, void *payload);
 int sd_kill(struct sd_thread *t);
+int sd_join(struct sd_thread *t, void **out);
 
 int parse_uint32t(uint32_t *out, const char *num);
 

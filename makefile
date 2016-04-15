@@ -40,6 +40,7 @@ EXECUTABLES_LDFLAGS=${LDFLAGS} $(shell pkg-config --libs ${EXECUTABLES_LIBS})
 TEST_SOURCES=test/test.c \
 			 test/cfg.c \
 			 test/channel.c \
+			 test/proto.c \
 			 test/service.c \
 			 test/server.c
 TEST_OBJECTS=$(patsubst %.c,%.o,${TEST_SOURCES})
