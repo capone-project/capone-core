@@ -42,6 +42,7 @@ TEST_SOURCES=test/test.c \
 			 test/cfg.c \
 			 test/channel.c \
 			 test/proto.c \
+			 test/session.c \
 			 test/service.c \
 			 test/server.c
 TEST_OBJECTS=$(patsubst %.c,%.o,${TEST_SOURCES})

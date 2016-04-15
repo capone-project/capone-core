@@ -27,12 +27,14 @@ extern int channel_test_run_suite(void);
 extern int server_test_run_suite(void);
 extern int service_test_run_suite(void);
 extern int proto_test_run_suite(void);
+extern int session_test_run_suite(void);
 
 static int (*suite_fns[])(void) = {
     cfg_test_run_suite,
     channel_test_run_suite,
     server_test_run_suite,
     service_test_run_suite,
+    session_test_run_suite,
     proto_test_run_suite
 };
 
