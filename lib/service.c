@@ -26,6 +26,7 @@
 #include "lib/service/capabilities.h"
 #include "lib/service/exec.h"
 #include "lib/service/invoke.h"
+#include "lib/service/test.h"
 #include "lib/service/x2x.h"
 #include "lib/service/xpra.h"
 
@@ -41,6 +42,8 @@ static int fill_service(struct sd_service *service, const char *type)
         return sd_xpra_init_service(service);
     if (!strcmp(type, "x2x"))
         return sd_x2x_init_service(service);
+    if (!strcmp(type, "test"))
+        return sd_test_init_service(service);
 
     return -1;
 }

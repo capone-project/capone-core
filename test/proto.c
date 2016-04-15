@@ -197,13 +197,13 @@ static void query_succeeds()
     sd_join(&t, NULL);
 
     assert_string_equal(results.name, "Foo");
-    assert_string_equal(results.type, "xpra");
-    assert_string_equal(results.category, "Display");
+    assert_string_equal(results.type, "test");
+    assert_string_equal(results.category, "Test");
     assert_string_equal(results.location, "Dunno");
     assert_string_equal(results.port, "1234");
     assert_string_equal(results.version, "0.0.1");
     assert_int_equal(results.nparams, 1);
-    assert_string_equal(results.params[0].key, "port");
+    assert_string_equal(results.params[0].key, "test");
 }
 
 static void whitelisted_query_succeeds()
@@ -313,7 +313,7 @@ int proto_test_run_suite(void)
     static const char *service_cfg =
         "[service]\n"
         "name=Foo\n"
-        "type=xpra\n"
+        "type=test\n"
         "location=Dunno\n"
         "port=1234\n";
 

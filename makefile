@@ -21,6 +21,7 @@ LIBRARY_SOURCES=lib/cfg.c \
 				lib/service/capabilities.c \
 				lib/service/exec.c \
 				lib/service/invoke.c \
+				lib/service/test.c \
 				lib/service/x2x.c \
 				lib/service/xpra.c \
 				lib/session.c
