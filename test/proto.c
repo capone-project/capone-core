@@ -34,6 +34,14 @@ struct await_encryption_args {
 struct await_query_args {
     struct await_encryption_args enc_args;
     struct sd_service *s;
+    struct sd_sign_key_public *whitelist;
+    size_t nwhitelist;
+};
+
+struct send_query_args {
+    struct sd_channel *c;
+    struct sd_sign_key_pair *k;
+    struct sd_sign_key_public *r;
 };
 
 static struct cfg config;
@@ -78,7 +86,22 @@ static void *await_query(void *payload)
 
     await_encryption(&args->enc_args);
 
-    assert_success(sd_proto_answer_query(args->enc_args.c, args->s, NULL, 0));
+    assert_success(sd_proto_answer_query(args->enc_args.c, args->s,
+                args->whitelist, args->nwhitelist));
+
+    return NULL;
+}
+
+static void *send_query(void *payload)
+{
+    struct send_query_args *args = (struct send_query_args *) payload;
+    struct sd_query_results results;
+
+    assert_success(sd_proto_initiate_encryption(args->c,
+                args->k, args->r));
+    assert_success(sd_proto_send_query(&results, args->c));
+
+    sd_query_results_free(&results);
 
     return NULL;
 }
@@ -101,19 +124,33 @@ static void encryption_initiation_succeeds()
     assert_memory_equal(local.remote_nonce, remote.local_nonce, sizeof(local.local_nonce));
 }
 
+static void encryption_initiation_fails_with_wrong_remote_key()
+{
+    struct sd_thread t;
+    struct await_encryption_args args = {
+        &remote, &remote_keys
+    };
+
+    sd_spawn(&t, await_encryption, &args);
+    /* Use wrong remote key */
+    assert_failure(sd_proto_initiate_encryption(&local,
+                &local_keys, &local_keys.pk));
+    sd_channel_close(&local);
+    sd_kill(&t);
+}
+
 static void query_succeeds()
 {
     struct sd_thread t;
     struct await_query_args args = {
-        { &remote, &remote_keys }, &service
+        { &remote, &remote_keys }, &service, NULL, 0
     };
     struct sd_query_results results;
 
     sd_spawn(&t, await_query, &args);
     assert_success(sd_proto_initiate_encryption(&local,
                 &local_keys, &remote_keys.pk));
-    assert_success(sd_proto_send_query(&results,
-                &local));
+    assert_success(sd_proto_send_query(&results, &local));
     sd_join(&t, NULL);
 
     assert_string_equal(results.name, "Foo");
@@ -124,6 +161,39 @@ static void query_succeeds()
     assert_string_equal(results.version, "0.0.1");
     assert_int_equal(results.nparams, 1);
     assert_string_equal(results.params[0].key, "port");
+}
+
+static void whitelisted_query_succeeds()
+{
+    struct await_query_args args = {
+        { &remote, &remote_keys }, &service, &local_keys.pk, 1
+    };
+    struct sd_thread t;
+    struct sd_query_results results;
+
+    sd_spawn(&t, await_query, &args);
+    assert_success(sd_proto_initiate_encryption(&local,
+                &local_keys, &remote_keys.pk));
+    assert_success(sd_proto_send_query(&results, &local));
+    sd_join(&t, NULL);
+
+    sd_query_results_free(&results);
+}
+
+static void blacklisted_query_fails()
+{
+    /* Add remote key as whitelisted key only */
+    struct send_query_args args = {
+        &local, &local_keys, &remote_keys.pk
+    };
+    struct sd_thread t;
+    struct sd_sign_key_public remote_sign_key;
+
+    sd_spawn(&t, send_query, &args);
+    assert_success(sd_proto_await_encryption(&remote,
+                &remote_keys, &remote_sign_key));
+    assert_failure(sd_proto_answer_query(&remote, &service, &remote_keys.pk, 1));
+    sd_kill(&t);
 }
 
 int proto_test_run_suite(void)
@@ -137,7 +207,10 @@ int proto_test_run_suite(void)
 
     const struct CMUnitTest tests[] = {
         test(encryption_initiation_succeeds),
-        test(query_succeeds)
+        test(encryption_initiation_fails_with_wrong_remote_key),
+        test(query_succeeds),
+        test(whitelisted_query_succeeds),
+        test(blacklisted_query_fails)
     };
 
     assert_success(cfg_parse_string(&config, service_cfg, strlen(service_cfg)));
