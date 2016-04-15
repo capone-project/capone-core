@@ -247,16 +247,16 @@ int sd_proto_send_query(struct sd_query_results *out,
 
 int sd_proto_answer_query(struct sd_channel *channel,
         const struct sd_service *service,
+        const struct sd_sign_key_public *remote_key,
         const struct sd_sign_key_public *whitelist,
         size_t nwhitelist)
 {
     QueryResults results = QUERY_RESULTS__INIT;
     Parameter **parameters;
     const struct sd_service_parameter *params;
-    struct sd_sign_key_public remote_key;
     int i, n;
 
-    if (!is_whitelisted(&remote_key, whitelist, nwhitelist)) {
+    if (!is_whitelisted(remote_key, whitelist, nwhitelist)) {
         sd_log(LOG_LEVEL_ERROR, "Received connection from unknown signature key");
         return -1;
     }

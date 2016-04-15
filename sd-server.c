@@ -129,8 +129,8 @@ static void *handle_connection(void *payload)
         case SD_CONNECTION_TYPE_QUERY:
             sd_log(LOG_LEVEL_DEBUG, "Received query");
 
-            if (sd_proto_answer_query(&args->channel,
-                        &service, whitelistkeys, nwhitelistkeys) < 0)
+            if (sd_proto_answer_query(&args->channel, &service,
+                        &remote_key, whitelistkeys, nwhitelistkeys) < 0)
             {
                 sd_log(LOG_LEVEL_ERROR, "Received invalid query");
             }

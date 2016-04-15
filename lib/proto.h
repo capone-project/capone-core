@@ -58,6 +58,7 @@ int sd_proto_send_query(struct sd_query_results *out,
         struct sd_channel *channel);
 int sd_proto_answer_query(struct sd_channel *channel,
         const struct sd_service *service,
+        const struct sd_sign_key_public *remote_key,
         const struct sd_sign_key_public *whitelist,
         size_t nwhitelist);
 void sd_query_results_free(struct sd_query_results *results);
