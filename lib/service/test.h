@@ -18,3 +18,5 @@
 struct sd_service;
 
 int sd_test_init_service(struct sd_service *service);
+
+uint8_t *sd_test_service_get_data(void);

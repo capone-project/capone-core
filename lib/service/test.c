@@ -15,10 +15,15 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <string.h>
+
 #include "lib/common.h"
+#include "lib/channel.h"
 #include "lib/service.h"
 
 #include "test.h"
+
+static uint8_t buf[1024];
 
 static const char *version(void)
 {
@@ -37,20 +42,20 @@ static int parameters(const struct sd_service_parameter **out)
 
 static int invoke(struct sd_channel *channel, int argc, char **argv)
 {
-    UNUSED(channel);
     UNUSED(argc);
     UNUSED(argv);
-    return 0;
+    return sd_channel_receive_data(channel, buf, sizeof(buf));
 }
 
 static int handle(struct sd_channel *channel,
         const struct sd_session *session,
         const struct cfg *cfg)
 {
-    UNUSED(channel);
-    UNUSED(session);
     UNUSED(cfg);
-    return 0;
+
+    return sd_channel_write_data(channel,
+            (uint8_t *) session->parameters[0].values[0],
+            strlen(session->parameters[0].values[0]));
 }
 
 int sd_test_init_service(struct sd_service *service)
@@ -62,4 +67,9 @@ int sd_test_init_service(struct sd_service *service)
     service->parameters = parameters;
 
     return 0;
+}
+
+uint8_t *sd_test_service_get_data(void)
+{
+    return buf;
 }

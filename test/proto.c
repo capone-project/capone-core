@@ -23,6 +23,8 @@
 #include "lib/service.h"
 #include "lib/session.h"
 
+#include "lib/service/test.h"
+
 #include "test.h"
 
 extern void stub_sockets(struct sd_channel *local, struct sd_channel *remote);
@@ -46,6 +48,13 @@ struct await_request_args {
     struct sd_sign_key_public *r;
     struct sd_sign_key_public *whitelist;
     size_t nwhitelist;
+};
+
+struct handle_session_args {
+    struct await_encryption_args enc_args;
+    struct sd_sign_key_public *remote_key;
+    struct sd_service *service;
+    struct cfg *cfg;
 };
 
 struct send_query_args {
@@ -119,6 +128,18 @@ static void *await_request(void *payload)
 
     assert_success(sd_proto_answer_request(args->enc_args.c,
                 args->r, args->whitelist, args->nwhitelist));
+
+    return NULL;
+}
+
+static void *handle_session(void *payload)
+{
+    struct handle_session_args *args = (struct handle_session_args *) payload;
+
+    await_encryption(&args->enc_args);
+
+    assert_success(sd_proto_handle_session(args->enc_args.c,
+                args->remote_key, args->service, args->cfg));
 
     return NULL;
 }
@@ -308,6 +329,36 @@ static void blacklisted_request_fails()
     sd_kill(&t);
 }
 
+static void service_connects()
+{
+    struct sd_service_parameter *params;
+    struct handle_session_args args = {
+        { &remote, &remote_keys }, &local_keys.pk, &service, &config
+    };
+    struct sd_thread t;
+    uint8_t *received;
+    char *data = "parameter-data";
+
+    params = malloc(sizeof(struct sd_service_parameter));
+    params[0].key = "data";
+    params[0].values = malloc(sizeof(char *));
+    params[0].values[0] = strdup(data);
+
+    sd_spawn(&t, handle_session, &args);
+
+    assert_success(sd_sessions_add(1, &local_keys.pk,
+                params, ARRAY_SIZE(params)));
+    assert_success(sd_proto_initiate_encryption(&local, &local_keys,
+                &remote_keys.pk));
+    assert_success(sd_proto_initiate_session(&local, 1));
+    assert_success(service.invoke(&local, 0, NULL) < 0);
+
+    sd_join(&t, NULL);
+
+    received = sd_test_service_get_data();
+    assert_string_equal(data, received);
+}
+
 int proto_test_run_suite(void)
 {
     static const char *service_cfg =
@@ -325,7 +376,8 @@ int proto_test_run_suite(void)
         test(blacklisted_query_fails),
         test(request_constructs_session),
         test(whitlisted_request_constructs_session),
-        test(blacklisted_request_fails)
+        test(blacklisted_request_fails),
+        test(service_connects)
     };
 
     assert_success(sd_sessions_init());
