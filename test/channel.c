@@ -49,8 +49,10 @@ void stub_sockets(struct sd_channel *local, struct sd_channel *remote)
     local->fd = sockets[0];
     remote->fd = sockets[1];
 
-    getsockname(sockets[0], (struct sockaddr *) &local->addr, &addrlen);
-    getsockname(sockets[1], (struct sockaddr *) &remote->addr, &addrlen);
+    assert_success(getsockname(sockets[0],
+                (struct sockaddr *) &local->addr, &addrlen));
+    assert_success(getsockname(sockets[1],
+                (struct sockaddr *) &remote->addr, &addrlen));
 }
 
 static int setup()
