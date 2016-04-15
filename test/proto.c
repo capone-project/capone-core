@@ -20,6 +20,7 @@
 #include "lib/channel.h"
 #include "lib/common.h"
 #include "lib/proto.h"
+#include "lib/service.h"
 
 #include "test.h"
 
@@ -30,6 +31,13 @@ struct await_encryption_args {
     struct sd_sign_key_pair *k;
 };
 
+struct await_query_args {
+    struct await_encryption_args enc_args;
+    struct sd_service *s;
+};
+
+static struct cfg config;
+static struct sd_service service;
 static struct sd_channel local, remote;
 static struct sd_sign_key_pair local_keys, remote_keys;
 
@@ -64,6 +72,17 @@ static void *await_encryption(void *payload)
     return NULL;
 }
 
+static void *await_query(void *payload)
+{
+    struct await_query_args *args = (struct await_query_args *) payload;
+
+    await_encryption(&args->enc_args);
+
+    assert_success(sd_proto_answer_query(args->enc_args.c, args->s, NULL, 0));
+
+    return NULL;
+}
+
 static void encryption_initiation_succeeds()
 {
     struct sd_thread t;
@@ -82,11 +101,47 @@ static void encryption_initiation_succeeds()
     assert_memory_equal(local.remote_nonce, remote.local_nonce, sizeof(local.local_nonce));
 }
 
+static void query_succeeds()
+{
+    struct sd_thread t;
+    struct await_query_args args = {
+        { &remote, &remote_keys }, &service
+    };
+    struct sd_query_results results;
+
+    sd_spawn(&t, await_query, &args);
+    assert_success(sd_proto_initiate_encryption(&local,
+                &local_keys, &remote_keys.pk));
+    assert_success(sd_proto_send_query(&results,
+                &local));
+    sd_join(&t, NULL);
+
+    assert_string_equal(results.name, "Foo");
+    assert_string_equal(results.type, "xpra");
+    assert_string_equal(results.category, "Display");
+    assert_string_equal(results.location, "Dunno");
+    assert_string_equal(results.port, "1234");
+    assert_string_equal(results.version, "0.0.1");
+    assert_int_equal(results.nparams, 1);
+    assert_string_equal(results.params[0].key, "port");
+}
+
 int proto_test_run_suite(void)
 {
+    static const char *service_cfg =
+        "[service]\n"
+        "name=Foo\n"
+        "type=xpra\n"
+        "location=Dunno\n"
+        "port=1234\n";
+
     const struct CMUnitTest tests[] = {
-        test(encryption_initiation_succeeds)
+        test(encryption_initiation_succeeds),
+        test(query_succeeds)
     };
+
+    assert_success(cfg_parse_string(&config, service_cfg, strlen(service_cfg)));
+    assert_success(sd_service_from_config(&service, "Foo", &config));
 
     assert_success(sd_sign_key_pair_generate(&local_keys));
     assert_success(sd_sign_key_pair_generate(&remote_keys));
