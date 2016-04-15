@@ -139,6 +139,15 @@ int sd_sessions_remove(struct sd_session *out,
     return 0;
 }
 
+int sd_sessions_clear(void)
+{
+    sem_wait(&semaphore);
+    memset(sessions->used, 0, sizeof(sessions->used));
+    memset(sessions->sessions, 0, sizeof(sessions->sessions));
+    sem_post(&semaphore);
+    return 0;
+}
+
 void sd_session_free(struct sd_session *session)
 {
     sd_service_parameters_free(session->parameters, session->nparameters);
