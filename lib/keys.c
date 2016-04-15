@@ -22,6 +22,11 @@
 
 #include "keys.h"
 
+int sd_sign_key_pair_generate(struct sd_sign_key_pair *out)
+{
+    return crypto_sign_ed25519_keypair(out->pk.data, out->sk.data);
+}
+
 int sd_sign_key_pair_from_config(struct sd_sign_key_pair *out, const struct cfg *cfg)
 {
     uint8_t sign_pk[crypto_sign_PUBLICKEYBYTES],

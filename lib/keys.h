@@ -54,6 +54,7 @@ struct sd_symmetric_key_hex {
     char data[crypto_secretbox_KEYBYTES * 2 + 1];
 };
 
+int sd_sign_key_pair_generate(struct sd_sign_key_pair *out);
 int sd_sign_key_pair_from_config(struct sd_sign_key_pair *out, const struct cfg *cfg);
 int sd_sign_key_pair_from_config_file(struct sd_sign_key_pair *out, const char *file);
 int sd_sign_key_public_from_hex(struct sd_sign_key_public *out, const char *hex);

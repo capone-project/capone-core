@@ -20,23 +20,26 @@
 #include <sodium.h>
 
 #include "lib/common.h"
+#include "lib/keys.h"
 
 int main(int argc, char *argv[])
 {
-    unsigned char pk[crypto_sign_ed25519_PUBLICKEYBYTES],
-                  sk[crypto_sign_ed25519_SECRETKEYBYTES];
-    char pkhex[sizeof(pk) * 2 + 1],
-         skhex[sizeof(sk) * 2 + 1];
+    struct sd_sign_key_pair keys;
+    char pkhex[sizeof(keys.pk.data) * 2 + 1],
+         skhex[sizeof(keys.sk.data) * 2 + 1];
 
     if (argc > 1) {
         printf("USAGE: %s\n", argv[0]);
         return -1;
     }
 
-    crypto_sign_ed25519_keypair(pk, sk);
+    if (sd_sign_key_pair_generate(&keys) < 0) {
+        puts("Error generating key pair");
+        return -1;
+    }
 
-    sodium_bin2hex(pkhex, sizeof(pkhex), pk, sizeof(pk));
-    sodium_bin2hex(skhex, sizeof(skhex), sk, sizeof(sk));
+    sodium_bin2hex(pkhex, sizeof(pkhex), keys.pk.data, sizeof(keys.pk.data));
+    sodium_bin2hex(skhex, sizeof(skhex), keys.sk.data, sizeof(keys.sk.data));
 
     printf("Public key:\t%s\n"
            "Private key:\t%s\n",
