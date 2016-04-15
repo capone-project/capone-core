@@ -21,6 +21,7 @@
 #include "lib/common.h"
 #include "lib/proto.h"
 #include "lib/service.h"
+#include "lib/session.h"
 
 #include "test.h"
 
@@ -34,6 +35,15 @@ struct await_encryption_args {
 struct await_query_args {
     struct await_encryption_args enc_args;
     struct sd_service *s;
+    struct sd_sign_key_public *r;
+    struct sd_sign_key_public *whitelist;
+    size_t nwhitelist;
+};
+
+struct await_request_args {
+    struct await_encryption_args enc_args;
+    struct sd_service *s;
+    struct sd_sign_key_public *r;
     struct sd_sign_key_public *whitelist;
     size_t nwhitelist;
 };
@@ -44,10 +54,19 @@ struct send_query_args {
     struct sd_sign_key_public *r;
 };
 
+struct send_request_args {
+    struct sd_channel *channel;
+    struct sd_sign_key_pair *channel_key;
+    struct sd_sign_key_public *remote_key;
+    struct sd_service_parameter *params;
+    size_t nparams;
+};
+
 static struct cfg config;
 static struct sd_service service;
 static struct sd_channel local, remote;
 static struct sd_sign_key_pair local_keys, remote_keys;
+static struct sd_sign_key_public dummy_whitelist;
 
 static int setup()
 {
@@ -87,7 +106,19 @@ static void *await_query(void *payload)
     await_encryption(&args->enc_args);
 
     assert_success(sd_proto_answer_query(args->enc_args.c, args->s,
-                args->whitelist, args->nwhitelist));
+                args->r, args->whitelist, args->nwhitelist));
+
+    return NULL;
+}
+
+static void *await_request(void *payload)
+{
+    struct await_request_args *args = (struct await_request_args *) payload;
+
+    await_encryption(&args->enc_args);
+
+    assert_success(sd_proto_answer_request(args->enc_args.c,
+                args->r, args->whitelist, args->nwhitelist));
 
     return NULL;
 }
@@ -102,6 +133,19 @@ static void *send_query(void *payload)
     assert_success(sd_proto_send_query(&results, args->c));
 
     sd_query_results_free(&results);
+
+    return NULL;
+}
+
+static void *send_request(void *payload)
+{
+    struct send_request_args *args = (struct send_request_args *) payload;
+    struct sd_session session;
+
+    assert_success(sd_proto_initiate_encryption(args->channel,
+                args->channel_key, args->remote_key));
+    assert_success(sd_proto_send_request(&session, args->channel, args->remote_key,
+                args->params, args->nparams));
 
     return NULL;
 }
@@ -132,7 +176,6 @@ static void encryption_initiation_fails_with_wrong_remote_key()
     };
 
     sd_spawn(&t, await_encryption, &args);
-    /* Use wrong remote key */
     assert_failure(sd_proto_initiate_encryption(&local,
                 &local_keys, &local_keys.pk));
     sd_channel_close(&local);
@@ -143,7 +186,7 @@ static void query_succeeds()
 {
     struct sd_thread t;
     struct await_query_args args = {
-        { &remote, &remote_keys }, &service, NULL, 0
+        { &remote, &remote_keys }, &service, &local_keys.pk, NULL, 0
     };
     struct sd_query_results results;
 
@@ -166,7 +209,7 @@ static void query_succeeds()
 static void whitelisted_query_succeeds()
 {
     struct await_query_args args = {
-        { &remote, &remote_keys }, &service, &local_keys.pk, 1
+        { &remote, &remote_keys }, &service, &local_keys.pk, &local_keys.pk, 1
     };
     struct sd_thread t;
     struct sd_query_results results;
@@ -187,12 +230,81 @@ static void blacklisted_query_fails()
         &local, &local_keys, &remote_keys.pk
     };
     struct sd_thread t;
-    struct sd_sign_key_public remote_sign_key;
+    struct sd_sign_key_public received_sign_key;
 
     sd_spawn(&t, send_query, &args);
     assert_success(sd_proto_await_encryption(&remote,
-                &remote_keys, &remote_sign_key));
-    assert_failure(sd_proto_answer_query(&remote, &service, &remote_keys.pk, 1));
+                &remote_keys, &received_sign_key));
+    assert_failure(sd_proto_answer_query(&remote,
+                &service, &local_keys.pk, &dummy_whitelist, 1));
+    sd_kill(&t);
+}
+
+static void request_constructs_session()
+{
+    static const char *port[] = { "9999" };
+    struct sd_service_parameter params[] = {
+        { "port", 1, port }
+    };
+    struct await_request_args args = {
+        { &remote, &remote_keys }, &service, &local_keys.pk, NULL, 0
+    };
+    struct sd_session session, added;
+    struct sd_thread t;
+
+    sd_spawn(&t, await_request, &args);
+    assert_success(sd_proto_initiate_encryption(&local, &local_keys,
+                &remote_keys.pk));
+    assert_success(sd_proto_send_request(&session, &local, &local_keys.pk,
+                params, ARRAY_SIZE(params)));
+    sd_join(&t, NULL);
+
+    assert_success(sd_sessions_remove(&added, session.sessionid, &session.identity));
+    assert_int_equal(session.sessionid, added.sessionid);
+    assert_memory_equal(&session.identity, &added.identity, sizeof(session.identity));
+}
+
+static void whitlisted_request_constructs_session()
+{
+    static const char *port[] = { "9999" };
+    struct sd_service_parameter params[] = {
+        { "port", 1, port }
+    };
+    struct await_request_args args = {
+        { &remote, &remote_keys }, &service, &local_keys.pk, &local_keys.pk, 1
+    };
+    struct sd_session session, added;
+    struct sd_thread t;
+
+    sd_spawn(&t, await_request, &args);
+    assert_success(sd_proto_initiate_encryption(&local, &local_keys,
+                &remote_keys.pk));
+    assert_success(sd_proto_send_request(&session, &local, &local_keys.pk,
+                params, ARRAY_SIZE(params)));
+    sd_join(&t, NULL);
+
+    assert_success(sd_sessions_remove(&added, session.sessionid, &session.identity));
+    assert_int_equal(session.sessionid, added.sessionid);
+    assert_memory_equal(&session.identity, &added.identity, sizeof(session.identity));
+}
+
+static void blacklisted_request_fails()
+{
+    static const char *port[] = { "9999" };
+    static struct sd_service_parameter params[] = {
+        { "port", 1, port }
+    };
+    struct send_request_args args = {
+        &local, &local_keys , &remote_keys.pk, params, ARRAY_SIZE(params)
+    };
+    struct sd_sign_key_public received_sign_key;
+    struct sd_thread t;
+
+    sd_spawn(&t, send_request, &args);
+    assert_success(sd_proto_await_encryption(&remote, &remote_keys,
+                &received_sign_key));
+    assert_failure(sd_proto_answer_request(&remote, &received_sign_key,
+                &dummy_whitelist, 1));
     sd_kill(&t);
 }
 
@@ -210,8 +322,13 @@ int proto_test_run_suite(void)
         test(encryption_initiation_fails_with_wrong_remote_key),
         test(query_succeeds),
         test(whitelisted_query_succeeds),
-        test(blacklisted_query_fails)
+        test(blacklisted_query_fails),
+        test(request_constructs_session),
+        test(whitlisted_request_constructs_session),
+        test(blacklisted_request_fails)
     };
+
+    assert_success(sd_sessions_init());
 
     assert_success(cfg_parse_string(&config, service_cfg, strlen(service_cfg)));
     assert_success(sd_service_from_config(&service, "Foo", &config));
