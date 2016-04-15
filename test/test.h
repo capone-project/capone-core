@@ -18,8 +18,13 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <setjmp.h>
-#include <cmocka.h>
 #include <stdio.h>
+
+#ifndef inline
+#define inline __inline__
+#include <cmocka.h>
+#undef inline
+#endif
 
 #define assert_success(fn) assert_int_equal((fn), 0)
 #define assert_failure(fn) assert_int_equal((fn), -1)
