@@ -32,7 +32,7 @@ static struct sd_symmetric_key key;
 static struct sd_channel channel, remote;
 static enum sd_channel_type type;
 
-static void stub_sockets(struct sd_channel *local, struct sd_channel *remote)
+void stub_sockets(struct sd_channel *local, struct sd_channel *remote)
 {
     int sockets[2];
     unsigned int addrlen = sizeof(local->addr);
