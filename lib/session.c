@@ -66,6 +66,20 @@ int sd_sessions_add(uint32_t sessionid,
     sem_wait(&semaphore);
 
     for (i = 0; i < MAX_SESSIONS; i++) {
+        struct sd_session *session = &sessions->sessions[i];
+
+        if (!sessions->used[i])
+            continue;
+
+        if (session->sessionid == sessionid &&
+                memcmp(&session->identity, identity, sizeof(*identity)) == 0)
+        {
+            sem_post(&semaphore);
+            return -1;
+        }
+    }
+
+    for (i = 0; i < MAX_SESSIONS; i++) {
         if (!sessions->used[i]) {
             sessions->used[i] = 1;
             break;
