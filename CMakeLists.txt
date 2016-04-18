@@ -70,8 +70,7 @@ TARGET_LINK_LIBRARIES(sd-genkey sd)
 ADD_EXECUTABLE(sd-server sd-server.c)
 TARGET_LINK_LIBRARIES(sd-server sd)
 
-ADD_EXECUTABLE(sd-test
-    test/test.c
+ADD_EXECUTABLE(sd-test sd-test.c
     test/cfg.c
     test/channel.c
     test/proto.c

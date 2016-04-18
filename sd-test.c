@@ -20,7 +20,7 @@
 #include "lib/common.h"
 #include "lib/log.h"
 
-#include "test.h"
+#include "test/test.h"
 
 extern int cfg_test_run_suite(void);
 extern int channel_test_run_suite(void);
