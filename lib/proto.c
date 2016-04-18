@@ -268,7 +268,7 @@ int sd_proto_answer_query(struct sd_channel *channel,
     QueryResults results = QUERY_RESULTS__INIT;
     Parameter **parameters;
     const struct sd_service_parameter *params;
-    int i, n;
+    int i, n, err;
 
     if (!is_whitelisted(remote_key, whitelist, nwhitelist)) {
         sd_log(LOG_LEVEL_ERROR, "Received connection from unknown signature key");
@@ -297,12 +297,18 @@ int sd_proto_answer_query(struct sd_channel *channel,
     results.parameters = parameters;
     results.n_parameters = n;
 
-    if (sd_channel_write_protobuf(channel, (ProtobufCMessage *) &results) < 0) {
+    if ((err = sd_channel_write_protobuf(channel, (ProtobufCMessage *) &results)) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Could not send query results");
-        return -1;
+        goto out;
     }
 
-    return 0;
+out:
+    for (i = 0; i < n; i++) {
+        free(parameters[i]);
+    }
+    free(parameters);
+
+    return err;
 }
 
 void sd_query_results_free(struct sd_query_results *results)
