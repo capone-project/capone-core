@@ -1,0 +1,21 @@
+language: c
+
+sudo: true
+
+os:
+    - linux
+    - osx
+
+compiler:
+    - clang
+    - gcc
+
+install:
+    - ./scripts/deps.sh
+
+script:
+    - ./scripts/build.sh
+    - ./source/sd/build/sd-test
+
+after_success:
+    - ./sd-test --verbose

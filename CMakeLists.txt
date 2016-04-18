@@ -24,6 +24,10 @@ ADD_DEFINITIONS(-DVERSION="0.0.1")
 
 SET(CMAKE_C_FLAGS "-Wall -Wextra -Werror -pedantic -std=c89 -D_GNU_SOURCE")
 
+IF (APPLE)
+    SET(CMAKE_MACOSX_RPATH ON)
+ENDIF (APPLE)
+
 PROTOBUF_GENERATE_C(PROTO_SOURCES PROTO_HEADERS
     proto/capabilities.proto
     proto/connect.proto
