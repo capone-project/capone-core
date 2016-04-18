@@ -132,28 +132,34 @@ int sd_proto_handle_session(struct sd_channel *channel,
         const struct sd_service *service,
         const struct cfg *cfg)
 {
-    SessionInitiationMessage *initiation;
+    SessionInitiationMessage *initiation = NULL;
     struct sd_session session;
+    int err;
 
-    if (sd_channel_receive_protobuf(channel,
+    if ((err = sd_channel_receive_protobuf(channel,
                 &session_initiation_message__descriptor,
-                (ProtobufCMessage **) &initiation) < 0) {
+                (ProtobufCMessage **) &initiation)) < 0)
+    {
         sd_log(LOG_LEVEL_ERROR, "Could not receive connection initiation");
-        return -1;
+        goto out;
     }
 
-    if (sd_sessions_remove(&session, initiation->sessionid, remote_key) < 0) {
+    if ((err = sd_sessions_remove(&session, initiation->sessionid, remote_key)) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Could not find session for client");
-        return -1;
+        goto out;
     }
 
-    if (service->handle(channel, &session, cfg) < 0) {
+    if ((err = service->handle(channel, &session, cfg)) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Service could not handle connection");
         sd_session_free(&session);
-        return -1;
+        goto out;
     }
 
-    sd_session_free(&session);
+out:
+    if (initiation) {
+        session_initiation_message__free_unpacked(initiation, NULL);
+        sd_session_free(&session);
+    }
 
     return 0;
 }
