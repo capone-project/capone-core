@@ -262,12 +262,16 @@ void sd_service_parameters_free(struct sd_service_parameter *params, size_t npar
 {
     size_t i, j;
 
+    if (!params || nparams == 0)
+        return;
+
     for (i = 0; i < nparams; i++) {
         for (j = 0; j < params[i].nvalues; j++) {
             free((char *) params[i].values[j]);
         }
 
         free(params[i].values);
+        free((void *) params[i].key);
     }
 
     free(params);

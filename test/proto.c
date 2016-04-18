@@ -340,9 +340,10 @@ static void service_connects()
     char *data = "parameter-data";
 
     params = malloc(sizeof(struct sd_service_parameter));
-    params[0].key = "data";
+    params[0].key = strdup("data");
     params[0].values = malloc(sizeof(char *));
     params[0].values[0] = strdup(data);
+    params[0].nvalues = 1;
 
     sd_spawn(&t, handle_session, &args);
 

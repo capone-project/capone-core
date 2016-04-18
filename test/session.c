@@ -64,7 +64,7 @@ static void add_session_with_params_succeeds()
     struct sd_session session;
 
     params = malloc(sizeof(struct sd_service_parameter));
-    params[0].key = "data";
+    params[0].key = strdup("data");
     params[0].nvalues = 1;
     params[0].values = malloc(sizeof(char *));
     params[0].values[0] = strdup("block");
@@ -182,7 +182,7 @@ static void free_session_succeeds_with_params()
 
     session.nparameters = 1;
     session.parameters = malloc(sizeof(struct sd_service_parameter));
-    session.parameters[0].key = "data";
+    session.parameters[0].key = strdup("data");
     session.parameters[0].nvalues = 1;
     session.parameters[0].values = malloc(sizeof(char *));
     session.parameters[0].values[0] = strdup("block");
@@ -196,7 +196,7 @@ static void free_session_succeeds_with_key_only_parameter()
 
     session.nparameters = 1;
     session.parameters = malloc(sizeof(struct sd_service_parameter));
-    session.parameters[0].key = "data";
+    session.parameters[0].key = strdup("data");
     session.parameters[0].nvalues = 0;
     session.parameters[0].values = NULL;
 
