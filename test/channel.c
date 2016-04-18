@@ -70,7 +70,8 @@ static int teardown()
 
 static void initialization_sets_socket()
 {
-    struct sockaddr_storage addr = { 0, 0, { 0 } };
+    struct sockaddr_storage addr;
+    memset(&addr, 0, sizeof(addr));
 
     sd_channel_init_from_fd(&channel, 123, addr, type);
 
