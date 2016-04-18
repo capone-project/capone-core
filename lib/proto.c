@@ -301,14 +301,14 @@ int sd_proto_answer_request(struct sd_channel *channel,
         const struct sd_sign_key_public *whitelist,
         size_t nwhitelist)
 {
-    SessionRequestMessage *request;
+    SessionRequestMessage *request = NULL;
     SessionMessage session_message = SESSION_MESSAGE__INIT;
     struct sd_sign_key_public identity_key;
     struct sd_service_parameter *params;
 
     if (!is_whitelisted(remote_key, whitelist, nwhitelist)) {
         sd_log(LOG_LEVEL_ERROR, "Received connection from unknown signature key");
-        return -1;
+        goto out_err;
     }
 
     if (sd_channel_receive_protobuf(channel,
@@ -316,32 +316,37 @@ int sd_proto_answer_request(struct sd_channel *channel,
             (ProtobufCMessage **) &request) < 0)
     {
         sd_log(LOG_LEVEL_ERROR, "Unable to receive request");
-        return -1;
+        goto out_err;
     }
 
     if (sd_sign_key_public_from_bin(&identity_key,
                 request->identity.data, request->identity.len) < 0)
     {
         sd_log(LOG_LEVEL_ERROR, "Unable to parse identity key");
-        return -1;
+        goto out_err;
     }
 
     if (convert_params(&params, request->parameters, request->n_parameters) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Unable to convert parameters");
-        return -1;
+        goto out_err;
     }
-    session_request_message__free_unpacked(request, NULL);
 
     session_message.sessionid = randombytes_random();
 
     if (sd_channel_write_protobuf(channel, &session_message.base) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Unable to send connection session");
-        return -1;
+        goto out_err;
     }
 
     sd_sessions_add(session_message.sessionid, &identity_key, params, request->n_parameters);
 
+    session_request_message__free_unpacked(request, NULL);
     return 0;
+
+out_err:
+    if (request != NULL)
+        session_request_message__free_unpacked(request, NULL);
+    return -1;
 }
 
 static int is_whitelisted(const struct sd_sign_key_public *key,
