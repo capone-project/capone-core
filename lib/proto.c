@@ -29,7 +29,7 @@
 static int is_whitelisted(const struct sd_sign_key_public *key,
         const struct sd_sign_key_public *whitelist,
         size_t nwhitelist);
-static int convert_params(struct sd_service_parameter **out,
+static ssize_t convert_params(struct sd_service_parameter **out,
         Parameter **params,
         size_t nparams);
 
@@ -164,8 +164,10 @@ int sd_proto_send_request(struct sd_session *out,
         const struct sd_service_parameter *params, size_t nparams)
 {
     SessionRequestMessage request = SESSION_REQUEST_MESSAGE__INIT;
-    SessionMessage *session;
+    SessionMessage *session = NULL;
+    Parameter **parameters = NULL;
     size_t i;
+    int err;
 
     memset(out, 0, sizeof(struct sd_session));
 
@@ -173,7 +175,7 @@ int sd_proto_send_request(struct sd_session *out,
     request.identity.len = sizeof(requester->data);
 
     if (nparams) {
-        Parameter **parameters = malloc(sizeof(Parameter *) * nparams);
+        parameters = malloc(sizeof(Parameter *) * nparams);
 
         for (i = 0; i < nparams; i++) {
             Parameter *parameter = malloc(sizeof(Parameter));
@@ -193,22 +195,33 @@ int sd_proto_send_request(struct sd_session *out,
         request.n_parameters = 0;
     }
 
-    if (sd_channel_write_protobuf(channel, &request.base) < 0) {
+    if ((err = sd_channel_write_protobuf(channel, &request.base)) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Unable to send connection request");
-        return -1;
+        goto out;
     }
 
-    if (sd_channel_receive_protobuf(channel,
+    if ((err = sd_channel_receive_protobuf(channel,
             &session_message__descriptor,
-            (ProtobufCMessage **) &session) < 0) {
+            (ProtobufCMessage **) &session)) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Unable to receive session");
-        return -1;
+        goto out;
     }
 
     out->sessionid = session->sessionid;
     memcpy(out->identity.data, requester->data, sizeof(out->identity.data));
 
-    return 0;
+out:
+    if (session)
+        session_message__free_unpacked(session, NULL);
+
+    if (parameters) {
+        for (i = 0; i < nparams; i++) {
+            free(parameters[i]);
+        }
+        free(parameters);
+    }
+
+    return err;
 }
 
 int sd_proto_send_query(struct sd_query_results *out,
@@ -323,7 +336,8 @@ int sd_proto_answer_request(struct sd_channel *channel,
     SessionRequestMessage *request = NULL;
     SessionMessage session_message = SESSION_MESSAGE__INIT;
     struct sd_sign_key_public identity_key;
-    struct sd_service_parameter *params;
+    struct sd_service_parameter *params = NULL;
+    ssize_t nparams = 0;
 
     if (!is_whitelisted(remote_key, whitelist, nwhitelist)) {
         sd_log(LOG_LEVEL_ERROR, "Received connection from unknown signature key");
@@ -345,7 +359,9 @@ int sd_proto_answer_request(struct sd_channel *channel,
         goto out_err;
     }
 
-    if (convert_params(&params, request->parameters, request->n_parameters) < 0) {
+    if ((nparams = convert_params(&params,
+                    request->parameters, request->n_parameters)) < 0)
+    {
         sd_log(LOG_LEVEL_ERROR, "Unable to convert parameters");
         goto out_err;
     }
@@ -357,12 +373,14 @@ int sd_proto_answer_request(struct sd_channel *channel,
         goto out_err;
     }
 
-    sd_sessions_add(session_message.sessionid, &identity_key, params, request->n_parameters);
+    sd_sessions_add(session_message.sessionid, &identity_key, params, nparams);
 
     session_request_message__free_unpacked(request, NULL);
     return 0;
 
 out_err:
+    sd_service_parameters_free(params, nparams);
+
     if (request != NULL)
         session_request_message__free_unpacked(request, NULL);
     return -1;
@@ -387,7 +405,7 @@ static int is_whitelisted(const struct sd_sign_key_public *key,
     return 0;
 }
 
-static int convert_params(struct sd_service_parameter **out,
+static ssize_t convert_params(struct sd_service_parameter **out,
         Parameter **parameters, size_t nparams)
 {
     struct sd_service_parameter *params;
@@ -410,5 +428,5 @@ static int convert_params(struct sd_service_parameter **out,
 
     *out = params;
 
-    return 0;
+    return nparams;
 }
