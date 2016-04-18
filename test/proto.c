@@ -169,6 +169,8 @@ static void *send_request(void *payload)
     assert_success(sd_proto_send_request(&session, args->channel, args->remote_key,
                 args->params, args->nparams));
 
+    sd_session_free(&session);
+
     return NULL;
 }
 
@@ -333,7 +335,6 @@ static void blacklisted_request_fails()
                 &received_sign_key));
     assert_failure(sd_proto_answer_request(&remote, &received_sign_key,
                 &dummy_whitelist, 1));
-    sd_kill(&t);
 }
 
 static void service_connects()
