@@ -294,7 +294,25 @@ int sd_proto_answer_query(struct sd_channel *channel,
 
 void sd_query_results_free(struct sd_query_results *results)
 {
+    if (results == NULL)
+        return;
+
+    free(results->name);
+    results->name = NULL;
+    free(results->category);
+    results->category = NULL;
+    free(results->type);
+    results->type = NULL;
+    free(results->version);
+    results->version = NULL;
+    free(results->location);
+    results->location = NULL;
+    free(results->port);
+    results->port = NULL;
+
     sd_service_parameters_free(results->params, results->nparams);
+    results->params = NULL;
+    results->nparams = 0;
 }
 
 int sd_proto_answer_request(struct sd_channel *channel,
