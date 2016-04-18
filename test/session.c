@@ -171,7 +171,7 @@ static void remove_session_frees_space()
 
 static void free_session_succeeds_without_params()
 {
-    struct sd_session session = { 0 };
+    struct sd_session session = { 0, { { 0 } }, NULL, 0 };
 
     sd_session_free(&session);
 }
