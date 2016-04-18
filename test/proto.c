@@ -93,6 +93,7 @@ static int teardown()
 {
     sd_channel_close(&local);
     sd_channel_close(&remote);
+    sd_sessions_clear();
     return 0;
 }
 
@@ -283,6 +284,8 @@ static void request_constructs_session()
     assert_success(sd_sessions_remove(&added, session.sessionid, &session.identity));
     assert_int_equal(session.sessionid, added.sessionid);
     assert_memory_equal(&session.identity, &added.identity, sizeof(session.identity));
+
+    sd_session_free(&added);
 }
 
 static void whitlisted_request_constructs_session()
@@ -307,6 +310,8 @@ static void whitlisted_request_constructs_session()
     assert_success(sd_sessions_remove(&added, session.sessionid, &session.identity));
     assert_int_equal(session.sessionid, added.sessionid);
     assert_memory_equal(&session.identity, &added.identity, sizeof(session.identity));
+
+    sd_session_free(&added);
 }
 
 static void blacklisted_request_fails()
@@ -347,8 +352,7 @@ static void service_connects()
 
     sd_spawn(&t, handle_session, &args);
 
-    assert_success(sd_sessions_add(1, &local_keys.pk,
-                params, ARRAY_SIZE(params)));
+    assert_success(sd_sessions_add(1, &local_keys.pk, params, 1));
     assert_success(sd_proto_initiate_encryption(&local, &local_keys,
                 &remote_keys.pk));
     assert_success(sd_proto_initiate_session(&local, 1));

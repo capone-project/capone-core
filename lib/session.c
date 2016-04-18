@@ -141,7 +141,16 @@ int sd_sessions_remove(struct sd_session *out,
 
 int sd_sessions_clear(void)
 {
+    size_t i;
     sem_wait(&semaphore);
+
+    for (i = 0; i < MAX_SESSIONS; i++) {
+        if (!sessions->used[i])
+            continue;
+
+        sd_session_free(&sessions->sessions[i]);
+    }
+
     memset(sessions->used, 0, sizeof(sessions->used));
     memset(sessions->sessions, 0, sizeof(sessions->sessions));
     sem_post(&semaphore);
