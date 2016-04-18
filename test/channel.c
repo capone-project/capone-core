@@ -221,6 +221,8 @@ static void write_protobuf()
             (ProtobufCMessage **) &recv));
 
     assert_string_equal(msg.value.data, recv->value.data);
+
+    test_message__free_unpacked(recv, NULL);
 }
 
 static void write_encrypted_data()
