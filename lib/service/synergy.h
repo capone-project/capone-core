@@ -17,4 +17,4 @@
 
 struct sd_service;
 
-int sd_x2x_init_service(struct sd_service *service);
+int sd_synergy_init_service(struct sd_service *service);

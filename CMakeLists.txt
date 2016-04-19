@@ -48,8 +48,8 @@ ADD_LIBRARY(sd SHARED
     lib/service/capabilities.c
     lib/service/exec.c
     lib/service/invoke.c
+    lib/service/synergy.c
     lib/service/test.c
-    lib/service/x2x.c
     lib/service/xpra.c
     lib/session.c
     ${PROTO_SOURCES}
