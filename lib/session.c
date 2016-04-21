@@ -19,8 +19,6 @@
 #include <string.h>
 
 #include <pthread.h>
-#include <sys/ipc.h>
-#include <sys/shm.h>
 
 #include "lib/log.h"
 #include "lib/service.h"
@@ -29,26 +27,13 @@
 
 #define MAX_SESSIONS 1024
 
-static struct {
-    struct sd_session sessions[MAX_SESSIONS];
-    char used[MAX_SESSIONS];
-} *sessions;
+static struct sd_session sessions[MAX_SESSIONS];
+static char used[MAX_SESSIONS];
 
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 int sd_sessions_init(void)
 {
-    int shmid;
-
-    shmid = shmget(IPC_PRIVATE, sizeof(*sessions), IPC_CREAT | IPC_EXCL | 0600);
-    if (shmid < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Unable to initialize shared memory");
-        return -1;
-    }
-
-    sessions = shmat(shmid, NULL, 0);
-    memset(sessions, 0, sizeof(*sessions));
-
     return 0;
 }
 
@@ -62,9 +47,9 @@ int sd_sessions_add(uint32_t sessionid,
     pthread_mutex_lock(&mutex);
 
     for (i = 0; i < MAX_SESSIONS; i++) {
-        struct sd_session *session = &sessions->sessions[i];
+        struct sd_session *session = &sessions[i];
 
-        if (!sessions->used[i])
+        if (!used[i])
             continue;
 
         if (session->sessionid == sessionid &&
@@ -76,8 +61,8 @@ int sd_sessions_add(uint32_t sessionid,
     }
 
     for (i = 0; i < MAX_SESSIONS; i++) {
-        if (!sessions->used[i]) {
-            sessions->used[i] = 1;
+        if (!used[i]) {
+            used[i] = 1;
             break;
         }
     }
@@ -89,19 +74,19 @@ int sd_sessions_add(uint32_t sessionid,
         return -1;
     }
 
-    sessions->sessions[i].sessionid = sessionid;
-    memcpy(sessions->sessions[i].identity.data, identity->data, sizeof(identity->data));
+    sessions[i].sessionid = sessionid;
+    memcpy(sessions[i].identity.data, identity->data, sizeof(identity->data));
 
     if (nparams) {
-        sessions->sessions[i].parameters = malloc(nparams * sizeof(params));
+        sessions[i].parameters = malloc(nparams * sizeof(params));
         for (n = 0; n < nparams; n++) {
-            sessions->sessions[i].parameters[n].key = strdup(params[n].key);
-            sessions->sessions[i].parameters[n].value = strdup(params[n].value);
+            sessions[i].parameters[n].key = strdup(params[n].key);
+            sessions[i].parameters[n].value = strdup(params[n].value);
         }
-        sessions->sessions[i].nparameters = nparams;
+        sessions[i].nparameters = nparams;
     } else {
-        sessions->sessions[i].parameters = NULL;
-        sessions->sessions[i].nparameters = 0;
+        sessions[i].parameters = NULL;
+        sessions[i].nparameters = 0;
     }
 
     sd_log(LOG_LEVEL_DEBUG, "Created session %"PRIu32, sessionid);
@@ -120,17 +105,17 @@ int sd_sessions_remove(struct sd_session *out,
     for (i = 0; i < MAX_SESSIONS; i++) {
         struct sd_session *s;
 
-        if (!sessions->used[i])
+        if (!used[i])
             continue;
 
-        s = &sessions->sessions[i];
+        s = &sessions[i];
         if (s->sessionid == sessionid &&
                 memcmp(s->identity.data, identity->data, sizeof(identity->data)) == 0)
         {
-            memcpy(out, &sessions->sessions[i], sizeof(*out));
-            memset(&sessions->sessions[i], 0, sizeof(sessions->sessions[i]));
+            memcpy(out, &sessions[i], sizeof(*out));
+            memset(&sessions[i], 0, sizeof(sessions[i]));
 
-            sessions->used[i] = 0;
+            used[i] = 0;
             break;
         }
     }
@@ -151,14 +136,14 @@ int sd_sessions_clear(void)
     pthread_mutex_lock(&mutex);
 
     for (i = 0; i < MAX_SESSIONS; i++) {
-        if (!sessions->used[i])
+        if (!used[i])
             continue;
 
-        sd_session_free(&sessions->sessions[i]);
+        sd_session_free(&sessions[i]);
     }
 
-    memset(sessions->used, 0, sizeof(sessions->used));
-    memset(sessions->sessions, 0, sizeof(sessions->sessions));
+    memset(used, 0, sizeof(used));
+    memset(sessions, 0, sizeof(sessions));
     pthread_mutex_unlock(&mutex);
 
     return 0;
