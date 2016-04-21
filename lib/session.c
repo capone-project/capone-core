@@ -15,9 +15,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <errno.h>
 #include <string.h>
 
-#include <semaphore.h>
+#include <pthread.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
 
@@ -33,16 +34,11 @@ static struct {
     char used[MAX_SESSIONS];
 } *sessions;
 
-static sem_t semaphore;
+static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 int sd_sessions_init(void)
 {
     int shmid;
-
-    if (sem_init(&semaphore, 0, 1) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Unable to setup semaphore");
-        return -1;
-    }
 
     shmid = shmget(IPC_PRIVATE, sizeof(*sessions), IPC_CREAT | IPC_EXCL | 0600);
     if (shmid < 0) {
@@ -63,7 +59,7 @@ int sd_sessions_add(uint32_t sessionid,
 {
     size_t i, n;
 
-    sem_wait(&semaphore);
+    pthread_mutex_lock(&mutex);
 
     for (i = 0; i < MAX_SESSIONS; i++) {
         struct sd_session *session = &sessions->sessions[i];
@@ -74,7 +70,7 @@ int sd_sessions_add(uint32_t sessionid,
         if (session->sessionid == sessionid &&
                 memcmp(&session->identity, identity, sizeof(*identity)) == 0)
         {
-            sem_post(&semaphore);
+            pthread_mutex_unlock(&mutex);
             return -1;
         }
     }
@@ -86,7 +82,7 @@ int sd_sessions_add(uint32_t sessionid,
         }
     }
 
-    sem_post(&semaphore);
+    pthread_mutex_unlock(&mutex);
 
     if (i == MAX_SESSIONS) {
         sd_log(LOG_LEVEL_ERROR, "No session space left");
@@ -119,7 +115,7 @@ int sd_sessions_remove(struct sd_session *out,
 {
     size_t i;
 
-    sem_wait(&semaphore);
+    pthread_mutex_lock(&mutex);
 
     for (i = 0; i < MAX_SESSIONS; i++) {
         struct sd_session *s;
@@ -139,7 +135,7 @@ int sd_sessions_remove(struct sd_session *out,
         }
     }
 
-    sem_post(&semaphore);
+    pthread_mutex_unlock(&mutex);
 
     if (i == MAX_SESSIONS) {
         sd_log(LOG_LEVEL_ERROR, "Session not found");
@@ -152,7 +148,7 @@ int sd_sessions_remove(struct sd_session *out,
 int sd_sessions_clear(void)
 {
     size_t i;
-    sem_wait(&semaphore);
+    pthread_mutex_lock(&mutex);
 
     for (i = 0; i < MAX_SESSIONS; i++) {
         if (!sessions->used[i])
@@ -163,7 +159,8 @@ int sd_sessions_clear(void)
 
     memset(sessions->used, 0, sizeof(sessions->used));
     memset(sessions->sessions, 0, sizeof(sessions->sessions));
-    sem_post(&semaphore);
+    pthread_mutex_unlock(&mutex);
+
     return 0;
 }
 
