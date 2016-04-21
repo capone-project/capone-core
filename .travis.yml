@@ -15,7 +15,4 @@ install:
 
 script:
     - ./scripts/build.sh
-    - ./source/sd/build/sd-test
-
-after_success:
-    - ./sd-test --verbose
+    - ./source/sd/build/sd-test --verbose
