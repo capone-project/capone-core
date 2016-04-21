@@ -102,9 +102,7 @@ static void *await_encryption(void *payload)
     struct await_encryption_args *args = (struct await_encryption_args *) payload;
     struct sd_sign_key_public remote_key;
 
-    assert_success(sd_proto_await_encryption(args->c, args->k, &remote_key));
-    assert_memory_equal(&remote_key, &local_keys.pk, sizeof(remote_key));
-    assert(args->c->crypto == SD_CHANNEL_CRYPTO_SYMMETRIC);
+    sd_proto_await_encryption(args->c, args->k, &remote_key);
 
     return NULL;
 }
@@ -115,8 +113,8 @@ static void *await_query(void *payload)
 
     await_encryption(&args->enc_args);
 
-    assert_success(sd_proto_answer_query(args->enc_args.c, args->s,
-                args->r, args->whitelist, args->nwhitelist));
+    sd_proto_answer_query(args->enc_args.c, args->s,
+                args->r, args->whitelist, args->nwhitelist);
 
     return NULL;
 }
@@ -127,8 +125,8 @@ static void *await_request(void *payload)
 
     await_encryption(&args->enc_args);
 
-    assert_success(sd_proto_answer_request(args->enc_args.c,
-                args->r, args->whitelist, args->nwhitelist));
+    sd_proto_answer_request(args->enc_args.c,
+                args->r, args->whitelist, args->nwhitelist);
 
     return NULL;
 }
@@ -139,8 +137,8 @@ static void *handle_session(void *payload)
 
     await_encryption(&args->enc_args);
 
-    assert_success(sd_proto_handle_session(args->enc_args.c,
-                args->remote_key, args->service, args->cfg));
+    sd_proto_handle_session(args->enc_args.c,
+                args->remote_key, args->service, args->cfg);
 
     return NULL;
 }
@@ -150,9 +148,9 @@ static void *send_query(void *payload)
     struct send_query_args *args = (struct send_query_args *) payload;
     struct sd_query_results results;
 
-    assert_success(sd_proto_initiate_encryption(args->c,
-                args->k, args->r));
-    assert_success(sd_proto_send_query(&results, args->c));
+    sd_proto_initiate_encryption(args->c,
+                args->k, args->r);
+    sd_proto_send_query(&results, args->c);
 
     sd_query_results_free(&results);
 
@@ -332,6 +330,7 @@ static void blacklisted_request_fails()
                 &received_sign_key));
     assert_failure(sd_proto_answer_request(&remote, &received_sign_key,
                 &dummy_whitelist, 1));
+    sd_kill(&t);
 }
 
 static void service_connects()
