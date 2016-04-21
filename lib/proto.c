@@ -235,6 +235,8 @@ int sd_proto_send_query(struct sd_query_results *out,
     QueryResults *msg;
     struct sd_query_results results;
 
+    memset(out, 0, sizeof(struct sd_query_results));
+
     if (sd_channel_receive_protobuf(channel, &query_results__descriptor,
             (ProtobufCMessage **) &msg) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Could not receive query results");
