@@ -34,7 +34,7 @@ static const char *version(void)
 static int parameters(const struct sd_service_parameter **out)
 {
     static const struct sd_service_parameter params[] = {
-        { "port", 0, NULL },
+        { "port", NULL },
     };
 
     *out = params;

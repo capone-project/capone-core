@@ -52,12 +52,12 @@ static const char *version(void)
 
 static int parameters(const struct sd_service_parameter **out)
 {
-    static const char *types[] = { "register", "request" };
-    static const struct sd_service_parameter params[] = {
-        { "type", ARRAY_SIZE(types), types },
-        { "request-for-identity", 0, NULL },
-        { "request-for-service", 0, NULL },
-        { "request-parameters", 0, NULL },
+    const struct sd_service_parameter params[] = {
+        { "type", "register" },
+        { "type", "request" },
+        { "request-for-identity", NULL },
+        { "request-for-service", NULL },
+        { "request-parameters", NULL },
     };
 
     *out = params;
@@ -84,8 +84,7 @@ static int relay_capability_request(struct sd_channel *channel,
         params = malloc(sizeof(struct sd_service_parameter) * request->n_parameters);
         for (i = 0; i < request->n_parameters; i++) {
             params[i].key = request->parameters[i]->key;
-            params[i].values = (const char **) &request->parameters[i]->value;
-            params[i].nvalues = 1;
+            params[i].value = (const char *) &request->parameters[i]->value;
         }
     }
 

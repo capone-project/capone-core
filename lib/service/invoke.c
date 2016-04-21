@@ -31,13 +31,13 @@ static const char *version(void)
 static int parameters(const struct sd_service_parameter **out)
 {
     static const struct sd_service_parameter params[] = {
-        { "service-identity", 0, NULL },
-        { "service-address", 0, NULL },
-        { "service-port", 0, NULL },
-        { "service-type", 0, NULL },
-        { "service-args", 0, NULL },
-        { "sessionid", 0, NULL },
-        { "sessionkey", 0, NULL },
+        { "service-identity", NULL },
+        { "service-address", NULL },
+        { "service-port", NULL },
+        { "service-type", NULL },
+        { "service-args", NULL },
+        { "sessionid", NULL },
+        { "sessionkey", NULL },
     };
 
     *out = params;

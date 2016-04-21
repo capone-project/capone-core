@@ -34,7 +34,7 @@ int sd_sessions_init(void);
 
 int sd_sessions_add(uint32_t sessionid,
         const struct sd_sign_key_public *identity,
-        struct sd_service_parameter *params,
+        const struct sd_service_parameter *params,
         size_t nparams);
 int sd_sessions_remove(struct sd_session *out,
         uint32_t sessionid,

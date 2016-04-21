@@ -60,22 +60,17 @@ static void add_sessions_adds_session()
 
 static void add_session_with_params_succeeds()
 {
-    struct sd_service_parameter *params;
+    struct sd_service_parameter params[] = {
+        { "data", "block" }
+    };
     struct sd_session session;
 
-    params = malloc(sizeof(struct sd_service_parameter));
-    params[0].key = strdup("data");
-    params[0].nvalues = 1;
-    params[0].values = malloc(sizeof(char *));
-    params[0].values[0] = strdup("block");
-
-    assert_success(sd_sessions_add(0, &key.pk, params, 1));
+    assert_success(sd_sessions_add(0, &key.pk, params, ARRAY_SIZE(params)));
     assert_success(sd_sessions_remove(&session, 0, &key.pk));
 
     assert_int_equal(session.nparameters, 1);
     assert_string_equal(session.parameters[0].key, params[0].key);
-    assert_int_equal(session.parameters[0].nvalues, params[0].nvalues);
-    assert_string_equal(session.parameters[0].values[0], params[0].values[0]);
+    assert_string_equal(session.parameters[0].value, params[0].value);
 
     sd_session_free(&session);
 }
@@ -183,9 +178,7 @@ static void free_session_succeeds_with_params()
     session.nparameters = 1;
     session.parameters = malloc(sizeof(struct sd_service_parameter));
     session.parameters[0].key = strdup("data");
-    session.parameters[0].nvalues = 1;
-    session.parameters[0].values = malloc(sizeof(char *));
-    session.parameters[0].values[0] = strdup("block");
+    session.parameters[0].value = strdup("block");
 
     sd_session_free(&session);
 }
@@ -197,8 +190,7 @@ static void free_session_succeeds_with_key_only_parameter()
     session.nparameters = 1;
     session.parameters = malloc(sizeof(struct sd_service_parameter));
     session.parameters[0].key = strdup("data");
-    session.parameters[0].nvalues = 0;
-    session.parameters[0].values = NULL;
+    session.parameters[0].value = NULL;
 
     sd_session_free(&session);
 }

@@ -268,9 +268,8 @@ static void blacklisted_query_fails()
 
 static void request_constructs_session()
 {
-    static const char *port[] = { "9999" };
     struct sd_service_parameter params[] = {
-        { "port", 1, port }
+        { "port", "9999" }
     };
     struct await_request_args args = {
         { &remote, &remote_keys }, &service, &local_keys.pk, NULL, 0
@@ -294,9 +293,8 @@ static void request_constructs_session()
 
 static void whitlisted_request_constructs_session()
 {
-    static const char *port[] = { "9999" };
     struct sd_service_parameter params[] = {
-        { "port", 1, port }
+        { "port", "9999" }
     };
     struct await_request_args args = {
         { &remote, &remote_keys }, &service, &local_keys.pk, &local_keys.pk, 1
@@ -320,9 +318,8 @@ static void whitlisted_request_constructs_session()
 
 static void blacklisted_request_fails()
 {
-    static const char *port[] = { "9999" };
     static struct sd_service_parameter params[] = {
-        { "port", 1, port }
+        { "port", "9999" }
     };
     struct send_request_args args = {
         &local, &local_keys , &remote_keys.pk, params, ARRAY_SIZE(params)
@@ -339,23 +336,18 @@ static void blacklisted_request_fails()
 
 static void service_connects()
 {
-    struct sd_service_parameter *params;
+    struct sd_service_parameter params[] = {
+        { "data", "parameter-data" }
+    };
     struct handle_session_args args = {
         { &remote, &remote_keys }, &local_keys.pk, &service, &config
     };
     struct sd_thread t;
     uint8_t *received;
-    char *data = "parameter-data";
-
-    params = malloc(sizeof(struct sd_service_parameter));
-    params[0].key = strdup("data");
-    params[0].values = malloc(sizeof(char *));
-    params[0].values[0] = strdup(data);
-    params[0].nvalues = 1;
 
     sd_spawn(&t, handle_session, &args);
 
-    assert_success(sd_sessions_add(1, &local_keys.pk, params, 1));
+    assert_success(sd_sessions_add(1, &local_keys.pk, params, ARRAY_SIZE(params)));
     assert_success(sd_proto_initiate_encryption(&local, &local_keys,
                 &remote_keys.pk));
     assert_success(sd_proto_initiate_session(&local, 1));
@@ -364,7 +356,7 @@ static void service_connects()
     sd_join(&t, NULL);
 
     received = sd_test_service_get_data();
-    assert_string_equal(data, received);
+    assert_string_equal(params[0].value, received);
 }
 
 int proto_test_run_suite(void)

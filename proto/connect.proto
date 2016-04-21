@@ -10,7 +10,7 @@ message ConnectionInitiationMessage {
 
 message Parameter {
     required string key = 1;
-    repeated string values = 2;
+    optional string value = 2;
 }
 
 message QueryResults {

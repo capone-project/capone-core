@@ -54,9 +54,7 @@ static int parse_params(struct sd_service_parameter **out, int argc, char *argv[
             return -1;
 
         params[i].key = key;
-        params[i].values = malloc(sizeof(char *));
-        params[i].values[0] = value;
-        params[i].nvalues = 1;
+        params[i].value = value;
     }
 
     *out = params;
@@ -69,7 +67,7 @@ static int cmd_query(int argc, char *argv[])
     struct sd_query_results results;
     struct sd_channel channel;
     char *config, *key, *host, *port;
-    size_t i, j;
+    size_t i;
 
     if (argc != 6)
         usage(argv[0]);
@@ -118,10 +116,7 @@ static int cmd_query(int argc, char *argv[])
     for (i = 0; i < results.nparams; i++) {
         struct sd_service_parameter *param = &results.params[i];
 
-        printf("\tparam:    %s\n", param->key);
-
-        for (j = 0; j < param->nvalues; j++)
-            printf("\t          %s\n", param->values[j]);
+        printf("\tparam:    %s=%s\n", param->key, param->value);
     }
 
     sd_query_results_free(&results);

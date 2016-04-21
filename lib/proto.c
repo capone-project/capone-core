@@ -188,8 +188,7 @@ int sd_proto_send_request(struct sd_session *out,
             parameter__init(parameter);
 
             parameter->key = (char *) params[i].key;
-            parameter->values = (char **) params[i].values;
-            parameter->n_values = params[i].nvalues;
+            parameter->value = (char *) params[i].value;
 
             parameters[i] = parameter;
         }
@@ -295,8 +294,7 @@ int sd_proto_answer_query(struct sd_channel *channel,
         parameter__init(parameter);
 
         parameter->key = (char *) params[i].key;
-        parameter->n_values  = params[i].nvalues;
-        parameter->values = (char **) params[i].values;
+        parameter->value = (char *) params[i].value;
 
         parameters[i] = parameter;
     }
@@ -421,7 +419,7 @@ static ssize_t convert_params(struct sd_service_parameter **out,
         Parameter **parameters, size_t nparams)
 {
     struct sd_service_parameter *params;
-    size_t i, j;
+    size_t i;
 
     *out = NULL;
 
@@ -430,12 +428,11 @@ static ssize_t convert_params(struct sd_service_parameter **out,
         Parameter *msgparam = parameters[i];
 
         params[i].key = strdup(msgparam->key);
-        params[i].values = malloc(sizeof(char *) * msgparam->n_values);
-
-        for (j = 0; j < msgparam->n_values; j++) {
-            params[i].values[j] = strdup(msgparam->values[j]);
+        if (msgparam->value) {
+            params[i].value = strdup(msgparam->value);
+        } else {
+            params[i].value = NULL;
         }
-        params[i].nvalues = msgparam->n_values;
     }
 
     *out = params;

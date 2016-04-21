@@ -58,10 +58,10 @@ int sd_sessions_init(void)
 
 int sd_sessions_add(uint32_t sessionid,
         const struct sd_sign_key_public *identity,
-        struct sd_service_parameter *params,
+        const struct sd_service_parameter *params,
         size_t nparams)
 {
-    size_t i;
+    size_t i, n;
 
     sem_wait(&semaphore);
 
@@ -95,8 +95,18 @@ int sd_sessions_add(uint32_t sessionid,
 
     sessions->sessions[i].sessionid = sessionid;
     memcpy(sessions->sessions[i].identity.data, identity->data, sizeof(identity->data));
-    sessions->sessions[i].parameters = params;
-    sessions->sessions[i].nparameters = nparams;
+
+    if (nparams) {
+        sessions->sessions[i].parameters = malloc(nparams * sizeof(params));
+        for (n = 0; n < nparams; n++) {
+            sessions->sessions[i].parameters[n].key = strdup(params[n].key);
+            sessions->sessions[i].parameters[n].value = strdup(params[n].value);
+        }
+        sessions->sessions[i].nparameters = nparams;
+    } else {
+        sessions->sessions[i].parameters = NULL;
+        sessions->sessions[i].nparameters = 0;
+    }
 
     sd_log(LOG_LEVEL_DEBUG, "Created session %"PRIu32, sessionid);
 

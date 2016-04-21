@@ -33,7 +33,7 @@ static const char *version(void)
 static int parameters(const struct sd_service_parameter **out)
 {
     static const struct sd_service_parameter params[] = {
-        { "test", 0, NULL },
+        { "test", NULL },
     };
 
     *out = params;
@@ -54,8 +54,8 @@ static int handle(struct sd_channel *channel,
     UNUSED(cfg);
 
     return sd_channel_write_data(channel,
-            (uint8_t *) session->parameters[0].values[0],
-            strlen(session->parameters[0].values[0]));
+            (uint8_t *) session->parameters[0].value,
+            strlen(session->parameters[0].value));
 }
 
 int sd_test_init_service(struct sd_service *service)
