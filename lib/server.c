@@ -188,7 +188,7 @@ int sd_server_accept(struct sd_server *s, struct sd_channel *out)
             return -1;
     }
 
-    return sd_channel_init_from_fd(out, fd, addr, s->type);
+    return sd_channel_init_from_fd(out, fd, &addr, addrsize, s->type);
 }
 
 int sd_server_get_address(struct sd_server *s,

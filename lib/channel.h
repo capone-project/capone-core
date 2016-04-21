@@ -49,6 +49,7 @@ enum sd_channel_nonce {
 struct sd_channel {
     int fd;
     struct sockaddr_storage addr;
+    size_t addrlen;
 
     enum sd_channel_type type;
     enum sd_channel_crypto crypto;
@@ -61,7 +62,8 @@ struct sd_channel {
 int sd_channel_init_from_host(struct sd_channel *c,
         const char *host, const char *port, enum sd_channel_type type);
 int sd_channel_init_from_fd(struct sd_channel *c,
-        int fd, struct sockaddr_storage addr, enum sd_channel_type type);
+        int fd, const struct sockaddr_storage *addr, size_t addrlen,
+        enum sd_channel_type type);
 int sd_channel_close(struct sd_channel *c);
 
 bool sd_channel_is_closed(struct sd_channel *c);

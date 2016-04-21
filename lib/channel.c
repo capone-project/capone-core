@@ -39,8 +39,9 @@
 
 #include "channel.h"
 
-int getsock(struct sockaddr_storage *addr, const char *host,
-        const char *port, enum sd_channel_type type)
+int getsock(struct sockaddr_storage *addr, size_t *addrlen,
+        const char *host, const char *port,
+        enum sd_channel_type type)
 {
     struct addrinfo hints, *servinfo, *hint;
     int ret, fd;
@@ -72,6 +73,8 @@ int getsock(struct sockaddr_storage *addr, const char *host,
         if (fd < 0)
             continue;
 
+        *addrlen = hint->ai_addrlen;
+
         break;
     }
 
@@ -96,24 +99,27 @@ int sd_channel_init_from_host(struct sd_channel *c, const char *host,
 {
     int fd;
     struct sockaddr_storage addr;
+    size_t addrlen;
 
-    fd = getsock(&addr, host, port, type);
+    fd = getsock(&addr, &addrlen, host, port, type);
     if (fd < 0) {
         return -1;
     }
 
-    return sd_channel_init_from_fd(c, fd, addr, type);
+    return sd_channel_init_from_fd(c, fd, &addr, addrlen, type);
 }
 
 int sd_channel_init_from_fd(struct sd_channel *c,
-        int fd, struct sockaddr_storage addr, enum sd_channel_type type)
+        int fd, const struct sockaddr_storage *addr, size_t addrlen,
+        enum sd_channel_type type)
 {
     memset(c, 0, sizeof(struct sd_channel));
 
     c->fd = fd;
     c->type = type;
     c->crypto = SD_CHANNEL_CRYPTO_NONE;
-    c->addr = addr;
+    memcpy(&c->addr, addr, sizeof(c->addr));
+    c->addrlen = addrlen;
 
     return 0;
 }
@@ -187,7 +193,7 @@ int sd_channel_connect(struct sd_channel *c)
 {
     assert(c->fd >= 0);
 
-    if (connect(c->fd, (struct sockaddr*) &c->addr, sizeof(c->addr)) < 0) {
+    if (connect(c->fd, (struct sockaddr*) &c->addr, c->addrlen) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Could not connect: %s", strerror(errno));
         return -1;
     }
