@@ -16,9 +16,6 @@
  */
 
 #include <pthread.h>
-#include <sys/types.h>
-#include <sys/ipc.h>
-#include <sys/shm.h>
 
 #include <stdbool.h>
 #include <string.h>
@@ -35,14 +32,13 @@
 #include "lib/log.h"
 
 #define MAX_REGISTRANTS 1024
-static struct {
-    struct registrant {
-        struct sd_sign_key_public identity;
-        struct sd_channel channel;
-    } registrants[MAX_REGISTRANTS];
-    int nregistrants;
-} *registrants;
-pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+static struct registrant {
+    struct sd_sign_key_public identity;
+    struct sd_channel channel;
+} registrants[MAX_REGISTRANTS];
+static int nregistrants;
+
+static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static const char *version(void)
 {
@@ -271,10 +267,10 @@ static int handle_register(struct sd_channel *channel,
 
     pthread_mutex_lock(&mutex);
 
-    n = registrants->nregistrants++;
+    n = nregistrants++;
 
-    memcpy(&registrants->registrants[n].channel, channel, sizeof(struct sd_channel));
-    memcpy(&registrants->registrants[n].identity, &session->identity, sizeof(session->identity));
+    memcpy(&registrants[n].channel, channel, sizeof(struct sd_channel));
+    memcpy(&registrants[n].identity, &session->identity, sizeof(session->identity));
 
     sd_log(LOG_LEVEL_VERBOSE, "%d identities registered", n + 1);
 
@@ -307,11 +303,11 @@ static int handle_request(struct sd_channel *channel,
     }
 
     pthread_mutex_lock(&mutex);
-    n = registrants->nregistrants;
+    n = nregistrants;
 
     for (i = 0; i < n; i++) {
-        if (sd_channel_is_closed(&registrants->registrants[i].channel)) {
-            memmove(&registrants->registrants[i], &registrants->registrants[i + 1], (n - i - 1) * sizeof(struct registrant));
+        if (sd_channel_is_closed(&registrants[i].channel)) {
+            memmove(&registrants[i], &registrants[i + 1], (n - i - 1) * sizeof(struct registrant));
             i--;
             n--;
             sd_log(LOG_LEVEL_ERROR, "Removed identiy\n");
@@ -319,8 +315,8 @@ static int handle_request(struct sd_channel *channel,
     }
 
     for (i = 0; i < n; i++) {
-        if (!memcmp(registrants->registrants[i].identity.data, remote_identity.data, sizeof(remote_identity.data))) {
-            registrant = &registrants->registrants[i];
+        if (!memcmp(registrants[i].identity.data, remote_identity.data, sizeof(remote_identity.data))) {
+            registrant = &registrants[i];
             break;
         }
     }
@@ -388,15 +384,7 @@ static int handle(struct sd_channel *channel,
 
 int sd_capabilities_init_service(struct sd_service *service)
 {
-    int shmid;
-
-    shmid = shmget(IPC_PRIVATE, sizeof(*registrants), IPC_CREAT | IPC_EXCL | 0600);
-    if (shmid == -1) {
-        sd_log(LOG_LEVEL_ERROR, "Unable to map registrant count");
-        return -1;
-    }
-    registrants = shmat(shmid, NULL, 0);
-    memset(registrants, 0, sizeof(*registrants));
+    memset(&registrants, 0, sizeof(registrants));
 
     service->category = "Capabilities";
     service->version = version;
