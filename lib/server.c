@@ -39,6 +39,7 @@ int sd_server_init(struct sd_server *server,
 
     fd = getsock(&addr, host, port, type);
     if (fd < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Unable to get socket: %s", strerror(errno));
         return -1;
     }
 
