@@ -162,10 +162,10 @@ static void *send_request(void *payload)
     struct send_request_args *args = (struct send_request_args *) payload;
     struct sd_session session;
 
-    assert_success(sd_proto_initiate_encryption(args->channel,
-                args->channel_key, args->remote_key));
-    assert_success(sd_proto_send_request(&session, args->channel, args->remote_key,
-                args->params, args->nparams));
+    sd_proto_initiate_encryption(args->channel,
+                args->channel_key, args->remote_key);
+    sd_proto_send_request(&session, args->channel, args->remote_key,
+                args->params, args->nparams);
 
     sd_session_free(&session);
 
