@@ -1,6 +1,7 @@
 # SD
 
 [![Build Status](https://travis-ci.org/pks-t/sd.svg?branch=master)](https://travis-ci.org/pks-t/sd)
+[![Coverity](https://scan.coverity.com/projects/8634/badge.svg)](https://scan.coverity.com/projects/pks-t-sd)
 
 A fully authenticated and encrypted generic service framework.
 
