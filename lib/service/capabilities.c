@@ -15,7 +15,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <semaphore.h>
+#include <pthread.h>
 #include <sys/types.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
@@ -35,7 +35,6 @@
 #include "lib/log.h"
 
 #define MAX_REGISTRANTS 1024
-
 static struct {
     struct registrant {
         struct sd_sign_key_public identity;
@@ -43,7 +42,7 @@ static struct {
     } registrants[MAX_REGISTRANTS];
     int nregistrants;
 } *registrants;
-sem_t semaphore;
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static const char *version(void)
 {
@@ -270,7 +269,7 @@ static int handle_register(struct sd_channel *channel,
 {
     int n;
 
-    sem_wait(&semaphore);
+    pthread_mutex_lock(&mutex);
 
     n = registrants->nregistrants++;
 
@@ -279,7 +278,7 @@ static int handle_register(struct sd_channel *channel,
 
     sd_log(LOG_LEVEL_VERBOSE, "%d identities registered", n + 1);
 
-    sem_post(&semaphore);
+    pthread_mutex_unlock(&mutex);
 
     return 0;
 }
@@ -307,7 +306,7 @@ static int handle_request(struct sd_channel *channel,
         return -1;
     }
 
-    sem_wait(&semaphore);
+    pthread_mutex_lock(&mutex);
     n = registrants->nregistrants;
 
     for (i = 0; i < n; i++) {
@@ -325,7 +324,7 @@ static int handle_request(struct sd_channel *channel,
             break;
         }
     }
-    sem_post(&semaphore);
+    pthread_mutex_unlock(&mutex);
 
     if (registrant == NULL) {
         sd_log(LOG_LEVEL_ERROR, "Identity specified in capability request is not registered");
@@ -391,7 +390,6 @@ int sd_capabilities_init_service(struct sd_service *service)
 {
     int shmid;
 
-    sem_init(&semaphore, 0, 1);
     shmid = shmget(IPC_PRIVATE, sizeof(*registrants), IPC_CREAT | IPC_EXCL | 0600);
     if (shmid == -1) {
         sd_log(LOG_LEVEL_ERROR, "Unable to map registrant count");
