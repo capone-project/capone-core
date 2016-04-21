@@ -151,7 +151,7 @@ static int receive_signed_key(struct sd_encrypt_key_public *out,
         const struct sd_encrypt_key_public *local_emph_key,
         const struct sd_sign_key_public *remote_sign_key)
 {
-    SignedKeys *msg;
+    SignedKeys *msg = NULL;
     uint8_t sign_data[crypto_box_PUBLICKEYBYTES * 2];
 
     if (sd_channel_receive_protobuf(channel,
@@ -195,7 +195,8 @@ static int receive_signed_key(struct sd_encrypt_key_public *out,
     return 0;
 
 out_err:
-    signed_keys__free_unpacked(msg, NULL);
+    if (msg)
+        signed_keys__free_unpacked(msg, NULL);
     return -1;
 }
 
