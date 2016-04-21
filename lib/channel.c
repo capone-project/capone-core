@@ -60,9 +60,6 @@ int getsock(struct sockaddr_storage *addr, const char *host,
             return -1;
     }
 
-    if (host == NULL)
-        hints.ai_flags = AI_PASSIVE;
-
     ret = getaddrinfo(host, port, &hints, &servinfo);
     if (ret != 0) {
         sd_log(LOG_LEVEL_ERROR, "Could not get addrinfo for address %s:%s",

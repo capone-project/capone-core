@@ -28,31 +28,77 @@
 
 #include "server.h"
 
-extern int getsock(struct sockaddr_storage *addr, const char *host,
-        const char *port, enum sd_channel_type type);
+static int get_server_socket(struct sockaddr_storage *addr, const char *host,
+        const char *port, enum sd_channel_type type)
+{
+    struct addrinfo hints, *servinfo, *hint;
+    int ret, fd, opt;
+
+    memset(&hints, 0, sizeof(hints));
+    switch (type) {
+        case SD_CHANNEL_TYPE_TCP:
+            hints.ai_socktype = SOCK_STREAM;
+            hints.ai_protocol = IPPROTO_TCP;
+            break;
+        case SD_CHANNEL_TYPE_UDP:
+            hints.ai_socktype = SOCK_DGRAM;
+            hints.ai_protocol = IPPROTO_UDP;
+            break;
+        default:
+            sd_log(LOG_LEVEL_ERROR, "Unknown channel type");
+            return -1;
+    }
+    hints.ai_flags = AI_PASSIVE;
+
+    ret = getaddrinfo(host, port, &hints, &servinfo);
+    if (ret != 0) {
+        sd_log(LOG_LEVEL_ERROR, "Could not get addrinfo for address %s:%s",
+                host, port);
+        return -1;
+    }
+
+    for (hint = servinfo; hint != NULL; hint = hint->ai_next) {
+        fd = socket(hint->ai_family, hint->ai_socktype, hint->ai_protocol);
+        if (fd < 0)
+            continue;
+
+        opt = 1;
+        if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0 ||
+                bind(fd, hint->ai_addr, hint->ai_addrlen) < 0)
+        {
+            sd_log(LOG_LEVEL_DEBUG, "Unsuitable socket: %s", strerror(errno));
+            close(fd);
+            continue;
+        }
+
+        break;
+    }
+
+    if (hint == NULL) {
+        sd_log(LOG_LEVEL_ERROR, "Unable to resolve address");
+        return -1;
+    }
+
+    if (hint->ai_addrlen > sizeof(struct sockaddr_storage)) {
+        sd_log(LOG_LEVEL_ERROR, "Hint's addrlen is greater than sockaddr_storage length");
+        return -1;
+    }
+
+    memcpy(addr, hint->ai_addr, hint->ai_addrlen);
+    freeaddrinfo(servinfo);
+
+    return fd;
+}
 
 int sd_server_init(struct sd_server *server,
         const char *host, const char *port, enum sd_channel_type type)
 {
-    int fd, opt;
+    int fd;
     struct sockaddr_storage addr;
 
-    fd = getsock(&addr, host, port, type);
+    fd = get_server_socket(&addr, host, port, type);
     if (fd < 0) {
         sd_log(LOG_LEVEL_ERROR, "Unable to get socket: %s", strerror(errno));
-        return -1;
-    }
-
-    opt = 1;
-    if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not set socket option: %s", strerror(errno));
-        close(fd);
-        return -1;
-    }
-
-    if (bind(fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not bind socket: %s", strerror(errno));
-        close(fd);
         return -1;
     }
 
