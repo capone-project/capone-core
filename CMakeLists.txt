@@ -37,21 +37,36 @@ PROTOBUF_GENERATE_C(PROTO_SOURCES PROTO_HEADERS
 
 ADD_LIBRARY(sd SHARED
     lib/cfg.c
+    lib/cfg.h
     lib/channel.c
+    lib/channel.h
     lib/common.c
+    lib/common.h
     lib/keys.c
+    lib/keys.h
     lib/log.c
+    lib/log.h
     lib/proto.c
+    lib/proto.h
     lib/proto-enc.c
     lib/server.c
+    lib/server.h
     lib/service.c
+    lib/service.h
     lib/service/capabilities.c
+    lib/service/capabilities.h
     lib/service/exec.c
+    lib/service/exec.h
     lib/service/invoke.c
+    lib/service/invoke.h
     lib/service/synergy.c
+    lib/service/synergy.h
     lib/service/test.c
+    lib/service/test.h
     lib/service/xpra.c
+    lib/service/xpra.h
     lib/session.c
+    lib/session.h
     ${PROTO_SOURCES}
     ${PROTO_HEADERS})
 TARGET_LINK_LIBRARIES(sd
