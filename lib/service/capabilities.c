@@ -75,6 +75,8 @@ static int relay_capability_request(struct sd_channel *channel,
     size_t i;
     int ret = 0;
 
+    memset(&service_channel, 0, sizeof(struct sd_channel));
+
     if (request->n_parameters) {
         params = malloc(sizeof(struct sd_service_parameter) * request->n_parameters);
         for (i = 0; i < request->n_parameters; i++) {
