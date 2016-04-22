@@ -80,11 +80,14 @@ int getsock(struct sockaddr_storage *addr, size_t *addrlen,
 
     if (hint == NULL) {
         sd_log(LOG_LEVEL_ERROR, "Unable to resolve address");
+        freeaddrinfo(servinfo);
         return -1;
     }
 
     if (hint->ai_addrlen > sizeof(struct sockaddr_storage)) {
         sd_log(LOG_LEVEL_ERROR, "Hint's addrlen is greater than sockaddr_storage length");
+        freeaddrinfo(servinfo);
+        close(fd);
         return -1;
     }
 
