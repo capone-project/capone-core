@@ -63,7 +63,7 @@ static void exec(const char *cmd,
     int i;
 
     if (nargs > 0) {
-        argv = malloc(sizeof(char * const) * nargs + 2);
+        argv = malloc(sizeof(char * const) * (nargs + 2));
 
         argv[0] = strdup(cmd);
         for (i = 0; i < nargs; i++) {
