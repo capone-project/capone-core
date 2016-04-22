@@ -49,9 +49,9 @@ static int parse_params(struct sd_service_parameter **out, int argc, char *argv[
         char *line = argv[i], *key, *value;
 
         if ((key = strtok(line, "=")) == NULL)
-            return -1;
+            goto out_err;
         if ((value = strtok(NULL, "=")) == NULL)
-            return -1;
+            goto out_err;
 
         params[i].key = key;
         params[i].value = value;
@@ -60,6 +60,10 @@ static int parse_params(struct sd_service_parameter **out, int argc, char *argv[
     *out = params;
 
     return i;
+
+out_err:
+    free(params);
+    return -1;
 }
 
 static int cmd_query(int argc, char *argv[])
