@@ -61,21 +61,26 @@ static int read_whitelist(struct sd_sign_key_public **out, const char *file)
         keys = realloc(keys, sizeof(struct sd_sign_key_public) * ++nkeys);
         if (sd_sign_key_public_from_hex(&keys[nkeys - 1], line) < 0) {
             sd_log(LOG_LEVEL_ERROR, "Invalid key '%s'", line);
-            return -1;
+            goto out_err;
         }
     }
     free(line);
+    line = NULL;
 
-    if (!feof(stream)) {
-        fclose(stream);
-        free(keys);
-        return -1;
-    }
+    if (!feof(stream))
+        goto out_err;
 
     fclose(stream);
     *out = keys;
 
     return nkeys;
+
+out_err:
+    fclose(stream);
+    free(keys);
+    free(line);
+
+    return -1;
 }
 
 static void
