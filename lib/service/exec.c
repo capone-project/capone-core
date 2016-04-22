@@ -70,6 +70,9 @@ static void exec(const char *cmd,
             argv[i + 1] = strdup(args[i]);
         }
         argv[nargs + 1] = NULL;
+    } else {
+        argv = malloc(sizeof(char * const) * 1);
+        argv[0] = strdup(cmd);
     }
 
     for (i = 0; i < nenvs; i++) {
@@ -89,6 +92,11 @@ static void exec(const char *cmd,
     }
 
     execvp(cmd, argv);
+
+    for (i = 0; i < nargs; i++) {
+        free(argv[i]);
+    }
+    free(argv);
 
     _exit(0);
 }
