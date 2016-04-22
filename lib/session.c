@@ -78,7 +78,7 @@ int sd_sessions_add(uint32_t sessionid,
     memcpy(sessions[i].identity.data, identity->data, sizeof(identity->data));
 
     if (nparams) {
-        sessions[i].parameters = malloc(nparams * sizeof(params));
+        sessions[i].parameters = malloc(nparams * sizeof(struct sd_service_parameter));
         for (n = 0; n < nparams; n++) {
             sessions[i].parameters[n].key = strdup(params[n].key);
             sessions[i].parameters[n].value = strdup(params[n].value);
