@@ -132,10 +132,13 @@ static int cmd_query(int argc, char *argv[])
 static int cmd_request(int argc, char *argv[])
 {
     const char *config, *key, *host, *port;
-    struct sd_service_parameter *params;
+    struct sd_service_parameter *params = NULL;
     struct sd_session session;
     struct sd_channel channel;
     int nparams;
+
+    memset(&session, 0, sizeof(session));
+    memset(&channel, 0, sizeof(channel));
 
     if (argc < 6) {
         usage(argv[0]);
@@ -148,35 +151,42 @@ static int cmd_request(int argc, char *argv[])
 
     if ((nparams = parse_params(&params, argc - 6, argv + 6)) < 0) {
         puts("Could not parse parameters");
-        return -1;
+        goto out_err;
     }
 
     if (sd_sign_key_pair_from_config_file(&local_keys, config) < 0) {
         puts("Could not parse config");
-        return -1;
+        goto out_err;
     }
 
     if (sd_sign_key_public_from_hex(&remote_key, key) < 0) {
         puts("Could not parse remote public key");
-        return -1;
+        goto out_err;
     }
 
     if (sd_proto_initiate_connection(&channel, host, port,
                 &local_keys, &remote_key, SD_CONNECTION_TYPE_REQUEST) < 0) {
         puts("Could not establish connection");
-        return -1;
+        goto out_err;
     }
 
     if (sd_proto_send_request(&session, &channel, &local_keys.pk, params, nparams) < 0) {
         puts("Unable to request session");
-        return -1;
+        goto out_err;
     }
 
     printf("sessionid:  %"PRIu32"\n", session.sessionid);
 
+    sd_session_free(&session);
     sd_channel_close(&channel);
 
     return 0;
+
+out_err:
+    sd_channel_close(&channel);
+    sd_session_free(&session);
+    free(params);
+    return -1;
 }
 
 static int cmd_connect(int argc, char *argv[])
