@@ -48,7 +48,7 @@ static void parse_empty()
 {
     const char text[] = "";
 
-    assert_int_equal(cfg_parse_string(&config, text, sizeof(text)), 0);
+    assert_success(cfg_parse_string(&config, text, sizeof(text)));
     assert_int_equal(config.sections, 0);
 }
 
@@ -58,7 +58,7 @@ static void parse_simple()
         "[one]\n"
         "two=three";
 
-    assert_int_equal(cfg_parse_string(&config, text, sizeof(text)), 0);
+    assert_success(cfg_parse_string(&config, text, sizeof(text)));
 
     assert_int_equal(config.numsections, 1);
     assert_int_equal(config.sections[0].numentries, 1);
@@ -75,7 +75,7 @@ static void parse_empty_line()
         "\n"
         "four=five\n";
 
-    assert_int_equal(cfg_parse_string(&config, text, sizeof(text)), 0);
+    assert_success(cfg_parse_string(&config, text, sizeof(text)));
 
     assert_int_equal(config.numsections, 1);
     assert_int_equal(config.sections[0].numentries, 2);
@@ -91,7 +91,7 @@ static void parse_multiple_sections()
         "[one]\n"
         "[two]";
 
-    assert_int_equal(cfg_parse_string(&config, text, sizeof(text)), 0);
+    assert_success(cfg_parse_string(&config, text, sizeof(text)));
 
     assert_int_equal(config.numsections, 2);
 
@@ -106,7 +106,7 @@ static void parse_leading_whitespace()
 {
     const char text[] = " \n\t  \t[one]\n";
 
-    assert_int_equal(cfg_parse_string(&config, text, sizeof(text)), 0);
+    assert_success(cfg_parse_string(&config, text, sizeof(text)));
 
     assert_int_equal(config.numsections, 1);
     assert_cfg_section(config, 0, "one");
@@ -118,7 +118,7 @@ static void parse_trailing_whitespace()
         "[one]\t   \t\n\t\n"
         "[two]";
 
-    assert_int_equal(cfg_parse_string(&config, text, sizeof(text)), 0);
+    assert_success(cfg_parse_string(&config, text, sizeof(text)));
 
     assert_int_equal(config.numsections, 2);
     assert_cfg_section(config, 0, "one");
@@ -130,7 +130,7 @@ static void parse_invalid_without_section()
     const char text[] =
         "one=two";
 
-    assert_int_not_equal(cfg_parse_string(&config, text, sizeof(text)), 0);
+    assert_failure(cfg_parse_string(&config, text, sizeof(text)));
     assert_int_equal(config.numsections, 0);
 }
 
@@ -139,7 +139,7 @@ static void parse_invalid_section_format()
     const char text[] =
         "[bla";
 
-    assert_int_not_equal(cfg_parse_string(&config, text, sizeof(text)), 0);
+    assert_failure(cfg_parse_string(&config, text, sizeof(text)));
     assert_int_equal(config.numsections, 0);
 }
 
@@ -149,7 +149,7 @@ static void parse_invalid_missing_assignment()
         "[one]\n"
         "two three";
 
-    assert_int_not_equal(cfg_parse_string(&config, text, sizeof(text)), 0);
+    assert_failure(cfg_parse_string(&config, text, sizeof(text)));
     assert_null(config.sections);
     assert_int_equal(config.numsections, 0);
 }
@@ -160,11 +160,10 @@ static void parse_invalid_missing_value()
         "[one]\n"
         "two=";
 
-    assert_int_not_equal(cfg_parse_string(&config, text, sizeof(text)), 0);
+    assert_failure(cfg_parse_string(&config, text, sizeof(text)));
     assert_null(config.sections);
     assert_int_equal(config.numsections, 0);
 }
-
 
 static void get_section_simple()
 {
@@ -173,8 +172,10 @@ static void get_section_simple()
         "[one]\n"
         "two=three";
 
-    assert_int_equal(cfg_parse_string(&config, text, sizeof(text)), 0);
-    assert_non_null(s = cfg_get_section(&config, "one"));
+    assert_success(cfg_parse_string(&config, text, sizeof(text)));
+
+    s = cfg_get_section(&config, "one");
+    assert_non_null(s);
     assert_string_equal(s->name, "one");
 }
 
@@ -187,12 +188,18 @@ static void get_section_with_multiple_sections()
         "three=four\n"
         "[five]\n";
 
-    assert_int_equal(cfg_parse_string(&config, text, sizeof(text)), 0);
-    assert_non_null(s = cfg_get_section(&config, "one"));
+    assert_success(cfg_parse_string(&config, text, sizeof(text)));
+
+    s = cfg_get_section(&config, "one");
+    assert_non_null(s);
     assert_string_equal(s->name, "one");
-    assert_non_null(s = cfg_get_section(&config, "two"));
+
+    s = cfg_get_section(&config, "two");
+    assert_non_null(s);
     assert_string_equal(s->name, "two");
-    assert_non_null(s = cfg_get_section(&config, "five"));
+
+    s = cfg_get_section(&config, "five");
+    assert_non_null(s);
     assert_string_equal(s->name, "five");
 }
 
@@ -203,8 +210,10 @@ static void get_section_nonexisting()
         "[one]\n"
         "two=three";
 
-    assert_int_equal(cfg_parse_string(&config, text, sizeof(text)), 0);
-    assert_null(s = cfg_get_section(&config, "two"));
+    assert_success(cfg_parse_string(&config, text, sizeof(text)));
+
+    s = cfg_get_section(&config, "two");
+    assert_null(s);
 }
 
 static void get_entry_simple()
@@ -215,9 +224,13 @@ static void get_entry_simple()
         "[one]\n"
         "two=three";
 
-    assert_int_equal(cfg_parse_string(&config, text, sizeof(text)), 0);
-    assert_non_null(s = cfg_get_section(&config, "one"));
-    assert_non_null(e = cfg_get_entry(s, "two"));
+    assert_success(cfg_parse_string(&config, text, sizeof(text)));
+
+    s = cfg_get_section(&config, "one");
+    assert_non_null(s);
+
+    e = cfg_get_entry(s, "two");
+    assert_non_null(e);
     assert_string_equal(e->name, "two");
 }
 
@@ -228,8 +241,10 @@ static void get_entry_nonexisting()
     const char text[] =
         "[one]\n";
 
-    assert_int_equal(cfg_parse_string(&config, text, sizeof(text)), 0);
-    assert_non_null(s = cfg_get_section(&config, "one"));
+    assert_success(cfg_parse_string(&config, text, sizeof(text)));
+
+    s = cfg_get_section(&config, "one");
+    assert_non_null(s);
     assert_null(e = cfg_get_entry(s, "two"));
 }
 
@@ -239,9 +254,10 @@ static void get_str_value_simple()
         "[one]\n"
         "two=three";
 
-    assert_int_equal(cfg_parse_string(&config, text, sizeof(text)), 0);
-    assert_string_equal(value = cfg_get_str_value(&config, "one", "two"),
-                        "three");
+    assert_success(cfg_parse_string(&config, text, sizeof(text)));
+
+    value = cfg_get_str_value(&config, "one", "two");
+    assert_string_equal(value, "three");
 }
 
 static void get_str_value_nonexisting()
@@ -250,8 +266,10 @@ static void get_str_value_nonexisting()
         "[one]\n"
         "two=three";
 
-    assert_int_equal(cfg_parse_string(&config, text, sizeof(text)), 0);
-    assert_null(value = cfg_get_str_value(&config, "four", "five"));
+    assert_success(cfg_parse_string(&config, text, sizeof(text)));
+
+    value = cfg_get_str_value(&config, "four", "five");
+    assert_null(value);
 }
 
 static void get_int_value_simple()
@@ -259,9 +277,12 @@ static void get_int_value_simple()
     const char text[] =
         "[one]\n"
         "two=12345";
+    int i;
 
-    assert_int_equal(cfg_parse_string(&config, text, sizeof(text)), 0);
-    assert_int_equal(cfg_get_int_value(&config, "one", "two"), 12345);
+    assert_success(cfg_parse_string(&config, text, sizeof(text)));
+
+    i = cfg_get_int_value(&config, "one", "two");
+    assert_int_equal(i, 12345);
 }
 
 static void get_int_value_nonexisting()
@@ -270,8 +291,8 @@ static void get_int_value_nonexisting()
         "[one]\n"
         "";
 
-    assert_int_equal(cfg_parse_string(&config, text, sizeof(text)), 0);
-    assert_int_equal(cfg_get_int_value(&config, "one", "two"), 0);
+    assert_success(cfg_parse_string(&config, text, sizeof(text)));
+    assert_success(cfg_get_int_value(&config, "one", "two"));
 }
 
 static void get_int_value_invalid()
@@ -280,8 +301,8 @@ static void get_int_value_invalid()
         "[one]\n"
         "two=xvlc";
 
-    assert_int_equal(cfg_parse_string(&config, text, sizeof(text)), 0);
-    assert_int_equal(cfg_get_int_value(&config, "one", "two"), 0);
+    assert_success(cfg_parse_string(&config, text, sizeof(text)));
+    assert_success(cfg_get_int_value(&config, "one", "two"));
 }
 
 int cfg_test_run_suite(void)
