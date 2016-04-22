@@ -47,7 +47,7 @@ static const char *version(void)
 
 static int parameters(const struct sd_service_parameter **out)
 {
-    const struct sd_service_parameter params[] = {
+    static const struct sd_service_parameter params[] = {
         { "type", "register" },
         { "type", "request" },
         { "request-for-identity", NULL },
