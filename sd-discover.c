@@ -79,6 +79,8 @@ static void handle_announce()
     AnnounceMessage *announce = NULL;
     unsigned i;
 
+    memset(&channel, 0, sizeof(struct sd_channel));
+
     if (sd_server_init(&server, NULL, "6668", SD_CHANNEL_TYPE_UDP) < 0) {
         puts("Unable to init listening channel");
         goto out;
