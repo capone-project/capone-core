@@ -117,7 +117,8 @@ static void handle_announce()
     }
 
 out:
-    announce_message__free_unpacked(announce, NULL);
+    if (announce)
+        announce_message__free_unpacked(announce, NULL);
     sd_channel_close(&channel);
 }
 
