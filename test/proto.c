@@ -200,7 +200,6 @@ static void encryption_initiation_fails_with_wrong_remote_key()
     sd_spawn(&t, await_encryption, &args);
     assert_failure(sd_proto_initiate_encryption(&local,
                 &local_keys, &local_keys.pk));
-    sd_channel_close(&local);
     sd_kill(&t);
 }
 
