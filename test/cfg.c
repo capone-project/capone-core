@@ -245,7 +245,8 @@ static void get_entry_nonexisting()
 
     s = cfg_get_section(&config, "one");
     assert_non_null(s);
-    assert_null(e = cfg_get_entry(s, "two"));
+    e = cfg_get_entry(s, "two");
+    assert_null(e);
 }
 
 static void get_str_value_simple()
