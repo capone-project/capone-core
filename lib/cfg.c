@@ -38,18 +38,18 @@ static int map_file(char **out, size_t *outlen, const char *path)
     char *ptr = NULL;
     struct stat st;
 
-    ret = stat(path, &st);
-    if (ret < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not stat file: %s",
-                strerror(errno));
-        goto out;
-    }
-
     fd = open(path,  O_RDONLY);
     if (fd < 0) {
         sd_log(LOG_LEVEL_ERROR, "Could not open file: %s",
                 strerror(errno));
         ret = fd;
+        goto out;
+    }
+
+    ret = fstat(fd, &st);
+    if (ret < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Could not stat file: %s",
+                strerror(errno));
         goto out;
     }
 
