@@ -385,8 +385,12 @@ int sd_proto_answer_request(struct sd_channel *channel,
         goto out_err;
     }
 
-    sd_sessions_add(session_message.sessionid, &identity_key, params, nparams);
+    if (sd_sessions_add(session_message.sessionid, &identity_key, params, nparams) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Unable to add session");
+        goto out_err;
+    }
 
+    sd_service_parameters_free(params, nparams);
     session_request_message__free_unpacked(request, NULL);
     return 0;
 
