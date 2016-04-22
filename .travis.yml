@@ -2,6 +2,10 @@ language: c
 
 sudo: true
 
+cache:
+    directories:
+        - /tmp
+
 os:
     - linux
     - osx
