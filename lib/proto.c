@@ -151,7 +151,6 @@ int sd_proto_handle_session(struct sd_channel *channel,
 
     if ((err = service->handle(channel, &session, cfg)) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Service could not handle connection");
-        sd_session_free(&session);
         goto out;
     }
 
