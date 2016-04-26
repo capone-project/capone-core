@@ -99,7 +99,7 @@ static int parse_section(char *section, size_t maxlen, const char *line, size_t 
 
     ptr = line + 1;
     for (ptr = line + 1; ptr < line + len; ptr++) {
-        if (!isalnum(*ptr)) {
+        if (!isalnum((unsigned char) *ptr)) {
             sd_log(LOG_LEVEL_ERROR, "Invalid section: '%s'", section);
             return -1;
         }
@@ -154,9 +154,9 @@ static enum line_type parse_line(char *key, size_t keylen, char *value, size_t v
     for (ptr = line; *ptr && *ptr != '\n' && (ptr - line) < (ssize_t) len; ptr++);
 
     /* Trim trailing whitespace */
-    for (end = ptr; (*end == '\0' || isspace(*end)) && end > line; end--);
+    for (end = ptr; (*end == '\0' || isspace((unsigned char) *end)) && end > line; end--);
     /* Trim leading whitespace */
-    for (start = line; isspace(*start) && start < end; start++);
+    for (start = line; isspace((unsigned char) *start) && start < end; start++);
 
     linelen = end - start;
 
