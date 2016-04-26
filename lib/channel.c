@@ -84,7 +84,7 @@ int getsock(struct sockaddr_storage *addr, size_t *addrlen,
         return -1;
     }
 
-    if (hint->ai_addrlen > sizeof(struct sockaddr_storage)) {
+    if ((unsigned int) hint->ai_addrlen > sizeof(struct sockaddr_storage)) {
         sd_log(LOG_LEVEL_ERROR, "Hint's addrlen is greater than sockaddr_storage length");
         freeaddrinfo(servinfo);
         close(fd);
