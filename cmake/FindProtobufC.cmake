@@ -7,7 +7,7 @@
 #  PROTOBUFC_COMPILER - The protobuf-c compiler
 
 find_package(PkgConfig)
-pkg_check_modules(PC_PROTOBUFC_QUIET libprotobuf-c)
+pkg_check_modules(PC_PROTOBUFC QUIET libprotobuf-c)
 set(PROTOBUFC_DEFINITIONS ${PC_PROTOBUFC_CFLAGS_OTHER})
 
 find_path(PROTOBUFC_INCLUDE_DIR protobuf-c/protobuf-c.h
