@@ -1,5 +1,8 @@
 #!/bin/sh
 
+set -x
+set -e
+
 PREFIX="${HOME}/local"
 export PKG_CONFIG_PATH="${PKG_CONFIG_PATH}:${PREFIX}/lib/pkgconfig"
 
