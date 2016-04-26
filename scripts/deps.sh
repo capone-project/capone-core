@@ -53,7 +53,8 @@ set -e
         cd cmocka-1.0.1
         mkdir build
         cd build
-        cmake -DCMAKE_INSTALL_PREFIX:PATH=/usr ..
+        # Fix building without RPATH
+        cmake -DCMAKE_MACOSX_RPATH=ON -DCMAKE_INSTALL_PREFIX:PATH=/usr ..
         make
         sudo make install
     fi
