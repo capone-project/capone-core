@@ -60,12 +60,12 @@ static void set_local_address_to_invalid_address()
     assert_true(server.fd < 0);
 }
 
-static void connect_with_other_side()
+static void connect_to_localhost_succeeds()
 {
     struct sd_channel connected;
     uint8_t data[] = "test";
 
-    assert_success(sd_server_init(&server, NULL, "8080", type));
+    assert_success(sd_server_init(&server, "127.0.0.1", "8080", type));
     if (type == SD_CHANNEL_TYPE_TCP)
         assert_success(sd_server_listen(&server));
 
@@ -86,7 +86,7 @@ int server_test_run_suite(void)
         test(set_local_address_to_127001),
         test(set_local_address_to_empty_address),
         test(set_local_address_to_invalid_address),
-        test(connect_with_other_side),
+        test(connect_to_localhost_succeeds)
     };
 
     return execute_test_suite("server", tests, NULL, NULL);
