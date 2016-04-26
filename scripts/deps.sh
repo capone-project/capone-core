@@ -18,6 +18,7 @@ export PKG_CONFIG_PATH="${PKG_CONFIG_PATH}:${PREFIX}/lib/pkgconfig"
         wget https://github.com/google/protobuf/releases/download/v2.5.0/protobuf-2.5.0.tar.bz2
         tar -xvf protobuf-2.5.0.tar.bz2
         cd protobuf-2.5.0
+        autoreconf -fi
         ./configure --prefix="${PREFIX}"
         make
         make install
@@ -36,6 +37,7 @@ export PKG_CONFIG_PATH="${PKG_CONFIG_PATH}:${PREFIX}/lib/pkgconfig"
         wget https://github.com/protobuf-c/protobuf-c/releases/download/v1.0.2/protobuf-c-1.0.2.tar.gz
         tar -xvf protobuf-c-1.0.2.tar.gz
         cd protobuf-c-1.0.2
+        autoreconf -fi
         ./configure --prefix="${PREFIX}"
         make
         make install
@@ -75,6 +77,7 @@ export PKG_CONFIG_PATH="${PKG_CONFIG_PATH}:${PREFIX}/lib/pkgconfig"
         wget https://github.com/jedisct1/libsodium/releases/download/1.0.8/libsodium-1.0.8.tar.gz
         tar -xvf libsodium-1.0.8.tar.gz
         cd libsodium-1.0.8
+        autoreconf -fi
         ./configure --prefix="${PREFIX}"
         make
         make install
