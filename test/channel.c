@@ -35,7 +35,7 @@ static enum sd_channel_type type;
 void stub_sockets(struct sd_channel *local, struct sd_channel *remote)
 {
     int sockets[2];
-    unsigned int addrlen = sizeof(local->addr);
+    socklen_t addrlen = sizeof(local->addr);
 
     switch (local->type) {
         case SD_CHANNEL_TYPE_TCP:
