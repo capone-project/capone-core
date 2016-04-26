@@ -1,0 +1,12 @@
+cache:
+    - C:\msys64\tmp -> scripts/deps.sh
+
+install:
+    - C:\msys64\usr\bin\pacman.exe -Syu --noconfirm
+    - C:\msys64\usr\bin\sh.exe --login /c/projects/sd/scripts/deps.sh
+
+build_script:
+    - C:\msys64\usr\bin\sh.exe --login /c/projects/sd/scripts/build.sh
+
+test_script:
+    - C:\msys64\usr\bin\sh.exe --login -c 'PATH="${PATH}:${HOME}/local/bin" /c/projects/sd/source/sd/build/sd-test.exe --verbose'
