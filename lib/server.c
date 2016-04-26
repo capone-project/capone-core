@@ -80,7 +80,7 @@ static int get_server_socket(struct sockaddr_storage *addr, const char *host,
         return -1;
     }
 
-    if (hint->ai_addrlen > sizeof(struct sockaddr_storage)) {
+    if ((size_t) hint->ai_addrlen > sizeof(struct sockaddr_storage)) {
         sd_log(LOG_LEVEL_ERROR, "Hint's addrlen is greater than sockaddr_storage length");
         freeaddrinfo(servinfo);
         close(fd);
@@ -155,7 +155,7 @@ int sd_server_listen(struct sd_server *s)
 int sd_server_accept(struct sd_server *s, struct sd_channel *out)
 {
     int fd;
-    unsigned int addrsize;
+    socklen_t addrsize;
     struct sockaddr_storage addr;
 
     assert(s->fd >= 0);
