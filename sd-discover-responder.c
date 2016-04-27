@@ -81,8 +81,6 @@ static void handle_discover()
     }
 
     while (true) {
-        waitpid(-1, NULL, WNOHANG);
-
         if (sd_server_accept(&server, &channel) < 0) {
             sd_log(LOG_LEVEL_ERROR, "Unable to accept connection");
             continue;
