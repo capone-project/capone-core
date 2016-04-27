@@ -23,19 +23,21 @@
 
 #include <sodium.h>
 
+#include <sys/select.h>
 #include <sys/socket.h>
 #include <sys/wait.h>
 #include <netdb.h>
 
 #include "lib/common.h"
 #include "lib/log.h"
+#include "lib/proto.h"
 #include "lib/server.h"
 #include "lib/service.h"
 
 #include "proto/discovery.pb-c.h"
 
 static AnnounceMessage announce_message;
-static struct sd_sign_key_public local_key;
+static struct sd_sign_key_pair sign_keys;
 
 #define LISTEN_PORT "6667"
 
@@ -49,9 +51,9 @@ static void announce(struct sd_channel *channel)
     sd_log(LOG_LEVEL_DEBUG, "Sent announce");
 }
 
-static void handle_connection(struct sd_channel *channel)
+static void handle_udp(struct sd_channel *channel)
 {
-    DiscoverMessage *discover;
+    DiscoverMessage *discover = NULL;
     struct sd_channel client_channel;
     char host[128], port[16];
     int ret;
@@ -89,23 +91,71 @@ out:
         discover_message__free_unpacked(discover, NULL);
 }
 
+static void handle_tcp(struct sd_channel *channel)
+{
+    struct sd_sign_key_public remote_sign_key;
+
+    if (sd_proto_await_encryption(channel, &sign_keys, &remote_sign_key) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Unable to await encryption");
+        goto out;
+    }
+
+    sd_log(LOG_LEVEL_DEBUG, "Received directed discovery");
+
+    announce(channel);
+
+out:
+    sd_channel_close(channel);
+}
+
 static void handle_connections()
 {
-    struct sd_server server;
+    struct sd_server udp_server, tcp_server;
     struct sd_channel channel;
+    fd_set fds;
+    int nfds;
 
-    if (sd_server_init(&server, NULL, LISTEN_PORT, SD_CHANNEL_TYPE_UDP) < 0) {
+    if (sd_server_init(&udp_server, NULL, LISTEN_PORT, SD_CHANNEL_TYPE_UDP) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Unable to init listening channel");
         return;
     }
 
+    if (sd_server_init(&tcp_server, NULL, LISTEN_PORT, SD_CHANNEL_TYPE_TCP) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Unable to init listening channel");
+        return;
+    }
+    if (sd_server_listen(&tcp_server) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Unable to listen on TCP channel");
+        return;
+    }
+
+    nfds = MAX(udp_server.fd, tcp_server.fd) + 1;
+
     while (true) {
-        if (sd_server_accept(&server, &channel) < 0) {
-            sd_log(LOG_LEVEL_ERROR, "Unable to accept connection");
+        FD_ZERO(&fds);
+        FD_SET(udp_server.fd, &fds);
+        FD_SET(tcp_server.fd, &fds);
+
+        if (select(nfds, &fds, NULL, NULL, NULL) < 0) {
+            sd_log(LOG_LEVEL_ERROR, "Unable to select on channels");
             continue;
         }
 
-        handle_connection(&channel);
+        if (FD_ISSET(udp_server.fd, &fds)) {
+            if (sd_server_accept(&udp_server, &channel) < 0) {
+                sd_log(LOG_LEVEL_ERROR, "Unable to accept UDP connection");
+                continue;
+            }
+            handle_udp(&channel);
+        }
+
+        if (FD_ISSET(tcp_server.fd, &fds)) {
+            if (sd_server_accept(&tcp_server, &channel) < 0) {
+                sd_log(LOG_LEVEL_ERROR, "Unable to accept TCP connection");
+                continue;
+            }
+            handle_tcp(&channel);
+        }
     }
 }
 
@@ -113,7 +163,6 @@ int main(int argc, char *argv[])
 {
     AnnounceMessage__Service **service_messages;
     struct sd_service *services;
-    struct sd_sign_key_pair keys;
     int i, numservices;
 
     if (sodium_init() < 0) {
@@ -125,12 +174,10 @@ int main(int argc, char *argv[])
         return 0;
     }
 
-    if (sd_sign_key_pair_from_config_file(&keys, argv[1]) < 0) {
+    if (sd_sign_key_pair_from_config_file(&sign_keys, argv[1]) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Unable to read local keys");
         return -1;
     }
-    memcpy(&local_key.data, &keys.pk.data, sizeof(local_key.data));
-    sodium_memzero(&keys, sizeof(keys));
 
     if ((numservices = sd_services_from_config_file(&services, argv[1])) <= 0) {
         sd_log(LOG_LEVEL_ERROR, "Unable to read service configuration");
@@ -139,8 +186,8 @@ int main(int argc, char *argv[])
 
     announce_message__init(&announce_message);
     announce_message.version = VERSION;
-    announce_message.sign_key.data = local_key.data;
-    announce_message.sign_key.len = sizeof(local_key.data);
+    announce_message.sign_key.data = sign_keys.pk.data;
+    announce_message.sign_key.len = sizeof(sign_keys.pk.data);
 
     service_messages = malloc(sizeof(AnnounceMessage__Service *) * numservices);
     for (i = 0; i < numservices; i++) {
