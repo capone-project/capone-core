@@ -37,7 +37,7 @@
 static AnnounceMessage announce_message;
 static struct sd_sign_key_public local_key;
 
-#define LISTEN_PORT 6667
+#define LISTEN_PORT "6667"
 
 static void announce(struct sockaddr_storage addr, uint32_t port)
 {
@@ -75,7 +75,7 @@ static void handle_discover()
     struct sd_channel channel;
     DiscoverMessage *discover;
 
-    if (sd_server_init(&server, NULL, "6667", SD_CHANNEL_TYPE_UDP) < 0) {
+    if (sd_server_init(&server, NULL, LISTEN_PORT, SD_CHANNEL_TYPE_UDP) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Unable to init listening channel");
         return;
     }
