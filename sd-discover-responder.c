@@ -69,11 +69,29 @@ static void announce(struct sockaddr_storage addr, uint32_t port)
     sd_channel_close(&channel);
 }
 
-static void handle_discover()
+static void handle_connection(struct sd_channel *channel)
+{
+    DiscoverMessage *discover;
+
+    if (sd_channel_receive_protobuf(channel, &discover_message__descriptor,
+            (ProtobufCMessage **) &discover) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Unable to receive envelope");
+        goto out;
+    }
+
+    sd_log(LOG_LEVEL_DEBUG, "Received discovery message");
+
+    announce(channel->addr, discover->port);
+
+out:
+    if (discover)
+        discover_message__free_unpacked(discover, NULL);
+}
+
+static void handle_connections()
 {
     struct sd_server server;
     struct sd_channel channel;
-    DiscoverMessage *discover;
 
     if (sd_server_init(&server, NULL, LISTEN_PORT, SD_CHANNEL_TYPE_UDP) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Unable to init listening channel");
@@ -83,22 +101,10 @@ static void handle_discover()
     while (true) {
         if (sd_server_accept(&server, &channel) < 0) {
             sd_log(LOG_LEVEL_ERROR, "Unable to accept connection");
-            goto out;
+            continue;
         }
 
-        if (sd_channel_receive_protobuf(&channel, &discover_message__descriptor,
-                (ProtobufCMessage **) &discover) < 0) {
-            sd_log(LOG_LEVEL_ERROR, "Unable to receive envelope");
-            goto out;
-        }
-
-        sd_log(LOG_LEVEL_DEBUG, "Received discovery message");
-
-        announce(channel.addr, discover->port);
-
-out:
-        if (discover)
-            discover_message__free_unpacked(discover, NULL);
+        handle_connection(&channel);
     }
 }
 
@@ -149,7 +155,7 @@ int main(int argc, char *argv[])
     announce_message.services = service_messages;
     announce_message.n_services = numservices;
 
-    handle_discover();
+    handle_connections();
 
     return 0;
 }
