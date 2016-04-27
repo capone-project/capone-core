@@ -83,20 +83,22 @@ static void handle_discover()
     while (true) {
         if (sd_server_accept(&server, &channel) < 0) {
             sd_log(LOG_LEVEL_ERROR, "Unable to accept connection");
-            continue;
+            goto out;
         }
 
         if (sd_channel_receive_protobuf(&channel, &discover_message__descriptor,
                 (ProtobufCMessage **) &discover) < 0) {
             sd_log(LOG_LEVEL_ERROR, "Unable to receive envelope");
-            continue;
+            goto out;
         }
 
         sd_log(LOG_LEVEL_DEBUG, "Received discovery message");
 
         announce(channel.addr, discover->port);
 
-        discover_message__free_unpacked(discover, NULL);
+out:
+        if (discover)
+            discover_message__free_unpacked(discover, NULL);
     }
 }
 
