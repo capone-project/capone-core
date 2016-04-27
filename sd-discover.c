@@ -71,32 +71,13 @@ out:
     return NULL;
 }
 
-static void handle_announce()
+static void handle_announce(struct sd_channel *channel)
 {
     struct sd_sign_key_hex remote_key;
-    struct sd_server server;
-    struct sd_channel channel;
     AnnounceMessage *announce = NULL;
     unsigned i;
 
-    memset(&channel, 0, sizeof(struct sd_channel));
-
-    if (sd_server_init(&server, NULL, "6668", SD_CHANNEL_TYPE_UDP) < 0) {
-        puts("Unable to init listening channel");
-        goto out;
-    }
-
-    if (sd_server_enable_broadcast(&server) < 0) {
-        puts("Unable to enable broadcasting");
-        goto out;
-    }
-
-    if (sd_server_accept(&server, &channel) < 0) {
-        puts("Unable to accept connection");
-        goto out;
-    }
-
-    if (sd_channel_receive_protobuf(&channel,
+    if (sd_channel_receive_protobuf(channel,
                 (ProtobufCMessageDescriptor *) &announce_message__descriptor,
                 (ProtobufCMessage **) &announce) < 0) {
         puts("Unable to receive protobuf");
@@ -121,19 +102,72 @@ static void handle_announce()
 out:
     if (announce)
         announce_message__free_unpacked(announce, NULL);
+}
+
+static void undirected_discovery()
+{
+    struct sd_server server;
+    struct sd_channel channel;
+    struct sd_thread t;
+
+    sd_spawn(&t, probe, NULL);
+
+    if (sd_server_init(&server, NULL, "6668", SD_CHANNEL_TYPE_UDP) < 0) {
+        puts("Unable to init listening channel");
+        goto out;
+    }
+
+    if (sd_server_enable_broadcast(&server) < 0) {
+        puts("Unable to enable broadcasting");
+        goto out;
+    }
+
+    if (sd_server_accept(&server, &channel) < 0) {
+        puts("Unable to accept connection");
+        goto out;
+    }
+
+    handle_announce(&channel);
+
+out:
+    sd_channel_close(&channel);
+    sd_kill(&t);
+}
+
+static void directed_discovery(const struct sd_sign_key_public *remote_key,
+        const char *host, const char *port)
+{
+    struct sd_channel channel;
+
+    if (sd_channel_init_from_host(&channel, host, port, SD_CHANNEL_TYPE_TCP) < 0) {
+        puts("Unable to initiate channel");
+        goto out;
+    }
+
+    if (sd_channel_connect(&channel) < 0) {
+        puts("Unable to connect");
+        goto out;
+    }
+
+    if (sd_proto_initiate_encryption(&channel, &local_keys, remote_key) < 0) {
+        puts("Unable to initiate encryption");
+        goto out;
+    }
+
+    handle_announce(&channel);
+
+out:
     sd_channel_close(&channel);
 }
 
 int main(int argc, char *argv[])
 {
-    struct sd_thread t;
-
     if (sodium_init() < 0) {
         return -1;
     }
 
-    if (argc != 2) {
-        printf("USAGE: %s <CONFIG>\n", argv[0]);
+    if (argc != 2 && argc != 5) {
+        printf("USAGE: %s <CONFIG> [<KEY> <HOST> <PORT>]\n", argv[0]);
         return -1;
     }
 
@@ -142,10 +176,17 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    sd_spawn(&t, probe, NULL);
-    handle_announce();
+    if (argc == 2) {
+        undirected_discovery();
+    } else if (argc == 5) {
+        struct sd_sign_key_public remote_key;
 
-    sd_kill(&t);
+        if (sd_sign_key_public_from_hex(&remote_key, argv[2]) < 0) {
+            return -1;
+        }
+
+        directed_discovery(&remote_key, argv[3], argv[4]);
+    }
 
     return 0;
 }
