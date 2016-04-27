@@ -39,39 +39,22 @@ static struct sd_sign_key_public local_key;
 
 #define LISTEN_PORT "6667"
 
-static void announce(struct sockaddr_storage addr, uint32_t port)
+static void announce(struct sd_channel *channel)
 {
-    struct sd_channel channel;
-    char host[128], service[16];
-    int ret;
-
-    if ((ret = getnameinfo((struct sockaddr *) &addr, sizeof(addr),
-                host, sizeof(host), NULL, 0, NI_NUMERICHOST)) != 0)
-    {
-        sd_log(LOG_LEVEL_ERROR, "Could not extract address: %s",
-                gai_strerror(ret));
-        return;
-    }
-    snprintf(service, sizeof(service), "%u", port);
-
-    if (sd_channel_init_from_host(&channel, host, service, SD_CHANNEL_TYPE_UDP) < 0) {
-        sd_log(LOG_LEVEL_ERROR,"Could not initialize channel");
-        return;
-    }
-
-    if (sd_channel_write_protobuf(&channel, &announce_message.base) < 0) {
+    if (sd_channel_write_protobuf(channel, &announce_message.base) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Could not write announce message");
         return;
     }
 
     sd_log(LOG_LEVEL_DEBUG, "Sent announce");
-
-    sd_channel_close(&channel);
 }
 
 static void handle_connection(struct sd_channel *channel)
 {
     DiscoverMessage *discover;
+    struct sd_channel client_channel;
+    char host[128], port[16];
+    int ret;
 
     if (sd_channel_receive_protobuf(channel, &discover_message__descriptor,
             (ProtobufCMessage **) &discover) < 0) {
@@ -81,7 +64,25 @@ static void handle_connection(struct sd_channel *channel)
 
     sd_log(LOG_LEVEL_DEBUG, "Received discovery message");
 
-    announce(channel->addr, discover->port);
+    if ((ret = getnameinfo((struct sockaddr *) &channel->addr, channel->addrlen,
+                host, sizeof(host), NULL, 0, NI_NUMERICHOST)) != 0)
+    {
+        sd_log(LOG_LEVEL_ERROR, "Could not extract address: %s",
+                gai_strerror(ret));
+        goto out;
+    }
+    snprintf(port, sizeof(port), "%u", discover->port);
+
+    if (sd_channel_init_from_host(&client_channel, host, port, SD_CHANNEL_TYPE_UDP) < 0) {
+        sd_log(LOG_LEVEL_ERROR,"Could not initialize client channel");
+        goto out;
+    }
+
+    announce(&client_channel);
+
+    if (sd_channel_close(&client_channel) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Could not close client channel");
+    }
 
 out:
     if (discover)
