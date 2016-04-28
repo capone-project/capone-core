@@ -43,8 +43,6 @@ static int send_discover(struct sd_channel *channel)
 
     msg.version = VERSION;
     msg.port = LISTEN_PORT;
-    msg.sign_key.data = local_keys.pk.data;
-    msg.sign_key.len = sizeof(local_keys.pk.data);
 
     if (sd_channel_write_protobuf(channel, &msg.base) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Unable to send discover: %s",
