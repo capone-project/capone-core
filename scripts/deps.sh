@@ -6,6 +6,12 @@ set -e
 PREFIX="${HOME}/local"
 export PKG_CONFIG_PATH="${PKG_CONFIG_PATH}:${PREFIX}/lib/pkgconfig"
 
+if test -d "${PREFIX}"
+then
+    echo "Using cached dependencies"
+    exit
+fi
+
 # install protobuf
 (
     cd /tmp
