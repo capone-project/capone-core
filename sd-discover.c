@@ -37,17 +37,29 @@
 
 static struct sd_sign_key_pair local_keys;
 
-static void *probe(void *payload)
+static int send_discover(struct sd_channel *channel)
 {
     DiscoverMessage msg = DISCOVER_MESSAGE__INIT;
-    struct sd_channel channel;
-
-    UNUSED(payload);
 
     msg.version = VERSION;
     msg.port = LISTEN_PORT;
     msg.sign_key.data = local_keys.pk.data;
     msg.sign_key.len = sizeof(local_keys.pk.data);
+
+    if (sd_channel_write_protobuf(channel, &msg.base) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Unable to send discover: %s",
+                strerror(errno));
+        return -1;
+    }
+
+    return 0;
+}
+
+static void *probe(void *payload)
+{
+    struct sd_channel channel;
+
+    UNUSED(payload);
 
     if (sd_channel_init_from_host(&channel, "224.0.0.1", "6667", SD_CHANNEL_TYPE_UDP) < 0) {
         puts("Unable to initialize channel");
@@ -55,7 +67,7 @@ static void *probe(void *payload)
     }
 
     while (true) {
-        if (sd_channel_write_protobuf(&channel, &msg.base) < 0) {
+        if (send_discover(&channel) < 0) {
             puts("Unable to write protobuf");
             goto out;
         }
@@ -151,6 +163,11 @@ static void directed_discovery(const struct sd_sign_key_public *remote_key,
 
     if (sd_proto_initiate_encryption(&channel, &local_keys, remote_key) < 0) {
         puts("Unable to initiate encryption");
+        goto out;
+    }
+
+    if (send_discover(&channel) < 0) {
+        puts("Unable to send directed discover");
         goto out;
     }
 
