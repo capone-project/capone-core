@@ -2,13 +2,16 @@ language: c
 
 sudo: false
 
-os:
-    - linux
-    - osx
-
-compiler:
-    - clang
-    - gcc
+matrix:
+    include:
+        - os: linux
+          compiler: gcc
+        - os: linux
+          compiler: clang
+        - os: osx
+          compiler: gcc
+        - os: osx
+          compiler: clang
 
 install:
     - ./scripts/deps.sh
