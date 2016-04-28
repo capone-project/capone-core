@@ -41,8 +41,15 @@ static struct sd_sign_key_pair sign_keys;
 
 #define LISTEN_PORT "6667"
 
-static void announce(struct sd_channel *channel)
+static void announce(struct sd_channel *channel,
+        DiscoverMessage *msg)
 {
+    if (strcmp(msg->version, VERSION)) {
+        sd_log(LOG_LEVEL_ERROR, "Cannot handle announce message version %s",
+                msg->version);
+        return;
+    }
+
     if (sd_channel_write_protobuf(channel, &announce_message.base) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Could not write announce message");
         return;
@@ -53,13 +60,13 @@ static void announce(struct sd_channel *channel)
 
 static void handle_udp(struct sd_channel *channel)
 {
-    DiscoverMessage *discover = NULL;
+    DiscoverMessage *msg = NULL;
     struct sd_channel client_channel;
     char host[128], port[16];
     int ret;
 
     if (sd_channel_receive_protobuf(channel, &discover_message__descriptor,
-            (ProtobufCMessage **) &discover) < 0) {
+            (ProtobufCMessage **) &msg) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Unable to receive envelope");
         goto out;
     }
@@ -73,39 +80,48 @@ static void handle_udp(struct sd_channel *channel)
                 gai_strerror(ret));
         goto out;
     }
-    snprintf(port, sizeof(port), "%u", discover->port);
+    snprintf(port, sizeof(port), "%u", msg->port);
 
     if (sd_channel_init_from_host(&client_channel, host, port, SD_CHANNEL_TYPE_UDP) < 0) {
         sd_log(LOG_LEVEL_ERROR,"Could not initialize client channel");
         goto out;
     }
 
-    announce(&client_channel);
+    announce(&client_channel, msg);
 
     if (sd_channel_close(&client_channel) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Could not close client channel");
     }
 
 out:
-    if (discover)
-        discover_message__free_unpacked(discover, NULL);
+    if (msg)
+        discover_message__free_unpacked(msg, NULL);
 }
 
 static void handle_tcp(struct sd_channel *channel)
 {
     struct sd_sign_key_public remote_sign_key;
+    DiscoverMessage *msg = NULL;
 
     if (sd_proto_await_encryption(channel, &sign_keys, &remote_sign_key) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Unable to await encryption");
         goto out;
     }
 
+    if (sd_channel_receive_protobuf(channel, &discover_message__descriptor,
+            (ProtobufCMessage **) &msg) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Unable to receive envelope");
+        goto out;
+    }
+
     sd_log(LOG_LEVEL_DEBUG, "Received directed discovery");
 
-    announce(channel);
+    announce(channel, msg);
 
 out:
     sd_channel_close(channel);
+    if (msg)
+        discover_message__free_unpacked(msg, NULL);
 }
 
 static void handle_connections()
