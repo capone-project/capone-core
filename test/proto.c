@@ -198,9 +198,13 @@ static void encryption_initiation_fails_with_wrong_remote_key()
     };
 
     sd_spawn(&t, await_encryption, &args);
+
     assert_failure(sd_proto_initiate_encryption(&local,
                 &local_keys, &local_keys.pk));
-    sd_kill(&t);
+
+    shutdown(local.fd, SHUT_RDWR);
+    shutdown(remote.fd, SHUT_RDWR);
+    sd_join(&t, NULL);
 }
 
 static void query_succeeds()
@@ -256,11 +260,15 @@ static void blacklisted_query_fails()
     struct sd_sign_key_public received_sign_key;
 
     sd_spawn(&t, send_query, &args);
+
     assert_success(sd_proto_await_encryption(&remote,
                 &remote_keys, &received_sign_key));
     assert_failure(sd_proto_answer_query(&remote,
                 &service, &local_keys.pk, &dummy_whitelist, 1));
-    sd_kill(&t);
+
+    shutdown(local.fd, SHUT_RDWR);
+    shutdown(remote.fd, SHUT_RDWR);
+    sd_join(&t, NULL);
 }
 
 static void request_constructs_session()
@@ -325,11 +333,15 @@ static void blacklisted_request_fails()
     struct sd_thread t;
 
     sd_spawn(&t, send_request, &args);
+
     assert_success(sd_proto_await_encryption(&remote, &remote_keys,
                 &received_sign_key));
     assert_failure(sd_proto_answer_request(&remote, &received_sign_key,
                 &dummy_whitelist, 1));
-    sd_kill(&t);
+
+    shutdown(local.fd, SHUT_RDWR);
+    shutdown(remote.fd, SHUT_RDWR);
+    sd_join(&t, NULL);
 }
 
 static void service_connects()
