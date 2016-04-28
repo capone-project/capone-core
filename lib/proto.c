@@ -231,12 +231,12 @@ out:
 int sd_proto_send_query(struct sd_query_results *out,
         struct sd_channel *channel)
 {
-    QueryResults *msg;
+    ServiceDescription *msg;
     struct sd_query_results results;
 
     memset(out, 0, sizeof(struct sd_query_results));
 
-    if (sd_channel_receive_protobuf(channel, &query_results__descriptor,
+    if (sd_channel_receive_protobuf(channel, &service_description__descriptor,
             (ProtobufCMessage **) &msg) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Could not receive query results");
         return -1;
@@ -258,7 +258,7 @@ int sd_proto_send_query(struct sd_query_results *out,
     convert_params(&results.params, msg->parameters, msg->n_parameters);
     results.nparams = msg->n_parameters;
 
-    query_results__free_unpacked(msg, NULL);
+    service_description__free_unpacked(msg, NULL);
 
     memcpy(out, &results, sizeof(*out));
 
@@ -271,7 +271,7 @@ int sd_proto_answer_query(struct sd_channel *channel,
         const struct sd_sign_key_public *whitelist,
         size_t nwhitelist)
 {
-    QueryResults results = QUERY_RESULTS__INIT;
+    ServiceDescription results = SERVICE_DESCRIPTION__INIT;
     Parameter **parameters;
     const struct sd_service_parameter *params;
     int i, n, err;
