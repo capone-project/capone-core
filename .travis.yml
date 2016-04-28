@@ -12,6 +12,11 @@ matrix:
           compiler: gcc
         - os: osx
           compiler: clang
+        - os: linux
+          compiler: clang
+          env: CFLAGS='-fsanitize=address -fsanitize=undefined'
+    allow_failures:
+        - env: CFLAGS='-fsanitize=address -fsanitize=undefined'
 
 install:
     - ./scripts/deps.sh
