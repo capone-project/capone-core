@@ -214,7 +214,6 @@ static int invoke_request(struct sd_channel *channel)
 {
     Capability *capability;
     struct sd_sign_key_hex identity_hex, service_hex;
-    struct sd_symmetric_key_hex session_hex;
 
     if (sd_channel_receive_protobuf(channel, &capability__descriptor,
                 (ProtobufCMessage **) &capability) < 0)
@@ -226,9 +225,7 @@ static int invoke_request(struct sd_channel *channel)
     if (sd_sign_key_hex_from_bin(&identity_hex,
                 capability->identity.data, capability->identity.len) < 0 ||
             sd_sign_key_hex_from_bin(&service_hex,
-                capability->service.data, capability->service.len) < 0 ||
-            sd_symmetric_key_hex_from_bin(&session_hex,
-                capability->sessionkey.data, capability->sessionkey.len) < 0)
+                capability->service.data, capability->service.len) < 0)
     {
         sd_log(LOG_LEVEL_ERROR, "Unable to parse capability keys");
         return -1;
@@ -236,9 +233,8 @@ static int invoke_request(struct sd_channel *channel)
 
     printf("identity:   %s\n"
            "service:    %s\n"
-           "sessionid:  %"PRIu32"\n"
-           "sessionkey: %s\n",
-           identity_hex.data, service_hex.data, capability->sessionid, session_hex.data);
+           "sessionid:  %"PRIu32"\n",
+           identity_hex.data, service_hex.data, capability->sessionid);
 
     capability__free_unpacked(capability, NULL);
 
