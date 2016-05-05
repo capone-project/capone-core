@@ -18,9 +18,11 @@
 #include <stdio.h>
 #include <string.h>
 
-#define __USE_GNU
-#include <sched.h>
-#undef __USE_GNU
+#ifdef HAVE_SCHED
+# define __USE_GNU
+#  include <sched.h>
+# undef __USE_GNU
+#endif
 
 #include "lib/channel.h"
 #include "lib/common.h"
@@ -48,10 +50,15 @@ static uint64_t rdtsc64(void)
 
 static int set_affinity(uint8_t cpu)
 {
+#ifdef HAVE_SCHED
     cpu_set_t mask;
     CPU_ZERO(&mask);
     CPU_SET(cpu, &mask);
     return sched_setaffinity(0, sizeof(mask), &mask);
+#else
+    UNUSED(cpu);
+    return 0;
+#endif
 }
 
 static void *client(void *payload)
