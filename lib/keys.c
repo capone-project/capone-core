@@ -80,6 +80,8 @@ int sd_sign_key_pair_from_config_file(struct sd_sign_key_pair *out, const char *
     struct cfg cfg;
     int ret = 0;
 
+    memset(&cfg, 0, sizeof(cfg));
+
     if (cfg_parse(&cfg, file) < 0) {
         ret = -1;
         goto out;
