@@ -35,30 +35,30 @@ int sd_sign_key_pair_from_config(struct sd_sign_key_pair *out, const struct cfg 
 
     value = cfg_get_str_value(cfg, "core", "public_key");
     if (value == NULL) {
-        puts("Could not retrieve public key from config");
+        sd_log(LOG_LEVEL_ERROR, "Could not retrieve public key from config");
         goto out_err;
     }
     if (strlen(value) != crypto_sign_PUBLICKEYBYTES * 2) {
-        puts("Invalid public key length");
+        sd_log(LOG_LEVEL_ERROR, "Invalid public key length");
         goto out_err;
     }
     if (sodium_hex2bin(sign_pk, sizeof(sign_pk), value, strlen(value), NULL, NULL, NULL) < 0) {
-        puts("Could not decode public key");
+        sd_log(LOG_LEVEL_ERROR, "Could not decode public key");
         goto out_err;
     }
     free(value);
 
     value = cfg_get_str_value(cfg, "core", "secret_key");
     if (value == NULL) {
-        puts("Could not retrieve secret key from config");
+        sd_log(LOG_LEVEL_ERROR, "Could not retrieve secret key from config");
         goto out_err;
     }
     if (strlen(value) != crypto_sign_SECRETKEYBYTES * 2) {
-        puts("Invalid secret key length");
+        sd_log(LOG_LEVEL_ERROR, "Invalid secret key length");
         goto out_err;
     }
     if (sodium_hex2bin(sign_sk, sizeof(sign_sk), value, strlen(value), NULL, NULL, NULL)) {
-        puts("Could not decode public key");
+        sd_log(LOG_LEVEL_ERROR, "Could not decode public key");
         goto out_err;
     }
     free(value);
