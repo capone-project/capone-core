@@ -18,6 +18,10 @@
 #include <stdio.h>
 #include <string.h>
 
+#define __USE_GNU
+#include <sched.h>
+#undef __USE_GNU
+
 #include "lib/channel.h"
 #include "lib/common.h"
 #include "lib/keys.h"
@@ -42,11 +46,24 @@ static uint64_t rdtsc64(void)
     return ((uint64_t)hi << (uint64_t)32) | (uint64_t)lo;
 }
 
+static int set_affinity(uint8_t cpu)
+{
+    cpu_set_t mask;
+    CPU_ZERO(&mask);
+    CPU_SET(cpu, &mask);
+    return sched_setaffinity(0, sizeof(mask), &mask);
+}
+
 static void *client(void *payload)
 {
     struct sd_channel channel;
     uint8_t *data = malloc(DATA_LEN);
     uint64_t start, end;
+
+    if (set_affinity(2) < 0) {
+        puts("Unable to set sched affinity");
+        return NULL;
+    }
 
     UNUSED(payload);
 
@@ -99,6 +116,11 @@ int main(int argc, char *argv[])
         sd_symmetric_key_generate(&key);
     } else {
         usage(argv[0]);
+        return -1;
+    }
+
+    if (set_affinity(3) < 0) {
+        puts("Unable to set sched affinity");
         return -1;
     }
 
