@@ -35,6 +35,7 @@ static int get_server_socket(struct sockaddr_storage *addr, const char *host,
     int ret, fd, opt;
 
     memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_UNSPEC;
     switch (type) {
         case SD_CHANNEL_TYPE_TCP:
             hints.ai_socktype = SOCK_STREAM;
