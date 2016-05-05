@@ -39,6 +39,8 @@
 
 #include "channel.h"
 
+#define PACKAGE_LENGTH 512
+
 int getsock(struct sockaddr_storage *addr, size_t *addrlen,
         const char *host, const char *port,
         enum sd_channel_type type)
@@ -238,7 +240,7 @@ static int write_data(struct sd_channel *c, uint8_t *data, uint32_t datalen)
 
 int sd_channel_write_data(struct sd_channel *c, uint8_t *data, uint32_t datalen)
 {
-    uint8_t block[512];
+    uint8_t block[PACKAGE_LENGTH];
     size_t written = 0, offset;
     uint32_t networklen;
 
@@ -319,7 +321,7 @@ static int receive_data(struct sd_channel *c, uint8_t *out, size_t len)
 
 ssize_t sd_channel_receive_data(struct sd_channel *c, uint8_t *out, size_t maxlen)
 {
-    uint8_t block[512];
+    uint8_t block[PACKAGE_LENGTH];
     uint32_t pkglen, received = 0, offset = sizeof(uint32_t);
 
     while (offset || received < pkglen) {
