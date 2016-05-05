@@ -74,8 +74,6 @@ int getsock(struct sockaddr_storage *addr, size_t *addrlen,
         if (fd < 0)
             continue;
 
-        *addrlen = hint->ai_addrlen;
-
         break;
     }
 
@@ -93,6 +91,7 @@ int getsock(struct sockaddr_storage *addr, size_t *addrlen,
     }
 
     memcpy(addr, hint->ai_addr, hint->ai_addrlen);
+    *addrlen = hint->ai_addrlen;
     freeaddrinfo(servinfo);
 
     return fd;
