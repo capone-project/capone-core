@@ -48,6 +48,7 @@ int getsock(struct sockaddr_storage *addr, size_t *addrlen,
 
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_UNSPEC;
+    hints.ai_flags = AI_ADDRCONFIG;
     switch (type) {
         case SD_CHANNEL_TYPE_TCP:
             hints.ai_socktype = SOCK_STREAM;
