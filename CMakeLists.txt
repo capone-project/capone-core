@@ -84,3 +84,6 @@ ADD_EXECUTABLE(sd-test sd-test.c
     test/service.c
     test/session.c)
 TARGET_LINK_LIBRARIES(sd-test sd cmocka)
+
+ADD_EXECUTABLE(sd-bench sd-bench.c)
+TARGET_LINK_LIBRARIES(sd-bench sd)
