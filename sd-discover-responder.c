@@ -181,13 +181,22 @@ int main(int argc, char *argv[])
     struct sd_service *services;
     int i, numservices;
 
-    if (sodium_init() < 0) {
-        return -1;
+    if (argc == 2 && !strcmp(argv[1], "--version")) {
+        puts("sd-discover-responder " VERSION "\n"
+             "Copyright (C) 2016 Patrick Steinhardt\n"
+             "License GPLv3: GNU GPL version 3 <http://gnu.org/licenses/gpl.html>.\n"
+             "This is free software; you are free to change and redistribute it.\n"
+             "There is NO WARRANTY, to the extent permitted by the law.");
+        return 0;
     }
 
     if (argc != 2) {
         printf("USAGE: %s <SERVER_CONFIG>\n", argv[0]);
         return 0;
+    }
+
+    if (sodium_init() < 0) {
+        return -1;
     }
 
     if (sd_sign_key_pair_from_config_file(&sign_keys, argv[1]) < 0) {
