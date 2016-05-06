@@ -65,7 +65,7 @@ fi
         mkdir build
         cd build
         # Fix building without RPATH
-        cmake -DCMAKE_MACOSX_RPATH=ON -DCMAKE_INSTALL_PREFIX:PATH="${PREFIX}" ..
+        cmake -G "${GENERATOR}" -DCMAKE_MACOSX_RPATH=ON -DCMAKE_INSTALL_PREFIX:PATH="${PREFIX}" ..
         make
         make install
     fi

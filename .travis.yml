@@ -2,6 +2,10 @@ language: c
 
 sudo: false
 
+env:
+    global:
+        - GENERATOR="Unix Makefiles"
+
 matrix:
     include:
         - os: linux

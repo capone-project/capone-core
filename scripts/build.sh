@@ -16,5 +16,5 @@ fi
 
 mkdir -p source/sd/build
 cd source/sd/build
-cmake -DCMAKE_INSTALL_PREFIX:PATH="${PREFIX}" ..
+cmake -G "${GENERATOR}" -DCMAKE_INSTALL_PREFIX:PATH="${PREFIX}" ..
 make

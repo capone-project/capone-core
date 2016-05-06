@@ -1,3 +1,8 @@
+environment:
+    matrix:
+        - GENERATOR: "MSYS Makefiles"
+          ARCH: 64
+
 cache:
     - C:\msys64\home\appveyor\local -> scripts\deps.sh
 
