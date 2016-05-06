@@ -7,8 +7,8 @@
 #  PROTOBUFC_COMPILER - The protobuf-c compiler
 
 find_package(PkgConfig)
+
 pkg_check_modules(PC_PROTOBUFC QUIET libprotobuf-c)
-set(PROTOBUFC_DEFINITIONS ${PC_PROTOBUFC_CFLAGS_OTHER})
 
 find_path(PROTOBUFC_INCLUDE_DIR protobuf-c/protobuf-c.h
     HINTS ${PC_PROTOBUFC_INCLUDEDIR} ${PC_PROTOBUFC_INCLUDE_DIRS}
@@ -22,6 +22,7 @@ find_program(PROTOCC_EXECUTABLE protoc-c)
 set(PROTOBUFC_LIBRARIES ${PROTOBUFC_LIBRARY})
 set(PROTOBUFC_INCLUDE_DIRS ${PROTOBUFC_INCLUDE_DIR})
 set(PROTOBUFC_COMPILER ${PROTOCC_EXECUTABLE})
+set(PROTOBUFC_DEFINITIONS ${PC_PROTOBUFC_CFLAGS_OTHER})
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(libprotobuf-c DEFAULT_MSG
