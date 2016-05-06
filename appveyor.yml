@@ -8,7 +8,7 @@ cache:
     - C:\msys64\home\appveyor\local -> scripts\deps.sh
 
 install:
-    - C:\msys64\usr\bin\pacman.exe -Sy --noconfirm msys2-runtime msys2-runtime-devel
+    - C:\msys64\usr\bin\pacman.exe -Sy --noconfirm cmake msys2-runtime msys2-runtime-devel
     - C:\msys64\usr\bin\sh.exe --login /c/projects/sd/scripts/deps.sh
 
 build_script:
