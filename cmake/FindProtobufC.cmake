@@ -14,7 +14,7 @@ find_path(PROTOBUFC_INCLUDE_DIR protobuf-c/protobuf-c.h
     HINTS ${PC_PROTOBUFC_INCLUDEDIR} ${PC_PROTOBUFC_INCLUDE_DIRS}
     PATH_SUFFIXES libprotobuf-c libprotobuf-c/google google)
 
-find_library(PROTOBUFC_LIBRARY NAMES protobuf-c
+find_library(PROTOBUFC_LIBRARY NAMES ${PC_PROTOBUFC_LIBRARIES} protobuf-c
     HINTS ${PC_PROTOBUFC_LIBDIR} ${PC_PROTOBUFC_LIBRARY_DIRS})
 
 find_program(PROTOCC_EXECUTABLE protoc-c)
