@@ -25,7 +25,7 @@ fi
         tar -xvf protobuf-2.5.0.tar.bz2
         cd protobuf-2.5.0
         autoreconf -fi
-        ./configure --prefix="${PREFIX}"
+        ./configure --host="${TARGET}" --prefix="${PREFIX}"
         make
         make install
     fi
@@ -44,7 +44,7 @@ fi
         tar -xvf protobuf-c-1.0.2.tar.gz
         cd protobuf-c-1.0.2
         autoreconf -fi
-        ./configure --prefix="${PREFIX}"
+        ./configure --host="${TARGET}" --prefix="${PREFIX}"
         make
         make install
     fi
@@ -84,7 +84,7 @@ fi
         tar -xvf libsodium-1.0.8.tar.gz
         cd libsodium-1.0.8
         autoreconf -fi
-        ./configure --prefix="${PREFIX}"
+        ./configure --host="${TARGET}" --prefix="${PREFIX}"
         make
         make install
     fi

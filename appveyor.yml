@@ -1,6 +1,7 @@
 environment:
     matrix:
         - GENERATOR: "MSYS Makefiles"
+          TARGET: x86_64-pc-msys
           ARCH: 64
 
 cache:
