@@ -2,6 +2,10 @@ language: c
 
 sudo: false
 
+cache:
+    directories:
+        - $HOME/local
+
 env:
     global:
         - GENERATOR="Unix Makefiles"
