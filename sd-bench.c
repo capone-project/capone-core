@@ -33,6 +33,7 @@
 
 struct client_args {
     uint32_t datalen;
+    uint32_t repeats;
 };
 
 static char encrypt;
@@ -70,6 +71,7 @@ static void *client(void *payload)
     struct sd_channel channel;
     uint8_t *data = malloc(args->datalen);
     uint64_t start, end;
+    uint32_t i;
 
     if (set_affinity(2) < 0) {
         puts("Unable to set sched affinity");
@@ -90,13 +92,15 @@ static void *client(void *payload)
     }
 
     start = rdtsc64();
-    if (sd_channel_write_data(&channel, data, args->datalen) < 0) {
-        puts("Unable to write data");
-        return NULL;
+    for (i = 0; i < args->repeats; i++) {
+        if (sd_channel_write_data(&channel, data, args->datalen) < 0) {
+            puts("Unable to write data");
+            return NULL;
+        }
     }
     end = rdtsc64();
 
-    printf("Cycles spent writing data:\t%"PRIu64"\n", end - start);
+    printf("Cycles spent writing data:\t%"PRIu64"\n", (end - start) / args->repeats);
 
 out:
     free(data);
@@ -117,6 +121,7 @@ int main(int argc, char *argv[])
     struct sd_channel channel;
     uint8_t *data;
     uint64_t start, end;
+    uint32_t i;
 
     if (argc != 3) {
         usage(argv[0]);
@@ -140,6 +145,9 @@ int main(int argc, char *argv[])
     }
 
     data = malloc(args.datalen);
+
+    /* Always average over 1GB of data sent */
+    args.repeats = (1024 * 1024 * 1024) / args.datalen;
 
     if (set_affinity(3) < 0) {
         puts("Unable to set sched affinity");
@@ -171,9 +179,11 @@ int main(int argc, char *argv[])
     }
 
     start = rdtsc64();
-    if (sd_channel_receive_data(&channel, data, args.datalen) < 0) {
-        puts("Unable to receive data");
-        return -1;
+    for (i = 0; i < args.repeats; i++) {
+        if (sd_channel_receive_data(&channel, data, args.datalen) < 0) {
+            puts("Unable to receive data");
+            return -1;
+        }
     }
     end = rdtsc64();
 
@@ -182,7 +192,7 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    printf("Cycles spent receiving data:\t%"PRIu64"\n", end - start);
+    printf("Cycles spent receiving data:\t%"PRIu64"\n", (end - start) / args.repeats);
 
     return 0;
 }
