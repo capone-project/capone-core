@@ -94,3 +94,6 @@ TARGET_LINK_LIBRARIES(sd-test sd cmocka)
 
 ADD_EXECUTABLE(sd-bench sd-bench.c)
 TARGET_LINK_LIBRARIES(sd-bench sd)
+
+ADD_EXECUTABLE(sd-latency sd-latency.c)
+TARGET_LINK_LIBRARIES(sd-latency sd)
