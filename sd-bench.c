@@ -30,7 +30,10 @@
 #include "lib/server.h"
 
 #define PORT "43281"
-#define DATA_LEN (1024 * 1024 * 100)
+
+struct client_args {
+    uint32_t datalen;
+};
 
 static char encrypt;
 static struct sd_symmetric_key key;
@@ -63,16 +66,15 @@ static int set_affinity(uint8_t cpu)
 
 static void *client(void *payload)
 {
+    struct client_args *args = (struct client_args *) payload;
     struct sd_channel channel;
-    uint8_t *data = malloc(DATA_LEN);
+    uint8_t *data = malloc(args->datalen);
     uint64_t start, end;
 
     if (set_affinity(2) < 0) {
         puts("Unable to set sched affinity");
         goto out;
     }
-
-    UNUSED(payload);
 
     if (sd_channel_init_from_host(&channel, "127.0.0.1", PORT, SD_CHANNEL_TYPE_TCP) < 0) {
         puts("Unable to init connection");
@@ -88,9 +90,9 @@ static void *client(void *payload)
     }
 
     start = rdtsc64();
-    if (sd_channel_write_data(&channel, data, DATA_LEN) < 0) {
+    if (sd_channel_write_data(&channel, data, args->datalen) < 0) {
         puts("Unable to write data");
-        goto out;
+        return NULL;
     }
     end = rdtsc64();
 
@@ -104,23 +106,24 @@ out:
 
 static void usage(const char *executable)
 {
-    printf("USAGE: %s [--encrypted|--plain]\n", executable);
+    printf("USAGE: %s <--encrypted|--plain> <DATALEN>\n", executable);
 }
 
 int main(int argc, char *argv[])
 {
+    struct client_args args;
     struct sd_thread t;
     struct sd_server server;
     struct sd_channel channel;
-    uint8_t *data = malloc(DATA_LEN);
+    uint8_t *data;
     uint64_t start, end;
 
-    if (argc > 2) {
+    if (argc != 3) {
         usage(argv[0]);
         return -1;
     }
 
-    if (argc <= 1 || !strcmp(argv[1] , "--plain")) {
+    if (!strcmp(argv[1] , "--plain")) {
         encrypt = 0;
     } else if (!strcmp(argv[1], "--encrypted")) {
         encrypt = 1;
@@ -129,6 +132,14 @@ int main(int argc, char *argv[])
         usage(argv[0]);
         return -1;
     }
+
+    if (parse_uint32t(&args.datalen, argv[2]) < 0) {
+        puts("Invalid data length");
+        usage(argv[0]);
+        return -1;
+    }
+
+    data = malloc(args.datalen);
 
     if (set_affinity(3) < 0) {
         puts("Unable to set sched affinity");
@@ -145,7 +156,7 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    if (sd_spawn(&t, client, NULL) < 0) {
+    if (sd_spawn(&t, client, &args) < 0) {
         puts("Unable to spawn client");
         return -1;
     }
@@ -160,7 +171,7 @@ int main(int argc, char *argv[])
     }
 
     start = rdtsc64();
-    if (sd_channel_receive_data(&channel, data, DATA_LEN) < 0) {
+    if (sd_channel_receive_data(&channel, data, args.datalen) < 0) {
         puts("Unable to receive data");
         return -1;
     }
