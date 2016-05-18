@@ -109,6 +109,7 @@ static void usage(const char *executable)
 
 int main(int argc, char *argv[])
 {
+    struct sd_thread t;
     struct sd_server server;
     struct sd_channel channel;
     uint8_t *data = malloc(DATA_LEN);
@@ -144,7 +145,7 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    if (sd_spawn(NULL, client, NULL) < 0) {
+    if (sd_spawn(&t, client, NULL) < 0) {
         puts("Unable to spawn client");
         return -1;
     }
@@ -164,6 +165,11 @@ int main(int argc, char *argv[])
         return -1;
     }
     end = rdtsc64();
+
+    if (sd_join(&t, NULL) < 0) {
+        puts("Unable to await client thread");
+        return -1;
+    }
 
     printf("Cycles spent receiving data:\t%"PRIu64"\n", end - start);
 
