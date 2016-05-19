@@ -28,7 +28,7 @@ static int send_ephemeral_key(struct sd_channel *channel,
 {
     uint8_t signature[crypto_sign_BYTES],
             sign_data[crypto_sign_PUBLICKEYBYTES + crypto_box_PUBLICKEYBYTES];
-    SignedKey msg = SIGNED_KEY__INIT;
+    EphemeralKey msg = EPHEMERAL_KEY__INIT;
 
     memcpy(sign_data, sign_keys->pk.data, sizeof(sign_keys->pk.data));
     memcpy(sign_data + sizeof(sign_keys->pk.data), encrypt_key->data, sizeof(encrypt_key->data));
@@ -47,8 +47,8 @@ static int send_ephemeral_key(struct sd_channel *channel,
 
     msg.sign_pk.data = (uint8_t *) sign_keys->pk.data;
     msg.sign_pk.len = sizeof(sign_keys->pk.data);
-    msg.encrypt_pk.data = (uint8_t *) encrypt_key->data;
-    msg.encrypt_pk.len = sizeof(encrypt_key->data);
+    msg.ephm_pk.data = (uint8_t *) encrypt_key->data;
+    msg.ephm_pk.len = sizeof(encrypt_key->data);
     msg.signature.data = signature;
     msg.signature.len = sizeof(signature);
 
@@ -65,11 +65,11 @@ static int receive_session_key(
         struct sd_sign_key_public *remote_sign_key,
         struct sd_encrypt_key_public *remote_encrypt_key)
 {
-    SignedKey *msg;
+    EphemeralKey *msg;
     uint8_t sign_data[crypto_sign_PUBLICKEYBYTES + crypto_box_PUBLICKEYBYTES];
 
     if (sd_channel_receive_protobuf(channel,
-                &signed_key__descriptor,
+                &ephemeral_key__descriptor,
                 (ProtobufCMessage **) &msg) < 0)
     {
         sd_log(LOG_LEVEL_ERROR, "Failed receiving negotiation response");
@@ -82,13 +82,13 @@ static int receive_session_key(
     } else if (msg->sign_pk.len != crypto_sign_PUBLICKEYBYTES) {
         sd_log(LOG_LEVEL_ERROR, "Received signing key length does not match");
         return -1;
-    } else if (msg->encrypt_pk.len != crypto_box_PUBLICKEYBYTES) {
+    } else if (msg->ephm_pk.len != crypto_box_PUBLICKEYBYTES) {
         sd_log(LOG_LEVEL_ERROR, "Received ephemeral key length does not match");
         return -1;
     }
 
     memcpy(sign_data, msg->sign_pk.data, msg->sign_pk.len);
-    memcpy(sign_data + msg->sign_pk.len, msg->encrypt_pk.data, msg->encrypt_pk.len);
+    memcpy(sign_data + msg->sign_pk.len, msg->ephm_pk.data, msg->ephm_pk.len);
 
     if (crypto_sign_verify_detached(msg->signature.data,
                 sign_data, sizeof(sign_data), msg->sign_pk.data) < 0)
@@ -100,13 +100,13 @@ static int receive_session_key(
     if (sd_sign_key_public_from_bin(remote_sign_key,
                 msg->sign_pk.data, msg->sign_pk.len) < 0 ||
             sd_encrypt_key_public_from_bin(remote_encrypt_key,
-                msg->encrypt_pk.data, msg->encrypt_pk.len) < 0)
+                msg->ephm_pk.data, msg->ephm_pk.len) < 0)
     {
         sd_log(LOG_LEVEL_ERROR, "Invalid keys");
         return -1;
     }
 
-    signed_key__free_unpacked(msg, NULL);
+    ephemeral_key__free_unpacked(msg, NULL);
 
     return 0;
 }

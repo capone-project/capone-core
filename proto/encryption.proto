@@ -1,7 +1,7 @@
-message SignedKey {
+message EphemeralKey {
     required bytes signature = 1;
     required bytes sign_pk = 2;
-    required bytes encrypt_pk = 3;
+    required bytes ephm_pk = 3;
 }
 
 message SignedKeys {
