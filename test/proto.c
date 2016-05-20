@@ -348,6 +348,27 @@ static void request_constructs_session()
     sd_session_free(&added);
 }
 
+static void request_without_params_succeeds()
+{
+    struct await_request_args args = {
+        { &remote, &remote_keys }, &service, &local_keys.pk, NULL, 0
+    };
+    struct sd_session session, added;
+    struct sd_thread t;
+
+    sd_spawn(&t, await_request, &args);
+    assert_success(sd_proto_initiate_encryption(&local, &local_keys, &remote_keys.pk));
+    assert_success(sd_proto_send_request(&session, &local, &local_keys.pk, NULL, 0));
+    sd_join(&t, NULL);
+
+    assert_success(sd_sessions_remove(&added, session.sessionid, &session.identity));
+    assert_int_equal(session.sessionid, added.sessionid);
+    assert_int_equal(session.nparameters, 0);
+    assert_memory_equal(&session.identity, &added.identity, sizeof(session.identity));
+
+    sd_session_free(&added);
+}
+
 static void whitlisted_request_constructs_session()
 {
     struct sd_service_parameter params[] = {
@@ -438,6 +459,7 @@ int proto_test_run_suite(void)
         test(whitelisted_query_succeeds),
         test(blacklisted_query_fails),
         test(request_constructs_session),
+        test(request_without_params_succeeds),
         test(whitlisted_request_constructs_session),
         test(blacklisted_request_fails),
         test(service_connects)
