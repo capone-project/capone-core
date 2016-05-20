@@ -173,12 +173,69 @@
     \end{figure}
 \end{frame}
 
-\begin{frame}[fragile]{Protocol - Encryption}
-    \begin{columns}[t]
-        \begin{column}{0.44\textwidth}
-            \lstinputlisting[caption=Protos]{../source/sd/proto/encryption.proto}
-        \end{column}
-    \end{columns}
+\begin{frame}[fragile]{Protocol - Connection Establishment}
+    \begin{figure}
+        \centering
+
+        \resizebox*{!}{1.0\textheight}
+        {
+            \begin{sequencediagram}
+                \newthread{c}{Client ($vrfy_C$, $sign_C$)}
+                \newthread[4]{s}{Service ($vrfy_S$, $sign_S$)}
+
+                \begin{call}{c}{GenerateKeypair()}{c}{($enc_C$, $dec_C$)}
+                    \postlevel
+                \end{call}
+
+                \postlevel
+
+                \begin{messcall}{c}{$\sigma = \text{Sign}_{sign_C}(vrfy_C \| enc_C), vrfy_C, enc_C$}{s}
+                \end{messcall}
+
+                \begin{call}{s}{Verify$_{vrfy_C}(\sigma, vrfy_C \| enc_C)$}{s}{}
+                    \postlevel
+                \end{call}
+
+                \postlevel
+
+                \begin{call}{s}{GenerateKeypair()}{s}{($enc_S$, $dec_S$)}
+                    \postlevel
+                \end{call}
+
+                \postlevel
+
+                \begin{messcall}{s}{$\sigma = \text{Sign}_{sign_S}(enc_S \| enc_C), enc_S, enc_C$}{c}
+                \end{messcall}
+
+                \begin{call}{c}{$\text{Verify}_{vrfy_S}(\sigma, enc_S \| enc_C)$}{c}{}
+                    \postlevel
+                \end{call}
+
+                \postlevel
+
+                \begin{messcall}{c}{$\sigma = \text{Sign}_{sign_C}(enc_S || enc_C), enc_S, enc_C$}{s}
+                \end{messcall}
+
+                \begin{call}{s}{$\text{Verify}_{vrfy_C}(\sigma, enc_S \| enc_C)$}{s}{}
+                    \postlevel
+                \end{call}
+
+                \postlevel
+
+                \begin{call}{c}{CalculateKey($enc_S$, $dec_C$)}{c}{Key}
+                    \postlevel
+                \end{call}
+
+                \prelevel
+                \prelevel
+                \prelevel
+
+                \begin{call}{s}{CalculateKey($enc_C$, $dec_S$)}{s}{Key}
+                    \postlevel
+                \end{call}
+            \end{sequencediagram}
+        }
+    \end{figure}
 \end{frame}
 
 \begin{frame}{Protocol - Discovery}
