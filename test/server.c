@@ -79,6 +79,17 @@ static void connect_to_localhost_succeeds()
     assert_success(sd_channel_close(&connected));
 }
 
+static void getting_address_succeeds()
+{
+    char host[20], port[10];
+
+    assert_success(sd_server_init(&server, "localhost", "12345", type));
+    assert_success(sd_server_get_address(&server, host, sizeof(host), port, sizeof(port)));
+
+    assert_string_equal(host, "localhost");
+    assert_string_equal(port, "12345");
+}
+
 int server_test_run_suite(void)
 {
     const struct CMUnitTest tests[] = {
@@ -86,7 +97,8 @@ int server_test_run_suite(void)
         test(set_local_address_to_127001),
         test(set_local_address_to_empty_address),
         test(set_local_address_to_invalid_address),
-        test(connect_to_localhost_succeeds)
+        test(connect_to_localhost_succeeds),
+        test(getting_address_succeeds)
     };
 
     return execute_test_suite("server", tests, NULL, NULL);
