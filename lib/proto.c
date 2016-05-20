@@ -117,6 +117,8 @@ int sd_proto_receive_connection_type(enum sd_connection_type *out,
 int sd_proto_initiate_session(struct sd_channel *channel, int sessionid)
 {
     SessionInitiationMessage initiation = SESSION_INITIATION_MESSAGE__INIT;
+    SessionResult *result = NULL;
+    int ret = 0;
 
     initiation.sessionid = sessionid;
     if (sd_channel_write_protobuf(channel, &initiation.base) < 0 ) {
@@ -124,7 +126,22 @@ int sd_proto_initiate_session(struct sd_channel *channel, int sessionid)
         return -1;
     }
 
-    return 0;
+    if (sd_channel_receive_protobuf(channel,
+                &session_result__descriptor,
+                (ProtobufCMessage **) &result) < 0)
+    {
+        sd_log(LOG_LEVEL_ERROR, "Could not receive session OK");
+        return -1;
+    }
+
+    if (result->result != 0) {
+        ret = -1;
+    }
+
+    if (result)
+        session_result__free_unpacked(result, NULL);
+
+    return ret;
 }
 
 int sd_proto_handle_session(struct sd_channel *channel,
@@ -133,8 +150,11 @@ int sd_proto_handle_session(struct sd_channel *channel,
         const struct cfg *cfg)
 {
     SessionInitiationMessage *initiation = NULL;
+    SessionResult msg = SESSION_RESULT__INIT;
     struct sd_session session;
     int err;
+
+    memset(&session, 0, sizeof(session));
 
     if ((err = sd_channel_receive_protobuf(channel,
                 &session_initiation_message__descriptor,
@@ -146,8 +166,16 @@ int sd_proto_handle_session(struct sd_channel *channel,
 
     if ((err = sd_sessions_remove(&session, initiation->sessionid, remote_key)) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Could not find session for client");
+    }
+
+    msg.result = err;
+    if (sd_channel_write_protobuf(channel, &msg.base) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Could not send session ack");
         goto out;
     }
+
+    if (err)
+        goto out;
 
     if ((err = service->handle(channel, &session, cfg)) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Service could not handle connection");

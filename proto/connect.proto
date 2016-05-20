@@ -35,3 +35,7 @@ message SessionMessage {
 message SessionInitiationMessage {
     required uint32 sessionid = 1;
 }
+
+message SessionResult {
+    required uint32 result = 1;
+}
