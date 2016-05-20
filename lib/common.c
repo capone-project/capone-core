@@ -47,17 +47,30 @@ int sd_join(struct sd_thread *t, void **out)
 int parse_uint32t(uint32_t *out, const char *num)
 {
     int saved_errno;
+    long int result;
     int ret = 0;
+
+    if (strspn(num, "1234567890") != strlen(num)) {
+        sd_log(LOG_LEVEL_ERROR, "uint32_t %s contains invalid chars", num);
+        return -1;
+    }
+
 
     saved_errno = errno;
     errno = 0;
 
-    *out = strtol(num, NULL, 10);
+    result = strtol(num, NULL, 10);
     if (errno != 0) {
-        sd_log(LOG_LEVEL_ERROR, "Invalid session ID %s", num);
+        sd_log(LOG_LEVEL_ERROR, "Could not parse uint32t %s", num);
+        ret = -1;
+        goto out;
+    } else if (result < 0 || result > UINT32_MAX) {
+        sd_log(LOG_LEVEL_ERROR, "Parsing %s results in overflow", num);
         ret = -1;
         goto out;
     }
+
+    *out = result;
 
 out:
     errno = saved_errno;
