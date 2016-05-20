@@ -20,6 +20,7 @@
 #include "lib/channel.h"
 #include "lib/common.h"
 #include "lib/proto.h"
+#include "lib/server.h"
 #include "lib/service.h"
 #include "lib/session.h"
 
@@ -28,6 +29,10 @@
 #include "test.h"
 
 extern void stub_sockets(struct sd_channel *local, struct sd_channel *remote);
+
+struct initiate_connection_args {
+    enum sd_connection_type type;
+};
 
 struct await_encryption_args {
     struct sd_channel *c;
@@ -107,6 +112,19 @@ static void *await_encryption(void *payload)
     return NULL;
 }
 
+static void *initiate_connection(void *payload)
+{
+    struct sd_channel c;
+    struct initiate_connection_args *args =
+        (struct initiate_connection_args *) payload;
+
+    sd_proto_initiate_connection(&c, "127.0.0.1", "31248", &local_keys, &remote_keys.pk, args->type);
+
+    sd_channel_close(&c);
+
+    return NULL;
+}
+
 static void *await_query(void *payload)
 {
     struct await_query_args *args = (struct await_query_args *) payload;
@@ -170,6 +188,40 @@ static void *send_request(void *payload)
     sd_session_free(&session);
 
     return NULL;
+}
+
+static void connection_initiation_succeeds()
+{
+    struct sd_thread t;
+    struct sd_server s;
+    struct sd_channel c;
+    struct initiate_connection_args args;
+    struct sd_sign_key_public key;
+    enum sd_connection_type types[] = {
+        SD_CONNECTION_TYPE_CONNECT,
+        SD_CONNECTION_TYPE_QUERY,
+        SD_CONNECTION_TYPE_REQUEST
+    };
+    enum sd_connection_type type;
+    size_t i;
+
+    assert_success(sd_server_init(&s, "127.0.0.1", "31248", SD_CHANNEL_TYPE_TCP));
+    assert_success(sd_server_listen(&s));
+
+    for (i = 0; i < ARRAY_SIZE(types); i++) {
+        args.type = types[i];
+
+        assert_success(sd_spawn(&t, initiate_connection, &args));
+        assert_success(sd_server_accept(&s, &c));
+        assert_success(sd_proto_await_encryption(&c, &remote_keys, &key));
+        assert_success(sd_proto_receive_connection_type(&type, &c));
+        assert_int_equal(type, args.type);
+
+        assert_success(sd_channel_close(&c));
+        assert_success(sd_join(&t, NULL));
+    }
+
+    assert_success(sd_server_close(&s));
 }
 
 static void encryption_initiation_succeeds()
@@ -379,6 +431,7 @@ int proto_test_run_suite(void)
         "port=1234\n";
 
     const struct CMUnitTest tests[] = {
+        test(connection_initiation_succeeds),
         test(encryption_initiation_succeeds),
         test(encryption_initiation_fails_with_wrong_remote_key),
         test(query_succeeds),
