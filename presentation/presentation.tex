@@ -5,6 +5,8 @@
 \usepackage[T1]{fontenc}
 \usepackage{listings}
 
+\usepackage{../thesis/sty/pgf-umlsd}
+
 \usepackage{tikz}
 \usetikzlibrary{positioning,shapes,arrows,chains,decorations.pathreplacing}
 
@@ -217,6 +219,122 @@
             \lstinputlisting[caption=Request,firstline=35]{../source/sd/proto/connect.proto}
         \end{column}
         \begin{column}{0.44\textwidth}
+        \end{column}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{Service - Invoke}
+
+    \begin{figure}
+        \centering
+
+        \resizebox{0.8\textwidth}{!}
+        {
+            \begin{sequencediagram}
+                \newthread{c}{Client}
+                \newinst[4]{s}{Service}
+                \newinst[4]{i}{Invoker}
+
+                \begin{call}{c}{Initiate(Parameters)}{s}{Service Session}
+                    \begin{call}{s}{CreateSession()}{s}{Capability}
+                    \end{call}
+                \end{call}
+
+                \postlevel
+
+                \begin{call}{c}{Initiate(ServiceSession)}{i}{Invoker Session}
+                    \begin{call}{i}{CreateSession()}{i}{Capability}
+                    \end{call}
+                \end{call}
+                \postlevel
+
+                \begin{messcall}{c}{Start}{i}
+                    \begin{messcall}{i}{Start}{s}
+                        \postlevel
+                    \end{messcall}
+                    \prelevel
+                \end{messcall}
+                \prelevel
+            \end{sequencediagram}
+        }
+    \end{figure}
+\end{frame}
+
+\begin{frame}{Service - Capabilities}
+    \begin{figure}
+        \centering
+
+        \resizebox{0.8\textwidth}{!}
+        {
+            \begin{sequencediagram}
+                \newthread{r}{Requester r}
+                \newinst[2]{e}{Entity e}
+                \newinst[2]{s}{Service s}
+                \newinst[2]{c}{Capability Service}
+
+                \mess{e}{Register}{c}
+                \postlevel
+
+                \begin{call}{r}{Request(e, s, params)}{c}{Capability}
+                    \postlevel
+                    \begin{call}{c}{Ask(r, s, params)}{e}{Capability}
+                        \postlevel
+                        \begin{call}{e}{Initiate(params)}{s}{Capability}
+                        \end{call}
+                        \postlevel
+                    \end{call}
+                    \postlevel
+                \end{call}
+
+                \postlevel
+
+                \begin{messcall}{r}{Start}{s}
+                    \postlevel
+                \end{messcall}
+
+                \prelevel
+            \end{sequencediagram}
+        }
+    \end{figure}
+\end{frame}
+
+\begin{frame}{Current state}
+    \begin{columns}
+        \begin{column}{0.40\textwidth}
+            \begin{itemize}
+                \item builds on
+                    \begin{itemize}
+                        \item Windows
+                        \item Linux
+                        \item OS X
+                    \end{itemize}
+                \item CI via Travis, Appveyor
+                \item five services implemented
+                    \begin{itemize}
+                        \item Xpra
+                        \item Input
+                        \item Shell
+                        \item Capabilities
+                        \item Invoke
+                    \end{itemize}
+            \end{itemize}
+        \end{column}
+        \begin{column}{0.48\textwidth}
+            \begin{table}
+                \centering
+                \begin{tabular}{c|c|c}
+                    Component & LOC  & Test Cov\\
+                    \hline
+                    Core      & 2623 & $75\%$\\
+                    Services  & 1132 & $7.3\%$\\
+                    Exes      & 1301 & $0\%$\\
+                    Tests     & 2361 & $100\%$\\
+                    \hline
+                    Total     & 8165 & $58.5\%$\\
+                    &&\\
+                    App       & 3409 & $0\%$
+                \end{tabular}
+            \end{table}
         \end{column}
     \end{columns}
 \end{frame}
