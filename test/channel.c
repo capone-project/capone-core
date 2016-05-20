@@ -21,12 +21,20 @@
 #include <sodium/randombytes.h>
 #include <sodium/utils.h>
 
+#include <sys/types.h>
+#include <sys/socket.h>
+
 #include "lib/common.h"
 #include "lib/channel.h"
 
 #include "proto/test.pb-c.h"
 
 #include "test.h"
+
+struct relay_args {
+    struct sd_channel *c;
+    int fd;
+};
 
 static struct sd_symmetric_key key;
 static struct sd_channel channel, remote;
@@ -340,6 +348,83 @@ static void connect_fails_without_other_side()
     assert_failure(sd_channel_connect(&channel));
 }
 
+static void *relay_fn(void *payload)
+{
+    struct relay_args *args = (struct relay_args *) payload;
+
+    sd_channel_relay(args->c, 1, args->fd);
+
+    return NULL;
+}
+
+static void relaying_data_to_socket_succeeds()
+{
+    uint8_t data[] = "bla", buf[sizeof(data)];
+    struct sd_channel c1, c2, r1, r2;
+    struct sd_thread thread;
+    struct relay_args args;
+
+    memset(&c1, 0, sizeof(c1));
+    memset(&c2, 0, sizeof(c2));
+    memset(&r1, 0, sizeof(r1));
+    memset(&r2, 0, sizeof(r2));
+
+    c1.type = c2.type = r1.type = r2.type = type;
+
+    stub_sockets(&c1, &r1);
+    stub_sockets(&c2, &r2);
+
+    args.c = &r1;
+    args.fd = c2.fd;
+
+    assert_success(sd_spawn(&thread, relay_fn, &args));
+
+    assert_success(sd_channel_write_data(&c1, data, sizeof(data)));
+    assert_int_equal(recv(r2.fd, buf, sizeof(buf), 0), sizeof(data));
+    assert_string_equal(data, buf);
+
+    shutdown(c1.fd, SHUT_RDWR);
+    shutdown(c2.fd, SHUT_RDWR);
+    shutdown(r1.fd, SHUT_RDWR);
+    shutdown(r2.fd, SHUT_RDWR);
+
+    assert_success(sd_join(&thread, NULL));
+}
+
+static void relaying_data_to_channel_succeeds()
+{
+    uint8_t data[] = "bla", buf[sizeof(data)];
+    struct sd_channel c1, c2, r1, r2;
+    struct sd_thread thread;
+    struct relay_args args;
+
+    memset(&c1, 0, sizeof(c1));
+    memset(&c2, 0, sizeof(c2));
+    memset(&r1, 0, sizeof(r1));
+    memset(&r2, 0, sizeof(r2));
+
+    c1.type = c2.type = r1.type = r2.type = type;
+
+    stub_sockets(&c1, &r1);
+    stub_sockets(&c2, &r2);
+
+    args.c = &c2;
+    args.fd = r1.fd;
+
+    assert_success(sd_spawn(&thread, relay_fn, &args));
+
+    assert_int_equal(send(c1.fd, data, sizeof(data), 0), sizeof(data));
+    assert_int_equal(sd_channel_receive_data(&r2, buf, sizeof(buf)), sizeof(data));
+    assert_string_equal(data, buf);
+
+    assert_success(shutdown(c1.fd, SHUT_RDWR));
+    assert_success(shutdown(c2.fd, SHUT_RDWR));
+    assert_success(shutdown(r1.fd, SHUT_RDWR));
+    assert_success(shutdown(r2.fd, SHUT_RDWR));
+
+    assert_success(sd_join(&thread, NULL));
+}
+
 int channel_test_run_suite(void)
 {
     const struct CMUnitTest tests[] = {
@@ -366,6 +451,9 @@ int channel_test_run_suite(void)
         test(write_encrypted_message_with_response),
         test(write_encrypted_message_with_invalid_nonces_fails),
         test(connect_fails_without_other_side),
+
+        test(relaying_data_to_socket_succeeds),
+        test(relaying_data_to_channel_succeeds)
     };
 
     sd_symmetric_key_generate(&key);
