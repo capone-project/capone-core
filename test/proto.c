@@ -442,6 +442,22 @@ static void service_connects()
     assert_string_equal(params[0].value, received);
 }
 
+static void connect_refuses_without_session()
+{
+    struct handle_session_args args = {
+        { &remote, &remote_keys }, &local_keys.pk, &service, &config
+    };
+    struct sd_thread t;
+
+    sd_spawn(&t, handle_session, &args);
+
+    assert_success(sd_proto_initiate_encryption(&local, &local_keys,
+                &remote_keys.pk));
+    assert_failure(sd_proto_initiate_session(&local, 1));
+
+    sd_join(&t, NULL);
+}
+
 int proto_test_run_suite(void)
 {
     static const char *service_cfg =
@@ -462,7 +478,8 @@ int proto_test_run_suite(void)
         test(request_without_params_succeeds),
         test(whitlisted_request_constructs_session),
         test(blacklisted_request_fails),
-        test(service_connects)
+        test(service_connects),
+        test(connect_refuses_without_session)
     };
 
     assert_success(sd_sessions_init());
