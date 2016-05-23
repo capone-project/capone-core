@@ -3,6 +3,7 @@ message ConnectionInitiationMessage {
         QUERY = 0;
         REQUEST = 1;
         CONNECT = 2;
+        TERMINATE = 3;
     };
 
     required Type type = 1;
@@ -34,6 +35,11 @@ message SessionMessage {
 
 message SessionInitiationMessage {
     required uint32 sessionid = 1;
+}
+
+message SessionTerminationMessage {
+    required uint32 sessionid = 1;
+    required bytes identity = 2;
 }
 
 message SessionResult {

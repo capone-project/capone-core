@@ -76,6 +76,11 @@ struct send_request_args {
     size_t nparams;
 };
 
+struct handle_termination_args {
+    struct sd_channel *channel;
+    struct sd_sign_key_public *terminator;
+};
+
 static struct cfg config;
 static struct sd_service service;
 static struct sd_channel local, remote;
@@ -157,6 +162,15 @@ static void *handle_session(void *payload)
 
     sd_proto_handle_session(args->enc_args.c,
                 args->remote_key, args->service, args->cfg);
+
+    return NULL;
+}
+
+static void *handle_termination(void *payload)
+{
+    struct handle_termination_args *args = (struct handle_termination_args *) payload;
+
+    sd_proto_handle_termination(args->channel, args->terminator);
 
     return NULL;
 }
@@ -460,6 +474,35 @@ static void connect_refuses_without_session()
     sd_join(&t, NULL);
 }
 
+static void termination_kills_session()
+{
+    struct handle_termination_args args = {
+        &remote, &local_keys.pk
+    };
+    struct sd_thread t;
+
+    sd_spawn(&t, handle_termination, &args);
+
+    assert_success(sd_sessions_add(0, &local_keys.pk, &remote_keys.pk, NULL, 0));
+    assert_success(sd_proto_initiate_termination(&local, 0, &remote_keys.pk));
+
+    sd_join(&t, NULL);
+
+    assert_failure(sd_sessions_find(NULL, 0, &remote_keys.pk));
+}
+
+static void terminating_nonexistent_does_nothing()
+{
+    struct handle_termination_args args = {
+        &remote, &local_keys.pk
+    };
+    struct sd_thread t;
+
+    sd_spawn(&t, handle_termination, &args);
+    assert_success(sd_proto_initiate_termination(&local, 0, &remote_keys.pk));
+    sd_join(&t, NULL);
+}
+
 int proto_test_run_suite(void)
 {
     static const char *service_cfg =
@@ -473,15 +516,21 @@ int proto_test_run_suite(void)
         test(connection_initiation_succeeds),
         test(encryption_initiation_succeeds),
         test(encryption_initiation_fails_with_wrong_remote_key),
+
         test(query_succeeds),
         test(whitelisted_query_succeeds),
         test(blacklisted_query_fails),
+
         test(request_constructs_session),
         test(request_without_params_succeeds),
         test(whitlisted_request_constructs_session),
         test(blacklisted_request_fails),
+
         test(service_connects),
-        test(connect_refuses_without_session)
+        test(connect_refuses_without_session),
+
+        test(termination_kills_session),
+        test(terminating_nonexistent_does_nothing)
     };
 
     assert_success(sd_sessions_init());

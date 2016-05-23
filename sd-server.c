@@ -160,6 +160,14 @@ static void *handle_connection(void *payload)
             }
 
             goto out;
+        case SD_CONNECTION_TYPE_TERMINATE:
+            sd_log(LOG_LEVEL_DEBUG, "Received termination request");
+
+            if (sd_proto_handle_termination(&args->channel, &remote_key) < 0) {
+                sd_log(LOG_LEVEL_ERROR, "Received invalid termination request");
+            }
+
+            goto out;
         default:
             sd_log(LOG_LEVEL_ERROR, "Unknown connection envelope type %d", type);
             goto out;

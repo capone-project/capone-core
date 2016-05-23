@@ -24,7 +24,8 @@
 enum sd_connection_type {
     SD_CONNECTION_TYPE_QUERY,
     SD_CONNECTION_TYPE_CONNECT,
-    SD_CONNECTION_TYPE_REQUEST
+    SD_CONNECTION_TYPE_REQUEST,
+    SD_CONNECTION_TYPE_TERMINATE
 };
 
 struct sd_query_results {
@@ -77,5 +78,10 @@ int sd_proto_handle_session(struct sd_channel *channel,
         const struct sd_sign_key_public *remote_key,
         const struct sd_service *service,
         const struct cfg *cfg);
+
+int sd_proto_initiate_termination(struct sd_channel *channel,
+        int sessionid, const struct sd_sign_key_public *invoker);
+int sd_proto_handle_termination(struct sd_channel *channel,
+        const struct sd_sign_key_public *remote_key);
 
 #endif

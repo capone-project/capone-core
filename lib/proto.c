@@ -103,6 +103,9 @@ int sd_proto_receive_connection_type(enum sd_connection_type *out,
         case CONNECTION_INITIATION_MESSAGE__TYPE__CONNECT:
             *out = SD_CONNECTION_TYPE_CONNECT;
             break;
+        case CONNECTION_INITIATION_MESSAGE__TYPE__TERMINATE:
+            *out = SD_CONNECTION_TYPE_TERMINATE;
+            break;
         case _CONNECTION_INITIATION_MESSAGE__TYPE_IS_INT_SIZE:
         default:
             ret = -1;
@@ -426,6 +429,70 @@ out_err:
     if (request != NULL)
         session_request_message__free_unpacked(request, NULL);
     return -1;
+}
+
+int sd_proto_initiate_termination(struct sd_channel *channel,
+        int sessionid, const struct sd_sign_key_public *invoker)
+{
+    SessionTerminationMessage msg = SESSION_TERMINATION_MESSAGE__INIT;
+
+    msg.sessionid  = sessionid;
+    msg.identity.data = (uint8_t *) invoker->data;
+    msg.identity.len = sizeof(invoker->data);
+
+    if (sd_channel_write_protobuf(channel, &msg.base) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Unable to write termination message");
+        return -1;
+    }
+
+    return 0;
+}
+
+int sd_proto_handle_termination(struct sd_channel *channel,
+        const struct sd_sign_key_public *remote_key)
+{
+    SessionTerminationMessage *msg = NULL;
+    struct sd_sign_key_public invoker_pk;
+    struct sd_session session;
+    int err = 0;
+
+    if (sd_channel_receive_protobuf(channel,
+            &session_termination_message__descriptor,
+            (ProtobufCMessage **) &msg) < 0)
+    {
+        sd_log(LOG_LEVEL_ERROR, "Unable to receive termination protobuf");
+        err = -1;
+        goto out;
+    }
+
+    if (sd_sign_key_public_from_bin(&invoker_pk,
+            msg->identity.data, msg->identity.len) < 0)
+    {
+        sd_log(LOG_LEVEL_ERROR, "Termination protobuf contains invalid invoker");
+        err = -1;
+        goto out;
+    }
+
+    /* If session could not be found we have nothing to do */
+    if (sd_sessions_find(&session, msg->sessionid, &invoker_pk) < 0) {
+        goto out;
+    }
+
+    /* Skip if session issuer does not match our remote's identity */
+    if (memcmp(&session.issuer, remote_key, sizeof(session.issuer))) {
+        goto out;
+    }
+
+    if (sd_sessions_remove(NULL, msg->sessionid, &invoker_pk) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Unable to terminate session");
+        goto out;
+    }
+
+out:
+    if (msg)
+        session_termination_message__free_unpacked(msg, NULL);
+
+    return err;
 }
 
 static int is_whitelisted(const struct sd_sign_key_public *key,
