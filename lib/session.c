@@ -130,6 +130,32 @@ int sd_sessions_remove(struct sd_session *out,
     return 0;
 }
 
+ssize_t sd_sessions_find(struct sd_session *out,
+        uint32_t sessionid,
+        const struct sd_sign_key_public *identity)
+{
+    size_t i;
+
+    for (i = 0; i < MAX_SESSIONS; i++) {
+        struct sd_session *s;
+
+        if (!used[i])
+            continue;
+
+        s = &sessions[i];
+        if (s->sessionid == sessionid &&
+                memcmp(s->identity.data, identity->data, sizeof(identity->data)) == 0)
+        {
+            if (out)
+                memcpy(out, s, sizeof(struct sd_session));
+
+            return i;
+        }
+    }
+
+    return -1;
+}
+
 int sd_sessions_clear(void)
 {
     size_t i;

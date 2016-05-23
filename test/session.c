@@ -164,6 +164,76 @@ static void remove_session_frees_space()
     assert_success(sd_sessions_add(MAX_SESSIONS + 1, &key.pk, NULL, 0));
 }
 
+static void finding_invalid_session_fails()
+{
+    struct sd_session out;
+
+    assert_failure(sd_sessions_find(&out, 0, &key.pk));
+}
+
+static void finding_session_with_invalid_id_fails()
+{
+    struct sd_session out;
+
+    assert_success(sd_sessions_add(0, &key.pk, NULL, 0));
+    assert_failure(sd_sessions_find(&out, 1, &key.pk));
+}
+
+static void finding_session_with_invalid_key_fails()
+{
+    struct sd_session out;
+    struct sd_sign_key_public other_key;
+
+    assert_success(sd_sessions_add(0, &key.pk, NULL, 0));
+    assert_failure(sd_sessions_find(&out, 0, &other_key));
+}
+
+static void finding_existing_session_succeeds()
+{
+    struct sd_session out;
+
+    assert_success(sd_sessions_add(0, &key.pk, NULL, 0));
+    assert_success(sd_sessions_find(&out, 0, &key.pk));
+
+    assert_int_equal(out.sessionid, 0);
+    assert_memory_equal(&out.identity, &key.pk, sizeof(out.identity));
+}
+
+static void finding_session_without_out_param_succeeds()
+{
+    assert_success(sd_sessions_add(0, &key.pk, NULL, 0));
+    assert_success(sd_sessions_find(NULL, 0, &key.pk));
+}
+
+static void finding_intermediate_session_returns_correct_index()
+{
+    assert_success(sd_sessions_add(5, &key.pk, NULL, 0));
+    assert_success(sd_sessions_add(8, &key.pk, NULL, 0));
+    assert_success(sd_sessions_add(3, &key.pk, NULL, 0));
+
+    assert_int_equal(sd_sessions_find(NULL, 8, &key.pk), 1);
+}
+
+static void finding_session_with_multiple_sessions_succeeds()
+{
+    struct sd_sign_key_public other_key;
+    struct sd_session out;
+
+    assert_success(sd_sessions_add(0, &key.pk, NULL, 0));
+    assert_success(sd_sessions_add(1, &key.pk, NULL, 0));
+    assert_success(sd_sessions_add(2, &key.pk, NULL, 0));
+    assert_success(sd_sessions_add(3, &key.pk, NULL, 0));
+    assert_success(sd_sessions_add(0, &other_key, NULL, 0));
+    assert_success(sd_sessions_add(1, &other_key, NULL, 0));
+    assert_success(sd_sessions_add(2, &other_key, NULL, 0));
+    assert_success(sd_sessions_add(3, &other_key, NULL, 0));
+
+    assert_int_equal(sd_sessions_find(&out, 3, &key.pk), 3);
+
+    assert_int_equal(out.sessionid, 3);
+    assert_memory_equal(&out.identity, &key.pk, sizeof(out.identity));
+}
+
 static void free_session_succeeds_without_params()
 {
     struct sd_session session = { 0, { { 0 } }, NULL, 0 };
@@ -203,10 +273,20 @@ int session_test_run_suite(void)
         test(adding_session_twice_fails),
         test(adding_too_many_sessions_fails),
         test(adding_session_from_multiple_threads_succeeds),
+
         test(removing_session_twice_fails),
         test(remove_session_fails_without_sessions),
         test(remove_session_fails_for_empty_session),
         test(remove_session_frees_space),
+
+        test(finding_invalid_session_fails),
+        test(finding_session_with_invalid_id_fails),
+        test(finding_session_with_invalid_key_fails),
+        test(finding_existing_session_succeeds),
+        test(finding_session_without_out_param_succeeds),
+        test(finding_intermediate_session_returns_correct_index),
+        test(finding_session_with_multiple_sessions_succeeds),
+
         test(free_session_succeeds_without_params),
         test(free_session_succeeds_with_params),
         test(free_session_succeeds_with_key_only_parameter)

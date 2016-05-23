@@ -39,6 +39,9 @@ int sd_sessions_add(uint32_t sessionid,
 int sd_sessions_remove(struct sd_session *out,
         uint32_t sessionid,
         const struct sd_sign_key_public *identity);
+ssize_t sd_sessions_find(struct sd_session *out,
+        uint32_t sessionid,
+        const struct sd_sign_key_public *identity);
 int sd_sessions_clear(void);
 
 void sd_session_free(struct sd_session *session);
