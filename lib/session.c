@@ -46,18 +46,10 @@ int sd_sessions_add(uint32_t sessionid,
 
     pthread_mutex_lock(&mutex);
 
-    for (i = 0; i < MAX_SESSIONS; i++) {
-        struct sd_session *session = &sessions[i];
-
-        if (!used[i])
-            continue;
-
-        if (session->sessionid == sessionid &&
-                memcmp(&session->identity, identity, sizeof(*identity)) == 0)
-        {
-            pthread_mutex_unlock(&mutex);
-            return -1;
-        }
+    if (sd_sessions_find(NULL, sessionid, identity) >= 0) {
+        pthread_mutex_unlock(&mutex);
+        sd_log(LOG_LEVEL_ERROR, "Session already present");
+        return -1;
     }
 
     for (i = 0; i < MAX_SESSIONS; i++) {
