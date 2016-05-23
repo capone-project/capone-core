@@ -98,31 +98,19 @@ int sd_sessions_remove(struct sd_session *out,
         uint32_t sessionid,
         const struct sd_sign_key_public *identity)
 {
-    size_t i;
+    ssize_t i;
 
     pthread_mutex_lock(&mutex);
 
-    for (i = 0; i < MAX_SESSIONS; i++) {
-        struct sd_session *s;
-
-        if (!used[i])
-            continue;
-
-        s = &sessions[i];
-        if (s->sessionid == sessionid &&
-                memcmp(s->identity.data, identity->data, sizeof(identity->data)) == 0)
-        {
-            memcpy(out, &sessions[i], sizeof(*out));
-            memset(&sessions[i], 0, sizeof(sessions[i]));
-
-            used[i] = 0;
-            break;
-        }
+    i = sd_sessions_find(out, sessionid, identity);
+    if (i >= 0) {
+        memset(&sessions[i], 0, sizeof(struct sd_session));
+        used[i] = 0;
     }
 
     pthread_mutex_unlock(&mutex);
 
-    if (i == MAX_SESSIONS) {
+    if (i < 0) {
         sd_log(LOG_LEVEL_ERROR, "Session not found");
         return -1;
     }
