@@ -63,9 +63,9 @@ int sd_proto_answer_query(struct sd_channel *channel,
         size_t nwhitelist);
 void sd_query_results_free(struct sd_query_results *results);
 
-int sd_proto_send_request(struct sd_session *out,
+int sd_proto_send_request(uint32_t *sessionid,
         struct sd_channel *channel,
-        const struct sd_sign_key_public *requester,
+        const struct sd_sign_key_public *invoker,
         const struct sd_service_parameter *params, size_t nparams);
 int sd_proto_answer_request(struct sd_channel *channel,
         const struct sd_sign_key_public *remote_key,

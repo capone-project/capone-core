@@ -178,14 +178,11 @@ static void *send_query(void *payload)
 static void *send_request(void *payload)
 {
     struct send_request_args *args = (struct send_request_args *) payload;
-    struct sd_session session;
+    uint32_t sessionid;
 
     sd_proto_initiate_encryption(args->channel,
                 args->channel_key, args->remote_key);
-    sd_proto_send_request(&session, args->channel, args->remote_key,
-                args->params, args->nparams);
-
-    sd_session_free(&session);
+    sd_proto_send_request(&sessionid, args->channel, args->remote_key, args->params, args->nparams);
 
     return NULL;
 }
@@ -331,19 +328,20 @@ static void request_constructs_session()
     struct await_request_args args = {
         { &remote, &remote_keys }, &service, &local_keys.pk, NULL, 0
     };
-    struct sd_session session, added;
+    struct sd_session added;
     struct sd_thread t;
+    uint32_t sessionid;
 
     sd_spawn(&t, await_request, &args);
     assert_success(sd_proto_initiate_encryption(&local, &local_keys,
                 &remote_keys.pk));
-    assert_success(sd_proto_send_request(&session, &local, &local_keys.pk,
-                params, ARRAY_SIZE(params)));
+    assert_success(sd_proto_send_request(&sessionid, &local, &local_keys.pk, params, ARRAY_SIZE(params)));
     sd_join(&t, NULL);
 
-    assert_success(sd_sessions_remove(&added, session.sessionid, &session.identity));
-    assert_int_equal(session.sessionid, added.sessionid);
-    assert_memory_equal(&session.identity, &added.identity, sizeof(session.identity));
+    assert_success(sd_sessions_remove(&added, sessionid, &local_keys.pk));
+    assert_int_equal(sessionid, added.sessionid);
+    assert_memory_equal(&local_keys.pk, &added.invoker, sizeof(local_keys.pk));
+    assert_memory_equal(&local_keys.pk, &added.issuer, sizeof(local_keys.pk));
 
     sd_session_free(&added);
 }
@@ -353,18 +351,20 @@ static void request_without_params_succeeds()
     struct await_request_args args = {
         { &remote, &remote_keys }, &service, &local_keys.pk, NULL, 0
     };
-    struct sd_session session, added;
+    struct sd_session added;
     struct sd_thread t;
+    uint32_t sessionid;
 
     sd_spawn(&t, await_request, &args);
     assert_success(sd_proto_initiate_encryption(&local, &local_keys, &remote_keys.pk));
-    assert_success(sd_proto_send_request(&session, &local, &local_keys.pk, NULL, 0));
+    assert_success(sd_proto_send_request(&sessionid, &local, &local_keys.pk, NULL, 0));
     sd_join(&t, NULL);
 
-    assert_success(sd_sessions_remove(&added, session.sessionid, &session.identity));
-    assert_int_equal(session.sessionid, added.sessionid);
-    assert_int_equal(session.nparameters, 0);
-    assert_memory_equal(&session.identity, &added.identity, sizeof(session.identity));
+    assert_success(sd_sessions_remove(&added, sessionid, &local_keys.pk));
+    assert_int_equal(sessionid, added.sessionid);
+    assert_int_equal(added.nparameters, 0);
+    assert_memory_equal(&local_keys.pk, &added.issuer, sizeof(local_keys.pk));
+    assert_memory_equal(&local_keys.pk, &added.invoker, sizeof(local_keys.pk));
 
     sd_session_free(&added);
 }
@@ -377,19 +377,20 @@ static void whitlisted_request_constructs_session()
     struct await_request_args args = {
         { &remote, &remote_keys }, &service, &local_keys.pk, &local_keys.pk, 1
     };
-    struct sd_session session, added;
+    struct sd_session added;
     struct sd_thread t;
+    uint32_t sessionid;
 
     sd_spawn(&t, await_request, &args);
     assert_success(sd_proto_initiate_encryption(&local, &local_keys,
                 &remote_keys.pk));
-    assert_success(sd_proto_send_request(&session, &local, &local_keys.pk,
-                params, ARRAY_SIZE(params)));
+    assert_success(sd_proto_send_request(&sessionid, &local, &local_keys.pk, params, ARRAY_SIZE(params)));
     sd_join(&t, NULL);
 
-    assert_success(sd_sessions_remove(&added, session.sessionid, &session.identity));
-    assert_int_equal(session.sessionid, added.sessionid);
-    assert_memory_equal(&session.identity, &added.identity, sizeof(session.identity));
+    assert_success(sd_sessions_remove(&added, sessionid, &local_keys.pk));
+    assert_int_equal(sessionid, added.sessionid);
+    assert_memory_equal(&local_keys.pk, &added.issuer, sizeof(local_keys.pk));
+    assert_memory_equal(&local_keys.pk, &added.invoker, sizeof(local_keys.pk));
 
     sd_session_free(&added);
 }
@@ -430,7 +431,8 @@ static void service_connects()
 
     sd_spawn(&t, handle_session, &args);
 
-    assert_success(sd_sessions_add(1, &local_keys.pk, params, ARRAY_SIZE(params)));
+    assert_success(sd_sessions_add(1, &local_keys.pk, &local_keys.pk,
+                params, ARRAY_SIZE(params)));
     assert_success(sd_proto_initiate_encryption(&local, &local_keys,
                 &remote_keys.pk));
     assert_success(sd_proto_initiate_session(&local, 1));

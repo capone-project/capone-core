@@ -133,11 +133,10 @@ static int cmd_request(int argc, char *argv[])
 {
     const char *config, *key, *host, *port;
     struct sd_service_parameter *params = NULL;
-    struct sd_session session;
     struct sd_channel channel;
+    uint32_t sessionid;
     int nparams;
 
-    memset(&session, 0, sizeof(session));
     memset(&channel, 0, sizeof(channel));
 
     if (argc < 6) {
@@ -170,21 +169,21 @@ static int cmd_request(int argc, char *argv[])
         goto out_err;
     }
 
-    if (sd_proto_send_request(&session, &channel, &local_keys.pk, params, nparams) < 0) {
+    if (sd_proto_send_request(&sessionid, &channel,
+                &local_keys.pk, params, nparams) < 0)
+    {
         puts("Unable to request session");
         goto out_err;
     }
 
-    printf("sessionid:  %"PRIu32"\n", session.sessionid);
+    printf("sessionid:  %"PRIu32"\n", sessionid);
 
-    sd_session_free(&session);
     sd_channel_close(&channel);
 
     return 0;
 
 out_err:
     sd_channel_close(&channel);
-    sd_session_free(&session);
     free(params);
     return -1;
 }

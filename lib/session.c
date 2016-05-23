@@ -38,7 +38,8 @@ int sd_sessions_init(void)
 }
 
 int sd_sessions_add(uint32_t sessionid,
-        const struct sd_sign_key_public *identity,
+        const struct sd_sign_key_public *issuer,
+        const struct sd_sign_key_public *invoker,
         const struct sd_service_parameter *params,
         size_t nparams)
 {
@@ -46,7 +47,7 @@ int sd_sessions_add(uint32_t sessionid,
 
     pthread_mutex_lock(&mutex);
 
-    if (sd_sessions_find(NULL, sessionid, identity) >= 0) {
+    if (sd_sessions_find(NULL, sessionid, invoker) >= 0) {
         pthread_mutex_unlock(&mutex);
         sd_log(LOG_LEVEL_ERROR, "Session already present");
         return -1;
@@ -67,7 +68,8 @@ int sd_sessions_add(uint32_t sessionid,
     }
 
     sessions[i].sessionid = sessionid;
-    memcpy(sessions[i].identity.data, identity->data, sizeof(identity->data));
+    memcpy(sessions[i].issuer.data, issuer->data, sizeof(issuer->data));
+    memcpy(sessions[i].invoker.data, invoker->data, sizeof(invoker->data));
 
     if (nparams) {
         sessions[i].parameters = malloc(nparams * sizeof(struct sd_service_parameter));
@@ -88,13 +90,13 @@ int sd_sessions_add(uint32_t sessionid,
 
 int sd_sessions_remove(struct sd_session *out,
         uint32_t sessionid,
-        const struct sd_sign_key_public *identity)
+        const struct sd_sign_key_public *invoker)
 {
     ssize_t i;
 
     pthread_mutex_lock(&mutex);
 
-    i = sd_sessions_find(out, sessionid, identity);
+    i = sd_sessions_find(out, sessionid, invoker);
     if (i >= 0) {
         memset(&sessions[i], 0, sizeof(struct sd_session));
         used[i] = 0;
@@ -112,7 +114,7 @@ int sd_sessions_remove(struct sd_session *out,
 
 ssize_t sd_sessions_find(struct sd_session *out,
         uint32_t sessionid,
-        const struct sd_sign_key_public *identity)
+        const struct sd_sign_key_public *invoker)
 {
     size_t i;
 
@@ -124,7 +126,7 @@ ssize_t sd_sessions_find(struct sd_session *out,
 
         s = &sessions[i];
         if (s->sessionid == sessionid &&
-                memcmp(s->identity.data, identity->data, sizeof(identity->data)) == 0)
+                memcmp(s->invoker.data, invoker->data, sizeof(invoker->data)) == 0)
         {
             if (out)
                 memcpy(out, s, sizeof(struct sd_session));

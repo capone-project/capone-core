@@ -191,9 +191,9 @@ out:
     return 0;
 }
 
-int sd_proto_send_request(struct sd_session *out,
+int sd_proto_send_request(uint32_t *sessionid,
         struct sd_channel *channel,
-        const struct sd_sign_key_public *requester,
+        const struct sd_sign_key_public *invoker,
         const struct sd_service_parameter *params, size_t nparams)
 {
     SessionRequestMessage request = SESSION_REQUEST_MESSAGE__INIT;
@@ -202,10 +202,8 @@ int sd_proto_send_request(struct sd_session *out,
     size_t i;
     int err;
 
-    memset(out, 0, sizeof(struct sd_session));
-
-    request.identity.data = (uint8_t *) requester->data;
-    request.identity.len = sizeof(requester->data);
+    request.invoker.data = (uint8_t *) invoker->data;
+    request.invoker.len = sizeof(invoker->data);
 
     if (nparams) {
         parameters = malloc(sizeof(Parameter *) * nparams);
@@ -239,8 +237,7 @@ int sd_proto_send_request(struct sd_session *out,
         goto out;
     }
 
-    out->sessionid = session->sessionid;
-    memcpy(out->identity.data, requester->data, sizeof(out->identity.data));
+    *sessionid = session->sessionid;
 
 out:
     if (session)
@@ -392,9 +389,9 @@ int sd_proto_answer_request(struct sd_channel *channel,
     }
 
     if (sd_sign_key_public_from_bin(&identity_key,
-                request->identity.data, request->identity.len) < 0)
+                request->invoker.data, request->invoker.len) < 0)
     {
-        sd_log(LOG_LEVEL_ERROR, "Unable to parse identity key");
+        sd_log(LOG_LEVEL_ERROR, "Unable to parse invoker key");
         goto out_err;
     }
 
@@ -412,7 +409,9 @@ int sd_proto_answer_request(struct sd_channel *channel,
         goto out_err;
     }
 
-    if (sd_sessions_add(session_message.sessionid, &identity_key, params, nparams) < 0) {
+    if (sd_sessions_add(session_message.sessionid,
+                remote_key, &identity_key, params, nparams) < 0)
+    {
         sd_log(LOG_LEVEL_ERROR, "Unable to add session");
         goto out_err;
     }

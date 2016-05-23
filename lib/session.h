@@ -24,7 +24,9 @@
 
 struct sd_session {
     uint32_t sessionid;
-    struct sd_sign_key_public identity;
+
+    struct sd_sign_key_public invoker;
+    struct sd_sign_key_public issuer;
 
     struct sd_service_parameter *parameters;
     size_t nparameters;
@@ -33,7 +35,8 @@ struct sd_session {
 int sd_sessions_init(void);
 
 int sd_sessions_add(uint32_t sessionid,
-        const struct sd_sign_key_public *identity,
+        const struct sd_sign_key_public *issuer,
+        const struct sd_sign_key_public *invoker,
         const struct sd_service_parameter *params,
         size_t nparams);
 int sd_sessions_remove(struct sd_session *out,

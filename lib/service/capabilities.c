@@ -116,7 +116,7 @@ static int relay_capability_request(struct sd_channel *channel,
         sd_log(LOG_LEVEL_ERROR, "Unable to initiate connection type to remote service");
         goto out;
     }
-    if ((ret = sd_proto_send_request(&session, &service_channel, requester_key,
+    if ((ret = sd_proto_send_request(&cap.sessionid, &service_channel, requester_key,
                     params, request->n_parameters)) < 0)
     {
         sd_log(LOG_LEVEL_ERROR, "Unable to send request to remote service");
@@ -268,7 +268,7 @@ static int handle_register(struct sd_channel *channel,
     n = nregistrants++;
 
     memcpy(&registrants[n].channel, channel, sizeof(struct sd_channel));
-    memcpy(&registrants[n].identity, &session->identity, sizeof(session->identity));
+    memcpy(&registrants[n].identity, &session->invoker, sizeof(session->invoker));
 
     sd_log(LOG_LEVEL_VERBOSE, "%d identities registered", n + 1);
 
@@ -329,8 +329,8 @@ static int handle_request(struct sd_channel *channel,
     request.identity.len = sizeof(remote_identity.data);
     request.service.data = (uint8_t *) remote_service.data;
     request.service.len = sizeof(remote_service.data);
-    request.requester.data = (uint8_t *) session->identity.data;
-    request.requester.len = sizeof(session->identity.data);
+    request.requester.data = (uint8_t *) session->invoker.data;
+    request.requester.len = sizeof(session->invoker.data);
     /* TODO: parameters */
 
     if (sd_channel_write_protobuf(&registrant->channel, &request.base) < 0) {
