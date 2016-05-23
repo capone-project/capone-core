@@ -34,7 +34,9 @@ static void usage(const char *prog)
     printf("USAGE: %s (request|connect)\n"
             "\tquery <CONFIG> <KEY> <HOST> <PORT>\n"
             "\trequest <CONFIG> <KEY> <HOST> <PORT> [<PARAMETER>...]\n"
-            "\tconnect <CONFIG> <KEY> <HOST> <PORT> <SERVICE> <SESSIONID>\n", prog);
+            "\tconnect <CONFIG> <KEY> <HOST> <PORT> <SERVICE> <SESSIONID>\n"
+            "\tterminate <CONFIG> <KEY> <HOST> <PORT> <SESSIONID> <INVOKER>\n",
+            prog);
     exit(-1);
 }
 
@@ -247,6 +249,58 @@ static int cmd_connect(int argc, char *argv[])
     return 0;
 }
 
+static int cmd_terminate(int argc, char *argv[])
+{
+    struct sd_sign_key_public remote_key, invoker_key;
+    struct sd_sign_key_pair local_keys;
+    struct sd_channel channel;
+    const char *config, *key, *host, *port, *session, *invoker;
+    uint32_t sessionid;
+
+    if (argc != 8)
+        usage(argv[0]);
+
+    config = argv[2];
+    key = argv[3];
+    host = argv[4];
+    port = argv[5];
+    session = argv[6];
+    invoker = argv[7];
+
+    if (sd_sign_key_pair_from_config_file(&local_keys, config) < 0) {
+        puts("Could not parse config");
+        return -1;
+    }
+
+    if (sd_sign_key_public_from_hex(&remote_key, key) < 0) {
+        puts("Could not parse remote public key");
+        return -1;
+    }
+
+    if (sd_sign_key_public_from_hex(&invoker_key, invoker) < 0) {
+        puts("Could not parse invoker key");
+        return -1;
+    }
+
+    if (parse_uint32t(&sessionid, session) < 0) {
+        printf("Invalid session ID %s\n", session);
+        return -1;
+    }
+
+    if (sd_proto_initiate_connection(&channel, host, port,
+                &local_keys, &remote_key, SD_CONNECTION_TYPE_TERMINATE) < 0) {
+        puts("Could not start connection");
+        return -1;
+    }
+
+    if (sd_proto_initiate_termination(&channel, sessionid, &invoker_key) < 0) {
+        puts("Could not initiate termination");
+        return -1;
+    }
+
+    return 0;
+}
+
 int main(int argc, char *argv[])
 {
     if (argc < 2)
@@ -272,6 +326,8 @@ int main(int argc, char *argv[])
         return cmd_request(argc, argv);
     else if (!strcmp(argv[1], "connect"))
         return cmd_connect(argc, argv);
+    else if (!strcmp(argv[1], "terminate"))
+        return cmd_terminate(argc, argv);
 
     usage(argv[0]);
 

@@ -67,6 +67,9 @@ int sd_proto_initiate_connection(struct sd_channel *channel,
         case SD_CONNECTION_TYPE_QUERY:
             conntype.type = CONNECTION_INITIATION_MESSAGE__TYPE__QUERY;
             break;
+        case SD_CONNECTION_TYPE_TERMINATE:
+            conntype.type = CONNECTION_INITIATION_MESSAGE__TYPE__TERMINATE;
+            break;
         default:
             sd_log(LOG_LEVEL_ERROR, "Unknown connection type");
             return -1;
