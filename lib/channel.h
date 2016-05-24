@@ -33,10 +33,6 @@
 
 #include "lib/keys.h"
 
-typedef void *(unpack_fn)(ProtobufCAllocator *allocator, size_t len, const uint8_t *data);
-typedef size_t (pack_fn)(const void *protobuf, uint8_t *out);
-typedef size_t (size_fn)(const void *protobuf);
-
 enum sd_channel_type {
     SD_CHANNEL_TYPE_UDP,
     SD_CHANNEL_TYPE_TCP
