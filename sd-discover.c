@@ -120,6 +120,8 @@ static void undirected_discovery()
     struct sd_channel channel;
     struct sd_thread t;
 
+    channel.fd = -1;
+
     sd_spawn(&t, probe, NULL);
 
     if (sd_server_init(&server, NULL, "6668", SD_CHANNEL_TYPE_UDP) < 0) {
