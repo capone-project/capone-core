@@ -69,18 +69,18 @@ static void *client(void *payload)
 
     if (set_affinity(2) < 0) {
         puts("Unable to set sched affinity");
-        return NULL;
+        goto out;
     }
 
     UNUSED(payload);
 
     if (sd_channel_init_from_host(&channel, "127.0.0.1", PORT, SD_CHANNEL_TYPE_TCP) < 0) {
         puts("Unable to init connection");
-        return NULL;
+        goto out;
     }
     if (sd_channel_connect(&channel) < 0) {
         puts("Unable to connect to server");
-        return NULL;
+        goto out;
     }
 
     if (encrypt) {
@@ -90,11 +90,14 @@ static void *client(void *payload)
     start = rdtsc64();
     if (sd_channel_write_data(&channel, data, DATA_LEN) < 0) {
         puts("Unable to write data");
-        return NULL;
+        goto out;
     }
     end = rdtsc64();
 
     printf("Cycles spent writing data:\t%"PRIu64"\n", end - start);
+
+out:
+    free(data);
 
     return NULL;
 }
