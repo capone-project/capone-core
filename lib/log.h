@@ -18,28 +18,63 @@
 /**
  * \defgroup sd-log Logging
  * \ingroup sd-lib
+ *
+ * @brief Module providing logging functions
+ *
+ * This module provides functions to generate log messages
+ * depending on a logging level. Currently, only logging to
+ * stdout is supported.
+ *
+ * There exist multiple log levels which are to be used when
+ * logging a message. The standard log level is
+ * <code>LOG_LEVEL_DEBUG</code>.
+ *
  * @{
  */
 
 #ifndef SD_LIB_LOG_H
 #define SD_LIB_LOG_H
 
-/**
- * @name Logging
+/** @brief Logging level
+ *
+ * The log levels are layed out in increasing verbosity levels.
+ * That is when the log level is set to e.g.
+ * <code>LOG_LEVEL_VERBOSE>, all messages with a higher log level
+ * will be printed.
  */
-
 enum log_level {
+    /** Debug messages, only inteded for developers */
     LOG_LEVEL_DEBUG,
+    /** Verbose messages, may help users to comprehend a problem */
     LOG_LEVEL_VERBOSE,
+    /** Warning messages, when things may not be as expected */
     LOG_LEVEL_WARNING,
+    /** Erorr message, when an error occured */
     LOG_LEVEL_ERROR,
+    /** Print no messages */
     LOG_LEVEL_NONE
 };
 
+/** @brief Log a message
+ *
+ * Log a new message with the given format and a specific log
+ * level. The log level determines when it will be printed. The
+ * format specifier are the same as used by the
+ * <code>printf</code> family of functions.
+ *
+ * @param[in] lvl Log level of the message.
+ * @param[in] msgformat Format string.
+ */
 void sd_log(enum log_level lvl, const char *msgformat, ...);
-void sd_log_set_level(enum log_level lvl);
 
-/** @} */
+/** @brief Set log level
+ *
+ * Set the log level to suppress or show messages with certain
+ * levels.
+ *
+ * @param[in] lvl Log level to set
+ */
+void sd_log_set_level(enum log_level lvl);
 
 #endif
 
