@@ -15,6 +15,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+/**
+ * \defgroup sd-cfg Configuration
+ * \ingroup sd-lib
+ * @{
+ */
+
 #ifndef SD_LIB_CFG_H
 #define SD_LIB_CFG_H
 
@@ -54,3 +60,5 @@ char *cfg_get_str_value(const struct cfg *c, const char *section, const char *ke
 int cfg_get_int_value(const struct cfg *c, const char *section, const char *key);
 
 #endif
+
+/** @} */

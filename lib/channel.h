@@ -15,6 +15,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+/**
+ * \defgroup sd-channel Channel
+ * \ingroup sd-lib
+ * @{
+ */
+
 #ifndef SD_LIB_CHANNEL_H
 #define SD_LIB_CHANNEL_H
 
@@ -82,3 +88,5 @@ int sd_channel_receive_protobuf(struct sd_channel *c, const ProtobufCMessageDesc
 int sd_channel_relay(struct sd_channel *c, int nfds, ...);
 
 #endif
+
+/** @} */

@@ -15,8 +15,18 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+/**
+ * \defgroup sd-log Logging
+ * \ingroup sd-lib
+ * @{
+ */
+
 #ifndef SD_LIB_LOG_H
 #define SD_LIB_LOG_H
+
+/**
+ * @name Logging
+ */
 
 enum log_level {
     LOG_LEVEL_DEBUG,
@@ -29,4 +39,8 @@ enum log_level {
 void sd_log(enum log_level lvl, const char *msgformat, ...);
 void sd_log_set_level(enum log_level lvl);
 
+/** @} */
+
 #endif
+
+/** @} */

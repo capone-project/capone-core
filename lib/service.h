@@ -15,6 +15,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+/**
+ * \defgroup sd-service Service
+ * \ingroup sd-lib
+ * @{
+ */
+
 #ifndef SD_LIB_SERVICE_H
 #define SD_LIB_SERVICE_H
 
@@ -61,3 +67,5 @@ int sd_service_parameters_get_values(const char ***out, const char *value, const
 void sd_service_parameters_free(struct sd_service_parameter *params, size_t nparams);
 
 #endif
+
+/** @} */

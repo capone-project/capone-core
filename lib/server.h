@@ -15,6 +15,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+/**
+ * \defgroup sd-server Server
+ * \ingroup sd-lib
+ * @{
+ */
+
 #ifndef SD_LIB_SERVER_H
 #define SD_LIB_SERVER_H
 
@@ -39,3 +45,5 @@ int sd_server_get_address(struct sd_server *s,
         char *host, size_t hostlen, char *port, size_t portlen);
 
 #endif
+
+/** @} */

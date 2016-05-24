@@ -16,34 +16,24 @@
  */
 
 /**
- * \defgroup sd-common Common
- * \ingroup sd-lib
+ * \defgroup sd-lib SD Library
  * @{
  */
 
-#ifndef SD_LIB_COMMON_H
-#define SD_LIB_COMMON_H
+#ifndef SD_LIB_SD_H
+#define SD_LIB_SD_H
 
-#include <inttypes.h>
-#include <pthread.h>
-
-#define MAX(a, b) ((a) >= (b) ? (a) : (b))
-#define MIN(a, b) ((a) > (b) ? (b) : (a))
-
-#define UNUSED(x) (void)(x)
-#define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
-
-typedef void *(*thread_fn)(void *);
-struct sd_thread {
-    pthread_t t;
-};
-
-int sd_spawn(struct sd_thread *t, thread_fn fn, void *payload);
-int sd_kill(struct sd_thread *t);
-int sd_join(struct sd_thread *t, void **out);
-
-int parse_uint32t(uint32_t *out, const char *num);
+#include "cfg.h"
+#include "channel.h"
+#include "common.h"
+#include "keys.h"
+#include "log.h"
+#include "proto.h"
+#include "sd.h"
+#include "server.h"
+#include "service.h"
+#include "session.h"
 
 #endif
 
-/** @} */
+/** }@ */

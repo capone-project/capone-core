@@ -15,6 +15,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+/**
+ * \defgroup sd-proto Protocols
+ * \ingroup sd-lib
+ * @{
+ */
+
 #ifndef SD_LIB_PROTO_H
 #define SD_LIB_PROTO_H
 
@@ -85,3 +91,5 @@ int sd_proto_handle_termination(struct sd_channel *channel,
         const struct sd_sign_key_public *remote_key);
 
 #endif
+
+/** @} */

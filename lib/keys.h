@@ -15,6 +15,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+/**
+ * \defgroup sd-keys Key Management
+ * \ingroup sd-lib
+ * @{
+ */
+
 #ifndef SD_LIB_KEYS_H
 #define SD_LIB_KEYS_H
 
@@ -73,3 +79,5 @@ int sd_symmetric_key_hex_from_bin(struct sd_symmetric_key_hex *out, const uint8_
 void sd_symmetric_key_hex_from_key(struct sd_symmetric_key_hex *out, const struct sd_symmetric_key *key);
 
 #endif
+
+/** @} */

@@ -15,6 +15,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+/**
+ * \defgroup sd-log Logging
+ * \ingroup sd-lib
+ * @{
+ */
+
 #ifndef SD_SESSION_H
 #define SD_SESSION_H
 
@@ -50,3 +56,5 @@ int sd_sessions_clear(void);
 void sd_session_free(struct sd_session *session);
 
 #endif
+
+/** @} */
