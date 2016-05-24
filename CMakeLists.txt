@@ -51,14 +51,14 @@ ADD_LIBRARY(sd SHARED
     lib/proto.c
     lib/proto-enc.c
     lib/server.c
-    lib/service.c
-    lib/service/capabilities.c
-    lib/service/exec.c
-    lib/service/invoke.c
-    lib/service/synergy.c
-    lib/service/test.c
-    lib/service/xpra.c
     lib/session.c
+    lib/service.c
+    service/capabilities.c
+    service/exec.c
+    service/invoke.c
+    service/synergy.c
+    service/test.c
+    service/xpra.c
     ${PROTO_SOURCES})
 TARGET_LINK_LIBRARIES(sd
     ${SODIUM_LIBRARIES}

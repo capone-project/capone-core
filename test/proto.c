@@ -24,7 +24,7 @@
 #include "lib/service.h"
 #include "lib/session.h"
 
-#include "lib/service/test.h"
+#include "service/test.h"
 
 #include "test.h"
 

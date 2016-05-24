@@ -23,12 +23,13 @@
 #include "lib/common.h"
 #include "lib/log.h"
 #include "lib/service.h"
-#include "lib/service/capabilities.h"
-#include "lib/service/exec.h"
-#include "lib/service/invoke.h"
-#include "lib/service/synergy.h"
-#include "lib/service/test.h"
-#include "lib/service/xpra.h"
+
+#include "service/capabilities.h"
+#include "service/exec.h"
+#include "service/invoke.h"
+#include "service/synergy.h"
+#include "service/test.h"
+#include "service/xpra.h"
 
 static int fill_service(struct sd_service *service, const char *type)
 {
