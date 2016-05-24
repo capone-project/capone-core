@@ -15,6 +15,28 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+/**
+ * \defgroup service-invoke Invoke service
+ * \ingroup services
+ *
+ * @brief Service handling invocation of other services
+ *
+ * The invoke service is a special service that is required to
+ * cause servers to invoke services by other services. Assume
+ * Alice wants to connect her trusted work station located at
+ * home with a display located at work. She will start up the
+ * controller application on her mobile phone and now has to
+ * somehow tell her work station to connect to the display.
+ *
+ * Exactly this functionality is provided by the invoke service.
+ * She will initially create a new session on the display service
+ * with her work station's identity specified as the invoker. She
+ * now tells the invoker service on her work station to connect
+ * to the display given the session she has just created. The
+ * invoke service will now start the session with the display
+ * service.
+ */
+
 struct sd_service;
 
 int sd_invoke_init_service(struct sd_service *service);

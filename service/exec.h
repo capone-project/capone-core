@@ -15,6 +15,21 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+/**
+ * \defgroup service-exec Exec service
+ * \ingroup services
+ *
+ * @brief Service handling execution of programs
+ *
+ * The exec service is a simple service handling the execution of
+ * a program with a set of command line arguments and environment
+ * variables set as parameters by the client.
+ *
+ * Output will be relayed to the client and input from the client
+ * will be forwarded to the application through the encrypted
+ * channel.
+ */
+
 struct sd_service;
 
 int sd_exec_init_service(struct sd_service *service);

@@ -15,6 +15,32 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+/**
+ * \defgroup service-xpra Xpra service
+ * \ingroup services
+ *
+ * @brief Service handling xpra display connections
+ *
+ * The Xpra service provides the ability to connect a display to
+ * an xpra instance running on a client and like this forward the
+ * client's windows to the service and display it.
+ *
+ * Xpra is a multi-platform screen and application forwarding
+ * system that builds upon the X11 windowing system. Despite its
+ * X11 heritage, it also provides implementations for Microsoft
+ * Windows and OS X to forward their applications.
+ *
+ * The architecture is such that the client wishing to connect to
+ * the service has to start a local Xpra server. The Xpra server
+ * starts a virtual framebuffer in which the applications which
+ * are to be forwarded are spawned in.
+ *
+ * When connecting to the service, the server will start an Xpra
+ * client which will connect to the Xpra server running on the
+ * client. All traffic between Xpra server and client will now be
+ * tunneled through an encrypted channel.
+ */
+
 struct sd_service;
 
 int sd_xpra_init_service(struct sd_service *service);

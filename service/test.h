@@ -15,6 +15,16 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+/**
+ * \defgroup service-test Test service
+ * \ingroup services
+ *
+ * @brief Test service
+ *
+ * A test service doing nothing special. It simply gets its
+ * parameters and writes their values to the client's channel.
+ */
+
 struct sd_service;
 
 int sd_test_init_service(struct sd_service *service);

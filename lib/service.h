@@ -16,6 +16,10 @@
  */
 
 /**
+ * \defgroup services Services
+ */
+
+/**
  * \defgroup sd-service Service
  * \ingroup sd-lib
  *
