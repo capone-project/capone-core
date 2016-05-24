@@ -13,3 +13,7 @@ A fully authenticated and encrypted generic service framework.
 - protobuf-c v1.0.2 or greater
 - libsodium v1.0.8 or greater
 - cmocka (optional, for tests only)
+
+## API documentation
+
+[Doxygen](https://pks-t.github.io/sd/doxygen)
