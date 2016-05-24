@@ -129,7 +129,8 @@ int sd_proto_initiate_session(struct sd_channel *channel, int sessionid)
     initiation.sessionid = sessionid;
     if (sd_channel_write_protobuf(channel, &initiation.base) < 0 ) {
         sd_log(LOG_LEVEL_ERROR, "Could not initiate session");
-        return -1;
+        ret = -1;
+        goto out;
     }
 
     if (sd_channel_receive_protobuf(channel,
@@ -137,13 +138,15 @@ int sd_proto_initiate_session(struct sd_channel *channel, int sessionid)
                 (ProtobufCMessage **) &result) < 0)
     {
         sd_log(LOG_LEVEL_ERROR, "Could not receive session OK");
-        return -1;
+        ret = -1;
+        goto out;
     }
 
     if (result->result != 0) {
         ret = -1;
     }
 
+out:
     if (result)
         session_result__free_unpacked(result, NULL);
 
