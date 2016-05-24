@@ -18,9 +18,9 @@ then
 
         cd "${PAGES}"
 
-        if ! git diff --exit-code
+        if git diff --exit-code
         then
-            return
+            exit
         fi
 
         git add doxygen
