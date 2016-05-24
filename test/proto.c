@@ -112,7 +112,7 @@ static void *await_encryption(void *payload)
     struct await_encryption_args *args = (struct await_encryption_args *) payload;
     struct sd_sign_key_public remote_key;
 
-    sd_proto_await_encryption(args->c, args->k, &remote_key);
+    UNUSED(sd_proto_await_encryption(args->c, args->k, &remote_key));
 
     return NULL;
 }
@@ -123,9 +123,10 @@ static void *initiate_connection(void *payload)
     struct initiate_connection_args *args =
         (struct initiate_connection_args *) payload;
 
-    sd_proto_initiate_connection(&c, "127.0.0.1", "31248", &local_keys, &remote_keys.pk, args->type);
+    UNUSED(sd_proto_initiate_connection(&c, "127.0.0.1", "31248",
+                &local_keys, &remote_keys.pk, args->type));
 
-    sd_channel_close(&c);
+    UNUSED(sd_channel_close(&c));
 
     return NULL;
 }
@@ -134,10 +135,10 @@ static void *await_query(void *payload)
 {
     struct await_query_args *args = (struct await_query_args *) payload;
 
-    await_encryption(&args->enc_args);
+    UNUSED(await_encryption(&args->enc_args));
 
-    sd_proto_answer_query(args->enc_args.c, args->s,
-                args->r, args->whitelist, args->nwhitelist);
+    UNUSED(sd_proto_answer_query(args->enc_args.c, args->s,
+                args->r, args->whitelist, args->nwhitelist));
 
     return NULL;
 }
@@ -148,8 +149,8 @@ static void *await_request(void *payload)
 
     await_encryption(&args->enc_args);
 
-    sd_proto_answer_request(args->enc_args.c,
-                args->r, args->whitelist, args->nwhitelist);
+    UNUSED(sd_proto_answer_request(args->enc_args.c,
+                args->r, args->whitelist, args->nwhitelist));
 
     return NULL;
 }
@@ -158,10 +159,10 @@ static void *handle_session(void *payload)
 {
     struct handle_session_args *args = (struct handle_session_args *) payload;
 
-    await_encryption(&args->enc_args);
+    UNUSED(await_encryption(&args->enc_args));
 
-    sd_proto_handle_session(args->enc_args.c,
-                args->remote_key, args->service, args->cfg);
+    UNUSED(sd_proto_handle_session(args->enc_args.c,
+                args->remote_key, args->service, args->cfg));
 
     return NULL;
 }
@@ -170,7 +171,7 @@ static void *handle_termination(void *payload)
 {
     struct handle_termination_args *args = (struct handle_termination_args *) payload;
 
-    sd_proto_handle_termination(args->channel, args->terminator);
+    UNUSED(sd_proto_handle_termination(args->channel, args->terminator));
 
     return NULL;
 }
@@ -180,9 +181,9 @@ static void *send_query(void *payload)
     struct send_query_args *args = (struct send_query_args *) payload;
     struct sd_query_results results;
 
-    sd_proto_initiate_encryption(args->c,
-                args->k, args->r);
-    sd_proto_send_query(&results, args->c);
+    UNUSED(sd_proto_initiate_encryption(args->c,
+                args->k, args->r));
+    UNUSED(sd_proto_send_query(&results, args->c));
 
     sd_query_results_free(&results);
 
@@ -194,9 +195,10 @@ static void *send_request(void *payload)
     struct send_request_args *args = (struct send_request_args *) payload;
     uint32_t sessionid;
 
-    sd_proto_initiate_encryption(args->channel,
-                args->channel_key, args->remote_key);
-    sd_proto_send_request(&sessionid, args->channel, args->remote_key, args->params, args->nparams);
+    UNUSED(sd_proto_initiate_encryption(args->channel,
+                args->channel_key, args->remote_key));
+    UNUSED(sd_proto_send_request(&sessionid, args->channel,
+                args->remote_key, args->params, args->nparams));
 
     return NULL;
 }
