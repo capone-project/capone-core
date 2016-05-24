@@ -27,12 +27,6 @@
 #include <stdint.h>
 #include <stddef.h>
 
-enum cfg_entry_type {
-    CFG_ENTRY_TYPE_UINT,
-    CFG_ENTRY_TYPE_INT,
-    CFG_ENTRY_TYPE_STRING
-};
-
 struct cfg_entry {
     char *name;
     char *value;
