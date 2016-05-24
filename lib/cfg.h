@@ -27,31 +27,31 @@
 #include <stdint.h>
 #include <stddef.h>
 
-struct cfg_entry {
+struct sd_cfg_entry {
     char *name;
     char *value;
 };
 
-struct cfg_section {
+struct sd_cfg_section {
     char *name;
-    struct cfg_entry *entries;
+    struct sd_cfg_entry *entries;
     size_t numentries;
 };
 
-struct cfg {
-    struct cfg_section *sections;
+struct sd_cfg {
+    struct sd_cfg_section *sections;
     size_t numsections;
 };
 
-int cfg_parse(struct cfg *c, const char *path);
-int cfg_parse_string(struct cfg *c, const char *ptr, size_t len);
-void cfg_free(struct cfg *c);
+int sd_cfg_parse(struct sd_cfg *c, const char *path);
+int sd_cfg_parse_string(struct sd_cfg *c, const char *ptr, size_t len);
+void sd_cfg_free(struct sd_cfg *c);
 
-const struct cfg_section *cfg_get_section(const struct cfg *c, const char *name);
-const struct cfg_entry *cfg_get_entry(const struct cfg_section *s, const char *name);
+const struct sd_cfg_section *sd_cfg_get_section(const struct sd_cfg *c, const char *name);
+const struct sd_cfg_entry *sd_cfg_get_entry(const struct sd_cfg_section *s, const char *name);
 
-char *cfg_get_str_value(const struct cfg *c, const char *section, const char *key);
-int cfg_get_int_value(const struct cfg *c, const char *section, const char *key);
+char *sd_cfg_get_str_value(const struct sd_cfg *c, const char *section, const char *key);
+int sd_cfg_get_int_value(const struct sd_cfg *c, const char *section, const char *key);
 
 #endif
 

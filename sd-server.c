@@ -30,7 +30,7 @@
 #include "lib/service.h"
 
 struct handle_connection_args {
-    const struct cfg *cfg;
+    const struct sd_cfg *cfg;
     struct sd_channel channel;
 };
 
@@ -183,7 +183,7 @@ int main(int argc, char *argv[])
 {
     const char *servicename;
     struct sd_server server;
-    struct cfg cfg;
+    struct sd_cfg cfg;
     int ret;
 
     if (argc == 2 && !strcmp(argv[1], "--version")) {
@@ -200,7 +200,7 @@ int main(int argc, char *argv[])
 
     servicename = argv[2];
 
-    if (cfg_parse(&cfg, argv[1]) < 0) {
+    if (sd_cfg_parse(&cfg, argv[1]) < 0) {
         puts("Could not parse config");
         return -1;
     }

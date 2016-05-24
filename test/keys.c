@@ -36,7 +36,7 @@ static struct sd_encrypt_key_pair enc_pair;
 static struct sd_symmetric_key key;
 static struct sd_symmetric_key_hex key_hex;
 
-static struct cfg config;
+static struct sd_cfg config;
 
 static void assert_sign_pk_matches(const struct sd_sign_key_public *pk, const char *key)
 {
@@ -69,7 +69,7 @@ static int setup()
 
 static int teardown()
 {
-    cfg_free(&config);
+    sd_cfg_free(&config);
     return 0;
 }
 
@@ -94,7 +94,7 @@ static void sign_key_pair_from_config()
         "[core]\n"
         "public_key="PK"\n"
         "secret_key="SK"\n";
-    assert_success(cfg_parse_string(&config, text, strlen(text)));
+    assert_success(sd_cfg_parse_string(&config, text, strlen(text)));
 
     assert_success(sd_sign_key_pair_from_config(&sign_pair, &config));
     assert_sign_pk_matches(&sign_pair.pk, PK);
@@ -111,7 +111,7 @@ static void sign_key_pair_from_config_with_invalid_pk_fails()
     /* TODO: This is currently not handled correctly */
     skip();
 
-    assert_success(cfg_parse_string(&config, text, strlen(text)));
+    assert_success(sd_cfg_parse_string(&config, text, strlen(text)));
 
     assert_failure(sd_sign_key_pair_from_config(&sign_pair, &config));
 }
@@ -127,7 +127,7 @@ static void sign_key_pair_from_config_with_invalid_sk_fails()
     /* TODO: This is currently not handled correctly */
     skip();
 
-    assert_success(cfg_parse_string(&config, text, strlen(text)));
+    assert_success(sd_cfg_parse_string(&config, text, strlen(text)));
 
     assert_failure(sd_sign_key_pair_from_config(&sign_pair, &config));
 }
@@ -137,7 +137,7 @@ static void sign_key_pair_from_config_with_missing_pk_fails()
     const char text[] =
         "[core]\n"
         "secret_key="SK"\n";
-    assert_success(cfg_parse_string(&config, text, strlen(text)));
+    assert_success(sd_cfg_parse_string(&config, text, strlen(text)));
 
     assert_failure(sd_sign_key_pair_from_config(&sign_pair, &config));
 }
@@ -147,7 +147,7 @@ static void sign_key_pair_from_config_with_missing_sk_fails()
     const char text[] =
         "[core]\n"
         "public_key="PK"\n";
-    assert_success(cfg_parse_string(&config, text, strlen(text)));
+    assert_success(sd_cfg_parse_string(&config, text, strlen(text)));
 
     assert_failure(sd_sign_key_pair_from_config(&sign_pair, &config));
 }
@@ -159,7 +159,7 @@ static void sign_key_pair_from_config_with_invalid_pk_length_fails()
         "public_key=3d77986bd77de57576a79dddebd7396af9b9f213a8816d6b9ec07d51dc82a51\n"
         "secret_key=9d5e3d6788699115e16214a05b21263bf39e00d7ab5d08ec2b7b1064cafd03e4"
                    "3d77986bd77de57576a79dddebd7396af9b9f213a8816d6b9ec07d51dc82a517\n";
-    assert_success(cfg_parse_string(&config, text, strlen(text)));
+    assert_success(sd_cfg_parse_string(&config, text, strlen(text)));
 
     assert_failure(sd_sign_key_pair_from_config(&sign_pair, &config));
 }
@@ -171,7 +171,7 @@ static void sign_key_pair_from_config_with_invalid_sk_length_fails()
         "public_key=3d77986bd77de57576a79dddebd7396af9b9f213a8816d6b9ec07d51dc82a517\n"
         "secret_key=9d5e3d6788699115e16214a05b21263bf39e00d7ab5d08ec2b7b1064cafd03e4"
                    "3d77986bd77de57576a79dddebd7396af9b9f213a8816d6b9ec07d51dc82a51\n";
-    assert_success(cfg_parse_string(&config, text, strlen(text)));
+    assert_success(sd_cfg_parse_string(&config, text, strlen(text)));
 
     assert_failure(sd_sign_key_pair_from_config(&sign_pair, &config));
 }

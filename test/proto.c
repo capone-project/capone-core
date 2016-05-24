@@ -59,7 +59,7 @@ struct handle_session_args {
     struct await_encryption_args enc_args;
     struct sd_sign_key_public *remote_key;
     struct sd_service *service;
-    struct cfg *cfg;
+    struct sd_cfg *cfg;
 };
 
 struct send_query_args {
@@ -81,7 +81,7 @@ struct handle_termination_args {
     struct sd_sign_key_public *terminator;
 };
 
-static struct cfg config;
+static struct sd_cfg config;
 static struct sd_service service;
 static struct sd_channel local, remote;
 static struct sd_sign_key_pair local_keys, remote_keys;
@@ -535,7 +535,7 @@ int proto_test_run_suite(void)
 
     assert_success(sd_sessions_init());
 
-    assert_success(cfg_parse_string(&config, service_cfg, strlen(service_cfg)));
+    assert_success(sd_cfg_parse_string(&config, service_cfg, strlen(service_cfg)));
     assert_success(sd_service_from_config(&service, "Foo", &config));
 
     assert_success(sd_sign_key_pair_generate(&local_keys));

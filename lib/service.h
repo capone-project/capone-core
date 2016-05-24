@@ -36,7 +36,7 @@ struct sd_service_parameter {
 };
 
 typedef int (*invoke_fn)(struct sd_channel *channel, int argc, char **argv);
-typedef int (*handle_fn)(struct sd_channel *channel, const struct sd_session *session, const struct cfg *cfg);
+typedef int (*handle_fn)(struct sd_channel *channel, const struct sd_session *session, const struct sd_cfg *cfg);
 typedef int (*parameters_fn)(const struct sd_service_parameter **out);
 typedef const char *(*version_fn)(void);
 
@@ -55,12 +55,12 @@ struct sd_service {
 
 int sd_service_from_type(struct sd_service *out, const char *type);
 int sd_service_from_config_file(struct sd_service *out, const char *name, const char *file);
-int sd_service_from_config(struct sd_service *out, const char *name, const struct cfg *cfg);
-int sd_service_from_section(struct sd_service *out, const struct cfg_section *section);
+int sd_service_from_config(struct sd_service *out, const char *name, const struct sd_cfg *cfg);
+int sd_service_from_section(struct sd_service *out, const struct sd_cfg_section *section);
 void sd_service_free(struct sd_service *service);
 
 int sd_services_from_config_file(struct sd_service **out, const char *file);
-int sd_services_from_config(struct sd_service **out, const struct cfg *cfg);
+int sd_services_from_config(struct sd_service **out, const struct sd_cfg *cfg);
 
 int sd_service_parameters_get_value(const char **out, const char *value, const struct sd_service_parameter *parameters, size_t n);
 int sd_service_parameters_get_values(const char ***out, const char *value, const struct sd_service_parameter *parameters, size_t n);

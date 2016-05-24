@@ -22,7 +22,7 @@
 
 #include "test.h"
 
-static struct cfg cfg;
+static struct sd_cfg cfg;
 static struct sd_service service;
 
 static int setup()
@@ -32,7 +32,7 @@ static int setup()
 
 static int teardown()
 {
-    cfg_free(&cfg);
+    sd_cfg_free(&cfg);
     sd_service_free(&service);
     return 0;
 }
@@ -46,7 +46,7 @@ static void test_service_from_config()
         "location=space\n"
         "port=7777\n";
 
-    assert_success(cfg_parse_string(&cfg, service_config, strlen(service_config)));
+    assert_success(sd_cfg_parse_string(&cfg, service_config, strlen(service_config)));
     assert_success(sd_service_from_config(&service, "foo", &cfg));
 
     /* Assert values */
@@ -73,7 +73,7 @@ static void test_invalid_service_from_config_fails()
         "port=7777\n"
         "invalidparameter=invalidvalue";
 
-    assert_success(cfg_parse_string(&cfg, service_config, strlen(service_config)));
+    assert_success(sd_cfg_parse_string(&cfg, service_config, strlen(service_config)));
     assert_failure(sd_service_from_config(&service, "foo", &cfg));
 }
 
@@ -85,7 +85,7 @@ static void test_incomplete_service_from_config_fails()
         "location=space\n"
         "port=7777\n";
 
-    assert_success(cfg_parse_string(&cfg, service_config, strlen(service_config)));
+    assert_success(sd_cfg_parse_string(&cfg, service_config, strlen(service_config)));
     assert_failure(sd_service_from_config(&service, "foo", &cfg));
 }
 
@@ -106,7 +106,7 @@ static void test_services_from_config()
         "location=space\n"
         "port=8888";
 
-    assert_success(cfg_parse_string(&cfg, service_config, strlen(service_config)));
+    assert_success(sd_cfg_parse_string(&cfg, service_config, strlen(service_config)));
     assert_int_equal(sd_services_from_config(&services, &cfg), 2);
 
     assert_string_equal(services[0].name, "foo");

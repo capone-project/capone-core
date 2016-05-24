@@ -83,7 +83,7 @@ int sd_proto_initiate_session(struct sd_channel *channel, int sessionid);
 int sd_proto_handle_session(struct sd_channel *channel,
         const struct sd_sign_key_public *remote_key,
         const struct sd_service *service,
-        const struct cfg *cfg);
+        const struct sd_cfg *cfg);
 
 int sd_proto_initiate_termination(struct sd_channel *channel,
         int sessionid, const struct sd_sign_key_public *invoker);

@@ -49,7 +49,7 @@ static int invoke(struct sd_channel *channel, int argc, char **argv)
 
 static int handle(struct sd_channel *channel,
         const struct sd_session *session,
-        const struct cfg *cfg)
+        const struct sd_cfg *cfg)
 {
     UNUSED(cfg);
 

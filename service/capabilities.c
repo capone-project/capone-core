@@ -62,7 +62,7 @@ static int parameters(const struct sd_service_parameter **out)
 static int relay_capability_request(struct sd_channel *channel,
         const struct sd_sign_key_public *requester_key,
         const CapabilityRequest *request,
-        const struct cfg *cfg)
+        const struct sd_cfg *cfg)
 {
     Capability cap = CAPABILITY__INIT;
     char *host = NULL, *port = NULL;
@@ -91,12 +91,12 @@ static int relay_capability_request(struct sd_channel *channel,
         goto out;
     }
 
-    if ((host = cfg_get_str_value(cfg, service_hex.data, "address")) == NULL) {
+    if ((host = sd_cfg_get_str_value(cfg, service_hex.data, "address")) == NULL) {
         sd_log(LOG_LEVEL_ERROR, "Unable to parse address for remote service");
         ret = -1;
         goto out;
     }
-    if ((port = cfg_get_str_value(cfg, service_hex.data, "port")) == NULL) {
+    if ((port = sd_cfg_get_str_value(cfg, service_hex.data, "port")) == NULL) {
         sd_log(LOG_LEVEL_ERROR, "Unable to parse port for remote service");
         ret = -1;
         goto out;
@@ -146,7 +146,7 @@ static int invoke_register(struct sd_channel *channel, int argc, char **argv)
     CapabilityRequest *request;
     struct sd_sign_key_hex requester, service;
     struct sd_sign_key_public requester_key;
-    struct cfg cfg;
+    struct sd_cfg cfg;
     size_t i;
 
     if (argc != 1) {
@@ -154,7 +154,7 @@ static int invoke_register(struct sd_channel *channel, int argc, char **argv)
         return -1;
     }
 
-    if (cfg_parse(&cfg, argv[0]) < 0) {
+    if (sd_cfg_parse(&cfg, argv[0]) < 0) {
         puts("Could not find config");
         return -1;
     }
@@ -355,7 +355,7 @@ static int handle_request(struct sd_channel *channel,
 
 static int handle(struct sd_channel *channel,
         const struct sd_session *session,
-        const struct cfg *cfg)
+        const struct sd_cfg *cfg)
 {
     const char *mode;
 

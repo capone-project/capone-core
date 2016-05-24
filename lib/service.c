@@ -58,20 +58,20 @@ int sd_service_from_type(struct sd_service *out, const char *type)
 
 int sd_services_from_config_file(struct sd_service **out, const char *file)
 {
-    struct cfg cfg;
+    struct sd_cfg cfg;
     int ret;
 
-    if (cfg_parse(&cfg, file) < 0) {
+    if (sd_cfg_parse(&cfg, file) < 0) {
         return -1;
     }
 
     ret = sd_services_from_config(out, &cfg);
-    cfg_free(&cfg);
+    sd_cfg_free(&cfg);
 
     return ret;
 }
 
-int sd_services_from_config(struct sd_service **out, const struct cfg *cfg)
+int sd_services_from_config(struct sd_service **out, const struct sd_cfg *cfg)
 {
     struct sd_service *services = NULL;
     int i, count = 0;
@@ -102,30 +102,30 @@ out_err:
 
 int sd_service_from_config_file(struct sd_service *out, const char *name, const char *file)
 {
-    struct cfg cfg;
+    struct sd_cfg cfg;
     int ret;
 
-    if (cfg_parse(&cfg, file) < 0) {
+    if (sd_cfg_parse(&cfg, file) < 0) {
         return -1;
     }
 
     ret = sd_service_from_config(out, name, &cfg);
-    cfg_free(&cfg);
+    sd_cfg_free(&cfg);
 
     return ret;
 }
 
-int sd_service_from_config(struct sd_service *out, const char *name, const struct cfg *cfg)
+int sd_service_from_config(struct sd_service *out, const char *name, const struct sd_cfg *cfg)
 {
     unsigned i, j;
 
     for (i = 0; i < cfg->numsections; i++) {
-        struct cfg_section *s = &cfg->sections[i];
+        struct sd_cfg_section *s = &cfg->sections[i];
         if (strcmp(s->name, "service"))
             continue;
 
         for (j = 0; j < s->numentries; j++) {
-            struct cfg_entry *e = &s->entries[j];
+            struct sd_cfg_entry *e = &s->entries[j];
 
             if (strcmp(e->name, "name"))
                 continue;
@@ -139,7 +139,7 @@ int sd_service_from_config(struct sd_service *out, const char *name, const struc
     return -1;
 }
 
-int sd_service_from_section(struct sd_service *out, const struct cfg_section *section)
+int sd_service_from_section(struct sd_service *out, const struct sd_cfg_section *section)
 {
     struct sd_service service;
     unsigned i;

@@ -175,41 +175,41 @@ static enum line_type parse_line(char *key, size_t keylen, char *value, size_t v
     return LINE_TYPE_INVALID;
 }
 
-static struct cfg_section *add_section(struct cfg *c, const char *name)
+static struct sd_cfg_section *add_section(struct sd_cfg *c, const char *name)
 {
-    struct cfg_section *s;
+    struct sd_cfg_section *s;
 
     c->numsections += 1;
-    c->sections = realloc(c->sections, sizeof(struct cfg_section) * c->numsections);
+    c->sections = realloc(c->sections, sizeof(struct sd_cfg_section) * c->numsections);
 
     s = &c->sections[c->numsections - 1];
-    memset(s, 0, sizeof(struct cfg_section));
+    memset(s, 0, sizeof(struct sd_cfg_section));
     s->name = strdup(name);
 
     return s;
 }
 
-static void add_config(struct cfg_section *s, const char *key, const char *value)
+static void add_config(struct sd_cfg_section *s, const char *key, const char *value)
 {
-    struct cfg_entry *e;
+    struct sd_cfg_entry *e;
 
     s->numentries += 1;
-    s->entries = realloc(s->entries, sizeof(struct cfg_entry) * s->numentries);
+    s->entries = realloc(s->entries, sizeof(struct sd_cfg_entry) * s->numentries);
 
     e = &s->entries[s->numentries - 1];
-    memset(e, 0, sizeof(struct cfg_entry));
+    memset(e, 0, sizeof(struct sd_cfg_entry));
     e->name = strdup(key);
     e->value = strdup(value);
 }
 
-int cfg_parse_string(struct cfg *c, const char *ptr, size_t len)
+int sd_cfg_parse_string(struct sd_cfg *c, const char *ptr, size_t len)
 {
-    struct cfg_section *section = NULL;
+    struct sd_cfg_section *section = NULL;
     const char *line = ptr;
     int ret = 0;
     size_t remaining;
 
-    memset(c, '\0', sizeof(struct cfg));
+    memset(c, '\0', sizeof(struct sd_cfg));
 
     do {
         char key[128], value[1024];
@@ -243,13 +243,13 @@ int cfg_parse_string(struct cfg *c, const char *ptr, size_t len)
 
 out:
     if (ret != 0) {
-        cfg_free(c);
+        sd_cfg_free(c);
     }
 
     return ret;
 }
 
-int cfg_parse(struct cfg *c, const char *path)
+int sd_cfg_parse(struct sd_cfg *c, const char *path)
 {
     char *ptr;
     size_t len;
@@ -260,22 +260,22 @@ int cfg_parse(struct cfg *c, const char *path)
         return ret;
     }
 
-    ret = cfg_parse_string(c, ptr, len);
+    ret = sd_cfg_parse_string(c, ptr, len);
 
     munmap(ptr, len);
 
     return ret;
 }
 
-void cfg_free(struct cfg *c)
+void sd_cfg_free(struct sd_cfg *c)
 {
     unsigned section, entry;
 
     for (section = 0; section < c->numsections; section++) {
-        struct cfg_section *s = &c->sections[section];
+        struct sd_cfg_section *s = &c->sections[section];
 
         for (entry = 0; entry < s->numentries; entry++) {
-            struct cfg_entry *e = &s->entries[entry];
+            struct sd_cfg_entry *e = &s->entries[entry];
 
             free(e->name);
             free(e->value);
@@ -290,9 +290,9 @@ void cfg_free(struct cfg *c)
     c->sections = NULL;
 }
 
-const struct cfg_section *cfg_get_section(const struct cfg *c, const char *name)
+const struct sd_cfg_section *sd_cfg_get_section(const struct sd_cfg *c, const char *name)
 {
-    const struct cfg_section *section;
+    const struct sd_cfg_section *section;
     size_t i;
 
     for (i = 0; i < c->numsections; i++) {
@@ -305,9 +305,9 @@ const struct cfg_section *cfg_get_section(const struct cfg *c, const char *name)
     return NULL;
 }
 
-const struct cfg_entry *cfg_get_entry(const struct cfg_section *s, const char *name)
+const struct sd_cfg_entry *sd_cfg_get_entry(const struct sd_cfg_section *s, const char *name)
 {
-    const struct cfg_entry *entry;
+    const struct sd_cfg_entry *entry;
     size_t i;
 
     for (i = 0; i < s->numentries; i++) {
@@ -320,17 +320,17 @@ const struct cfg_entry *cfg_get_entry(const struct cfg_section *s, const char *n
     return NULL;
 }
 
-static const char *get_raw_value(const struct cfg *c, const char *s, const char *key)
+static const char *get_raw_value(const struct sd_cfg *c, const char *s, const char *key)
 {
-    const struct cfg_section *section;
-    const struct cfg_entry *entry;
+    const struct sd_cfg_section *section;
+    const struct sd_cfg_entry *entry;
 
-    section = cfg_get_section(c, s);
+    section = sd_cfg_get_section(c, s);
     if (section == NULL) {
         return NULL;
     }
 
-    entry = cfg_get_entry(section, key);
+    entry = sd_cfg_get_entry(section, key);
     if (entry == NULL) {
         return NULL;
     }
@@ -338,7 +338,7 @@ static const char *get_raw_value(const struct cfg *c, const char *s, const char 
     return entry->value;
 }
 
-char *cfg_get_str_value(const struct cfg *c, const char *section, const char *key)
+char *sd_cfg_get_str_value(const struct sd_cfg *c, const char *section, const char *key)
 {
     const char *value = get_raw_value(c, section, key);
     if (value == NULL) {
@@ -350,7 +350,7 @@ char *cfg_get_str_value(const struct cfg *c, const char *section, const char *ke
     return strdup(value);
 }
 
-int cfg_get_int_value(const struct cfg *c, const char *section, const char *key)
+int sd_cfg_get_int_value(const struct sd_cfg *c, const char *section, const char *key)
 {
     const char *value = get_raw_value(c, section, key);
     int i, savederrno;

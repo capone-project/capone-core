@@ -27,13 +27,13 @@ int sd_sign_key_pair_generate(struct sd_sign_key_pair *out)
     return crypto_sign_ed25519_keypair(out->pk.data, out->sk.data);
 }
 
-int sd_sign_key_pair_from_config(struct sd_sign_key_pair *out, const struct cfg *cfg)
+int sd_sign_key_pair_from_config(struct sd_sign_key_pair *out, const struct sd_cfg *cfg)
 {
     uint8_t sign_pk[crypto_sign_PUBLICKEYBYTES],
             sign_sk[crypto_sign_SECRETKEYBYTES];
     char *value;
 
-    value = cfg_get_str_value(cfg, "core", "public_key");
+    value = sd_cfg_get_str_value(cfg, "core", "public_key");
     if (value == NULL) {
         sd_log(LOG_LEVEL_ERROR, "Could not retrieve public key from config");
         goto out_err;
@@ -48,7 +48,7 @@ int sd_sign_key_pair_from_config(struct sd_sign_key_pair *out, const struct cfg 
     }
     free(value);
 
-    value = cfg_get_str_value(cfg, "core", "secret_key");
+    value = sd_cfg_get_str_value(cfg, "core", "secret_key");
     if (value == NULL) {
         sd_log(LOG_LEVEL_ERROR, "Could not retrieve secret key from config");
         goto out_err;
@@ -77,12 +77,12 @@ out_err:
 
 int sd_sign_key_pair_from_config_file(struct sd_sign_key_pair *out, const char *file)
 {
-    struct cfg cfg;
+    struct sd_cfg cfg;
     int ret = 0;
 
     memset(&cfg, 0, sizeof(cfg));
 
-    if (cfg_parse(&cfg, file) < 0) {
+    if (sd_cfg_parse(&cfg, file) < 0) {
         ret = -1;
         goto out;
     }
@@ -93,7 +93,7 @@ int sd_sign_key_pair_from_config_file(struct sd_sign_key_pair *out, const char *
     }
 
 out:
-    cfg_free(&cfg);
+    sd_cfg_free(&cfg);
 
     return ret;
 }

@@ -95,7 +95,7 @@ out:
 
 static int handle(struct sd_channel *channel,
         const struct sd_session *session,
-        const struct cfg *cfg)
+        const struct sd_cfg *cfg)
 {
     struct sd_server server;
     struct sd_channel synergy_channel;
