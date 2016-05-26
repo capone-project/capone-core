@@ -16,3 +16,4 @@
  */
 
 #cmakedefine HAVE_SCHED 1
+#cmakedefine HAVE_CLOCK_GETTIME 1

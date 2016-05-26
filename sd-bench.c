@@ -24,6 +24,12 @@
 # undef __USE_GNU
 #endif
 
+#ifdef HAVE_CLOCK_GETTIME
+# include <time.h>
+#else
+# include <sys/time.h>
+#endif
+
 #include "lib/channel.h"
 #include "lib/common.h"
 #include "lib/keys.h"
@@ -39,17 +45,21 @@ struct client_args {
 static char encrypt;
 static struct sd_symmetric_key key;
 
-static uint64_t rdtsc64(void)
+static uint64_t nsecs(void)
 {
-    uint32_t hi, lo;
-        __asm__ __volatile__(
-            "xorl %%eax, %%eax\n\t"
-            "cpuid\n\t"
-            "rdtsc"
-        : "=a"(lo), "=d"(hi)
-        : /* no inputs */
-        : "rbx", "rcx");
-    return ((uint64_t)hi << (uint64_t)32) | (uint64_t)lo;
+#ifdef HAVE_CLOCK_GETTIME
+    struct timespec t;
+
+    clock_gettime(CLOCK_MONOTONIC, &t);
+
+    return t.tv_sec * 1000000000 + t.tv_nsec;
+#else
+    struct timeval t;
+
+    gettimeofday(&t, NULL);
+
+    return t.tv_sec * 1000000000 + t.tv_usec * 1000;
+#endif
 }
 
 static int set_affinity(uint8_t cpu)
@@ -91,16 +101,16 @@ static void *client(void *payload)
         sd_channel_enable_encryption(&channel, &key, SD_CHANNEL_NONCE_CLIENT);
     }
 
-    start = rdtsc64();
+    start = nsecs();
     for (i = 0; i < args->repeats; i++) {
         if (sd_channel_write_data(&channel, data, args->datalen) < 0) {
             puts("Unable to write data");
             return NULL;
         }
     }
-    end = rdtsc64();
+    end = nsecs();
 
-    printf("Cycles spent writing data:\t%"PRIu64"\n", (end - start) / args->repeats);
+    printf("send (ns):\t%"PRIu64"\n", (end - start) / args->repeats);
 
 out:
     free(data);
@@ -178,21 +188,21 @@ int main(int argc, char *argv[])
         sd_channel_enable_encryption(&channel, &key, SD_CHANNEL_NONCE_SERVER);
     }
 
-    start = rdtsc64();
+    start = nsecs();
     for (i = 0; i < args.repeats; i++) {
         if (sd_channel_receive_data(&channel, data, args.datalen) < 0) {
             puts("Unable to receive data");
             return -1;
         }
     }
-    end = rdtsc64();
+    end = nsecs();
 
     if (sd_join(&t, NULL) < 0) {
         puts("Unable to await client thread");
         return -1;
     }
 
-    printf("Cycles spent receiving data:\t%"PRIu64"\n", (end - start) / args.repeats);
+    printf("recv (ns):\t%"PRIu64"\n", (end - start) / args.repeats);
 
     return 0;
 }
