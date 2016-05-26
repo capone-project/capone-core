@@ -27,6 +27,12 @@
 # undef __USE_GNU
 #endif
 
+#ifdef HAVE_CLOCK_GETTIME
+# include <time.h>
+#else
+# include <sys/time.h>
+#endif
+
 #include "lib/channel.h"
 #include "lib/common.h"
 #include "lib/keys.h"
@@ -41,17 +47,21 @@ struct client_args {
     struct sd_sign_key_pair server_keys;
 };
 
-static uint64_t rdtsc64(void)
+static uint64_t nsecs(void)
 {
-    uint32_t hi, lo;
-        __asm__ __volatile__(
-            "xorl %%eax, %%eax\n\t"
-            "cpuid\n\t"
-            "rdtsc"
-        : "=a"(lo), "=d"(hi)
-        : /* no inputs */
-        : "rbx", "rcx");
-    return ((uint64_t)hi << (uint64_t)32) | (uint64_t)lo;
+#ifdef HAVE_CLOCK_GETTIME
+    struct timespec t;
+
+    clock_gettime(CLOCK_MONOTONIC, &t);
+
+    return t.tv_sec * 1000000000 + t.tv_nsec;
+#else
+    struct timeval t;
+
+    gettimeofday(&t, NULL);
+
+    return t.tv_sec * 1000000000 + t.tv_usec * 1000;
+#endif
 }
 
 static int set_affinity(uint8_t cpu)
@@ -91,21 +101,21 @@ static void *client(void *payload)
         return NULL;
     }
 
+    start = nsecs();
     if (sd_channel_connect(&channel) < 0) {
         puts("Unable to connect to server");
         return NULL;
     }
 
-    start = rdtsc64();
     for (i = 0; i < REPEATS; i++) {
         if (sd_proto_initiate_encryption(&channel, &args->client_keys, &args->server_keys.pk) < 0) {
             puts("Unable to initiate encryption");
             return NULL;
         }
     }
-    end = rdtsc64();
+    end = nsecs();
 
-    printf("Cycles spent calculating shared secret:\t%"PRIu64"\n", (end - start) / REPEATS);
+    printf("conn (nsec):\t%"PRIu64"\n", (end - start) / REPEATS);
 
     return NULL;
 }
@@ -158,21 +168,21 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    start = rdtsc64();
+    start = nsecs();
     for (i = 0; i < REPEATS; i++) {
         if (sd_proto_await_encryption(&channel, &args.server_keys, &args.client_keys.pk) < 0) {
             puts("Unable to await encryption");
             return -1;
         }
     }
-    end = rdtsc64();
+    end = nsecs();
 
     if (sd_join(&t, NULL) < 0) {
         puts("Unable to await client thread");
         return -1;
     }
 
-    printf("Cycles spent calculating shared secret:\t%"PRIu64"\n", (end - start) / REPEATS);
+    printf("await (nsec):\t%"PRIu64"\n", (end - start) / REPEATS);
 
     return 0;
 }
