@@ -417,10 +417,10 @@ static void relaying_data_to_channel_succeeds()
     assert_int_equal(sd_channel_receive_data(&r2, buf, sizeof(buf)), sizeof(data));
     assert_string_equal(data, buf);
 
-    assert_success(shutdown(c1.fd, SHUT_RDWR));
-    assert_success(shutdown(c2.fd, SHUT_RDWR));
-    assert_success(shutdown(r1.fd, SHUT_RDWR));
-    assert_success(shutdown(r2.fd, SHUT_RDWR));
+    shutdown(c1.fd, SHUT_RDWR);
+    shutdown(c2.fd, SHUT_RDWR);
+    shutdown(r1.fd, SHUT_RDWR);
+    shutdown(r2.fd, SHUT_RDWR);
 
     assert_success(sd_join(&thread, NULL));
 }
