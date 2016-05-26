@@ -23,6 +23,7 @@
 #ifdef HAVE_SCHED
 # define __USE_GNU
 #  include <sched.h>
+#  include <pthread.h>
 # undef __USE_GNU
 #endif
 
@@ -68,9 +69,14 @@ static int set_affinity(uint8_t cpu)
 {
 #ifdef HAVE_SCHED
     cpu_set_t mask;
+    pthread_t t;
+
+    t = pthread_self();
+
     CPU_ZERO(&mask);
     CPU_SET(cpu, &mask);
-    return sched_setaffinity(0, sizeof(mask), &mask);
+
+    return pthread_setaffinity_np(t, sizeof(mask), &mask);
 #else
     UNUSED(cpu);
     return 0;
