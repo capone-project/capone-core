@@ -18,6 +18,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "config.h"
+
 #ifdef HAVE_SCHED
 # define __USE_GNU
 #  include <sched.h>
