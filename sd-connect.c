@@ -40,34 +40,6 @@ static void usage(const char *prog)
     exit(-1);
 }
 
-static int parse_params(struct sd_parameter **out, int argc, char *argv[])
-{
-    struct sd_parameter *params;
-    int i;
-
-    params = malloc(sizeof(struct sd_parameter) * argc);
-
-    for (i = 0; i < argc; i++) {
-        char *line = argv[i], *key, *value;
-
-        if ((key = strtok(line, "=")) == NULL)
-            goto out_err;
-        if ((value = strtok(NULL, "=")) == NULL)
-            goto out_err;
-
-        params[i].key = key;
-        params[i].value = value;
-    }
-
-    *out = params;
-
-    return i;
-
-out_err:
-    free(params);
-    return -1;
-}
-
 static int cmd_query(int argc, char *argv[])
 {
     struct sd_query_results results;
@@ -137,7 +109,7 @@ static int cmd_request(int argc, char *argv[])
     struct sd_parameter *params = NULL;
     struct sd_channel channel;
     uint32_t sessionid;
-    int nparams;
+    ssize_t nparams;
 
     memset(&channel, 0, sizeof(channel));
 
@@ -150,7 +122,7 @@ static int cmd_request(int argc, char *argv[])
     host = argv[4];
     port = argv[5];
 
-    if ((nparams = parse_params(&params, argc - 6, argv + 6)) < 0) {
+    if ((nparams = sd_parameters_parse(&params, argc - 6, argv + 6)) < 0) {
         puts("Could not parse parameters");
         goto out_err;
     }
@@ -186,7 +158,7 @@ static int cmd_request(int argc, char *argv[])
 
 out_err:
     sd_channel_close(&channel);
-    free(params);
+    sd_parameters_free(params, nparams);
     return -1;
 }
 

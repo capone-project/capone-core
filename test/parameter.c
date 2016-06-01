@@ -36,6 +36,68 @@ static int teardown()
     return 0;
 }
 
+static void test_parsing_parameter()
+{
+    char *args[] = {
+        "key=value"
+    };
+
+    nresults = sd_parameters_parse(&results, ARRAY_SIZE(args), args);
+    assert_int_equal(nresults, 1);
+    assert_string_equal(results[0].key, "key");
+    assert_string_equal(results[0].value, "value");
+}
+
+static void test_parsing_parameters()
+{
+    char *args[] = {
+        "key1=value1", "key2=value2"
+    };
+
+    nresults = sd_parameters_parse(&results, ARRAY_SIZE(args), args);
+    assert_int_equal(nresults, 2);
+    assert_string_equal(results[0].key, "key1");
+    assert_string_equal(results[0].value, "value1");
+    assert_string_equal(results[1].key, "key2");
+    assert_string_equal(results[1].value, "value2");
+}
+
+static void test_parsing_parameter_with_multiple_equals()
+{
+    char *args[] = {
+        "key=param=value"
+    };
+
+    nresults = sd_parameters_parse(&results, ARRAY_SIZE(args), args);
+    assert_int_equal(nresults, 1);
+    assert_string_equal(results[0].key, "key");
+    assert_string_equal(results[0].value, "param=value");
+}
+
+static void test_parsing_parameter_with_no_value()
+{
+    char *args[] = {
+        "key"
+    };
+
+    nresults = sd_parameters_parse(&results, ARRAY_SIZE(args), args);
+    assert_int_equal(nresults, 1);
+    assert_string_equal(results[0].key, "key");
+    assert_null(results[0].value);
+}
+
+static void test_parsing_parameter_with_empty_value()
+{
+    char *args[] = {
+        "key="
+    };
+
+    nresults = sd_parameters_parse(&results, ARRAY_SIZE(args), args);
+    assert_int_equal(nresults, 1);
+    assert_string_equal(results[0].key, "key");
+    assert_string_equal(results[0].value, "");
+}
+
 static void test_filtering_matching_value()
 {
     struct sd_parameter parameters[] = {
@@ -219,6 +281,12 @@ static void test_converting_parameters_with_null_values()
 int parameter_test_run_suite(void)
 {
     const struct CMUnitTest tests[] = {
+        test(test_parsing_parameter),
+        test(test_parsing_parameters),
+        test(test_parsing_parameter_with_multiple_equals),
+        test(test_parsing_parameter_with_no_value),
+        test(test_parsing_parameter_with_empty_value),
+
         test(test_filtering_matching_value),
         test(test_filtering_matching_values),
         test(test_filtering_nonmatching),

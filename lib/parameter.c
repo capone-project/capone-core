@@ -15,13 +15,37 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <inttypes.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "lib/log.h"
 
 #include "parameter.h"
+
+ssize_t sd_parameters_parse(struct sd_parameter **out, int argc, char **argv)
+{
+    struct sd_parameter *params;
+    int i;
+
+    params = malloc(sizeof(struct sd_parameter) * argc);
+
+    for (i = 0; i < argc; i++) {
+        const char *sep, *arg = argv[i];
+
+        sep = strchr(arg, '=');
+        if (!sep) {
+            params[i].key = strdup(arg);
+            params[i].value = NULL;
+        } else {
+            params[i].key = strndup(arg, sep - arg);
+            params[i].value = strdup(sep + 1);
+        }
+    }
+
+    *out = params;
+
+    return i;
+}
 
 size_t sd_parameters_filter(struct sd_parameter **out, const char *key,
         const struct sd_parameter *params, size_t nparams)

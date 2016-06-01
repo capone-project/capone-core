@@ -31,7 +31,7 @@
 #ifndef SD_LIB_PARAMETER_H
 #define SD_LIB_PARAMETER_H
 
-#include <stddef.h>
+#include <unistd.h>
 
 #include "proto/capabilities.pb-c.h"
 
@@ -47,6 +47,20 @@ struct sd_parameter {
     /** @brief Value associated with the key */
     const char *value;
 };
+
+/** @brief Parse strings into a set of parameters
+ *
+ * Provided a set of key=value pairs, parse them into an array of
+ * sd_parameters. The returned array should be freed with
+ * sd_parameters_free.
+ *
+ * @param[out] out Pointer to array to allocate and fill
+ * @param[in] argc Number of arguments to parse
+ * @param[in] argv Array of arguments to parse
+ * @return Number of parameters parsed or <code>-1</code> on
+ *         error
+ */
+ssize_t sd_parameters_parse(struct sd_parameter **out, int argc, char **argv);
 
 /** @brief Filter parameters by their keys
  *
