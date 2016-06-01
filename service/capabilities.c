@@ -330,6 +330,7 @@ static int handle_request(struct sd_channel *channel,
             memmove(&registrants[i], &registrants[i + 1], (n - i - 1) * sizeof(struct registrant));
             i--;
             n--;
+            nregistrants--;
             sd_log(LOG_LEVEL_ERROR, "Removed identiy");
         }
     }
