@@ -29,6 +29,7 @@
 #include "lib/channel.h"
 #include "lib/common.h"
 #include "lib/keys.h"
+#include "lib/parameter.h"
 #include "lib/proto.h"
 #include "lib/service.h"
 #include "lib/log.h"
@@ -378,15 +379,19 @@ static int handle_request(struct sd_channel *channel,
           *requested_identity_hex, *address, *port;
     struct sd_sign_key_public invoker_identity, service_identity,
                               requested_identity;
+    struct sd_parameter *params;
     struct registrant *reg = NULL;
     struct client *client;
+    size_t nparams;
+    int err = 0;
 
     if (sd_parameters_get_value(&invoker_identity_hex, "invoker",
                 session->parameters, session->nparameters) ||
             sd_sign_key_public_from_hex(&invoker_identity, invoker_identity_hex))
     {
         sd_log(LOG_LEVEL_ERROR, "Invalid for-identity specified in capability request");
-        return -1;
+        err = -1;
+        goto out;
     }
 
     if (sd_parameters_get_value(&requested_identity_hex, "requested-identity",
@@ -394,7 +399,8 @@ static int handle_request(struct sd_channel *channel,
             sd_sign_key_public_from_hex(&requested_identity, requested_identity_hex))
     {
         sd_log(LOG_LEVEL_ERROR, "Invalid requested identity specified in capability request");
-        return -1;
+        err = -1;
+        goto out;
     }
 
     if (sd_parameters_get_value(&service_identity_hex, "service-identity",
@@ -402,7 +408,8 @@ static int handle_request(struct sd_channel *channel,
             sd_sign_key_public_from_hex(&service_identity, service_identity_hex))
     {
         sd_log(LOG_LEVEL_ERROR, "Invalid service-identity specified in capability request");
-        return -1;
+        err = -1;
+        goto out;
     }
 
     if (sd_parameters_get_value(&address, "service-address",
@@ -411,10 +418,12 @@ static int handle_request(struct sd_channel *channel,
                 session->parameters, session->nparameters))
     {
         sd_log(LOG_LEVEL_ERROR, "Service address not specified in capability request");
-        return -1;
+        err = -1;
+        goto out;
     }
 
-    /* TODO: handle parameters */
+    nparams = sd_parameters_filter(&params, "service-parameters",
+            session->parameters, session->nparameters);
 
     pthread_mutex_lock(&registrants_mutex);
     for (reg = registrants; reg; reg = reg->next)
@@ -424,7 +433,8 @@ static int handle_request(struct sd_channel *channel,
 
     if (reg == NULL) {
         sd_log(LOG_LEVEL_ERROR, "Identity specified in capability request is not registered");
-        return -1;
+        err = -1;
+        goto out;
     }
 
     request.requester_identity.data = (uint8_t *) session->invoker.data;
@@ -437,10 +447,13 @@ static int handle_request(struct sd_channel *channel,
     request.service_address = (char *) address;
     request.service_port = (char *) port;
     request.requestid = requestid++;
+    request.n_parameters = sd_parameters_to_proto(&request.parameters,
+            params, nparams);
 
     if (sd_channel_write_protobuf(&reg->channel, &request.base) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Unable to request capability request");
-        return -1;
+        err = -1;
+        goto out;
     }
 
     pthread_mutex_lock(&clients_mutex);
@@ -460,7 +473,10 @@ static int handle_request(struct sd_channel *channel,
 
     channel->fd = -1;
 
-    return 0;
+out:
+    sd_parameters_proto_free(request.parameters, request.n_parameters);
+
+    return err;
 }
 
 static int handle(struct sd_channel *channel,
