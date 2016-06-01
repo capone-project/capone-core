@@ -33,9 +33,9 @@ size_t sd_parameters_filter(struct sd_parameter **out, const char *key,
         if (!strcmp(params[i].key, key))
             n++;
 
-    if (n == 0) {
+    if (n == 0 || !out) {
         *out = NULL;
-        return 0;
+        return n;
     }
 
     result = calloc(n, sizeof(struct sd_parameter));

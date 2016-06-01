@@ -55,7 +55,8 @@ struct sd_parameter {
  * <sd_parameters_free>.
  *
  * @param[out] out Pointer to array to be allocated. May be
- *             <code>NULL</code> if no parameters were found.
+ *             <code>NULL</code>. If no parameters were found the
+ *             array is not allocated.
  * @param[in] key Key to filter parameters by.
  * @param[in] params Array of parameters to filter.
  * @param[in] nparams Number of parameters in the array.
