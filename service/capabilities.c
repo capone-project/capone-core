@@ -31,12 +31,11 @@
 #include "lib/service.h"
 #include "lib/log.h"
 
-#define MAX_REGISTRANTS 1024
 static struct registrant {
     struct sd_sign_key_public identity;
     struct sd_channel channel;
-} registrants[MAX_REGISTRANTS];
-static int nregistrants;
+    struct registrant *next;
+} *registrants;
 
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -256,14 +255,20 @@ static int invoke(struct sd_channel *channel, int argc, char **argv)
 static int handle_register(struct sd_channel *channel,
         const struct sd_session *session)
 {
-    int n;
+    struct registrant *c;
+    int n = 0;
 
     pthread_mutex_lock(&mutex);
+    if (registrants == NULL) {
+        c = registrants = malloc(sizeof(struct registrant));
+    } else {
+        for (c = registrants; c->next; c = c->next, n++);
+        c->next = malloc(sizeof(struct registrant));
+        c = c->next;
+    }
 
-    n = nregistrants++;
-
-    memcpy(&registrants[n].channel, channel, sizeof(struct sd_channel));
-    memcpy(&registrants[n].identity, &session->invoker, sizeof(session->invoker));
+    memcpy(&c->channel, channel, sizeof(struct sd_channel));
+    memcpy(&c->identity, &session->invoker, sizeof(session->invoker));
 
     sd_log(LOG_LEVEL_VERBOSE, "%d identities registered", n + 1);
 
@@ -284,8 +289,7 @@ static int handle_request(struct sd_channel *channel,
           *requested_identity_hex, *address, *port;
     struct sd_sign_key_public invoker_identity, service_identity,
                               requested_identity;
-    struct registrant *registrant = NULL;
-    int i, n;
+    struct registrant *reg, *preg = NULL;
 
     if (sd_service_parameters_get_value(&invoker_identity_hex, "invoker",
                 session->parameters, session->nparameters) ||
@@ -323,27 +327,23 @@ static int handle_request(struct sd_channel *channel,
     /* TODO: handle parameters */
 
     pthread_mutex_lock(&mutex);
-    n = nregistrants;
-
-    for (i = 0; i < n; i++) {
-        if (sd_channel_is_closed(&registrants[i].channel)) {
-            memmove(&registrants[i], &registrants[i + 1], (n - i - 1) * sizeof(struct registrant));
-            i--;
-            n--;
-            nregistrants--;
-            sd_log(LOG_LEVEL_ERROR, "Removed identiy");
+    for (preg = NULL, reg = registrants; reg; preg = reg, reg = reg->next) {
+        if (sd_channel_is_closed(&reg->channel)) {
+            if (preg)
+                preg->next = reg->next;
+            else
+                registrants = NULL;
+            free(reg);
+            sd_log(LOG_LEVEL_ERROR, "Removed registered identiy");
         }
     }
 
-    for (i = 0; i < n; i++) {
-        if (!memcmp(registrants[i].identity.data, requested_identity.data, sizeof(requested_identity.data))) {
-            registrant = &registrants[i];
+    for (reg = registrants; reg; reg = reg->next)
+        if (!memcmp(reg->identity.data, requested_identity.data, sizeof(requested_identity.data)))
             break;
-        }
-    }
     pthread_mutex_unlock(&mutex);
 
-    if (registrant == NULL) {
+    if (reg == NULL) {
         sd_log(LOG_LEVEL_ERROR, "Identity specified in capability request is not registered");
         return -1;
     }
@@ -358,12 +358,12 @@ static int handle_request(struct sd_channel *channel,
     request.service_address = (char *) address;
     request.service_port = (char *) port;
 
-    if (sd_channel_write_protobuf(&registrant->channel, &request.base) < 0) {
+    if (sd_channel_write_protobuf(&reg->channel, &request.base) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Unable to request capability request");
         return -1;
     }
 
-    if (sd_channel_receive_protobuf(&registrant->channel,
+    if (sd_channel_receive_protobuf(&reg->channel,
                 &capability__descriptor, (ProtobufCMessage **) &capability) < 0)
     {
         sd_log(LOG_LEVEL_ERROR, "Unable to receive capability");
