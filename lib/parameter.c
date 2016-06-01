@@ -34,7 +34,6 @@ size_t sd_parameters_filter(struct sd_parameter **out, const char *key,
             n++;
 
     if (n == 0 || !out) {
-        *out = NULL;
         return n;
     }
 
@@ -42,8 +41,8 @@ size_t sd_parameters_filter(struct sd_parameter **out, const char *key,
 
     for (n = 0, i = 0; i < nparams; i++)
         if (!strcmp(params[i].key, key)) {
-            result[n].key = params[i].key;
-            result[n].value = params[i].value;
+            result[n].key = params[i].key ? strdup(params[i].key) : NULL;
+            result[n].value = params[i].value ? strdup(params[i].value) : NULL;
             n++;
         }
 
