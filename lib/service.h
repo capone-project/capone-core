@@ -40,19 +40,6 @@
 
 struct sd_channel;
 
-/** @brief Service parameters
- *
- * Services can have parameters to change the way they function.
- * This struct provides a simple key-value association to set a
- * certain configuration option to a specified value.
- */
-struct sd_service_parameter {
-    /** @brief Key of the parameter */
-    const char *key;
-    /** @brief Value associated with the key */
-    const char *value;
-};
-
 /** @brief Function executed when a client starts a remote service
  *
  * This function is invoked on the client-side.
@@ -229,41 +216,6 @@ int sd_services_from_config_file(struct sd_service **out, const char *file);
  * \see sd_service_from_config_file
  */
 int sd_services_from_config(struct sd_service **out, const struct sd_cfg *cfg);
-
-/** Retrieve a value from parameters
- *
- * Search the given parameters for a key and return its value.
- *
- * @param[out] out Pointer to store value at.
- * @param[in] value Key of the value.
- * @param[in] parameters Parameters to search.
- * @param[in] n Parameter count.
- * @return <code>0</code> on success, <code>-1</code> if the
- *         value was not found
- */
-int sd_service_parameters_get_value(const char **out, const char *value, const struct sd_service_parameter *parameters, size_t n);
-
-/** Retrieve multiple values from parameters
- *
- * Search the given parameters for a key and return all values
- * found for the given parameter. The caller is responsible of
- * freeing the array only, not the values stored inside of it.
- *
- * @param[out] out Pointer to store values at.
- * @param[in] value Key of the value.
- * @param[in] parameters Parameters to search.
- * @param[in] n Parameter count.
- * @return <code>0</code> on success, <code>-1</code> if no
- *         values were found.
- */
-int sd_service_parameters_get_values(const char ***out, const char *value, const struct sd_service_parameter *parameters, size_t n);
-
-/** Free service parameters array
- *
- * @param[in] params Parameters array to free
- * @param[in] nparams Number of parameters to free
- */
-void sd_service_parameters_free(struct sd_service_parameter *params, size_t nparams);
 
 #endif
 

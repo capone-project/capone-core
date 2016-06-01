@@ -62,6 +62,7 @@
 #include <inttypes.h>
 
 #include "lib/keys.h"
+#include "lib/parameter.h"
 
 /** @brief A session wrapping identities and parameters */
 struct sd_session {

@@ -20,6 +20,7 @@
 #include "lib/common.h"
 #include "lib/channel.h"
 #include "lib/log.h"
+#include "lib/parameter.h"
 #include "lib/session.h"
 
 #include "proto/connect.pb-c.h"
