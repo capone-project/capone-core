@@ -23,6 +23,35 @@
 
 #include "parameter.h"
 
+size_t sd_parameters_filter(struct sd_parameter **out, const char *key,
+        const struct sd_parameter *params, size_t nparams)
+{
+    struct sd_parameter *result;
+    size_t i, n = 0;
+
+    for (i = 0; i < nparams; i++)
+        if (!strcmp(params[i].key, key))
+            n++;
+
+    if (n == 0) {
+        *out = NULL;
+        return 0;
+    }
+
+    result = calloc(n, sizeof(struct sd_parameter));
+
+    for (n = 0, i = 0; i < nparams; i++)
+        if (!strcmp(params[i].key, key)) {
+            result[n].key = params[i].key;
+            result[n].value = params[i].value;
+            n++;
+        }
+
+    *out = result;
+
+    return n;
+}
+
 int sd_parameters_get_value(const char **out, const char *value, const struct sd_parameter *parameters, size_t n)
 {
     const char **values;

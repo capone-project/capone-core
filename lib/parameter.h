@@ -33,6 +33,8 @@
 
 #include <stddef.h>
 
+#include "proto/capabilities.pb-c.h"
+
 /** @brief Service parameters
  *
  * Services can have parameters to change the way they function.
@@ -45,6 +47,22 @@ struct sd_parameter {
     /** @brief Value associated with the key */
     const char *value;
 };
+
+/** @brief Filter parameters by their keys
+ *
+ * Allocate a new array of parameters only containing parameters
+ * with the given key. The resulting array needs to be freed with
+ * <sd_parameters_free>.
+ *
+ * @param[out] out Pointer to array to be allocated. May be
+ *             <code>NULL</code> if no parameters were found.
+ * @param[in] key Key to filter parameters by.
+ * @param[in] params Array of parameters to filter.
+ * @param[in] nparams Number of parameters in the array.
+ * @return Number of resulting parameters.
+ */
+size_t sd_parameters_filter(struct sd_parameter **out, const char *key,
+        const struct sd_parameter *params, size_t nparams);
 
 /** Retrieve a value from parameters
  *
