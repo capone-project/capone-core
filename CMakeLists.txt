@@ -87,6 +87,7 @@ ADD_EXECUTABLE(sd-test sd-test.c
     test/channel.c
     test/common.c
     test/keys.c
+    test/parameter.c
     test/proto.c
     test/server.c
     test/service.c
