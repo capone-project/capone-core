@@ -1,3 +1,5 @@
+syntax = "proto2";
+
 message TestMessage {
     required bytes value = 1;
 }

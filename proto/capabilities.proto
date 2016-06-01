@@ -1,3 +1,5 @@
+syntax = "proto2";
+
 message CapabilityRequest {
     message Parameter {
         required string key = 1;
