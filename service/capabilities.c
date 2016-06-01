@@ -274,6 +274,8 @@ static int handle_register(struct sd_channel *channel,
 
     pthread_mutex_unlock(&mutex);
 
+    channel->fd = -1;
+
     return 0;
 }
 
