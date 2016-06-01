@@ -17,6 +17,8 @@
 
 #include <pthread.h>
 
+#include <sys/select.h>
+
 #include <stdbool.h>
 #include <string.h>
 #include <inttypes.h>
@@ -37,7 +39,15 @@ static struct registrant {
     struct registrant *next;
 } *registrants;
 
-static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+static struct client {
+    struct sd_channel channel;
+    struct client *next;
+    uint32_t requestid;
+} *clients;
+
+static uint32_t requestid;
+static pthread_mutex_t registrants_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t clients_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static const char *version(void)
 {
@@ -59,6 +69,84 @@ static int parameters(const struct sd_service_parameter **out)
 
     *out = params;
     return ARRAY_SIZE(params);
+}
+
+static void relay_capability_from_channel(struct sd_channel *channel)
+{
+    Capability *cap = NULL;
+    struct client *c = NULL, *cprev;
+    struct registrant *r, *rprev;
+
+    if (sd_channel_receive_protobuf(channel,
+                &capability__descriptor, (ProtobufCMessage **) &cap) < 0)
+    {
+        /* Kill erroneous registrants */
+        pthread_mutex_lock(&registrants_mutex);
+        for (rprev = NULL, r = registrants; r; rprev = r, r = r->next);
+        if (r) {
+            if (rprev)
+                rprev->next = r->next;
+            else
+                registrants = NULL;
+            free(r);
+        }
+        pthread_mutex_unlock(&registrants_mutex);
+
+        sd_log(LOG_LEVEL_ERROR, "Unable to receive capability");
+        goto out;
+    }
+
+    pthread_mutex_lock(&clients_mutex);
+    for (cprev = NULL, c = clients; c && c->requestid != cap->requestid; cprev = c, c = c->next);
+    if (c) {
+        if (cprev)
+            cprev->next = c->next;
+        else
+            clients = NULL;
+    }
+    pthread_mutex_unlock(&clients_mutex);
+    if (!c)
+        goto out;
+
+    if (sd_channel_write_protobuf(&c->channel, &cap->base) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Unable to push capability");
+    }
+
+out:
+    if (cap)
+        capability__free_unpacked(cap, NULL);
+    free(c);
+    return;
+}
+
+static void *relay_capabilities()
+{
+    struct registrant *r;
+    fd_set fds;
+    int maxfd;
+
+    while (true) {
+        maxfd = -1;
+
+        if (clients == NULL)
+            break;
+
+        pthread_mutex_lock(&registrants_mutex);
+        for (r = registrants; r; r = r->next) {
+            FD_SET(r->channel.fd, &fds);
+            maxfd = MAX(maxfd, r->channel.fd);
+        }
+        pthread_mutex_unlock(&registrants_mutex);
+
+        if (select(maxfd + 1, &fds, NULL, NULL, NULL) == -1)
+            continue;
+
+        for (r = registrants; r; r = r->next)
+            if (FD_ISSET(r->channel.fd, &fds))
+                relay_capability_from_channel(&r->channel);
+    }
+
+    return NULL;
 }
 
 static int relay_capability_request(struct sd_channel *channel,
@@ -110,6 +198,7 @@ static int relay_capability_request(struct sd_channel *channel,
     }
 
     cap.sessionid = session.sessionid;
+    cap.requestid = request->requestid;
     cap.identity.data = invoker_key.data;
     cap.identity.len = sizeof(invoker_key.data);
     cap.service.data = service_key.data;
@@ -258,7 +347,7 @@ static int handle_register(struct sd_channel *channel,
     struct registrant *c;
     int n = 0;
 
-    pthread_mutex_lock(&mutex);
+    pthread_mutex_lock(&registrants_mutex);
     if (registrants == NULL) {
         c = registrants = malloc(sizeof(struct registrant));
     } else {
@@ -269,10 +358,11 @@ static int handle_register(struct sd_channel *channel,
 
     memcpy(&c->channel, channel, sizeof(struct sd_channel));
     memcpy(&c->identity, &session->invoker, sizeof(session->invoker));
+    c->next = NULL;
 
     sd_log(LOG_LEVEL_VERBOSE, "%d identities registered", n + 1);
 
-    pthread_mutex_unlock(&mutex);
+    pthread_mutex_unlock(&registrants_mutex);
 
     channel->fd = -1;
 
@@ -283,13 +373,13 @@ static int handle_request(struct sd_channel *channel,
         const struct sd_session *session)
 {
     CapabilityRequest request = CAPABILITY_REQUEST__INIT;
-    Capability *capability;
 
     const char *invoker_identity_hex, *service_identity_hex,
           *requested_identity_hex, *address, *port;
     struct sd_sign_key_public invoker_identity, service_identity,
                               requested_identity;
-    struct registrant *reg, *preg = NULL;
+    struct registrant *reg = NULL;
+    struct client *client;
 
     if (sd_service_parameters_get_value(&invoker_identity_hex, "invoker",
                 session->parameters, session->nparameters) ||
@@ -326,22 +416,11 @@ static int handle_request(struct sd_channel *channel,
 
     /* TODO: handle parameters */
 
-    pthread_mutex_lock(&mutex);
-    for (preg = NULL, reg = registrants; reg; preg = reg, reg = reg->next) {
-        if (sd_channel_is_closed(&reg->channel)) {
-            if (preg)
-                preg->next = reg->next;
-            else
-                registrants = NULL;
-            free(reg);
-            sd_log(LOG_LEVEL_ERROR, "Removed registered identiy");
-        }
-    }
-
+    pthread_mutex_lock(&registrants_mutex);
     for (reg = registrants; reg; reg = reg->next)
         if (!memcmp(reg->identity.data, requested_identity.data, sizeof(requested_identity.data)))
             break;
-    pthread_mutex_unlock(&mutex);
+    pthread_mutex_unlock(&registrants_mutex);
 
     if (reg == NULL) {
         sd_log(LOG_LEVEL_ERROR, "Identity specified in capability request is not registered");
@@ -357,23 +436,29 @@ static int handle_request(struct sd_channel *channel,
     request.service_identity.len = sizeof(service_identity.data);
     request.service_address = (char *) address;
     request.service_port = (char *) port;
+    request.requestid = requestid++;
 
     if (sd_channel_write_protobuf(&reg->channel, &request.base) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Unable to request capability request");
         return -1;
     }
 
-    if (sd_channel_receive_protobuf(&reg->channel,
-                &capability__descriptor, (ProtobufCMessage **) &capability) < 0)
-    {
-        sd_log(LOG_LEVEL_ERROR, "Unable to receive capability");
-        return -1;
+    pthread_mutex_lock(&clients_mutex);
+    if (clients == NULL) {
+        client = clients = malloc(sizeof(struct client));
+        sd_spawn(NULL, relay_capabilities, NULL);
+    } else {
+        for (client = clients; client->next; client = client->next);
+        client->next = malloc(sizeof(struct client));
+        client = client->next;
     }
 
-    if (sd_channel_write_protobuf(channel, &capability->base) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Unable to request capability");
-        return -1;
-    }
+    memcpy(&client->channel, channel, sizeof(struct sd_channel));
+    client->next = NULL;
+    client->requestid = request.requestid;
+    pthread_mutex_unlock(&clients_mutex);
+
+    channel->fd = -1;
 
     return 0;
 }
