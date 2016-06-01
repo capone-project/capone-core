@@ -1,11 +1,8 @@
 syntax = "proto2";
 
-message CapabilityRequest {
-    message Parameter {
-        required string key = 1;
-        required string value = 2;
-    }
+import "connect.proto";
 
+message CapabilityRequest {
     required bytes requester_identity = 1;
     required bytes invoker_identity = 2;
     required bytes service_identity = 3;

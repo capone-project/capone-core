@@ -263,7 +263,7 @@ static int invoke_register(struct sd_channel *channel, int argc, char **argv)
                requester.data, invoker.data, service.data,
                request->service_address, request->service_port);
         for (i = 0; i < request->n_parameters; i++) {
-            CapabilityRequest__Parameter *param = request->parameters[i];
+            Parameter *param = request->parameters[i];
 
             printf("        param: %s=%s\n", param->key, param->value);
         }
