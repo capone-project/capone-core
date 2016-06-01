@@ -48,8 +48,8 @@ static const char *version(void)
 static int parameters(const struct sd_service_parameter **out)
 {
     static const struct sd_service_parameter params[] = {
-        { "type", "register" },
-        { "type", "request" },
+        { "mode", "register" },
+        { "mode", "request" },
         { "request-for-identity", NULL },
         { "request-for-service", NULL },
         { "request-parameters", NULL },
