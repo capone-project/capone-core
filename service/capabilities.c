@@ -50,9 +50,12 @@ static int parameters(const struct sd_service_parameter **out)
     static const struct sd_service_parameter params[] = {
         { "mode", "register" },
         { "mode", "request" },
-        { "request-for-identity", NULL },
-        { "request-for-service", NULL },
-        { "request-parameters", NULL },
+        { "invoker", NULL },
+        { "requested-identity", NULL },
+        { "service-identity", NULL },
+        { "service-address", NULL },
+        { "service-port", NULL },
+        { "service-parameters", NULL },
     };
 
     *out = params;
@@ -60,22 +63,30 @@ static int parameters(const struct sd_service_parameter **out)
 }
 
 static int relay_capability_request(struct sd_channel *channel,
-        const struct sd_sign_key_public *requester_key,
         const CapabilityRequest *request,
         const struct sd_cfg *cfg)
 {
     Capability cap = CAPABILITY__INIT;
     char *host = NULL, *port = NULL;
-    struct sd_sign_key_hex service_hex;
     struct sd_channel service_channel;
     struct sd_sign_key_pair local_keys;
-    struct sd_sign_key_public remote_key;
+    struct sd_sign_key_public service_key, invoker_key;
     struct sd_session session;
     struct sd_service_parameter *params = NULL;
     size_t i;
     int ret = 0;
 
     memset(&service_channel, 0, sizeof(struct sd_channel));
+
+    if ((ret = sd_sign_key_pair_from_config(&local_keys, cfg)) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Unable to retrieve local key pair from config");
+        goto out;
+    }
+
+    sd_sign_key_public_from_bin(&service_key,
+            request->service_identity.data, request->service_identity.len);
+    sd_sign_key_public_from_bin(&invoker_key,
+            request->invoker_identity.data, request->invoker_identity.len);
 
     if (request->n_parameters) {
         params = malloc(sizeof(struct sd_service_parameter) * request->n_parameters);
@@ -85,38 +96,14 @@ static int relay_capability_request(struct sd_channel *channel,
         }
     }
 
-    if (sd_sign_key_hex_from_bin(&service_hex, request->service.data, request->service.len) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Invalid service key length");
-        ret = -1;
-        goto out;
-    }
-
-    if ((host = sd_cfg_get_str_value(cfg, service_hex.data, "address")) == NULL) {
-        sd_log(LOG_LEVEL_ERROR, "Unable to parse address for remote service");
-        ret = -1;
-        goto out;
-    }
-    if ((port = sd_cfg_get_str_value(cfg, service_hex.data, "port")) == NULL) {
-        sd_log(LOG_LEVEL_ERROR, "Unable to parse port for remote service");
-        ret = -1;
-        goto out;
-    }
-
-    if ((ret = sd_sign_key_pair_from_config(&local_keys, cfg)) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Unable to retrieve local key pair from config");
-        goto out;
-    }
-    if ((ret = sd_sign_key_public_from_bin(&remote_key, request->service.data, request->service.len)) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Unable to parse public key from remote service");
-        goto out;
-    }
-
-    if ((ret = sd_proto_initiate_connection(&service_channel, host, port,
-                    &local_keys, &remote_key, SD_CONNECTION_TYPE_REQUEST)) < 0) {
+    if ((ret = sd_proto_initiate_connection(&service_channel,
+                    request->service_address, request->service_port,
+                    &local_keys, &service_key, SD_CONNECTION_TYPE_REQUEST)) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Unable to initiate connection type to remote service");
         goto out;
     }
-    if ((ret = sd_proto_send_request(&cap.sessionid, &service_channel, requester_key,
+
+    if ((ret = sd_proto_send_request(&cap.sessionid, &service_channel, &invoker_key,
                     params, request->n_parameters)) < 0)
     {
         sd_log(LOG_LEVEL_ERROR, "Unable to send request to remote service");
@@ -124,8 +111,11 @@ static int relay_capability_request(struct sd_channel *channel,
     }
 
     cap.sessionid = session.sessionid;
-    cap.service.data = remote_key.data;
-    cap.service.len = sizeof(remote_key.data);
+    cap.identity.data = invoker_key.data;
+    cap.identity.len = sizeof(invoker_key.data);
+    cap.service.data = service_key.data;
+    cap.service.len = sizeof(service_key.data);
+
     if ((ret = sd_channel_write_protobuf(channel, &cap.base)) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Unable to send requested capability");
         goto out;
@@ -144,8 +134,7 @@ out:
 static int invoke_register(struct sd_channel *channel, int argc, char **argv)
 {
     CapabilityRequest *request;
-    struct sd_sign_key_hex requester, service;
-    struct sd_sign_key_public requester_key;
+    struct sd_sign_key_hex requester, invoker, service;
     struct sd_cfg cfg;
     size_t i;
 
@@ -167,18 +156,24 @@ static int invoke_register(struct sd_channel *channel, int argc, char **argv)
             return -1;
         }
 
-        if (sd_sign_key_public_from_bin(&requester_key,
-                    request->requester.data, request->requester.len) < 0 ||
-                sd_sign_key_hex_from_bin(&requester,
-                    request->requester.data, request->requester.len) < 0 ||
+        if (sd_sign_key_hex_from_bin(&requester,
+                    request->requester_identity.data, request->requester_identity.len) < 0 ||
+                sd_sign_key_hex_from_bin(&invoker,
+                    request->invoker_identity.data, request->invoker_identity.len) < 0 ||
                 sd_sign_key_hex_from_bin(&service,
-                    request->service.data, request->service.len) < 0)
+                    request->service_identity.data, request->service_identity.len) < 0)
         {
             sd_log(LOG_LEVEL_ERROR, "Unable to parse remote keys");
             return -1;
         }
 
-        printf("request from %s\n        service: %s\n", requester.data, service.data);
+        printf("request from: %s\n"
+               "     invoker: %s\n"
+               "     service: %s\n"
+               "     address: %s\n"
+               "        port: %s\n",
+               requester.data, invoker.data, service.data,
+               request->service_address, request->service_port);
         for (i = 0; i < request->n_parameters; i++) {
             CapabilityRequest__Parameter *param = request->parameters[i];
 
@@ -193,7 +188,7 @@ static int invoke_register(struct sd_channel *channel, int argc, char **argv)
             c = getchar();
 
             if (c == 'y') {
-                if (relay_capability_request(channel, &requester_key, request, &cfg) < 0)
+                if (relay_capability_request(channel, request, &cfg) < 0)
                     sd_log(LOG_LEVEL_ERROR, "Unable to relay capability");
                 else
                     printf("Accepted capability request from %s\n", requester.data);
@@ -285,22 +280,47 @@ static int handle_request(struct sd_channel *channel,
     CapabilityRequest request = CAPABILITY_REQUEST__INIT;
     Capability *capability;
 
-    const char *remote_entity_hex, *remote_service_hex;
-    struct sd_sign_key_public remote_identity, remote_service;
+    const char *invoker_identity_hex, *service_identity_hex,
+          *requested_identity_hex, *address, *port;
+    struct sd_sign_key_public invoker_identity, service_identity,
+                              requested_identity;
     struct registrant *registrant = NULL;
     int i, n;
 
-    sd_service_parameters_get_value(&remote_entity_hex, "request-for-identity", session->parameters, session->nparameters);
-    if (sd_sign_key_public_from_hex(&remote_identity, remote_entity_hex)) {
-        sd_log(LOG_LEVEL_ERROR, "Invalid remote identity specified in capability request");
+    if (sd_service_parameters_get_value(&invoker_identity_hex, "invoker",
+                session->parameters, session->nparameters) ||
+            sd_sign_key_public_from_hex(&invoker_identity, invoker_identity_hex))
+    {
+        sd_log(LOG_LEVEL_ERROR, "Invalid for-identity specified in capability request");
         return -1;
     }
 
-    sd_service_parameters_get_value(&remote_service_hex, "request-for-service", session->parameters, session->nparameters);
-    if (sd_sign_key_public_from_hex(&remote_service, remote_service_hex)) {
-        sd_log(LOG_LEVEL_ERROR, "Invalid service identity specified in capability request");
+    if (sd_service_parameters_get_value(&requested_identity_hex, "requested-identity",
+                session->parameters, session->nparameters) ||
+            sd_sign_key_public_from_hex(&requested_identity, requested_identity_hex))
+    {
+        sd_log(LOG_LEVEL_ERROR, "Invalid requested identity specified in capability request");
         return -1;
     }
+
+    if (sd_service_parameters_get_value(&service_identity_hex, "service-identity",
+                session->parameters, session->nparameters) ||
+            sd_sign_key_public_from_hex(&service_identity, service_identity_hex))
+    {
+        sd_log(LOG_LEVEL_ERROR, "Invalid service-identity specified in capability request");
+        return -1;
+    }
+
+    if (sd_service_parameters_get_value(&address, "service-address",
+                session->parameters, session->nparameters) ||
+            sd_service_parameters_get_value(&port, "service-port",
+                session->parameters, session->nparameters))
+    {
+        sd_log(LOG_LEVEL_ERROR, "Service address not specified in capability request");
+        return -1;
+    }
+
+    /* TODO: handle parameters */
 
     pthread_mutex_lock(&mutex);
     n = nregistrants;
@@ -315,7 +335,7 @@ static int handle_request(struct sd_channel *channel,
     }
 
     for (i = 0; i < n; i++) {
-        if (!memcmp(registrants[i].identity.data, remote_identity.data, sizeof(remote_identity.data))) {
+        if (!memcmp(registrants[i].identity.data, requested_identity.data, sizeof(requested_identity.data))) {
             registrant = &registrants[i];
             break;
         }
@@ -327,13 +347,15 @@ static int handle_request(struct sd_channel *channel,
         return -1;
     }
 
-    request.identity.data = (uint8_t *) remote_identity.data;
-    request.identity.len = sizeof(remote_identity.data);
-    request.service.data = (uint8_t *) remote_service.data;
-    request.service.len = sizeof(remote_service.data);
-    request.requester.data = (uint8_t *) session->invoker.data;
-    request.requester.len = sizeof(session->invoker.data);
-    /* TODO: parameters */
+    request.requester_identity.data = (uint8_t *) session->invoker.data;
+    request.requester_identity.len = sizeof(session->invoker.data);
+    request.invoker_identity.data = (uint8_t *) invoker_identity.data;
+    request.invoker_identity.len = sizeof(invoker_identity.data);
+
+    request.service_identity.data = (uint8_t *) service_identity.data;
+    request.service_identity.len = sizeof(service_identity.data);
+    request.service_address = (char *) address;
+    request.service_port = (char *) port;
 
     if (sd_channel_write_protobuf(&registrant->channel, &request.base) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Unable to request capability request");

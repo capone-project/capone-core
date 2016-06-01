@@ -4,10 +4,13 @@ message CapabilityRequest {
         required string value = 2;
     }
 
-    required bytes requester = 1;
-    required bytes identity = 2;
-    required bytes service = 3;
-    repeated Parameter parameters = 4;
+    required bytes requester_identity = 1;
+    required bytes invoker_identity = 2;
+    required bytes service_identity = 3;
+
+    required string service_address = 4;
+    required string service_port = 5;
+    repeated Parameter parameters = 6;
 }
 
 message Capability {
