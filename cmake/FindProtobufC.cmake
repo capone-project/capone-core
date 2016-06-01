@@ -44,6 +44,8 @@ function(PROTOBUF_GENERATE_C SRCS HDRS)
         get_filename_component(FIL_WE ${FIL} NAME_WE)
         get_filename_component(FIL_DIR ${FIL} PATH)
 
+        file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${FIL_DIR})
+
         list(APPEND ${SRCS} "${CMAKE_CURRENT_BINARY_DIR}/${FIL_DIR}/${FIL_WE}.pb-c.c")
         list(APPEND ${HDRS} "${CMAKE_CURRENT_BINARY_DIR}/${FIL_DIR}/${FIL_WE}.pb-c.h")
 
@@ -51,7 +53,7 @@ function(PROTOBUF_GENERATE_C SRCS HDRS)
             OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${FIL_DIR}/${FIL_WE}.pb-c.c"
                    "${CMAKE_CURRENT_BINARY_DIR}/${FIL_DIR}/${FIL_WE}.pb-c.h"
             COMMAND  ${PROTOBUFC_COMPILER}
-            ARGS --c_out ${CMAKE_CURRENT_BINARY_DIR} --proto_path ${CMAKE_CURRENT_SOURCE_DIR} ${ABS_FIL}
+            ARGS --c_out ${CMAKE_CURRENT_BINARY_DIR}/${FIL_DIR} --proto_path ${CMAKE_CURRENT_SOURCE_DIR}/${FIL_DIR} ${ABS_FIL}
             DEPENDS ${ABS_FIL} ${PROTOBUFC_COMPILER}
             COMMENT "Running protocol buffer compiler on ${FIL}"
             VERBATIM )
