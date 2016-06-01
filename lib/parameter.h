@@ -99,6 +99,30 @@ int sd_parameters_get_values(const char ***out, const char *value, const struct 
  */
 void sd_parameters_free(struct sd_parameter *params, size_t nparams);
 
+/** @brief Convert sd parameters to proto parameters
+ *
+ * Convert parameters into an array of pointers to parameters as
+ * required by protobuf messages. The out value needs to be freed
+ * with <sd_parameters_proto_free>.
+ *
+ * @param[out] out Pointer to memory to be allocated
+ * @param[in] params Parameters to convert
+ * @param[in] nparams Number of parameters to convert
+ * @return The number of parameters
+ */
+size_t sd_parameters_to_proto(Parameter ***out, const struct sd_parameter *params, size_t nparams);
+
+/** @brief Free array of pointers to parameters
+ *
+ * Free the parameter array together with the parameters and
+ * their key/value pairs. Does nothing if either params in
+ * <code>NULL</code> or if nparams is <code>0</code>.
+ *
+ * @param[in] params Pointer array to free.
+ * @param[in] nparams Number of parameters.
+ */
+void sd_parameters_proto_free(Parameter **params, size_t nparams);
+
 #endif
 
 /** @} */

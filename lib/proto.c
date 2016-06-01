@@ -209,31 +209,11 @@ int sd_proto_send_request(uint32_t *sessionid,
     SessionRequestMessage request = SESSION_REQUEST_MESSAGE__INIT;
     SessionMessage *session = NULL;
     Parameter **parameters = NULL;
-    size_t i;
     int err;
 
     request.invoker.data = (uint8_t *) invoker->data;
     request.invoker.len = sizeof(invoker->data);
-
-    if (nparams) {
-        parameters = malloc(sizeof(Parameter *) * nparams);
-
-        for (i = 0; i < nparams; i++) {
-            Parameter *parameter = malloc(sizeof(Parameter));
-            parameter__init(parameter);
-
-            parameter->key = (char *) params[i].key;
-            parameter->value = (char *) params[i].value;
-
-            parameters[i] = parameter;
-        }
-
-        request.parameters = parameters;
-        request.n_parameters = nparams;
-    } else {
-        request.parameters = NULL;
-        request.n_parameters = 0;
-    }
+    request.n_parameters = sd_parameters_to_proto(&request.parameters, params, nparams);
 
     if ((err = sd_channel_write_protobuf(channel, &request.base)) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Unable to send connection request");
@@ -253,12 +233,7 @@ out:
     if (session)
         session_message__free_unpacked(session, NULL);
 
-    if (parameters) {
-        for (i = 0; i < nparams; i++) {
-            free(parameters[i]);
-        }
-        free(parameters);
-    }
+    sd_parameters_proto_free(parameters, nparams);
 
     return err;
 }
