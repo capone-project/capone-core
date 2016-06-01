@@ -119,62 +119,62 @@ static void test_services_from_config()
 
 static void test_getting_single_value()
 {
-    struct sd_service_parameter parameters[] = {
+    struct sd_parameter parameters[] = {
         { "arg", "foo" },
     };
     const char *value;
 
-    assert_success(sd_service_parameters_get_value(&value,
+    assert_success(sd_parameters_get_value(&value,
                 "arg", parameters, ARRAY_SIZE(parameters)));
     assert_string_equal(value, parameters[0].value);
 }
 
 static void test_getting_single_value_with_different_params()
 {
-    struct sd_service_parameter parameters[] = {
+    struct sd_parameter parameters[] = {
         { "xvlc", "bar" },
         { "arg", "foo" },
     };
     const char *value;
 
-    assert_success(sd_service_parameters_get_value(&value,
+    assert_success(sd_parameters_get_value(&value,
                 "arg", parameters, ARRAY_SIZE(parameters)));
     assert_string_equal(value, parameters[1].value);
 }
 
 static void test_getting_value_for_parameter_with_zero_values_fails()
 {
-    struct sd_service_parameter parameters[] = {
+    struct sd_parameter parameters[] = {
         { "arg", NULL },
     };
     const char *value;
 
-    assert_failure(sd_service_parameters_get_value(&value,
+    assert_failure(sd_parameters_get_value(&value,
                 "arg", parameters, ARRAY_SIZE(parameters)));
     assert_null(value);
 }
 
 static void test_getting_single_value_for_multiple_available_fails_with_multiple_args()
 {
-    struct sd_service_parameter parameters[] = {
+    struct sd_parameter parameters[] = {
         { "arg", "foo" },
         { "arg", "foo" },
     };
     const char *value;
 
-    assert_failure(sd_service_parameters_get_value(&value,
+    assert_failure(sd_parameters_get_value(&value,
                 "arg", parameters, ARRAY_SIZE(parameters)));
     assert_null(value);
 }
 
 static void test_getting_multiple_values_with_one_result()
 {
-    struct sd_service_parameter parameters[] = {
+    struct sd_parameter parameters[] = {
         { "arg", "foo" },
     };
     const char **values;
 
-    assert_int_equal(sd_service_parameters_get_values(&values,
+    assert_int_equal(sd_parameters_get_values(&values,
                 "arg", parameters, ARRAY_SIZE(parameters)), 1);
     assert_string_equal(values[0], parameters[0].value);
 
@@ -183,13 +183,13 @@ static void test_getting_multiple_values_with_one_result()
 
 static void test_getting_multiple_values_with_multiple_args()
 {
-    struct sd_service_parameter parameters[] = {
+    struct sd_parameter parameters[] = {
         { "arg", "foo" },
         { "arg", "foo" },
     };
     const char **values;
 
-    assert_int_equal(sd_service_parameters_get_values(&values,
+    assert_int_equal(sd_parameters_get_values(&values,
                 "arg", parameters, ARRAY_SIZE(parameters)), 2);
     assert_string_equal(values[0], parameters[0].value);
     assert_string_equal(values[1], parameters[1].value);

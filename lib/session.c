@@ -40,7 +40,7 @@ int sd_sessions_init(void)
 int sd_sessions_add(uint32_t sessionid,
         const struct sd_sign_key_public *issuer,
         const struct sd_sign_key_public *invoker,
-        const struct sd_service_parameter *params,
+        const struct sd_parameter *params,
         size_t nparams)
 {
     size_t i, n;
@@ -72,7 +72,7 @@ int sd_sessions_add(uint32_t sessionid,
     memcpy(sessions[i].invoker.data, invoker->data, sizeof(invoker->data));
 
     if (nparams) {
-        sessions[i].parameters = malloc(nparams * sizeof(struct sd_service_parameter));
+        sessions[i].parameters = malloc(nparams * sizeof(struct sd_parameter));
         for (n = 0; n < nparams; n++) {
             sessions[i].parameters[n].key = strdup(params[n].key);
             sessions[i].parameters[n].value = strdup(params[n].value);
@@ -159,5 +159,5 @@ int sd_sessions_clear(void)
 
 void sd_session_free(struct sd_session *session)
 {
-    sd_service_parameters_free(session->parameters, session->nparameters);
+    sd_parameters_free(session->parameters, session->nparameters);
 }

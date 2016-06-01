@@ -54,9 +54,9 @@ static const char *version(void)
     return "0.0.1";
 }
 
-static int parameters(const struct sd_service_parameter **out)
+static int parameters(const struct sd_parameter **out)
 {
-    static const struct sd_service_parameter params[] = {
+    static const struct sd_parameter params[] = {
         { "mode", "register" },
         { "mode", "request" },
         { "invoker", NULL },
@@ -159,7 +159,7 @@ static int relay_capability_request(struct sd_channel *channel,
     struct sd_sign_key_pair local_keys;
     struct sd_sign_key_public service_key, invoker_key;
     struct sd_session session;
-    struct sd_service_parameter *params = NULL;
+    struct sd_parameter *params = NULL;
     size_t i;
     int ret = 0;
 
@@ -176,7 +176,7 @@ static int relay_capability_request(struct sd_channel *channel,
             request->invoker_identity.data, request->invoker_identity.len);
 
     if (request->n_parameters) {
-        params = malloc(sizeof(struct sd_service_parameter) * request->n_parameters);
+        params = malloc(sizeof(struct sd_parameter) * request->n_parameters);
         for (i = 0; i < request->n_parameters; i++) {
             params[i].key = request->parameters[i]->key;
             params[i].value = (const char *) &request->parameters[i]->value;
@@ -381,7 +381,7 @@ static int handle_request(struct sd_channel *channel,
     struct registrant *reg = NULL;
     struct client *client;
 
-    if (sd_service_parameters_get_value(&invoker_identity_hex, "invoker",
+    if (sd_parameters_get_value(&invoker_identity_hex, "invoker",
                 session->parameters, session->nparameters) ||
             sd_sign_key_public_from_hex(&invoker_identity, invoker_identity_hex))
     {
@@ -389,7 +389,7 @@ static int handle_request(struct sd_channel *channel,
         return -1;
     }
 
-    if (sd_service_parameters_get_value(&requested_identity_hex, "requested-identity",
+    if (sd_parameters_get_value(&requested_identity_hex, "requested-identity",
                 session->parameters, session->nparameters) ||
             sd_sign_key_public_from_hex(&requested_identity, requested_identity_hex))
     {
@@ -397,7 +397,7 @@ static int handle_request(struct sd_channel *channel,
         return -1;
     }
 
-    if (sd_service_parameters_get_value(&service_identity_hex, "service-identity",
+    if (sd_parameters_get_value(&service_identity_hex, "service-identity",
                 session->parameters, session->nparameters) ||
             sd_sign_key_public_from_hex(&service_identity, service_identity_hex))
     {
@@ -405,9 +405,9 @@ static int handle_request(struct sd_channel *channel,
         return -1;
     }
 
-    if (sd_service_parameters_get_value(&address, "service-address",
+    if (sd_parameters_get_value(&address, "service-address",
                 session->parameters, session->nparameters) ||
-            sd_service_parameters_get_value(&port, "service-port",
+            sd_parameters_get_value(&port, "service-port",
                 session->parameters, session->nparameters))
     {
         sd_log(LOG_LEVEL_ERROR, "Service address not specified in capability request");
@@ -471,7 +471,7 @@ static int handle(struct sd_channel *channel,
 
     UNUSED(cfg);
 
-    if (sd_service_parameters_get_value(&mode, "mode",
+    if (sd_parameters_get_value(&mode, "mode",
                 session->parameters, session->nparameters) < 0)
     {
         sd_log(LOG_LEVEL_ERROR, "Required parameter 'mode' not set");

@@ -31,7 +31,7 @@ static const char *version(void)
     return "0.0.1";
 }
 
-static int parameters(const struct sd_service_parameter **out)
+static int parameters(const struct sd_parameter **out)
 {
     *out = NULL;
     return 0;

@@ -75,7 +75,7 @@ struct sd_session {
     struct sd_sign_key_public issuer;
 
     /** @brief Parameters chosen for the session */
-    struct sd_service_parameter *parameters;
+    struct sd_parameter *parameters;
     /** @brief Number of parameters */
     size_t nparameters;
 };
@@ -110,7 +110,7 @@ int sd_sessions_init(void);
 int sd_sessions_add(uint32_t sessionid,
         const struct sd_sign_key_public *issuer,
         const struct sd_sign_key_public *invoker,
-        const struct sd_service_parameter *params,
+        const struct sd_parameter *params,
         size_t nparams);
 
 /** @brief Remove a session

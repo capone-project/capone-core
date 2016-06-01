@@ -30,9 +30,9 @@ static const char *version(void)
     return "0.0.1";
 }
 
-static int parameters(const struct sd_service_parameter **out)
+static int parameters(const struct sd_parameter **out)
 {
-    static const struct sd_service_parameter params[] = {
+    static const struct sd_parameter params[] = {
         { "command", NULL },
         { "arg", NULL },
         { "env", NULL },
@@ -112,13 +112,13 @@ static int handle(struct sd_channel *channel,
 
     UNUSED(cfg);
 
-    if (sd_service_parameters_get_value(&cmd, "command", session->parameters, session->nparameters) < 0) {
+    if (sd_parameters_get_value(&cmd, "command", session->parameters, session->nparameters) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Missing 'command' parameter");
         return -1;
     }
 
-    nargs = sd_service_parameters_get_values(&args, "arg", session->parameters, session->nparameters);
-    nenvs = sd_service_parameters_get_values(&envs, "env", session->parameters, session->nparameters);
+    nargs = sd_parameters_get_values(&args, "arg", session->parameters, session->nparameters);
+    nenvs = sd_parameters_get_values(&envs, "env", session->parameters, session->nparameters);
 
     if ((error = pipe(stdout_fds)) < 0 ||
             (error = pipe(stderr_fds)) < 0)

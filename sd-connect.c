@@ -40,12 +40,12 @@ static void usage(const char *prog)
     exit(-1);
 }
 
-static int parse_params(struct sd_service_parameter **out, int argc, char *argv[])
+static int parse_params(struct sd_parameter **out, int argc, char *argv[])
 {
-    struct sd_service_parameter *params;
+    struct sd_parameter *params;
     int i;
 
-    params = malloc(sizeof(struct sd_service_parameter) * argc);
+    params = malloc(sizeof(struct sd_parameter) * argc);
 
     for (i = 0; i < argc; i++) {
         char *line = argv[i], *key, *value;
@@ -120,7 +120,7 @@ static int cmd_query(int argc, char *argv[])
             results.port);
 
     for (i = 0; i < results.nparams; i++) {
-        struct sd_service_parameter *param = &results.params[i];
+        struct sd_parameter *param = &results.params[i];
 
         printf("\tparam:    %s=%s\n", param->key, param->value);
     }
@@ -134,7 +134,7 @@ static int cmd_query(int argc, char *argv[])
 static int cmd_request(int argc, char *argv[])
 {
     const char *config, *key, *host, *port;
-    struct sd_service_parameter *params = NULL;
+    struct sd_parameter *params = NULL;
     struct sd_channel channel;
     uint32_t sessionid;
     int nparams;

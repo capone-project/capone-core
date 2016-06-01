@@ -28,9 +28,9 @@ static const char *version(void)
     return "0.0.1";
 }
 
-static int parameters(const struct sd_service_parameter **out)
+static int parameters(const struct sd_parameter **out)
 {
-    static const struct sd_service_parameter params[] = {
+    static const struct sd_parameter params[] = {
         { "service-identity", NULL },
         { "service-address", NULL },
         { "service-port", NULL },
@@ -70,18 +70,18 @@ static int handle(struct sd_channel *channel,
 
     UNUSED(channel);
 
-    sd_service_parameters_get_value(&service_identity,
+    sd_parameters_get_value(&service_identity,
             "service-identity", session->parameters, session->nparameters);
-    sd_service_parameters_get_value(&service_address,
+    sd_parameters_get_value(&service_address,
             "service-address", session->parameters, session->nparameters);
-    sd_service_parameters_get_value(&service_port,
+    sd_parameters_get_value(&service_port,
             "service-port", session->parameters, session->nparameters);
-    sd_service_parameters_get_value(&service_type,
+    sd_parameters_get_value(&service_type,
             "service-type", session->parameters, session->nparameters);
-    sd_service_parameters_get_value(&sessionid_string,
+    sd_parameters_get_value(&sessionid_string,
             "sessionid", session->parameters, session->nparameters);
 
-    nparams = sd_service_parameters_get_values(&service_params,
+    nparams = sd_parameters_get_values(&service_params,
             "service-args", session->parameters, session->nparameters);
 
     if (service_identity == NULL || service_address == NULL || service_type == NULL

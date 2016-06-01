@@ -92,7 +92,7 @@ struct sd_query_results {
      */
     char *port;
     /** @brief Parameters that may be set */
-    struct sd_service_parameter *params;
+    struct sd_parameter *params;
     /** @brief Number of parameters */
     size_t nparams;
 };
@@ -241,7 +241,7 @@ void sd_query_results_free(struct sd_query_results *results);
 int sd_proto_send_request(uint32_t *sessionid,
         struct sd_channel *channel,
         const struct sd_sign_key_public *invoker,
-        const struct sd_service_parameter *params, size_t nparams);
+        const struct sd_parameter *params, size_t nparams);
 
 /** @brief Handle a session request
  *

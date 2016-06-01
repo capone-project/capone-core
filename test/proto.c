@@ -72,7 +72,7 @@ struct send_request_args {
     struct sd_channel *channel;
     struct sd_sign_key_pair *channel_key;
     struct sd_sign_key_public *remote_key;
-    struct sd_service_parameter *params;
+    struct sd_parameter *params;
     size_t nparams;
 };
 
@@ -338,7 +338,7 @@ static void blacklisted_query_fails()
 
 static void request_constructs_session()
 {
-    struct sd_service_parameter params[] = {
+    struct sd_parameter params[] = {
         { "port", "9999" }
     };
     struct await_request_args args = {
@@ -387,7 +387,7 @@ static void request_without_params_succeeds()
 
 static void whitlisted_request_constructs_session()
 {
-    struct sd_service_parameter params[] = {
+    struct sd_parameter params[] = {
         { "port", "9999" }
     };
     struct await_request_args args = {
@@ -413,7 +413,7 @@ static void whitlisted_request_constructs_session()
 
 static void blacklisted_request_fails()
 {
-    static struct sd_service_parameter params[] = {
+    static struct sd_parameter params[] = {
         { "port", "9999" }
     };
     struct send_request_args args = {
@@ -436,7 +436,7 @@ static void blacklisted_request_fails()
 
 static void service_connects()
 {
-    struct sd_service_parameter params[] = {
+    struct sd_parameter params[] = {
         { "data", "parameter-data" }
     };
     struct handle_session_args args = {

@@ -39,7 +39,7 @@
  * This struct provides a simple key-value association to set a
  * certain configuration option to a specified value.
  */
-struct sd_service_parameter {
+struct sd_parameter {
     /** @brief Key of the parameter */
     const char *key;
     /** @brief Value associated with the key */
@@ -57,7 +57,7 @@ struct sd_service_parameter {
  * @return <code>0</code> on success, <code>-1</code> if the
  *         value was not found
  */
-int sd_service_parameters_get_value(const char **out, const char *value, const struct sd_service_parameter *parameters, size_t n);
+int sd_parameters_get_value(const char **out, const char *value, const struct sd_parameter *parameters, size_t n);
 
 /** Retrieve multiple values from parameters
  *
@@ -72,14 +72,14 @@ int sd_service_parameters_get_value(const char **out, const char *value, const s
  * @return <code>0</code> on success, <code>-1</code> if no
  *         values were found.
  */
-int sd_service_parameters_get_values(const char ***out, const char *value, const struct sd_service_parameter *parameters, size_t n);
+int sd_parameters_get_values(const char ***out, const char *value, const struct sd_parameter *parameters, size_t n);
 
 /** Free service parameters array
  *
  * @param[in] params Parameters array to free
  * @param[in] nparams Number of parameters to free
  */
-void sd_service_parameters_free(struct sd_service_parameter *params, size_t nparams);
+void sd_parameters_free(struct sd_parameter *params, size_t nparams);
 
 #endif
 

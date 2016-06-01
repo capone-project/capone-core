@@ -30,7 +30,7 @@
 static int is_whitelisted(const struct sd_sign_key_public *key,
         const struct sd_sign_key_public *whitelist,
         size_t nwhitelist);
-static ssize_t convert_params(struct sd_service_parameter **out,
+static ssize_t convert_params(struct sd_parameter **out,
         Parameter **params,
         size_t nparams);
 
@@ -204,7 +204,7 @@ out:
 int sd_proto_send_request(uint32_t *sessionid,
         struct sd_channel *channel,
         const struct sd_sign_key_public *invoker,
-        const struct sd_service_parameter *params, size_t nparams)
+        const struct sd_parameter *params, size_t nparams)
 {
     SessionRequestMessage request = SESSION_REQUEST_MESSAGE__INIT;
     SessionMessage *session = NULL;
@@ -308,7 +308,7 @@ int sd_proto_answer_query(struct sd_channel *channel,
 {
     ServiceDescription results = SERVICE_DESCRIPTION__INIT;
     Parameter **parameters;
-    const struct sd_service_parameter *params;
+    const struct sd_parameter *params;
     int i, n, err;
 
     if (!is_whitelisted(remote_key, whitelist, nwhitelist)) {
@@ -369,7 +369,7 @@ void sd_query_results_free(struct sd_query_results *results)
     free(results->port);
     results->port = NULL;
 
-    sd_service_parameters_free(results->params, results->nparams);
+    sd_parameters_free(results->params, results->nparams);
     results->params = NULL;
     results->nparams = 0;
 }
@@ -382,7 +382,7 @@ int sd_proto_answer_request(struct sd_channel *channel,
     SessionRequestMessage *request = NULL;
     SessionMessage session_message = SESSION_MESSAGE__INIT;
     struct sd_sign_key_public identity_key;
-    struct sd_service_parameter *params = NULL;
+    struct sd_parameter *params = NULL;
     ssize_t nparams = 0;
 
     if (!is_whitelisted(remote_key, whitelist, nwhitelist)) {
@@ -426,12 +426,12 @@ int sd_proto_answer_request(struct sd_channel *channel,
         goto out_err;
     }
 
-    sd_service_parameters_free(params, nparams);
+    sd_parameters_free(params, nparams);
     session_request_message__free_unpacked(request, NULL);
     return 0;
 
 out_err:
-    sd_service_parameters_free(params, nparams);
+    sd_parameters_free(params, nparams);
 
     if (request != NULL)
         session_request_message__free_unpacked(request, NULL);
@@ -521,15 +521,15 @@ static int is_whitelisted(const struct sd_sign_key_public *key,
     return 0;
 }
 
-static ssize_t convert_params(struct sd_service_parameter **out,
+static ssize_t convert_params(struct sd_parameter **out,
         Parameter **parameters, size_t nparams)
 {
-    struct sd_service_parameter *params;
+    struct sd_parameter *params;
     size_t i;
 
     *out = NULL;
 
-    params = malloc(sizeof(struct sd_service_parameter) * nparams);
+    params = malloc(sizeof(struct sd_parameter) * nparams);
     for (i = 0; i < nparams; i++) {
         Parameter *msgparam = parameters[i];
 

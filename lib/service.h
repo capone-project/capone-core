@@ -67,7 +67,7 @@ typedef int (*handle_fn)(struct sd_channel *channel, const struct sd_session *se
  * @param[out] out Statically allocated parameters available for the service
  * @return Number of parameters
  */
-typedef int (*parameters_fn)(const struct sd_service_parameter **out);
+typedef int (*parameters_fn)(const struct sd_parameter **out);
 
 /** @brief Function retrieving the service's version
  *

@@ -23,14 +23,14 @@
 
 #include "parameter.h"
 
-int sd_service_parameters_get_value(const char **out, const char *value, const struct sd_service_parameter *parameters, size_t n)
+int sd_parameters_get_value(const char **out, const char *value, const struct sd_parameter *parameters, size_t n)
 {
     const char **values;
     int nvalues;
 
     *out = NULL;
 
-    nvalues = sd_service_parameters_get_values(&values, value, parameters, n);
+    nvalues = sd_parameters_get_values(&values, value, parameters, n);
     if (nvalues < 0) {
         sd_log(LOG_LEVEL_WARNING, "Could not retrieve parameter value '%s'", value);
         goto out_err;
@@ -52,9 +52,9 @@ out_err:
     return -1;
 }
 
-int sd_service_parameters_get_values(const char ***out, const char *value, const struct sd_service_parameter *parameters, size_t n)
+int sd_parameters_get_values(const char ***out, const char *value, const struct sd_parameter *parameters, size_t n)
 {
-    const struct sd_service_parameter *param;
+    const struct sd_parameter *param;
     const char **values = NULL;
     int nvalues = 0;
     size_t i;
@@ -75,7 +75,7 @@ int sd_service_parameters_get_values(const char ***out, const char *value, const
     return nvalues;
 }
 
-void sd_service_parameters_free(struct sd_service_parameter *params, size_t nparams)
+void sd_parameters_free(struct sd_parameter *params, size_t nparams)
 {
     size_t i;
 
