@@ -43,7 +43,7 @@ int sd_sessions_add(uint32_t sessionid,
         const struct sd_parameter *params,
         size_t nparams)
 {
-    size_t i, n;
+    size_t i;
 
     pthread_mutex_lock(&mutex);
 
@@ -70,18 +70,8 @@ int sd_sessions_add(uint32_t sessionid,
     sessions[i].sessionid = sessionid;
     memcpy(sessions[i].issuer.data, issuer->data, sizeof(issuer->data));
     memcpy(sessions[i].invoker.data, invoker->data, sizeof(invoker->data));
-
-    if (nparams) {
-        sessions[i].parameters = malloc(nparams * sizeof(struct sd_parameter));
-        for (n = 0; n < nparams; n++) {
-            sessions[i].parameters[n].key = strdup(params[n].key);
-            sessions[i].parameters[n].value = strdup(params[n].value);
-        }
-        sessions[i].nparameters = nparams;
-    } else {
-        sessions[i].parameters = NULL;
-        sessions[i].nparameters = 0;
-    }
+    sessions[i].nparameters = sd_parameters_dup(&sessions[i].parameters,
+            params, nparams);
 
     sd_log(LOG_LEVEL_DEBUG, "Created session %"PRIu32, sessionid);
 
