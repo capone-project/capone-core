@@ -94,15 +94,23 @@ static void relay_capability_for_registrant(struct registrant *r)
 
         /* Kill clients waiting for registrant */
         pthread_mutex_lock(&clients_mutex);
-        for (cprev = NULL, c = clients; c; cprev = c, c = c->next) {
+        c = clients;
+        while (c) {
             if (c->waitsfor == r) {
-                if (cprev)
-                    cprev->next = c->next;
-                else
-                    clients = c->next;
+                sd_channel_close(&c->channel);
+                c = c->next;
+
+                if (cprev) {
+                    free(cprev->next);
+                    cprev->next = c;
+                } else {
+                    free(clients);
+                    clients = c;
+                }
+            } else {
+                cprev = c;
+                c = c->next;
             }
-            sd_channel_close(&c->channel);
-            free(c);
         }
         pthread_mutex_unlock(&clients_mutex);
 
