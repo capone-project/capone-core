@@ -43,6 +43,7 @@ static struct registrant {
 static struct client {
     struct sd_channel channel;
     struct client *next;
+    struct registrant *waitsfor;
     uint32_t requestid;
 } *clients;
 
@@ -90,6 +91,20 @@ static void relay_capability_for_registrant(struct registrant *r)
             registrants = r->next;
         free(r);
         pthread_mutex_unlock(&registrants_mutex);
+
+        /* Kill clients waiting for registrant */
+        pthread_mutex_lock(&clients_mutex);
+        for (cprev = NULL, c = clients; c; cprev = c, c = c->next) {
+            if (c->waitsfor == r) {
+                if (cprev)
+                    cprev->next = c->next;
+                else
+                    clients = c->next;
+            }
+            sd_channel_close(&c->channel);
+            free(c);
+        }
+        pthread_mutex_unlock(&clients_mutex);
 
         sd_log(LOG_LEVEL_ERROR, "Unable to receive capability");
         goto out;
@@ -468,6 +483,7 @@ static int handle_request(struct sd_channel *channel,
     memcpy(&client->channel, channel, sizeof(struct sd_channel));
     client->next = NULL;
     client->requestid = request.requestid;
+    client->waitsfor = reg;
     pthread_mutex_unlock(&clients_mutex);
 
     channel->fd = -1;
