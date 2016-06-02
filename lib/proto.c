@@ -34,6 +34,8 @@ static ssize_t convert_params(struct sd_parameter **out,
         Parameter **params,
         size_t nparams);
 
+static int sessionid = 0;
+
 int sd_proto_initiate_connection(struct sd_channel *channel,
         const char *host,
         const char *port,
@@ -387,7 +389,7 @@ int sd_proto_answer_request(struct sd_channel *channel,
         goto out_err;
     }
 
-    session_message.sessionid = randombytes_random();
+    session_message.sessionid = sessionid++;
 
     if (sd_channel_write_protobuf(channel, &session_message.base) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Unable to send connection session");
