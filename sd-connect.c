@@ -31,11 +31,11 @@ static struct sd_sign_key_public remote_key;
 
 static void usage(const char *prog)
 {
-    printf("USAGE: %s (request|connect)\n"
-            "\tquery <CONFIG> <KEY> <HOST> <PORT>\n"
-            "\trequest <CONFIG> <KEY> <HOST> <PORT> [<PARAMETER>...]\n"
-            "\tconnect <CONFIG> <KEY> <HOST> <PORT> <SERVICE> <SESSIONID>\n"
-            "\tterminate <CONFIG> <KEY> <HOST> <PORT> <SESSIONID> <INVOKER>\n",
+    printf("USAGE: %s (query|request|connect|terminate)\n"
+            "\tquery <CONFIG> <SERVICE_KEY> <HOST> <PORT>\n"
+            "\trequest <CONFIG> <INVOKER_KEY> <SERVICE_KEY> <HOST> <PORT> [<PARAMETER>...]\n"
+            "\tconnect <CONFIG> <SERVICE_KEY> <HOST> <PORT> <SERVICE> <SESSIONID>\n"
+            "\tterminate <CONFIG> <SERVICE_KEY> <HOST> <PORT> <SESSIONID> <INVOKER>\n",
             prog);
     exit(-1);
 }
