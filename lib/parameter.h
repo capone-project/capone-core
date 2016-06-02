@@ -48,6 +48,23 @@ struct sd_parameter {
     const char *value;
 };
 
+/** @brief Duplicate a set of parameters
+ *
+ * Allocate a new array that matches the given number of
+ * parameters and duplicate all key/value pairs. The resulting
+ * array needs to be freed with <sd_parameters_free>.
+ *
+ * The out pointer will be set to NULL if no parameters are to be
+ * duplicated.
+ *
+ * @param[out] out Pointer to array to duplicate to
+ * @param[in] params Parameters to duplicate
+ * @param[in] nparams Number of parameters to copy
+ * @return Number of parameters copied
+ */
+size_t sd_parameters_dup(struct sd_parameter **out,
+        const struct sd_parameter *params, size_t nparams);
+
 /** @brief Parse strings into a set of parameters
  *
  * Provided a set of key=value pairs, parse them into an array of

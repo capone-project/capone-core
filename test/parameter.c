@@ -36,6 +36,27 @@ static int teardown()
     return 0;
 }
 
+static void test_duplicating_parameters()
+{
+    struct sd_parameter params[] = {
+        { "key1", "value1" },
+        { "key2", "value2" },
+        { "key2", "value3" },
+        { "key3", NULL },
+    };
+    size_t i;
+
+    nresults = sd_parameters_dup(&results, params, ARRAY_SIZE(params));
+    assert_int_equal(nresults, ARRAY_SIZE(params));
+
+    for (i = 0; i < ARRAY_SIZE(params) - 1; i++) {
+        assert_string_equal(params[i].key, results[i].key);
+        assert_string_equal(params[i].value, results[i].value);
+    }
+    assert_string_equal(params[3].key, results[3].key);
+    assert_null(results[i].value);
+}
+
 static void test_parsing_parameter()
 {
     char *args[] = {
@@ -281,6 +302,8 @@ static void test_converting_parameters_with_null_values()
 int parameter_test_run_suite(void)
 {
     const struct CMUnitTest tests[] = {
+        test(test_duplicating_parameters),
+
         test(test_parsing_parameter),
         test(test_parsing_parameters),
         test(test_parsing_parameter_with_multiple_equals),

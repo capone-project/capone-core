@@ -22,6 +22,28 @@
 
 #include "parameter.h"
 
+size_t sd_parameters_dup(struct sd_parameter **out,
+        const struct sd_parameter *params, size_t nparams)
+{
+    struct sd_parameter *result;
+    size_t i;
+
+    if (!nparams) {
+        *out = NULL;
+        return 0;
+    }
+
+    result = calloc(nparams, sizeof(struct sd_parameter));
+
+    for (i = 0; i < nparams; i++) {
+        result[i].key = params[i].key ? strdup(params[i].key) : NULL;
+        result[i].value = params[i].value ? strdup(params[i].value) : NULL;
+    }
+
+    *out = result;
+    return nparams;
+}
+
 ssize_t sd_parameters_parse(struct sd_parameter **out, int argc, char **argv)
 {
     struct sd_parameter *params;
