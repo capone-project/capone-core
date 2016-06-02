@@ -105,7 +105,8 @@ static int cmd_query(int argc, char *argv[])
 
 static int cmd_request(int argc, char *argv[])
 {
-    const char *config, *key, *host, *port;
+    const char *config, *invoker, *key, *host, *port;
+    struct sd_sign_key_public invoker_key;
     struct sd_parameter *params = NULL;
     struct sd_channel channel;
     uint32_t sessionid;
@@ -113,22 +114,28 @@ static int cmd_request(int argc, char *argv[])
 
     memset(&channel, 0, sizeof(channel));
 
-    if (argc < 6) {
+    if (argc < 7) {
         usage(argv[0]);
     }
 
     config = argv[2];
-    key = argv[3];
-    host = argv[4];
-    port = argv[5];
+    invoker = argv[3];
+    key = argv[4];
+    host = argv[5];
+    port = argv[6];
 
-    if ((nparams = sd_parameters_parse(&params, argc - 6, argv + 6)) < 0) {
+    if ((nparams = sd_parameters_parse(&params, argc - 7, argv + 7)) < 0) {
         puts("Could not parse parameters");
         goto out_err;
     }
 
     if (sd_sign_key_pair_from_config_file(&local_keys, config) < 0) {
         puts("Could not parse config");
+        goto out_err;
+    }
+
+    if (sd_sign_key_public_from_hex(&invoker_key, invoker) < 0) {
+        puts("Could not parse remote public key");
         goto out_err;
     }
 
@@ -144,7 +151,7 @@ static int cmd_request(int argc, char *argv[])
     }
 
     if (sd_proto_send_request(&sessionid, &channel,
-                &local_keys.pk, params, nparams) < 0)
+                &invoker_key, params, nparams) < 0)
     {
         puts("Unable to request session");
         goto out_err;
