@@ -37,7 +37,6 @@ static int parameters(const struct sd_parameter **out)
         { "service-type", NULL },
         { "service-args", NULL },
         { "sessionid", NULL },
-        { "sessionkey", NULL },
     };
 
     *out = params;
