@@ -72,25 +72,23 @@ static int parameters(const struct sd_parameter **out)
     return ARRAY_SIZE(params);
 }
 
-static void relay_capability_from_channel(struct sd_channel *channel)
+static void relay_capability_for_registrant(struct registrant *r)
 {
     Capability *cap = NULL;
     struct client *c = NULL, *cprev;
-    struct registrant *r, *rprev;
+    struct registrant *rprev;
 
-    if (sd_channel_receive_protobuf(channel,
+    if (sd_channel_receive_protobuf(&r->channel,
                 &capability__descriptor, (ProtobufCMessage **) &cap) < 0)
     {
         /* Kill erroneous registrants */
         pthread_mutex_lock(&registrants_mutex);
-        for (rprev = NULL, r = registrants; r; rprev = r, r = r->next);
-        if (r) {
-            if (rprev)
-                rprev->next = r->next;
-            else
-                registrants = NULL;
-            free(r);
-        }
+        for (rprev = registrants; rprev && rprev->next != r; rprev = rprev->next);
+        if (rprev)
+            rprev->next = r->next;
+        else
+            registrants = r->next;
+        free(r);
         pthread_mutex_unlock(&registrants_mutex);
 
         sd_log(LOG_LEVEL_ERROR, "Unable to receive capability");
@@ -127,6 +125,7 @@ static void *relay_capabilities()
     int maxfd;
 
     while (true) {
+        FD_ZERO(&fds);
         maxfd = -1;
 
         if (clients == NULL)
@@ -144,7 +143,7 @@ static void *relay_capabilities()
 
         for (r = registrants; r; r = r->next)
             if (FD_ISSET(r->channel.fd, &fds))
-                relay_capability_from_channel(&r->channel);
+                relay_capability_for_registrant(r);
     }
 
     return NULL;
