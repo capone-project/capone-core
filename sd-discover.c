@@ -87,26 +87,30 @@ static void handle_announce(struct sd_channel *channel)
     AnnounceMessage *announce = NULL;
     unsigned i;
 
-    if (sd_channel_receive_protobuf(channel,
-                (ProtobufCMessageDescriptor *) &announce_message__descriptor,
-                (ProtobufCMessage **) &announce) < 0) {
-        puts("Unable to receive protobuf");
-        goto out;
-    }
+    while (true) {
+        if (sd_channel_receive_protobuf(channel,
+                    (ProtobufCMessageDescriptor *) &announce_message__descriptor,
+                    (ProtobufCMessage **) &announce) < 0) {
+            puts("Unable to receive protobuf");
+            goto out;
+        }
 
-    if (sd_sign_key_hex_from_bin(&remote_key,
-                announce->sign_key.data, announce->sign_key.len) < 0)
-    {
-        puts("Unable to retrieve remote sign key");
-        goto out;
-    }
+        if (sd_sign_key_hex_from_bin(&remote_key,
+                    announce->sign_key.data, announce->sign_key.len) < 0)
+        {
+            puts("Unable to retrieve remote sign key");
+            goto out;
+        }
 
-    printf("%s (v%s)\n", remote_key.data, announce->version);
+        printf("%s (v%s)\n", remote_key.data, announce->version);
 
-    for (i = 0; i < announce->n_services; i++) {
-        AnnounceMessage__Service *service = announce->services[i];
+        for (i = 0; i < announce->n_services; i++) {
+            AnnounceMessage__Service *service = announce->services[i];
 
-        printf("\t%s -> %s (%s)\n", service->port, service->name, service->category);
+            printf("\t%s -> %s (%s)\n", service->port, service->name, service->category);
+        }
+
+        announce_message__free_unpacked(announce, NULL);
     }
 
 out:
