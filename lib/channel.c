@@ -16,6 +16,7 @@
  */
 
 #include <errno.h>
+#include <inttypes.h>
 #include <string.h>
 #include <stdbool.h>
 #include <stdarg.h>
@@ -283,6 +284,7 @@ int sd_channel_write_data(struct sd_channel *c, uint8_t *data, uint32_t datalen)
 
 int sd_channel_write_protobuf(struct sd_channel *c, ProtobufCMessage *msg)
 {
+    const char *pkgname, *descrname;
     size_t size;
     uint8_t buf[4096];
 
@@ -296,6 +298,12 @@ int sd_channel_write_protobuf(struct sd_channel *c, ProtobufCMessage *msg)
         sd_log(LOG_LEVEL_ERROR, "Protobuf message exceeds buffer length");
         return -1;
     }
+
+    pkgname = msg->descriptor->package_name;
+    descrname = msg->descriptor->name;
+
+    sd_log(LOG_LEVEL_TRACE, "Writing protobuf %s:%s of length %"PRIuMAX,
+            pkgname ? pkgname : "", descrname ? descrname : "", size);
 
     protobuf_c_message_pack(msg, buf);
 
@@ -377,6 +385,9 @@ int sd_channel_receive_protobuf(struct sd_channel *c, const ProtobufCMessageDesc
     if (len < 0) {
         return -1;
     }
+
+    sd_log(LOG_LEVEL_TRACE, "Receiving protobuf %s:%s of length %"PRIuMAX,
+            descr->package_name, descr->name, len);
 
     result = protobuf_c_message_unpack(descr, NULL, len, buf);
     if (result == NULL) {
