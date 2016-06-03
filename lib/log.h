@@ -43,6 +43,8 @@
  * will be printed.
  */
 enum log_level {
+    /** Trace execution, only inteded for developers */
+    LOG_LEVEL_TRACE,
     /** Debug messages, only inteded for developers */
     LOG_LEVEL_DEBUG,
     /** Verbose messages, may help users to comprehend a problem */
