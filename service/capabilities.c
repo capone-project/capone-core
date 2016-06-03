@@ -501,6 +501,7 @@ static int handle_request(struct sd_channel *channel,
 
 out:
     sd_parameters_proto_free(request.parameters, request.n_parameters);
+    sd_parameters_free(params, nparams);
 
     return err;
 }
