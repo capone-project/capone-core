@@ -113,7 +113,7 @@ static void *client(void *payload)
     for (i = 0; i < args->repeats; i++) {
         if (sd_channel_write_data(&channel, data, args->datalen) < 0) {
             puts("Unable to write data");
-            return NULL;
+            goto out;
         }
     }
     end = nsecs();
