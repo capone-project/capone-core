@@ -367,6 +367,7 @@ static int invoke(struct sd_channel *channel, int argc, char **argv)
 static int handle_register(struct sd_channel *channel,
         const struct sd_session *session)
 {
+    struct sd_sign_key_hex hex;
     struct registrant *c;
     int n = 0;
 
@@ -383,6 +384,8 @@ static int handle_register(struct sd_channel *channel,
     memcpy(&c->identity, &session->invoker, sizeof(session->invoker));
     c->next = NULL;
 
+    sd_sign_key_hex_from_key(&hex, &session->invoker);
+    sd_log(LOG_LEVEL_DEBUG, "Identity %s registered", hex.data);
     sd_log(LOG_LEVEL_VERBOSE, "%d identities registered", n + 1);
 
     pthread_mutex_unlock(&registrants_mutex);
