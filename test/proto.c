@@ -443,15 +443,16 @@ static void service_connects()
         { &remote, &remote_keys }, &local_keys.pk, &service, &config
     };
     struct sd_thread t;
+    uint32_t sessionid;
     uint8_t *received;
 
     sd_spawn(&t, handle_session, &args);
 
-    assert_success(sd_sessions_add(1, &local_keys.pk, &local_keys.pk,
+    assert_success(sd_sessions_add(&sessionid, &local_keys.pk, &local_keys.pk,
                 params, ARRAY_SIZE(params)));
     assert_success(sd_proto_initiate_encryption(&local, &local_keys,
                 &remote_keys.pk));
-    assert_success(sd_proto_initiate_session(&local, 1));
+    assert_success(sd_proto_initiate_session(&local, sessionid));
     assert_success(service.invoke(&local, 0, NULL) < 0);
 
     sd_join(&t, NULL);
@@ -482,15 +483,16 @@ static void termination_kills_session()
         &remote, &local_keys.pk
     };
     struct sd_thread t;
+    uint32_t sessionid;
 
     sd_spawn(&t, handle_termination, &args);
 
-    assert_success(sd_sessions_add(0, &local_keys.pk, &remote_keys.pk, NULL, 0));
-    assert_success(sd_proto_initiate_termination(&local, 0, &remote_keys.pk));
+    assert_success(sd_sessions_add(&sessionid, &local_keys.pk, &remote_keys.pk, NULL, 0));
+    assert_success(sd_proto_initiate_termination(&local, sessionid, &remote_keys.pk));
 
     sd_join(&t, NULL);
 
-    assert_failure(sd_sessions_find(NULL, 0, &remote_keys.pk));
+    assert_failure(sd_sessions_find(NULL, sessionid, &remote_keys.pk));
 }
 
 static void terminating_nonexistent_does_nothing()

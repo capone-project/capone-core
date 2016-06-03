@@ -92,14 +92,14 @@ int sd_sessions_init(void);
 
 /** @brief Add a new session
  *
- * Add a new session with the given identities and parameters.
+ * Add a new session for the given identities and parameters.
  * This will add a new session to the pool of already established
  * sessions.
  *
  * This function may fail if a session with the same session
  * identifier and invoker has already been specified.
  *
- * @param[in] sessionid Identifier of the new session.
+ * @param[out] out The ID of the newly created session.
  * @param[in] issuer Identity of the session creator.
  * @param[in] invoker Identity of the entity able to start the
  *            session.
@@ -107,7 +107,7 @@ int sd_sessions_init(void);
  * @param[in] nparams Number of parameters.
  * @return <code>0</code> on success, <code>-1</code> otherwise
  */
-int sd_sessions_add(uint32_t sessionid,
+int sd_sessions_add(uint32_t *out,
         const struct sd_sign_key_public *issuer,
         const struct sd_sign_key_public *invoker,
         const struct sd_parameter *params,
@@ -137,10 +137,10 @@ int sd_sessions_remove(struct sd_session *out,
  * @param[in] sessionid Session identifier to search for. May be
  *            <code>NULL</code>.
  * @param[in] identity Session invoker to search for.
- * @return session identifier on success, <code>-1</code>
- *         otherwise
+ * @return <code>0</code> if the session has been found,
+ *         <code>-1</code> otherwise
  */
-ssize_t sd_sessions_find(struct sd_session *out,
+int sd_sessions_find(struct sd_session *out,
         uint32_t sessionid,
         const struct sd_sign_key_public *identity);
 

@@ -29,6 +29,7 @@
 
 static struct sd_session sessions[MAX_SESSIONS];
 static char used[MAX_SESSIONS];
+static uint32_t sessionid = 0;
 
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -37,22 +38,16 @@ int sd_sessions_init(void)
     return 0;
 }
 
-int sd_sessions_add(uint32_t sessionid,
+int sd_sessions_add(uint32_t *out,
         const struct sd_sign_key_public *issuer,
         const struct sd_sign_key_public *invoker,
         const struct sd_parameter *params,
         size_t nparams)
 {
+    uint32_t id;
     size_t i;
 
     pthread_mutex_lock(&mutex);
-
-    if (sd_sessions_find(NULL, sessionid, invoker) >= 0) {
-        pthread_mutex_unlock(&mutex);
-        sd_log(LOG_LEVEL_ERROR, "Session already present");
-        return -1;
-    }
-
     for (i = 0; i < MAX_SESSIONS; i++) {
         if (!used[i]) {
             used[i] = 1;
@@ -60,6 +55,7 @@ int sd_sessions_add(uint32_t sessionid,
         }
     }
 
+    id = sessionid++;
     pthread_mutex_unlock(&mutex);
 
     if (i == MAX_SESSIONS) {
@@ -67,7 +63,9 @@ int sd_sessions_add(uint32_t sessionid,
         return -1;
     }
 
-    sessions[i].sessionid = sessionid;
+    sessions[i].sessionid = id;
+    *out = id;
+
     memcpy(sessions[i].issuer.data, issuer->data, sizeof(issuer->data));
     memcpy(sessions[i].invoker.data, invoker->data, sizeof(invoker->data));
     sessions[i].nparameters = sd_parameters_dup(&sessions[i].parameters,
@@ -102,7 +100,7 @@ int sd_sessions_remove(struct sd_session *out,
     return 0;
 }
 
-ssize_t sd_sessions_find(struct sd_session *out,
+int sd_sessions_find(struct sd_session *out,
         uint32_t sessionid,
         const struct sd_sign_key_public *invoker)
 {
@@ -121,7 +119,7 @@ ssize_t sd_sessions_find(struct sd_session *out,
             if (out)
                 memcpy(out, s, sizeof(struct sd_session));
 
-            return i;
+            return 0;
         }
     }
 
