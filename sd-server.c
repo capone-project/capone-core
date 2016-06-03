@@ -184,7 +184,10 @@ int main(int argc, char *argv[])
     const char *servicename;
     struct sd_server server;
     struct sd_cfg cfg;
-    int ret;
+    int err;
+
+    memset(&server, 0, sizeof(server));
+    memset(&cfg, 0, sizeof(cfg));
 
     if (argc == 2 && !strcmp(argv[1], "--version")) {
         puts("sd-server " VERSION "\n"
@@ -195,60 +198,69 @@ int main(int argc, char *argv[])
         return 0;
     } else if (argc < 3 || argc > 4) {
         printf("USAGE: %s <CONFIG> <SERVICENAME> [<CLIENT_WHITELIST>]\n", argv[0]);
-        return -1;
+        err = -1;
+        goto out;
     }
 
     servicename = argv[2];
 
     if (sd_cfg_parse(&cfg, argv[1]) < 0) {
         puts("Could not parse config");
-        return -1;
+        err = -1;
+        goto out;
     }
 
     if (argc == 4) {
-        ret = read_whitelist(&whitelistkeys, argv[3]);
-        if (ret < 0) {
+        err = read_whitelist(&whitelistkeys, argv[3]);
+        if (err < 0) {
             puts("Could not read client whitelist");
-            return -1;
+            goto out;
         }
-        nwhitelistkeys = ret;
+        nwhitelistkeys = err;
 
         sd_log(LOG_LEVEL_VERBOSE, "Read %d keys from whitelist", nwhitelistkeys);
     }
 
     if (setup_signals() < 0) {
         sd_log(LOG_LEVEL_ERROR, "Could not set up signal handlers");
-        return -1;
+        err = -1;
+        goto out;
     }
 
     if (sodium_init() < 0) {
         sd_log(LOG_LEVEL_ERROR, "Could not init libsodium");
-        return -1;
+        err = -1;
+        goto out;
     }
 
     if (sd_sessions_init() < 0) {
         sd_log(LOG_LEVEL_ERROR, "Could not initialize sessions");
-        return -1;
+        err = -1;
+        goto out;
     }
 
     if (sd_service_from_config(&service, servicename, &cfg) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Could not parse services");
-        return -1;
+        err = -1;
+        goto out;
     }
 
     if (sd_sign_key_pair_from_config(&local_keys, &cfg) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Could not parse config");
-        return -1;
+        err = -1;
+        goto out;
     }
 
     if (sd_server_init(&server, NULL, service.port, SD_CHANNEL_TYPE_TCP) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Could not set up server");
-        return -1;
+        err = -1;
+        goto out;
     }
 
     if (sd_server_listen(&server) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Could not start listening");
-        return -1;
+        err = -1;
+        goto out;
     }
 
     while (1) {
@@ -256,7 +268,8 @@ int main(int argc, char *argv[])
 
         if (sd_server_accept(&server, &args->channel) < 0) {
             sd_log(LOG_LEVEL_ERROR, "Could not accept connection");
-            return -1;
+            err = -1;
+            goto out;
         }
 
         args->cfg = &cfg;
@@ -264,7 +277,10 @@ int main(int argc, char *argv[])
         sd_spawn(NULL, handle_connection, args);
     }
 
+out:
+    free(whitelistkeys);
     sd_server_close(&server);
+    sd_cfg_free(&cfg);
 
     return 0;
 }
