@@ -95,6 +95,7 @@ static void relay_capability_for_registrant(struct registrant *r)
         /* Kill clients waiting for registrant */
         pthread_mutex_lock(&clients_mutex);
         c = clients;
+        cprev = NULL;
         while (c) {
             if (c->waitsfor == r) {
                 sd_channel_close(&c->channel);
@@ -404,10 +405,10 @@ static int handle_request(struct sd_channel *channel,
           *requested_identity_hex, *address, *port;
     struct sd_sign_key_public invoker_identity, service_identity,
                               requested_identity;
-    struct sd_parameter *params;
+    struct sd_parameter *params = NULL;
     struct registrant *reg = NULL;
     struct client *client;
-    size_t nparams;
+    size_t nparams = 0;
     int err = 0;
 
     if (sd_parameters_get_value(&invoker_identity_hex, "invoker",
