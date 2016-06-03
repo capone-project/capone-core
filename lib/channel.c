@@ -16,6 +16,7 @@
  */
 
 #include <errno.h>
+#include <inttypes.h>
 #include <string.h>
 #include <stdbool.h>
 #include <stdarg.h>
@@ -297,6 +298,9 @@ int sd_channel_write_protobuf(struct sd_channel *c, ProtobufCMessage *msg)
         return -1;
     }
 
+    sd_log(LOG_LEVEL_TRACE, "Writing protobuf %s:%s of length %"PRIuMAX,
+            msg->descriptor->package_name, msg->descriptor->name, size);
+
     protobuf_c_message_pack(msg, buf);
 
     return sd_channel_write_data(c, buf, size);
@@ -377,6 +381,9 @@ int sd_channel_receive_protobuf(struct sd_channel *c, const ProtobufCMessageDesc
     if (len < 0) {
         return -1;
     }
+
+    sd_log(LOG_LEVEL_TRACE, "Receiving protobuf %s:%s of length %"PRIuMAX,
+            descr->package_name, descr->name, len);
 
     result = protobuf_c_message_unpack(descr, NULL, len, buf);
     if (result == NULL) {
