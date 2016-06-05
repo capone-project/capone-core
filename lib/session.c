@@ -71,7 +71,7 @@ int sd_sessions_add(uint32_t *out,
     sessions[i].nparameters = sd_parameters_dup(&sessions[i].parameters,
             params, nparams);
 
-    sd_log(LOG_LEVEL_DEBUG, "Created session %"PRIu32, sessionid);
+    sd_log(LOG_LEVEL_DEBUG, "Created session %"PRIu32, id);
 
     return 0;
 }
