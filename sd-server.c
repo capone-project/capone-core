@@ -32,13 +32,13 @@
 struct handle_connection_args {
     const struct sd_cfg *cfg;
     struct sd_channel channel;
+    struct sd_service service;
 };
 
 static struct sd_sign_key_public *whitelistkeys;
 static uint32_t nwhitelistkeys;
 
 static struct sd_sign_key_pair local_keys;
-static struct sd_service service;
 
 static int read_whitelist(struct sd_sign_key_public **out, const char *file)
 {
@@ -134,7 +134,7 @@ static void *handle_connection(void *payload)
         case SD_CONNECTION_TYPE_QUERY:
             sd_log(LOG_LEVEL_DEBUG, "Received query");
 
-            if (sd_proto_answer_query(&args->channel, &service,
+            if (sd_proto_answer_query(&args->channel, &args->service,
                         &remote_key, whitelistkeys, nwhitelistkeys) < 0)
             {
                 sd_log(LOG_LEVEL_ERROR, "Received invalid query");
@@ -154,7 +154,8 @@ static void *handle_connection(void *payload)
         case SD_CONNECTION_TYPE_CONNECT:
             sd_log(LOG_LEVEL_DEBUG, "Received connect");
 
-            if (sd_proto_handle_session(&args->channel, &remote_key, &service, args->cfg) < 0)
+            if (sd_proto_handle_session(&args->channel, &remote_key,
+                        &args->service, args->cfg) < 0)
             {
                 sd_log(LOG_LEVEL_ERROR, "Received invalid connect");
             }
@@ -179,14 +180,66 @@ out:
     return NULL;
 }
 
-int main(int argc, char *argv[])
+int setup_service(const struct sd_cfg *cfg, const char *name)
 {
-    const char *servicename;
+    struct sd_service service;
     struct sd_server server;
-    struct sd_cfg cfg;
     int err;
 
     memset(&server, 0, sizeof(server));
+
+    if (sd_service_from_config(&service, name, cfg) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Could not parse services");
+        err = -1;
+        goto out;
+    }
+
+    if (sd_sign_key_pair_from_config(&local_keys, cfg) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Could not parse config");
+        err = -1;
+        goto out;
+    }
+
+    if (sd_server_init(&server, NULL, service.port, SD_CHANNEL_TYPE_TCP) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Could not set up server");
+        err = -1;
+        goto out;
+    }
+
+    if (sd_server_listen(&server) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Could not start listening");
+        err = -1;
+        goto out;
+    }
+
+    while (1) {
+        struct handle_connection_args *args = malloc(sizeof(*args));;
+
+        if (sd_server_accept(&server, &args->channel) < 0) {
+            sd_log(LOG_LEVEL_ERROR, "Could not accept connection");
+            err = -1;
+            goto out;
+        }
+
+        args->cfg = cfg;
+        memcpy(&args->service, &service, sizeof(struct sd_service));
+
+        sd_spawn(NULL, handle_connection, args);
+    }
+
+out:
+    sd_service_free(&service);
+    sd_server_close(&server);
+
+    return err;
+}
+
+int main(int argc, char *argv[])
+{
+    const char *servicename;
+    struct sd_cfg cfg;
+    int err;
+
     memset(&cfg, 0, sizeof(cfg));
 
     if (argc == 2 && !strcmp(argv[1], "--version")) {
@@ -239,47 +292,14 @@ int main(int argc, char *argv[])
         goto out;
     }
 
-    if (sd_service_from_config(&service, servicename, &cfg) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not parse services");
+    if (setup_service(&cfg, servicename) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Could not set up service %s", servicename);
         err = -1;
         goto out;
-    }
-
-    if (sd_sign_key_pair_from_config(&local_keys, &cfg) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not parse config");
-        err = -1;
-        goto out;
-    }
-
-    if (sd_server_init(&server, NULL, service.port, SD_CHANNEL_TYPE_TCP) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not set up server");
-        err = -1;
-        goto out;
-    }
-
-    if (sd_server_listen(&server) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not start listening");
-        err = -1;
-        goto out;
-    }
-
-    while (1) {
-        struct handle_connection_args *args = malloc(sizeof(*args));;
-
-        if (sd_server_accept(&server, &args->channel) < 0) {
-            sd_log(LOG_LEVEL_ERROR, "Could not accept connection");
-            err = -1;
-            goto out;
-        }
-
-        args->cfg = &cfg;
-
-        sd_spawn(NULL, handle_connection, args);
     }
 
 out:
     free(whitelistkeys);
-    sd_server_close(&server);
     sd_cfg_free(&cfg);
 
     return 0;

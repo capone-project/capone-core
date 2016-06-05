@@ -39,7 +39,7 @@
 
 #include "channel.h"
 
-#define PACKAGE_LENGTH 512
+#define PACKAGE_LENGTH 128
 
 int getsock(struct sockaddr_storage *addr, size_t *addrlen,
         const char *host, const char *port,
