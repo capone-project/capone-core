@@ -76,6 +76,27 @@ int sd_sessions_add(uint32_t *out,
     return 0;
 }
 
+static ssize_t find_session_index(
+        uint32_t sessionid,
+        const struct sd_sign_key_public *invoker)
+{
+    size_t i;
+
+    for (i = 0; i < MAX_SESSIONS; i++) {
+
+        if (!used[i])
+            continue;
+        if (sessions[i].sessionid != sessionid)
+            continue;
+        if (memcmp(sessions[i].invoker.data, invoker->data, sizeof(invoker->data)))
+            continue;
+
+        return i;
+    }
+
+    return -1;
+}
+
 int sd_sessions_remove(struct sd_session *out,
         uint32_t sessionid,
         const struct sd_sign_key_public *invoker)
@@ -104,26 +125,14 @@ int sd_sessions_find(struct sd_session *out,
         uint32_t sessionid,
         const struct sd_sign_key_public *invoker)
 {
-    size_t i;
+    ssize_t i = find_session_index(sessionid, invoker);
+    if (i == -1)
+        return -1;
 
-    for (i = 0; i < MAX_SESSIONS; i++) {
-        struct sd_session *s;
+    if (out)
+        memcpy(out, &sessions[i], sizeof(struct sd_session));
 
-        if (!used[i])
-            continue;
-
-        s = &sessions[i];
-        if (s->sessionid == sessionid &&
-                memcmp(s->invoker.data, invoker->data, sizeof(invoker->data)) == 0)
-        {
-            if (out)
-                memcpy(out, s, sizeof(struct sd_session));
-
-            return 0;
-        }
-    }
-
-    return -1;
+    return 0;
 }
 
 int sd_sessions_clear(void)
