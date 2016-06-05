@@ -105,8 +105,10 @@ int sd_sessions_remove(struct sd_session *out,
 
     pthread_mutex_lock(&mutex);
 
-    i = sd_sessions_find(out, sessionid, invoker);
+    i = find_session_index(sessionid, invoker);
     if (i >= 0) {
+        if (out)
+            memcpy(out, &sessions[i], sizeof(struct sd_session));
         memset(&sessions[i], 0, sizeof(struct sd_session));
         used[i] = 0;
     }
@@ -114,7 +116,7 @@ int sd_sessions_remove(struct sd_session *out,
     pthread_mutex_unlock(&mutex);
 
     if (i < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Session not found");
+        sd_log(LOG_LEVEL_ERROR, "Session %"PRIuMAX" not found", sessionid);
         return -1;
     }
 
