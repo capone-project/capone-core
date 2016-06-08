@@ -25,6 +25,7 @@
 static enum log_level current_log_level = LOG_LEVEL_VERBOSE;
 
 static const char *log_levels[] = {
+    "TRACE",
     "DEBUG",
     "VERBOSE",
     "WARNING",
