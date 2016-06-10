@@ -43,7 +43,8 @@ static enum sd_channel_type type;
 void stub_sockets(struct sd_channel *local, struct sd_channel *remote)
 {
     int sockets[2];
-    socklen_t addrlen = sizeof(local->addr);
+    struct sockaddr_storage laddr, raddr;
+    socklen_t laddrlen = sizeof(laddr), raddrlen = sizeof(raddr);
 
     switch (local->type) {
         case SD_CHANNEL_TYPE_TCP:
@@ -54,13 +55,17 @@ void stub_sockets(struct sd_channel *local, struct sd_channel *remote)
             break;
     }
 
+    assert_success(getsockname(sockets[0],
+                (struct sockaddr *) &laddr, &laddrlen));
+    assert_success(getsockname(sockets[1],
+                (struct sockaddr *) &raddr, &raddrlen));
+
+    assert_success(sd_channel_init_from_fd(local, sockets[0], &laddr, laddrlen, local->type));
+    assert_success(sd_channel_init_from_fd(remote, sockets[0], &raddr, raddrlen, remote->type));
+
     local->fd = sockets[0];
     remote->fd = sockets[1];
 
-    assert_success(getsockname(sockets[0],
-                (struct sockaddr *) &local->addr, &addrlen));
-    assert_success(getsockname(sockets[1],
-                (struct sockaddr *) &remote->addr, &addrlen));
 }
 
 static int setup()

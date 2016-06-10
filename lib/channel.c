@@ -40,7 +40,8 @@
 
 #include "channel.h"
 
-#define PACKAGE_LENGTH 128
+#define DEFAULT_BLOCKLEN 512
+#define MAX_BLOCKLEN 4096
 
 int getsock(struct sockaddr_storage *addr, size_t *addrlen,
         const char *host, const char *port,
@@ -124,9 +125,23 @@ int sd_channel_init_from_fd(struct sd_channel *c,
 
     c->fd = fd;
     c->type = type;
+    c->blocklen = DEFAULT_BLOCKLEN;
     c->crypto = SD_CHANNEL_CRYPTO_NONE;
     memcpy(&c->addr, addr, sizeof(c->addr));
     c->addrlen = addrlen;
+
+    return 0;
+}
+
+int sd_channel_set_blocklen(struct sd_channel *c, size_t len)
+{
+    if (len < sizeof(uint32_t) + crypto_box_MACBYTES + 1) {
+        return -1;
+    } else if (len > MAX_BLOCKLEN) {
+        return -1;
+    }
+
+    c->blocklen = len;
 
     return 0;
 }
@@ -241,7 +256,7 @@ static int write_data(struct sd_channel *c, uint8_t *data, uint32_t datalen)
 
 int sd_channel_write_data(struct sd_channel *c, uint8_t *data, uint32_t datalen)
 {
-    uint8_t block[PACKAGE_LENGTH];
+    uint8_t block[MAX_BLOCKLEN];
     size_t written = 0, offset;
     uint32_t networklen;
 
@@ -252,16 +267,16 @@ int sd_channel_write_data(struct sd_channel *c, uint8_t *data, uint32_t datalen)
     while (offset || written != datalen) {
         uint32_t len;
         if (c->crypto == SD_CHANNEL_CRYPTO_SYMMETRIC) {
-            len = MIN(datalen - written, sizeof(block) - offset - crypto_secretbox_MACBYTES);
+            len = MIN(datalen - written, c->blocklen - offset - crypto_secretbox_MACBYTES);
         } else {
-            len = MIN(datalen - written, sizeof(block) - offset);
+            len = MIN(datalen - written, c->blocklen - offset);
         }
 
-        memset(block + offset, 0, sizeof(block) - offset);
+        memset(block + offset, 0, c->blocklen - offset);
         memcpy(block + offset, data + written, len);
 
         if (c->crypto == SD_CHANNEL_CRYPTO_SYMMETRIC) {
-            if (crypto_secretbox_easy(block, block, sizeof(block) - crypto_secretbox_MACBYTES,
+            if (crypto_secretbox_easy(block, block, c->blocklen - crypto_secretbox_MACBYTES,
                         c->local_nonce, c->key.data) < 0) {
                 sd_log(LOG_LEVEL_ERROR, "Unable to encrypt message");
                 return -1;
@@ -270,7 +285,7 @@ int sd_channel_write_data(struct sd_channel *c, uint8_t *data, uint32_t datalen)
             sodium_increment(c->local_nonce, crypto_secretbox_NONCEBYTES);
         }
 
-        if (write_data(c, block, sizeof(block)) < 0) {
+        if (write_data(c, block, c->blocklen) < 0) {
             sd_log(LOG_LEVEL_ERROR, "Unable to write encrypted data");
             return -1;
         }
@@ -329,19 +344,19 @@ static int receive_data(struct sd_channel *c, uint8_t *out, size_t len)
 
 ssize_t sd_channel_receive_data(struct sd_channel *c, uint8_t *out, size_t maxlen)
 {
-    uint8_t block[PACKAGE_LENGTH];
+    uint8_t block[MAX_BLOCKLEN];
     uint32_t pkglen, received = 0, offset = sizeof(uint32_t);
 
     while (offset || received < pkglen) {
         uint32_t networklen, blocklen;
 
-        if (receive_data(c, block, sizeof(block)) < 0) {
+        if (receive_data(c, block, c->blocklen) < 0) {
             sd_log(LOG_LEVEL_ERROR, "Unable to receive data");
             return -1;
         }
 
         if (c->crypto == SD_CHANNEL_CRYPTO_SYMMETRIC) {
-            if (crypto_secretbox_open_easy(block, block, sizeof(block),
+            if (crypto_secretbox_open_easy(block, block, c->blocklen,
                         c->remote_nonce, c->key.data) < 0)
             {
                 sd_log(LOG_LEVEL_ERROR, "Unable to decrypt received block");
@@ -361,9 +376,9 @@ ssize_t sd_channel_receive_data(struct sd_channel *c, uint8_t *out, size_t maxle
         }
 
         if (c->crypto == SD_CHANNEL_CRYPTO_SYMMETRIC) {
-            blocklen = MIN(pkglen - received, sizeof(block) - offset - crypto_secretbox_MACBYTES);
+            blocklen = MIN(pkglen - received, c->blocklen - offset - crypto_secretbox_MACBYTES);
         } else {
-            blocklen = MIN(pkglen - received, sizeof(block) - offset);
+            blocklen = MIN(pkglen - received, c->blocklen - offset);
         }
 
         memcpy(out + received, block + offset, blocklen);

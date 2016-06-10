@@ -103,6 +103,8 @@ struct sd_channel {
     struct sockaddr_storage addr;
     size_t addrlen;
 
+    size_t blocklen;
+
     enum sd_channel_type type;
     enum sd_channel_crypto crypto;
 
@@ -154,6 +156,25 @@ int sd_channel_init_from_host(struct sd_channel *c,
 int sd_channel_init_from_fd(struct sd_channel *c,
         int fd, const struct sockaddr_storage *addr, size_t addrlen,
         enum sd_channel_type type);
+
+/** @brief Set block length used to split messages
+ *
+ * When sending a message of a certain length, the package may
+ * require to be split up into multiple blocks, where each block
+ * is of fixed size. This function sets the block length used to
+ * determine package boundaries.
+ *
+ * Pay attention that each block requires to carry some
+ * metadata, where the first block carries 4 bytes of total
+ * length and each block contains a message authentication code
+ * of 20 bytes. As such, the minimum block length is 21. The
+ * maximum block length is fixed at 4096 bytes.
+ *
+ * @param[in] c Channel to set block length for
+ * @param[in] len Length of a single block
+ * @return <code>0</code> on success, <code>t1</code> otherwise
+ */
+int sd_channel_set_blocklen(struct sd_channel *c, size_t len);
 
 /** @brief Close the file descriptor of the channel
  *
