@@ -42,6 +42,7 @@
 
 struct client_args {
     uint32_t datalen;
+    uint32_t blocklen;
     uint32_t repeats;
 };
 
@@ -109,6 +110,8 @@ static void *client(void *payload)
         sd_channel_enable_encryption(&channel, &key, SD_CHANNEL_NONCE_CLIENT);
     }
 
+    sd_channel_set_blocklen(&channel, args->blocklen);
+
     start = nsecs();
     for (i = 0; i < args->repeats; i++) {
         if (sd_channel_write_data(&channel, data, args->datalen) < 0) {
@@ -128,7 +131,7 @@ out:
 
 static void usage(const char *executable)
 {
-    printf("USAGE: %s <--encrypted|--plain> <DATALEN>\n", executable);
+    printf("USAGE: %s <--encrypted|--plain> <DATALEN> <BLOCKLEN>\n", executable);
 }
 
 int main(int argc, char *argv[])
@@ -141,7 +144,7 @@ int main(int argc, char *argv[])
     uint64_t start, end;
     uint32_t i;
 
-    if (argc != 3) {
+    if (argc != 4) {
         usage(argv[0]);
         return -1;
     }
@@ -158,6 +161,12 @@ int main(int argc, char *argv[])
 
     if (parse_uint32t(&args.datalen, argv[2]) < 0) {
         puts("Invalid data length");
+        usage(argv[0]);
+        return -1;
+    }
+
+    if (parse_uint32t(&args.blocklen, argv[3]) < 0) {
+        puts("Invalid block length");
         usage(argv[0]);
         return -1;
     }
@@ -195,6 +204,8 @@ int main(int argc, char *argv[])
     if (encrypt) {
         sd_channel_enable_encryption(&channel, &key, SD_CHANNEL_NONCE_SERVER);
     }
+
+    sd_channel_set_blocklen(&channel, args.blocklen);
 
     start = nsecs();
     for (i = 0; i < args.repeats; i++) {
