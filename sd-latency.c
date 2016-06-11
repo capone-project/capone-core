@@ -88,7 +88,7 @@ static void *client(void *payload)
 {
     struct client_args *args;
     struct sd_channel channel;
-    uint64_t start, end;
+    uint64_t start, end, time;
     int i;
 
     args = (struct client_args *) payload;
@@ -98,31 +98,39 @@ static void *client(void *payload)
         return NULL;
     }
 
-    if (sd_channel_init_from_host(&channel, "127.0.0.1", PORT, SD_CHANNEL_TYPE_TCP) < 0) {
-        puts("Unable to init connection");
-        return NULL;
-    }
-
-    start = nsecs();
-    if (sd_channel_connect(&channel) < 0) {
-        puts("Unable to connect to server");
-        return NULL;
-    }
-
-    if (sd_channel_set_blocklen(&channel, blocklen) < 0) {
-        puts("Unable to set block length");
-        return NULL;
-    }
+    time = 0;
 
     for (i = 0; i < REPEATS; i++) {
+        if (sd_channel_init_from_host(&channel, "127.0.0.1", PORT, SD_CHANNEL_TYPE_TCP) < 0) {
+            puts("Unable to init connection");
+            return NULL;
+        }
+
+        start = nsecs();
+        if (sd_channel_connect(&channel) < 0) {
+            puts("Unable to connect to server");
+            return NULL;
+        }
+
+        if (sd_channel_set_blocklen(&channel, blocklen) < 0) {
+            puts("Unable to set block length");
+            return NULL;
+        }
+
         if (sd_proto_initiate_encryption(&channel, &args->client_keys, &args->server_keys.pk) < 0) {
             puts("Unable to initiate encryption");
             return NULL;
         }
-    }
-    end = nsecs();
+        end = nsecs();
 
-    printf("conn (nsec):\t%"PRIu64"\n", (end - start) / REPEATS);
+        if (sd_channel_close(&channel) < 0) {
+            puts("Unable to close channel");
+        }
+
+        time += end - start;
+    }
+
+    printf("conn (nsec):\t%"PRIu64"\n", time / REPEATS);
 
     return NULL;
 }
@@ -133,7 +141,7 @@ int main(int argc, char *argv[])
     struct client_args args;
     struct sd_server server;
     struct sd_channel channel;
-    uint64_t start, end;
+    uint64_t start, end, time;
     int i;
 
     if (argc != 2) {
@@ -175,31 +183,39 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    if (sd_server_accept(&server, &channel) < 0) {
-        puts("Unable to accept connection");
-        return -1;
-    }
+    time = 0;
 
-    if (sd_channel_set_blocklen(&channel, blocklen) < 0) {
-        puts("Unable to set block length");
-        return -1;
-    }
-
-    start = nsecs();
     for (i = 0; i < REPEATS; i++) {
+        if (sd_server_accept(&server, &channel) < 0) {
+            puts("Unable to accept connection");
+            return -1;
+        }
+
+        if (sd_channel_set_blocklen(&channel, blocklen) < 0) {
+            puts("Unable to set block length");
+            return -1;
+        }
+
+        start = nsecs();
         if (sd_proto_await_encryption(&channel, &args.server_keys, &args.client_keys.pk) < 0) {
             puts("Unable to await encryption");
             return -1;
         }
+        end = nsecs();
+
+        if (sd_channel_close(&channel) < 0) {
+            puts("Unable to close channel");
+        }
+
+        time += end - start;
     }
-    end = nsecs();
 
     if (sd_join(&t, NULL) < 0) {
         puts("Unable to await client thread");
         return -1;
     }
 
-    printf("await (nsec):\t%"PRIu64"\n", (end - start) / REPEATS);
+    printf("await (nsec):\t%"PRIu64"\n", time / REPEATS);
 
     return 0;
 }
