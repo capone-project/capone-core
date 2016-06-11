@@ -2,14 +2,14 @@
 
 set -e
 
-sudo tc qdisc delete dev lo root netem || true
-sudo tc qdisc add dev lo root netem
+tc qdisc add dev lo root netem
+trap 'tc qdisc delete dev lo root netem' EXIT
 
 echo "latency,pkglen,connect,await"
 
 for latency in 0 2 20
 do
-    sudo tc qdisc change dev lo root netem delay ${latency}ms
+    tc qdisc change dev lo root netem delay ${latency}ms
 
     for pkglen in 64 128 256 512 1024 1500 2048 4096
     do
@@ -21,4 +21,3 @@ do
     done
 done
 
-sudo tc qdisc delete dev lo root netem
