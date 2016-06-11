@@ -42,6 +42,8 @@
 #define PORT "43281"
 #define REPEATS 1000
 
+static uint32_t blocklen;
+
 struct client_args {
     struct sd_sign_key_pair client_keys;
     struct sd_sign_key_pair server_keys;
@@ -107,6 +109,11 @@ static void *client(void *payload)
         return NULL;
     }
 
+    if (sd_channel_set_blocklen(&channel, blocklen) < 0) {
+        puts("Unable to set block length");
+        return NULL;
+    }
+
     for (i = 0; i < REPEATS; i++) {
         if (sd_proto_initiate_encryption(&channel, &args->client_keys, &args->server_keys.pk) < 0) {
             puts("Unable to initiate encryption");
@@ -129,8 +136,13 @@ int main(int argc, char *argv[])
     uint64_t start, end;
     int i;
 
-    if (argc != 1) {
-        printf("USAGE: %s\n", argv[0]);
+    if (argc != 2) {
+        printf("USAGE: %s <BLOCKLEN>\n", argv[0]);
+        return -1;
+    }
+
+    if (parse_uint32t(&blocklen, argv[1]) < 0) {
+        printf("Could not parse block length %s\n", argv[1]);
         return -1;
     }
 
@@ -165,6 +177,11 @@ int main(int argc, char *argv[])
 
     if (sd_server_accept(&server, &channel) < 0) {
         puts("Unable to accept connection");
+        return -1;
+    }
+
+    if (sd_channel_set_blocklen(&channel, blocklen) < 0) {
+        puts("Unable to set block length");
         return -1;
     }
 
