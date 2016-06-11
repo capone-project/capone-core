@@ -18,21 +18,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "config.h"
-
-#ifdef HAVE_SCHED
-# define __USE_GNU
-#  include <sched.h>
-#  include <pthread.h>
-# undef __USE_GNU
-#endif
-
-#ifdef HAVE_CLOCK_GETTIME
-# include <time.h>
-#else
-# include <sys/time.h>
-#endif
-
+#include "lib/bench.h"
 #include "lib/channel.h"
 #include "lib/common.h"
 #include "lib/keys.h"
@@ -49,41 +35,6 @@ struct client_args {
     struct sd_sign_key_pair server_keys;
 };
 
-static uint64_t nsecs(void)
-{
-#ifdef HAVE_CLOCK_GETTIME
-    struct timespec t;
-
-    clock_gettime(CLOCK_MONOTONIC, &t);
-
-    return t.tv_sec * 1000000000 + t.tv_nsec;
-#else
-    struct timeval t;
-
-    gettimeofday(&t, NULL);
-
-    return t.tv_sec * 1000000000 + t.tv_usec * 1000;
-#endif
-}
-
-static int set_affinity(uint8_t cpu)
-{
-#ifdef HAVE_SCHED
-    cpu_set_t mask;
-    pthread_t t;
-
-    t = pthread_self();
-
-    CPU_ZERO(&mask);
-    CPU_SET(cpu, &mask);
-
-    return pthread_setaffinity_np(t, sizeof(mask), &mask);
-#else
-    UNUSED(cpu);
-    return 0;
-#endif
-}
-
 static void *client(void *payload)
 {
     struct client_args *args;
@@ -93,7 +44,7 @@ static void *client(void *payload)
 
     args = (struct client_args *) payload;
 
-    if (set_affinity(2) < 0) {
+    if (sd_bench_set_affinity(2) < 0) {
         puts("Unable to set sched affinity");
         return NULL;
     }
@@ -106,7 +57,7 @@ static void *client(void *payload)
             return NULL;
         }
 
-        start = nsecs();
+        start = sd_bench_nsecs();
         if (sd_channel_connect(&channel) < 0) {
             puts("Unable to connect to server");
             return NULL;
@@ -121,7 +72,7 @@ static void *client(void *payload)
             puts("Unable to initiate encryption");
             return NULL;
         }
-        end = nsecs();
+        end = sd_bench_nsecs();
 
         if (sd_channel_close(&channel) < 0) {
             puts("Unable to close channel");
@@ -154,7 +105,7 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    if (set_affinity(3) < 0) {
+    if (sd_bench_set_affinity(3) < 0) {
         puts("Unable to set sched affinity");
         return -1;
     }
@@ -196,12 +147,12 @@ int main(int argc, char *argv[])
             return -1;
         }
 
-        start = nsecs();
+        start = sd_bench_nsecs();
         if (sd_proto_await_encryption(&channel, &args.server_keys, &args.client_keys.pk) < 0) {
             puts("Unable to await encryption");
             return -1;
         }
-        end = nsecs();
+        end = sd_bench_nsecs();
 
         if (sd_channel_close(&channel) < 0) {
             puts("Unable to close channel");

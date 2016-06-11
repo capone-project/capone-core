@@ -18,21 +18,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "config.h"
-
-#ifdef HAVE_SCHED
-# define __USE_GNU
-#  include <sched.h>
-#  include <pthread.h>
-# undef __USE_GNU
-#endif
-
-#ifdef HAVE_CLOCK_GETTIME
-# include <time.h>
-#else
-# include <sys/time.h>
-#endif
-
+#include "lib/bench.h"
 #include "lib/channel.h"
 #include "lib/common.h"
 #include "lib/keys.h"
@@ -49,41 +35,6 @@ struct client_args {
 static char encrypt;
 static struct sd_symmetric_key key;
 
-static uint64_t nsecs(void)
-{
-#ifdef HAVE_CLOCK_GETTIME
-    struct timespec t;
-
-    clock_gettime(CLOCK_MONOTONIC, &t);
-
-    return t.tv_sec * 1000000000 + t.tv_nsec;
-#else
-    struct timeval t;
-
-    gettimeofday(&t, NULL);
-
-    return t.tv_sec * 1000000000 + t.tv_usec * 1000;
-#endif
-}
-
-static int set_affinity(uint8_t cpu)
-{
-#ifdef HAVE_SCHED
-    cpu_set_t mask;
-    pthread_t t;
-
-    t = pthread_self();
-
-    CPU_ZERO(&mask);
-    CPU_SET(cpu, &mask);
-
-    return pthread_setaffinity_np(t, sizeof(mask), &mask);
-#else
-    UNUSED(cpu);
-    return 0;
-#endif
-}
-
 static void *client(void *payload)
 {
     struct client_args *args = (struct client_args *) payload;
@@ -92,7 +43,7 @@ static void *client(void *payload)
     uint64_t start, end;
     uint32_t i;
 
-    if (set_affinity(2) < 0) {
+    if (sd_bench_set_affinity(2) < 0) {
         puts("Unable to set sched affinity");
         goto out;
     }
@@ -112,14 +63,14 @@ static void *client(void *payload)
 
     sd_channel_set_blocklen(&channel, args->blocklen);
 
-    start = nsecs();
+    start = sd_bench_nsecs();
     for (i = 0; i < args->repeats; i++) {
         if (sd_channel_write_data(&channel, data, args->datalen) < 0) {
             puts("Unable to write data");
             goto out;
         }
     }
-    end = nsecs();
+    end = sd_bench_nsecs();
 
     printf("send (ns):\t%"PRIu64"\n", (end - start) / args->repeats);
 
@@ -176,7 +127,7 @@ int main(int argc, char *argv[])
     /* Always average over 1GB of data sent */
     args.repeats = (1024 * 1024 * 1024) / args.datalen;
 
-    if (set_affinity(3) < 0) {
+    if (sd_bench_set_affinity(3) < 0) {
         puts("Unable to set sched affinity");
         return -1;
     }
@@ -207,14 +158,14 @@ int main(int argc, char *argv[])
 
     sd_channel_set_blocklen(&channel, args.blocklen);
 
-    start = nsecs();
+    start = sd_bench_nsecs();
     for (i = 0; i < args.repeats; i++) {
         if (sd_channel_receive_data(&channel, data, args.datalen) < 0) {
             puts("Unable to receive data");
             return -1;
         }
     }
-    end = nsecs();
+    end = sd_bench_nsecs();
 
     if (sd_join(&t, NULL) < 0) {
         puts("Unable to await client thread");
