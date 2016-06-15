@@ -17,6 +17,7 @@ FIND_PACKAGE(ProtobufC REQUIRED)
 FIND_PACKAGE(Threads REQUIRED)
 
 PKG_CHECK_MODULES(SODIUM REQUIRED libsodium)
+PKG_CHECK_MODULES(X11 x11 xtst xi)
 
 INCLUDE(CheckFunctionExists)
 
@@ -100,3 +101,8 @@ TARGET_LINK_LIBRARIES(sd-bench-throughput sd)
 
 ADD_EXECUTABLE(sd-bench-latency sd-bench-latency.c)
 TARGET_LINK_LIBRARIES(sd-bench-latency sd)
+
+IF(X11_FOUND)
+    ADD_EXECUTABLE(sd-bench-input sd-bench-input.c)
+    TARGET_LINK_LIBRARIES(sd-bench-input sd ${X11_LIBRARIES})
+ENDIF(X11_FOUND)
