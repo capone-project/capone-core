@@ -32,6 +32,7 @@
 #include "lib/server.h"
 
 #define PORT "43269"
+#define REPEATS 1000
 
 struct payload {
     const char *dpy1;
@@ -81,7 +82,7 @@ void *process_events(void *ptr)
     Display *dpy1, *dpy2;
     XEvent ev;
     uint64_t start, end;
-    int x11fd1, x11fd2;
+    int i, x11fd1, x11fd2;
     fd_set fds;
 
     if (!(dpy1 = XOpenDisplay(payload->dpy1))) {
@@ -104,7 +105,8 @@ void *process_events(void *ptr)
     }
     x11fd2 = ConnectionNumber(dpy2);
 
-    while (true) {
+    start = sd_bench_nsecs();
+    while (i < REPEATS) {
         FD_ZERO(&fds);
 
         FD_SET(x11fd1, &fds);
@@ -114,20 +116,18 @@ void *process_events(void *ptr)
 
         if (FD_ISSET(x11fd1, &fds)) {
             XNextEvent(dpy1, &ev);
-            start = sd_bench_nsecs();
             XNextEvent(dpy2, &ev);
-            end = sd_bench_nsecs();
         } else if (FD_ISSET(x11fd2, &fds)) {
             XNextEvent(dpy2, &ev);
-            start = sd_bench_nsecs();
             XNextEvent(dpy1, &ev);
-            end = sd_bench_nsecs();
         } else {
             continue;
         }
 
-        printf("delay (in ns): %"PRIu64"\n", end - start);
+        i++;
     }
+    end = sd_bench_nsecs();
+    printf("delay (in ns): %"PRIu64"\n", end - start);
 
     return NULL;
 }
@@ -162,7 +162,7 @@ int main(int argc, char *argv[])
     XFlush(dpy);
     usleep(10000);
 
-    for (i = 0; i < 10000; i++) {
+    for (i = 0; i < REPEATS * 2; i++) {
         if (!XTestFakeButtonEvent(dpy, 1, True, CurrentTime)) {
             puts("Unable to generate fake button event");
             retval = -1;
@@ -178,12 +178,12 @@ int main(int argc, char *argv[])
         }
         XFlush(dpy);
         usleep(20);
+
+        usleep(1000);
     }
 
-    usleep(10000);
-
 out:
-    sd_kill(&t);
+    sd_join(&t, NULL);
 
     return retval;
 }
