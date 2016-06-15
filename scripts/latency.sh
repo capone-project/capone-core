@@ -13,7 +13,7 @@ do
 
     for pkglen in 64 128 256 512 1024 1500 2048 4096
     do
-        RESULT=$(./source/sd/build/sd-latency ${pkglen})
+        RESULT=$(./source/sd/build/sd-bench-latency ${pkglen})
         CONNECT=$(echo "${RESULT}" | head -n1 | awk '{print $3 / 1000000}')
         AWAIT=$(echo "${RESULT}" | tail -n1 | awk '{print $3 / 1000000}')
 
