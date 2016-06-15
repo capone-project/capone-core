@@ -121,11 +121,21 @@ int sd_channel_init_from_fd(struct sd_channel *c,
         int fd, const struct sockaddr_storage *addr, size_t addrlen,
         enum sd_channel_type type)
 {
+    char *env;
+    uint32_t blocklen;
+
     memset(c, 0, sizeof(struct sd_channel));
+
+    env = getenv("SD_BLOCKLEN");
+    if (env == NULL || parse_uint32t(&blocklen, env) < 0) {
+        c->blocklen = DEFAULT_BLOCKLEN;
+    } else {
+        c->blocklen = blocklen;
+    }
 
     c->fd = fd;
     c->type = type;
-    c->blocklen = DEFAULT_BLOCKLEN;
+
     c->crypto = SD_CHANNEL_CRYPTO_NONE;
     memcpy(&c->addr, addr, sizeof(c->addr));
     c->addrlen = addrlen;
