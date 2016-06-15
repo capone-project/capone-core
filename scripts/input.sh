@@ -2,21 +2,21 @@
 
 set -e
 
-Xvfb :1&
-trap "kill -9 $!" EXIT
-Xvfb :2&
-trap "kill -9 $!" EXIT
-
 sleep 2
 
 sudo tc qdisc add dev lo root netem
-trap 'sudo tc qdisc delete dev lo root netem' EXIT
+trap 'sudo tc qdisc delete dev lo root netem' EXIT SIGINT
 
 echo "latency,pkglen,delay"
 
 for latency in 0 2 20
 do
     sudo tc qdisc change dev lo root netem delay ${latency}ms
+
+    Xvfb :1&
+    Xvfb :2&
+
+    sleep 3
 
     # Do an initial test without the sd-server framework
     DISPLAY=:1 synergys --name server --no-daemon >/dev/null&
@@ -25,15 +25,22 @@ do
     DISPLAY=:2 synergyc --name client --no-daemon 127.0.0.1 >/dev/null&
     CPID=$!
     sleep 1
-    DELAY=$(./source/sd/build/sd-bench-input :1 :2 | awk '{ sum += $NF } END { print sum / NR }')
+    DELAY=$(./source/sd/build/sd-bench-input :1 :2 | awk '{ print $NF / 1000000 }')
     echo "$latency,0,$DELAY"
 
-    kill -9 $SPID $CPID
+    killall -9 synergys synergyc Xvfb || true
 
     # Test delay with sd-server and different block lengths
     for pkglen in 64 128 256 512 1024 1500 2048 4096
     do
         export SD_BLOCKLEN=$pkglen
+
+        sleep 5
+
+        Xvfb :1&
+        Xvfb :2&
+
+        sleep 3
 
         DISPLAY=:2 ./source/sd/build/sd-server ./scripts/server.conf 2>&1 >/dev/null&
         SERVERPID=$!
@@ -56,11 +63,9 @@ do
 
         sleep 5
 
-        DELAY=$(./source/sd/build/sd-bench-input :1 :2 | awk '{ sum += $NF } END { print sum / NR }')
+        DELAY=$(./source/sd/build/sd-bench-input :1 :2 | awk '{ print $NF / 1000000 }')
         echo "$latency,$pkglen,$DELAY"
 
-        kill $SERVERPID $CLIENTPID >/dev/null
-        pkill synergys
-        sleep 2
+        killall -9 sd-server sd-client synergys synergyc Xvfb || true
     done
 done
