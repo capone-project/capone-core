@@ -105,7 +105,9 @@ void *process_events(void *ptr)
     }
     x11fd2 = ConnectionNumber(dpy2);
 
-    start = sd_bench_nsecs();
+    i = 0;
+    start = 0;
+
     while (i < REPEATS) {
         FD_ZERO(&fds);
 
@@ -113,6 +115,9 @@ void *process_events(void *ptr)
         FD_SET(x11fd2, &fds);
 
         select(MAX(x11fd1, x11fd2) + 1, &fds, NULL, NULL, NULL);
+
+        if (start == 0)
+            start = sd_bench_nsecs();
 
         if (FD_ISSET(x11fd1, &fds)) {
             XNextEvent(dpy1, &ev);
