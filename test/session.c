@@ -173,14 +173,6 @@ static void finding_session_with_invalid_id_fails()
     assert_failure(sd_sessions_find(&out, id + 1));
 }
 
-static void finding_session_with_invalid_key_fails()
-{
-    struct sd_session out;
-
-    assert_success(sd_sessions_add(&id, NULL, 0));
-    assert_failure(sd_sessions_find(&out, id));
-}
-
 static void finding_existing_session_succeeds()
 {
     struct sd_session out;
@@ -278,7 +270,6 @@ int session_test_run_suite(void)
 
         test(finding_invalid_session_fails),
         test(finding_session_with_invalid_id_fails),
-        test(finding_session_with_invalid_key_fails),
         test(finding_existing_session_succeeds),
         test(finding_session_without_out_param_succeeds),
         test(finding_intermediate_session_returns_correct_index),

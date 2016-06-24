@@ -23,6 +23,7 @@
 
 #include <sodium.h>
 
+#include "lib/acl.h"
 #include "lib/common.h"
 #include "lib/log.h"
 #include "lib/proto.h"
@@ -34,21 +35,21 @@ struct handle_connection_args {
     struct sd_channel channel;
 };
 
-static struct sd_sign_key_public *whitelistkeys;
-static uint32_t nwhitelistkeys;
+static struct sd_acl request_acl = SD_ACL_INIT;
+static struct sd_acl query_acl = SD_ACL_INIT;
 
 static struct sd_sign_key_pair local_keys;
 static struct sd_service service;
 
-static int read_whitelist(struct sd_sign_key_public **out, const char *file)
+static int read_acl(struct sd_acl *acl, const char *file)
 {
-    struct sd_sign_key_public *keys = NULL;
+    struct sd_sign_key_public pk;
     FILE *stream = NULL;
     char *line = NULL;
-    size_t nkeys = 0, length;
+    size_t length;
     ssize_t read;
 
-    *out = NULL;
+    sd_acl_clear(acl);
 
     stream = fopen(file, "r");
     if (stream == NULL)
@@ -58,9 +59,13 @@ static int read_whitelist(struct sd_sign_key_public **out, const char *file)
         if (line[read - 1] == '\n')
             line[read - 1] = '\0';
 
-        keys = realloc(keys, sizeof(struct sd_sign_key_public) * ++nkeys);
-        if (sd_sign_key_public_from_hex(&keys[nkeys - 1], line) < 0) {
+        if (sd_sign_key_public_from_hex(&pk, line) < 0) {
             sd_log(LOG_LEVEL_ERROR, "Invalid key '%s'", line);
+            goto out_err;
+        }
+
+        if (sd_acl_add_right(acl, &pk, SD_ACL_RIGHT_EXEC) < 0) {
+            sd_log(LOG_LEVEL_ERROR, "Could not add right to ACL");
             goto out_err;
         }
     }
@@ -71,13 +76,11 @@ static int read_whitelist(struct sd_sign_key_public **out, const char *file)
         goto out_err;
 
     fclose(stream);
-    *out = keys;
 
-    return nkeys;
+    return 0;
 
 out_err:
     fclose(stream);
-    free(keys);
     free(line);
 
     return -1;
@@ -134,20 +137,28 @@ static void *handle_connection(void *payload)
         case SD_CONNECTION_TYPE_QUERY:
             sd_log(LOG_LEVEL_DEBUG, "Received query");
 
-            if (sd_proto_answer_query(&args->channel, &service,
-                        &remote_key, whitelistkeys, nwhitelistkeys) < 0)
-            {
+            if (!sd_acl_is_allowed(&query_acl, &remote_key, SD_ACL_RIGHT_EXEC)) {
+                sd_log(LOG_LEVEL_ERROR, "Received unauthorized query");
+                goto out;
+            }
+
+            if (sd_proto_answer_query(&args->channel, &service) < 0) {
                 sd_log(LOG_LEVEL_ERROR, "Received invalid query");
+                goto out;
             }
 
             goto out;
         case SD_CONNECTION_TYPE_REQUEST:
             sd_log(LOG_LEVEL_DEBUG, "Received request");
 
-            if (sd_proto_answer_request(&args->channel,
-                        &remote_key, whitelistkeys, nwhitelistkeys) < 0)
-            {
+            if (!sd_acl_is_allowed(&request_acl, &remote_key, SD_ACL_RIGHT_EXEC)) {
+                sd_log(LOG_LEVEL_ERROR, "Received unauthorized query");
+                goto out;
+            }
+
+            if (sd_proto_answer_request(&args->channel, &remote_key) < 0) {
                 sd_log(LOG_LEVEL_ERROR, "Received invalid request");
+                goto out;
             }
 
             goto out;
@@ -191,8 +202,8 @@ static int setup(struct sd_cfg *cfg, int argc, char *argv[])
              "This is free software; you are free to change and redistribute it.\n"
              "There is NO WARRANTY, to the extent permitted by the law.");
         return 0;
-    } else if (argc < 3 || argc > 4) {
-        printf("USAGE: %s <CONFIG> <SERVICENAME> [<CLIENT_WHITELIST>]\n", argv[0]);
+    } else if (argc < 3 || argc > 5) {
+        printf("USAGE: %s <CONFIG> <SERVICENAME> [<REQUEST_ACL> [<QUERY_ACL>]]\n", argv[0]);
         err = -1;
         goto out;
     }
@@ -207,15 +218,15 @@ static int setup(struct sd_cfg *cfg, int argc, char *argv[])
         goto out;
     }
 
-    if (argc == 4) {
-        err = read_whitelist(&whitelistkeys, argv[3]);
-        if (err < 0) {
-            puts("Could not read client whitelist");
-            goto out;
-        }
-        nwhitelistkeys = err;
-
-        sd_log(LOG_LEVEL_VERBOSE, "Read %d keys from whitelist", nwhitelistkeys);
+    if (argc == 5) {
+        read_acl(&request_acl, argv[3]);
+        read_acl(&query_acl, argv[4]);
+    } else if (argc == 4) {
+        read_acl(&request_acl, argv[3]);
+        sd_acl_add_wildcard(&query_acl, SD_ACL_RIGHT_EXEC);
+    } else {
+        sd_acl_add_wildcard(&request_acl, SD_ACL_RIGHT_EXEC);
+        sd_acl_add_wildcard(&query_acl, SD_ACL_RIGHT_EXEC);
     }
 
     if (setup_signals() < 0) {
@@ -252,7 +263,6 @@ static int setup(struct sd_cfg *cfg, int argc, char *argv[])
 
 out:
     sd_cfg_free(cfg);
-    free(whitelistkeys);
 
     return err;
 }
@@ -264,8 +274,7 @@ int main(int argc, char *argv[])
     int err;
 
     if (setup(&cfg, argc, argv) < 0) {
-        err = -1;
-        goto out;
+        return -1;
     }
 
     if (sd_server_init(&server, NULL, service.port, SD_CHANNEL_TYPE_TCP) < 0) {

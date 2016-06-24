@@ -27,9 +27,6 @@
 
 #include "proto.h"
 
-static int is_whitelisted(const struct sd_sign_key_public *key,
-        const struct sd_sign_key_public *whitelist,
-        size_t nwhitelist);
 static ssize_t convert_params(struct sd_parameter **out,
         Parameter **params,
         size_t nparams);
@@ -305,20 +302,12 @@ int sd_proto_send_query(struct sd_query_results *out,
 }
 
 int sd_proto_answer_query(struct sd_channel *channel,
-        const struct sd_service *service,
-        const struct sd_sign_key_public *remote_key,
-        const struct sd_sign_key_public *whitelist,
-        size_t nwhitelist)
+        const struct sd_service *service)
 {
     ServiceDescription results = SERVICE_DESCRIPTION__INIT;
     Parameter **parameters;
     const struct sd_parameter *params;
     int i, n, err;
-
-    if (!is_whitelisted(remote_key, whitelist, nwhitelist)) {
-        sd_log(LOG_LEVEL_ERROR, "Received connection from unknown signature key");
-        return -1;
-    }
 
     results.name = service->name;
     results.category = service->category;
@@ -398,9 +387,7 @@ static int create_cap(CapabilityMessage **out, uint32_t objectid, uint32_t right
 }
 
 int sd_proto_answer_request(struct sd_channel *channel,
-        const struct sd_sign_key_public *remote_key,
-        const struct sd_sign_key_public *whitelist,
-        size_t nwhitelist)
+        const struct sd_sign_key_public *remote_key)
 {
     SessionRequestMessage *request = NULL;
     SessionMessage session_message = SESSION_MESSAGE__INIT;
@@ -408,11 +395,6 @@ int sd_proto_answer_request(struct sd_channel *channel,
     struct sd_parameter *params = NULL;
     ssize_t nparams = 0;
     uint32_t sessionid;
-
-    if (!is_whitelisted(remote_key, whitelist, nwhitelist)) {
-        sd_log(LOG_LEVEL_ERROR, "Received connection from unknown signature key");
-        return -1;
-    }
 
     if (sd_channel_receive_protobuf(channel,
             &session_request_message__descriptor,
@@ -538,25 +520,6 @@ out:
         session_termination_message__free_unpacked(msg, NULL);
 
     return err;
-}
-
-static int is_whitelisted(const struct sd_sign_key_public *key,
-        const struct sd_sign_key_public *whitelist,
-        size_t nwhitelist)
-{
-    uint32_t i;
-
-    if (nwhitelist == 0) {
-        return 1;
-    }
-
-    for (i = 0; i < nwhitelist; i++) {
-        if (!memcmp(key->data, whitelist[i].data, sizeof(key->data))) {
-            return 1;
-        }
-    }
-
-    return 0;
 }
 
 static ssize_t convert_params(struct sd_parameter **out,

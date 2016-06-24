@@ -42,9 +42,6 @@ struct await_encryption_args {
 struct await_query_args {
     struct await_encryption_args enc_args;
     struct sd_service *s;
-    struct sd_sign_key_public *r;
-    struct sd_sign_key_public *whitelist;
-    size_t nwhitelist;
 };
 
 struct await_request_args {
@@ -123,8 +120,7 @@ static void *await_query(void *payload)
 
     UNUSED(await_encryption(&args->enc_args));
 
-    UNUSED(sd_proto_answer_query(args->enc_args.c, args->s,
-                args->r, args->whitelist, args->nwhitelist));
+    UNUSED(sd_proto_answer_query(args->enc_args.c, args->s));
 
     return NULL;
 }
@@ -135,8 +131,7 @@ static void *await_request(void *payload)
 
     await_encryption(&args->enc_args);
 
-    UNUSED(sd_proto_answer_request(args->enc_args.c,
-                args->r, args->whitelist, args->nwhitelist));
+    UNUSED(sd_proto_answer_request(args->enc_args.c, args->r));
 
     return NULL;
 }
@@ -235,7 +230,7 @@ static void query_succeeds()
 {
     struct sd_thread t;
     struct await_query_args args = {
-        { &remote, &remote_keys }, &service, &local_keys.pk, NULL, 0
+        { &remote, &remote_keys }, &service
     };
     struct sd_query_results results;
 
@@ -260,7 +255,7 @@ static void query_succeeds()
 static void whitelisted_query_succeeds()
 {
     struct await_query_args args = {
-        { &remote, &remote_keys }, &service, &local_keys.pk, &local_keys.pk, 1
+        { &remote, &remote_keys }, &service
     };
     struct sd_thread t;
     struct sd_query_results results;

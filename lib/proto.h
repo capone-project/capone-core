@@ -189,28 +189,14 @@ int sd_proto_send_query(struct sd_query_results *out,
  * associated with the channel. It will send over parameters
  * specified by the service.
  *
- * The function performs some kind of access control. When a
- * whitelist has been specified for the server, we will check if
- * the remot client's long term signature key is contained in the
- * whitelist. If it is not, we will refuse and not answer the
- * query.
- *
  * @param[in] channel Channel connected to the client
  * @param[in] service Service to send query results for
- * @param[in] remote_key Client's long term signature key used
- *            for access control
- * @param[in] whitelist List of long term signature keys allowed
- *            to query the service
- * @param[in] nwhitelist Length of the whitelist
  * @return <code>0</code> on success, <code>-1</code> otherwise
  *
  * \see sd_proto_send_query
  */
 int sd_proto_answer_query(struct sd_channel *channel,
-        const struct sd_service *service,
-        const struct sd_sign_key_public *remote_key,
-        const struct sd_sign_key_public *whitelist,
-        size_t nwhitelist);
+        const struct sd_service *service);
 
 /** @brief Free query results
  *
@@ -254,16 +240,12 @@ int sd_proto_send_request(struct sd_cap *invoker_cap,
  *
  * @pram[in] channel Channel connected to the client
  * @param[in] remote_key Long term signature key of the client
- * @param[in] whitelist Whitelist used to determine access control
- * @param[in] nwhitelist Number of entries in the whitelist
  * @return <code>0</code> on success, <code>-1</code> otherwise
  *
  * \see sd_proto_send_request
  */
 int sd_proto_answer_request(struct sd_channel *channel,
-        const struct sd_sign_key_public *remote_key,
-        const struct sd_sign_key_public *whitelist,
-        size_t nwhitelist);
+        const struct sd_sign_key_public *remote_key);
 
 /** @brief Start a session
  *
