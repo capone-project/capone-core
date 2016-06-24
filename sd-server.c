@@ -179,15 +179,10 @@ out:
     return NULL;
 }
 
-int main(int argc, char *argv[])
+static int setup(struct sd_cfg *cfg, int argc, char *argv[])
 {
     const char *servicename;
-    struct sd_server server;
-    struct sd_cfg cfg;
     int err;
-
-    memset(&server, 0, sizeof(server));
-    memset(&cfg, 0, sizeof(cfg));
 
     if (argc == 2 && !strcmp(argv[1], "--version")) {
         puts("sd-server " VERSION "\n"
@@ -204,7 +199,9 @@ int main(int argc, char *argv[])
 
     servicename = argv[2];
 
-    if (sd_cfg_parse(&cfg, argv[1]) < 0) {
+    memset(&cfg, 0, sizeof(cfg));
+
+    if (sd_cfg_parse(cfg, argv[1]) < 0) {
         puts("Could not parse config");
         err = -1;
         goto out;
@@ -239,14 +236,34 @@ int main(int argc, char *argv[])
         goto out;
     }
 
-    if (sd_service_from_config(&service, servicename, &cfg) < 0) {
+    if (sd_service_from_config(&service, servicename, cfg) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Could not parse services");
         err = -1;
         goto out;
     }
 
-    if (sd_sign_key_pair_from_config(&local_keys, &cfg) < 0) {
+    if (sd_sign_key_pair_from_config(&local_keys, cfg) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Could not parse config");
+        err = -1;
+        goto out;
+    }
+
+    return 0;
+
+out:
+    sd_cfg_free(cfg);
+    free(whitelistkeys);
+
+    return err;
+}
+
+int main(int argc, char *argv[])
+{
+    struct sd_server server;
+    struct sd_cfg cfg;
+    int err;
+
+    if (setup(&cfg, argc, argv) < 0) {
         err = -1;
         goto out;
     }
@@ -278,9 +295,8 @@ int main(int argc, char *argv[])
     }
 
 out:
-    free(whitelistkeys);
     sd_server_close(&server);
     sd_cfg_free(&cfg);
 
-    return 0;
+    return err;
 }
