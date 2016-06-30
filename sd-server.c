@@ -144,8 +144,8 @@ static void *handle_connection(void *payload)
         case SD_CONNECTION_TYPE_REQUEST:
             sd_log(LOG_LEVEL_DEBUG, "Received request");
 
-            if (sd_proto_answer_request(&args->channel, &remote_key,
-                        whitelistkeys, nwhitelistkeys) < 0)
+            if (sd_proto_answer_request(&args->channel,
+                        &remote_key, whitelistkeys, nwhitelistkeys) < 0)
             {
                 sd_log(LOG_LEVEL_ERROR, "Received invalid request");
             }

@@ -40,6 +40,7 @@
 #ifndef SD_LIB_PROTO_H
 #define SD_LIB_PROTO_H
 
+#include "lib/caps.h"
 #include "lib/channel.h"
 #include "lib/service.h"
 
@@ -238,7 +239,8 @@ void sd_query_results_free(struct sd_query_results *results);
  *
  * \see sd_proto_answer_request
  */
-int sd_proto_send_request(uint32_t *sessionid,
+int sd_proto_send_request(struct sd_cap *invoker_cap,
+        struct sd_cap *requester_cap,
         struct sd_channel *channel,
         const struct sd_sign_key_public *invoker,
         const struct sd_parameter *params, size_t nparams);

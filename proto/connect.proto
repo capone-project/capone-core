@@ -11,6 +11,12 @@ message ConnectionInitiationMessage {
     required Type type = 1;
 }
 
+message CapabilityMessage {
+    required uint32 objectid = 1;
+    required uint32 rights = 2;
+    required uint32 secret = 3;
+}
+
 message Parameter {
     required string key = 1;
     optional string value = 2;
@@ -32,7 +38,8 @@ message SessionRequestMessage {
 }
 
 message SessionMessage {
-    required uint32 sessionid = 1;
+    required CapabilityMessage invoker_cap = 1;
+    required CapabilityMessage requester_cap = 2;
 }
 
 message SessionInitiationMessage {

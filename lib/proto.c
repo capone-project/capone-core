@@ -201,7 +201,8 @@ out:
     return 0;
 }
 
-int sd_proto_send_request(uint32_t *sessionid,
+int sd_proto_send_request(struct sd_cap *invoker_cap,
+        struct sd_cap *requester_cap,
         struct sd_channel *channel,
         const struct sd_sign_key_public *invoker,
         const struct sd_parameter *params, size_t nparams)
@@ -227,7 +228,13 @@ int sd_proto_send_request(uint32_t *sessionid,
         goto out;
     }
 
-    *sessionid = session->sessionid;
+    invoker_cap->objectid = session->invoker_cap->objectid;
+    invoker_cap->rights = session->invoker_cap->rights;
+    invoker_cap->secret = session->invoker_cap->secret;
+
+    requester_cap->objectid = session->requester_cap->objectid;
+    requester_cap->rights = session->requester_cap->rights;
+    requester_cap->secret = session->requester_cap->secret;
 
 out:
     if (session)
@@ -349,6 +356,25 @@ void sd_query_results_free(struct sd_query_results *results)
     results->nparams = 0;
 }
 
+static int create_cap(CapabilityMessage **out, uint32_t objectid, uint32_t rights, const struct sd_sign_key_public *key)
+{
+    CapabilityMessage *msg;
+    struct sd_cap cap;
+
+    if (sd_caps_create_reference(&cap, objectid, rights, key) < 0)
+        return -1;
+
+    msg = malloc(sizeof(CapabilityMessage));
+    capability_message__init(msg);
+    msg->objectid = objectid;
+    msg->rights = rights;
+    msg->secret = cap.secret;
+
+    *out = msg;
+
+    return 0;
+}
+
 int sd_proto_answer_request(struct sd_channel *channel,
         const struct sd_sign_key_public *remote_key,
         const struct sd_sign_key_public *whitelist,
@@ -359,10 +385,11 @@ int sd_proto_answer_request(struct sd_channel *channel,
     struct sd_sign_key_public identity_key;
     struct sd_parameter *params = NULL;
     ssize_t nparams = 0;
+    uint32_t sessionid;
 
     if (!is_whitelisted(remote_key, whitelist, nwhitelist)) {
         sd_log(LOG_LEVEL_ERROR, "Received connection from unknown signature key");
-        goto out_err;
+        return -1;
     }
 
     if (sd_channel_receive_protobuf(channel,
@@ -387,16 +414,30 @@ int sd_proto_answer_request(struct sd_channel *channel,
         goto out_err;
     }
 
-    if (sd_sessions_add(&session_message.sessionid,
+    if (sd_sessions_add(&sessionid,
                 remote_key, &identity_key, params, nparams) < 0)
     {
         sd_log(LOG_LEVEL_ERROR, "Unable to add session");
         goto out_err;
     }
 
+    if (sd_caps_add(sessionid) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Unable to add internal capability");
+        goto out_err;
+    }
+
+    if (create_cap(&session_message.invoker_cap, sessionid, SD_CAP_RIGHT_EXEC | SD_CAP_RIGHT_TERM, &identity_key) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Unable to add invoker capability");
+        goto out_err;
+    }
+    if (create_cap(&session_message.requester_cap, sessionid, SD_CAP_RIGHT_TERM, remote_key) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Unable to add invoker capability");
+        goto out_err;
+    }
+
     if (sd_channel_write_protobuf(channel, &session_message.base) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Unable to send connection session");
-        sd_sessions_remove(NULL, session_message.sessionid, &identity_key);
+        sd_caps_delete(sessionid);
         goto out_err;
     }
 

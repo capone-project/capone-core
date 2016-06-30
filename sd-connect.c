@@ -106,10 +106,10 @@ static int cmd_query(int argc, char *argv[])
 static int cmd_request(int argc, char *argv[])
 {
     const char *config, *invoker, *key, *host, *port;
+    struct sd_cap requester_cap, invoker_cap;
     struct sd_sign_key_public invoker_key;
     struct sd_parameter *params = NULL;
     struct sd_channel channel;
-    uint32_t sessionid;
     ssize_t nparams;
 
     memset(&channel, 0, sizeof(channel));
@@ -150,14 +150,19 @@ static int cmd_request(int argc, char *argv[])
         goto out_err;
     }
 
-    if (sd_proto_send_request(&sessionid, &channel,
-                &invoker_key, params, nparams) < 0)
+    if (sd_proto_send_request(&invoker_cap, &requester_cap,
+                &channel, &invoker_key, params, nparams) < 0)
     {
         puts("Unable to request session");
         goto out_err;
     }
 
-    printf("sessionid:  %"PRIu32"\n", sessionid);
+    printf("sessionid:          %"PRIu32"\n"
+           "invoker-secret:     %"PRIu32"\n"
+           "requester-secret:   %"PRIu32"\n",
+           invoker_cap.objectid,
+           invoker_cap.secret,
+           requester_cap.secret);
 
     sd_channel_close(&channel);
 
