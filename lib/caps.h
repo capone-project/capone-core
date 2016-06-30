@@ -34,6 +34,7 @@ struct sd_cap {
 
 int sd_caps_add(uint32_t objectid);
 int sd_caps_delete(uint32_t objectid);
+void sd_caps_clear(void);
 int sd_caps_create_reference(struct sd_cap *out, uint32_t objectid, uint32_t rights, const struct sd_sign_key_public *key);
 int sd_caps_verify(const struct sd_cap *ref, const struct sd_sign_key_public *key, uint32_t rights);
 

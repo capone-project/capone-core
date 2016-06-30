@@ -89,6 +89,7 @@ static int teardown()
     sd_channel_close(&local);
     sd_channel_close(&remote);
     sd_sessions_clear();
+    sd_caps_clear();
     return 0;
 }
 
@@ -397,12 +398,16 @@ static void termination_kills_session()
         &remote, &local_keys.pk
     };
     struct sd_thread t;
+    struct sd_cap cap;
     uint32_t sessionid;
 
     sd_spawn(&t, handle_termination, &args);
 
     assert_success(sd_sessions_add(&sessionid, &local_keys.pk, &remote_keys.pk, NULL, 0));
-    assert_success(sd_proto_initiate_termination(&local, sessionid, &remote_keys.pk));
+    assert_success(sd_caps_add(sessionid));
+    assert_success(sd_caps_create_reference(&cap, sessionid, SD_CAP_RIGHT_TERM, &local_keys.pk));
+
+    assert_success(sd_proto_initiate_termination(&local, &cap));
 
     sd_join(&t, NULL);
 
@@ -415,9 +420,10 @@ static void terminating_nonexistent_does_nothing()
         &remote, &local_keys.pk
     };
     struct sd_thread t;
+    struct sd_cap cap;
 
     sd_spawn(&t, handle_termination, &args);
-    assert_success(sd_proto_initiate_termination(&local, 0, &remote_keys.pk));
+    assert_success(sd_proto_initiate_termination(&local, &cap));
     sd_join(&t, NULL);
 }
 

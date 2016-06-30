@@ -35,7 +35,7 @@ static void usage(const char *prog)
             "\tquery <CONFIG> <SERVICE_KEY> <HOST> <PORT>\n"
             "\trequest <CONFIG> <INVOKER_KEY> <SERVICE_KEY> <HOST> <PORT> [<PARAMETER>...]\n"
             "\tconnect <CONFIG> <SERVICE_KEY> <HOST> <PORT> <SERVICE> <SESSIONID>\n"
-            "\tterminate <CONFIG> <SERVICE_KEY> <HOST> <PORT> <SESSIONID> <INVOKER>\n",
+            "\tterminate <CONFIG> <SERVICE_KEY> <HOST> <PORT> <SESSIONID> <CAPABILITY>\n",
             prog);
     exit(-1);
 }
@@ -235,11 +235,11 @@ static int cmd_connect(int argc, char *argv[])
 
 static int cmd_terminate(int argc, char *argv[])
 {
-    struct sd_sign_key_public remote_key, invoker_key;
+    struct sd_sign_key_public remote_key;
     struct sd_sign_key_pair local_keys;
     struct sd_channel channel;
-    const char *config, *key, *host, *port, *session, *invoker;
-    uint32_t sessionid;
+    struct sd_cap cap;
+    const char *config, *key, *host, *port, *session, *capability;
 
     if (argc != 8)
         usage(argv[0]);
@@ -249,7 +249,7 @@ static int cmd_terminate(int argc, char *argv[])
     host = argv[4];
     port = argv[5];
     session = argv[6];
-    invoker = argv[7];
+    capability = argv[7];
 
     if (sd_sign_key_pair_from_config_file(&local_keys, config) < 0) {
         puts("Could not parse config");
@@ -261,15 +261,15 @@ static int cmd_terminate(int argc, char *argv[])
         return -1;
     }
 
-    if (sd_sign_key_public_from_hex(&invoker_key, invoker) < 0) {
-        puts("Could not parse invoker key");
-        return -1;
-    }
-
-    if (parse_uint32t(&sessionid, session) < 0) {
+    if (parse_uint32t(&cap.objectid, session) < 0) {
         printf("Invalid session ID %s\n", session);
         return -1;
     }
+    if (parse_uint32t(&cap.secret, capability) < 0) {
+        printf("Invalid capability %s\n", session);
+        return -1;
+    }
+    cap.rights = SD_CAP_RIGHT_TERM;
 
     if (sd_proto_initiate_connection(&channel, host, port,
                 &local_keys, &remote_key, SD_CONNECTION_TYPE_TERMINATE) < 0) {
@@ -277,7 +277,7 @@ static int cmd_terminate(int argc, char *argv[])
         return -1;
     }
 
-    if (sd_proto_initiate_termination(&channel, sessionid, &invoker_key) < 0) {
+    if (sd_proto_initiate_termination(&channel, &cap) < 0) {
         puts("Could not initiate termination");
         return -1;
     }

@@ -72,6 +72,18 @@ int sd_caps_add(uint32_t objectid)
     return 0;
 }
 
+void sd_caps_clear(void)
+{
+    struct entry *e, *next;
+
+    for (e = clist.l; e; e = next) {
+        next = e->next;
+        free(e);
+    }
+
+    clist.l = NULL;
+}
+
 int sd_caps_delete(uint32_t objectid)
 {
     struct entry *e, *prev;

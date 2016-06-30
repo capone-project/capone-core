@@ -454,28 +454,34 @@ out_err:
 }
 
 int sd_proto_initiate_termination(struct sd_channel *channel,
-        int sessionid, const struct sd_sign_key_public *invoker)
+        const struct sd_cap *cap)
 {
     SessionTerminationMessage msg = SESSION_TERMINATION_MESSAGE__INIT;
+    int err = 0;
 
-    msg.sessionid  = sessionid;
-    msg.identity.data = (uint8_t *) invoker->data;
-    msg.identity.len = sizeof(invoker->data);
+    msg.capability = malloc(sizeof(CapabilityMessage));
+    capability_message__init(msg.capability);
+    msg.capability->objectid = cap->objectid;
+    msg.capability->secret = cap->secret;
+    msg.capability->rights = cap->rights;
 
-    if (sd_channel_write_protobuf(channel, &msg.base) < 0) {
+    if ((err = sd_channel_write_protobuf(channel, &msg.base)) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Unable to write termination message");
-        return -1;
+        goto out;
     }
 
-    return 0;
+out:
+    capability_message__free_unpacked(msg.capability, NULL);
+
+    return err;
 }
 
 int sd_proto_handle_termination(struct sd_channel *channel,
         const struct sd_sign_key_public *remote_key)
 {
     SessionTerminationMessage *msg = NULL;
-    struct sd_sign_key_public invoker_pk;
     struct sd_session session;
+    struct sd_cap cap;
     int err = 0;
 
     if (sd_channel_receive_protobuf(channel,
@@ -487,25 +493,21 @@ int sd_proto_handle_termination(struct sd_channel *channel,
         goto out;
     }
 
-    if (sd_sign_key_public_from_bin(&invoker_pk,
-            msg->identity.data, msg->identity.len) < 0)
-    {
-        sd_log(LOG_LEVEL_ERROR, "Termination protobuf contains invalid invoker");
-        err = -1;
-        goto out;
-    }
-
     /* If session could not be found we have nothing to do */
-    if (sd_sessions_find(&session, msg->sessionid, &invoker_pk) < 0) {
+    if (sd_sessions_find(&session, msg->capability->objectid, NULL) < 0) {
         goto out;
     }
 
-    /* Skip if session issuer does not match our remote's identity */
-    if (memcmp(&session.issuer, remote_key, sizeof(session.issuer))) {
+    cap.objectid = msg->capability->objectid;
+    cap.rights = msg->capability->rights;
+    cap.secret = msg->capability->secret;
+
+    if (sd_caps_verify(&cap, remote_key, SD_CAP_RIGHT_TERM) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Received unauthorized request");
         goto out;
     }
 
-    if (sd_sessions_remove(NULL, msg->sessionid, &invoker_pk) < 0) {
+    if (sd_sessions_remove(NULL, cap.objectid, NULL) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Unable to terminate session");
         goto out;
     }

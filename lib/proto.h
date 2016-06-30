@@ -312,14 +312,14 @@ int sd_proto_handle_session(struct sd_channel *channel,
  * connection type.
  *
  * @param[in] channel Channel connected to the service.
- * @param[in] sessionid Identifier for the session to terminate
- * @param[in] invoker Invoker of the session to terminate
+ * @param[in] cap Capability granting the ability to terminate an
+ *            object
  * @return <code>0</code> on success, <code>-1</code> otherwise
  *
  * \see sd_proto_handle_termination
  */
 int sd_proto_initiate_termination(struct sd_channel *channel,
-        int sessionid, const struct sd_sign_key_public *invoker);
+        const struct sd_cap *cap);
 
 /** @brief Handle incoming session termination
  *
