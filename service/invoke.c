@@ -54,6 +54,7 @@ static int invoke(struct sd_channel *channel, int argc, char **argv)
 }
 
 static int handle(struct sd_channel *channel,
+        const struct sd_sign_key_public *invoker,
         const struct sd_session *session,
         const struct sd_cfg *cfg)
 {
@@ -68,6 +69,7 @@ static int handle(struct sd_channel *channel,
     size_t nparams;
 
     UNUSED(channel);
+    UNUSED(invoker);
 
     sd_parameters_get_value(&service_identity,
             "service-identity", session->parameters, session->nparameters);

@@ -56,11 +56,15 @@ typedef int (*invoke_fn)(struct sd_channel *channel, int argc, char **argv);
  * This function is invoked on the server-side.
  *
  * @param[in] channel Channel to the remote service
+ * @param[in] invoker Invoker of the session
  * @param[in] session Session associated with the invocation
  * @param[in] cfg Configuration of the server
  * @return <code>0</code> on success, <code>-1</code> otherwise
  */
-typedef int (*handle_fn)(struct sd_channel *channel, const struct sd_session *session, const struct sd_cfg *cfg);
+typedef int (*handle_fn)(struct sd_channel *channel,
+        const struct sd_sign_key_public *invoker,
+        const struct sd_session *session,
+        const struct sd_cfg *cfg);
 
 /** @brief Function retrieving available parameters for a service
  *

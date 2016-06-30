@@ -209,7 +209,7 @@ out_notify:
     if (err)
         goto out;
 
-    if ((err = service->handle(channel, &session, cfg)) < 0) {
+    if ((err = service->handle(channel, remote_key, &session, cfg)) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Service could not handle connection");
         goto out;
     }

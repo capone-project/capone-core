@@ -374,6 +374,7 @@ static int invoke(struct sd_channel *channel, int argc, char **argv)
 }
 
 static int handle_register(struct sd_channel *channel,
+        const struct sd_sign_key_public *invoker,
         const struct sd_session *session)
 {
     struct sd_sign_key_hex hex;
@@ -390,7 +391,7 @@ static int handle_register(struct sd_channel *channel,
     }
 
     memcpy(&c->channel, channel, sizeof(struct sd_channel));
-    memcpy(&c->identity, &session->invoker, sizeof(session->invoker));
+    memcpy(&c->identity, &remote_identity, sizeof(session->invoker));
     c->next = NULL;
 
     sd_sign_key_hex_from_key(&hex, &session->invoker);
@@ -516,6 +517,7 @@ out:
 }
 
 static int handle(struct sd_channel *channel,
+        const struct sd_sign_key_public *remote_identity,
         const struct sd_session *session,
         const struct sd_cfg *cfg)
 {
@@ -531,7 +533,7 @@ static int handle(struct sd_channel *channel,
     }
 
     if (!strcmp(mode, "register")) {
-        return handle_register(channel, session);
+        return handle_register(channel, remote_identity, session);
     } else if (!strcmp(mode, "request")) {
         return handle_request(channel, session);
     } else {

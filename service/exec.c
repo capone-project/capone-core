@@ -102,6 +102,7 @@ static void exec(const char *cmd,
 }
 
 static int handle(struct sd_channel *channel,
+        const struct sd_sign_key_public *invoker,
         const struct sd_session *session,
         const struct sd_cfg *cfg)
 {
@@ -111,6 +112,7 @@ static int handle(struct sd_channel *channel,
     int error = 0;
 
     UNUSED(cfg);
+    UNUSED(invoker);
 
     if (sd_parameters_get_value(&cmd, "command", session->parameters, session->nparameters) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Missing 'command' parameter");
