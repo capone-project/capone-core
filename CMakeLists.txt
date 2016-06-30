@@ -46,6 +46,7 @@ PROTOBUF_GENERATE_C(PROTO_SOURCES PROTO_HEADERS
 
 ADD_LIBRARY(sd SHARED
     lib/bench.c
+    lib/caps.c
     lib/cfg.c
     lib/channel.c
     lib/common.c
