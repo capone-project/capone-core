@@ -43,7 +43,7 @@ message SessionMessage {
 }
 
 message SessionInitiationMessage {
-    required uint32 sessionid = 1;
+    required CapabilityMessage capability = 1;
 }
 
 message SessionTerminationMessage {

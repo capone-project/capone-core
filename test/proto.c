@@ -357,6 +357,7 @@ static void service_connects()
     struct handle_session_args args = {
         { &remote, &remote_keys }, &local_keys.pk, &service, &config
     };
+    struct sd_cap cap;
     struct sd_thread t;
     uint32_t sessionid;
     uint8_t *received;
@@ -365,9 +366,12 @@ static void service_connects()
 
     assert_success(sd_sessions_add(&sessionid, &local_keys.pk, &local_keys.pk,
                 params, ARRAY_SIZE(params)));
+    assert_success(sd_caps_add(sessionid));
+    assert_success(sd_caps_create_reference(&cap, sessionid, SD_CAP_RIGHT_EXEC, &local_keys.pk));
+
     assert_success(sd_proto_initiate_encryption(&local, &local_keys,
                 &remote_keys.pk));
-    assert_success(sd_proto_initiate_session(&local, sessionid));
+    assert_success(sd_proto_initiate_session(&local, &cap));
     assert_success(service.invoke(&local, 0, NULL) < 0);
 
     sd_join(&t, NULL);
@@ -382,12 +386,13 @@ static void connect_refuses_without_session()
         { &remote, &remote_keys }, &local_keys.pk, &service, &config
     };
     struct sd_thread t;
+    struct sd_cap cap;
 
     sd_spawn(&t, handle_session, &args);
 
     assert_success(sd_proto_initiate_encryption(&local, &local_keys,
                 &remote_keys.pk));
-    assert_failure(sd_proto_initiate_session(&local, 1));
+    assert_failure(sd_proto_initiate_session(&local, &cap));
 
     sd_join(&t, NULL);
 }
@@ -401,14 +406,12 @@ static void termination_kills_session()
     struct sd_cap cap;
     uint32_t sessionid;
 
-    sd_spawn(&t, handle_termination, &args);
-
     assert_success(sd_sessions_add(&sessionid, &local_keys.pk, &remote_keys.pk, NULL, 0));
     assert_success(sd_caps_add(sessionid));
     assert_success(sd_caps_create_reference(&cap, sessionid, SD_CAP_RIGHT_TERM, &local_keys.pk));
 
+    sd_spawn(&t, handle_termination, &args);
     assert_success(sd_proto_initiate_termination(&local, &cap));
-
     sd_join(&t, NULL);
 
     assert_failure(sd_sessions_find(NULL, sessionid, &remote_keys.pk));

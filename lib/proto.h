@@ -275,12 +275,13 @@ int sd_proto_answer_request(struct sd_channel *channel,
  * type.
  *
  * @param[in] channel Channel connected to the server
- * @param[in] sessionid Identifier of the session to invoke
+ * @param[in] cap Capability referencing the session
  * @return <code>0</code> on success, <code>-1</code> otherwise
  *
  * \see sd_proto_handle_session
  */
-int sd_proto_initiate_session(struct sd_channel *channel, int sessionid);
+int sd_proto_initiate_session(struct sd_channel *channel,
+        const struct sd_cap *cap);
 
 /** @brief Handle incoming session invocation
  *

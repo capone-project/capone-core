@@ -121,13 +121,19 @@ int sd_proto_receive_connection_type(enum sd_connection_type *out,
     return ret;
 }
 
-int sd_proto_initiate_session(struct sd_channel *channel, int sessionid)
+int sd_proto_initiate_session(struct sd_channel *channel,
+        const struct sd_cap *cap)
 {
     SessionInitiationMessage initiation = SESSION_INITIATION_MESSAGE__INIT;
     SessionResult *result = NULL;
     int ret = 0;
 
-    initiation.sessionid = sessionid;
+    initiation.capability = malloc(sizeof(CapabilityMessage));
+    capability_message__init(initiation.capability);
+    initiation.capability->objectid = cap->objectid;
+    initiation.capability->rights = cap->rights;
+    initiation.capability->secret = cap->secret;
+
     if (sd_channel_write_protobuf(channel, &initiation.base) < 0 ) {
         sd_log(LOG_LEVEL_ERROR, "Could not initiate session");
         ret = -1;
@@ -145,9 +151,12 @@ int sd_proto_initiate_session(struct sd_channel *channel, int sessionid)
 
     if (result->result != 0) {
         ret = -1;
+        goto out;
     }
 
 out:
+    if (initiation.capability)
+        capability_message__free_unpacked(initiation.capability, NULL);
     if (result)
         session_result__free_unpacked(result, NULL);
 
@@ -162,6 +171,7 @@ int sd_proto_handle_session(struct sd_channel *channel,
     SessionInitiationMessage *initiation = NULL;
     SessionResult msg = SESSION_RESULT__INIT;
     struct sd_session session;
+    struct sd_cap cap;
     int err;
 
     memset(&session, 0, sizeof(session));
@@ -174,10 +184,22 @@ int sd_proto_handle_session(struct sd_channel *channel,
         goto out;
     }
 
-    if ((err = sd_sessions_remove(&session, initiation->sessionid, remote_key)) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not find session for client");
+    cap.objectid = initiation->capability->objectid;
+    cap.rights = initiation->capability->rights;
+    cap.secret = initiation->capability->secret;
+
+    if (sd_caps_verify(&cap, remote_key, SD_CAP_RIGHT_EXEC) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Could not authorize session initiation");
+        err = -1;
+        goto out_notify;
     }
 
+    if ((err = sd_sessions_remove(&session, cap.objectid, remote_key)) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Could not find session for client");
+        goto out_notify;
+    }
+
+out_notify:
     msg.result = err;
     if (sd_channel_write_protobuf(channel, &msg.base) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Could not send session ack");

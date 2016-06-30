@@ -34,7 +34,7 @@ static void usage(const char *prog)
     printf("USAGE: %s (query|request|connect|terminate)\n"
             "\tquery <CONFIG> <SERVICE_KEY> <HOST> <PORT>\n"
             "\trequest <CONFIG> <INVOKER_KEY> <SERVICE_KEY> <HOST> <PORT> [<PARAMETER>...]\n"
-            "\tconnect <CONFIG> <SERVICE_KEY> <HOST> <PORT> <SERVICE> <SESSIONID>\n"
+            "\tconnect <CONFIG> <SERVICE_KEY> <HOST> <PORT> <SERVICE> <SESSIONID> <SECRET>\n"
             "\tterminate <CONFIG> <SERVICE_KEY> <HOST> <PORT> <SESSIONID> <CAPABILITY>\n",
             prog);
     exit(-1);
@@ -176,13 +176,13 @@ out_err:
 
 static int cmd_connect(int argc, char *argv[])
 {
-    const char *config, *key, *host, *port, *service_type, *session;
+    const char *config, *key, *host, *port, *service_type, *session, *secret;
     struct sd_sign_key_public remote_key;
     struct sd_service service;
     struct sd_channel channel;
-    uint32_t sessionid;
+    struct sd_cap cap;
 
-    if (argc < 8)
+    if (argc < 9)
         usage(argv[0]);
 
     config = argv[2];
@@ -191,6 +191,7 @@ static int cmd_connect(int argc, char *argv[])
     port = argv[5];
     service_type = argv[6];
     session = argv[7];
+    secret = argv[8];
 
     if (sd_sign_key_pair_from_config_file(&local_keys, config) < 0) {
         puts("Could not parse config");
@@ -207,10 +208,15 @@ static int cmd_connect(int argc, char *argv[])
         return -1;
     }
 
-    if (parse_uint32t(&sessionid, session) < 0) {
+    if (parse_uint32t(&cap.objectid, session) < 0) {
         printf("Invalid session ID %s\n", session);
         return -1;
     }
+    if (parse_uint32t(&cap.secret, secret) < 0) {
+        printf("Invalid secret %s\n", secret);
+        return -1;
+    }
+    cap.rights = SD_CAP_RIGHT_EXEC;
 
     if (sd_proto_initiate_connection(&channel, host, port,
                 &local_keys, &remote_key, SD_CONNECTION_TYPE_CONNECT) < 0) {
@@ -218,7 +224,7 @@ static int cmd_connect(int argc, char *argv[])
         return -1;
     }
 
-    if (sd_proto_initiate_session(&channel, sessionid) < 0) {
+    if (sd_proto_initiate_session(&channel, &cap) < 0) {
         puts("Could not connect to session");
         return -1;
     }
