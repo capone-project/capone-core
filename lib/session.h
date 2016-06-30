@@ -69,11 +69,6 @@ struct sd_session {
     /** @brief Session identifier used to distinguish sessions */
     uint32_t sessionid;
 
-    /** @brief Identity allowed to start the session */
-    struct sd_sign_key_public invoker;
-    /** @brief Identity allowed to revoke the session */
-    struct sd_sign_key_public issuer;
-
     /** @brief Parameters chosen for the session */
     struct sd_parameter *parameters;
     /** @brief Number of parameters */
@@ -92,24 +87,18 @@ int sd_sessions_init(void);
 
 /** @brief Add a new session
  *
- * Add a new session for the given identities and parameters.
- * This will add a new session to the pool of already established
- * sessions.
+ * Add a new session for the parameters. This will add a new
+ * session to the pool of already established sessions.
  *
  * This function may fail if a session with the same session
  * identifier and invoker has already been specified.
  *
  * @param[out] out The ID of the newly created session.
- * @param[in] issuer Identity of the session creator.
- * @param[in] invoker Identity of the entity able to start the
- *            session.
  * @param[in] params Parameters for the session.
  * @param[in] nparams Number of parameters.
  * @return <code>0</code> on success, <code>-1</code> otherwise
  */
 int sd_sessions_add(uint32_t *out,
-        const struct sd_sign_key_public *issuer,
-        const struct sd_sign_key_public *invoker,
         const struct sd_parameter *params,
         size_t nparams);
 
@@ -120,29 +109,22 @@ int sd_sessions_add(uint32_t *out,
  *
  * @param[out] out Pointer to store removed session at. May be
  *             <code>NULL</code>.
- * @param[in] sessionid Session identifier to search for.
  * @param[in] identity Session invoker to search for.
  * @return <code>0</code> on success, <code>-1</code> otherwise
  */
-int sd_sessions_remove(struct sd_session *out,
-        uint32_t sessionid,
-        const struct sd_sign_key_public *identity);
+int sd_sessions_remove(struct sd_session *out, uint32_t sessionid);
 
-/** @brief Find a session by identifier and invoker
+/** @brief Find a session by identifier
  *
  * Finds a session which matches the given session identifier and
  * the session's invoker.
  *
  * @param[out] out Pointer to store found session at.
- * @param[in] sessionid Session identifier to search for. May be
- *            <code>NULL</code>.
- * @param[in] identity Session invoker to search for.
+ * @param[in] sessionid Session identifier to search for.
  * @return <code>0</code> if the session has been found,
  *         <code>-1</code> otherwise
  */
-int sd_sessions_find(struct sd_session *out,
-        uint32_t sessionid,
-        const struct sd_sign_key_public *identity);
+int sd_sessions_find(struct sd_session *out, uint32_t sessionid);
 
 /** @brief Remove all established sessions
  *

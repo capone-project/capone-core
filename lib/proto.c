@@ -194,7 +194,7 @@ int sd_proto_handle_session(struct sd_channel *channel,
         goto out_notify;
     }
 
-    if ((err = sd_sessions_remove(&session, cap.objectid, remote_key)) < 0) {
+    if ((err = sd_sessions_remove(&session, cap.objectid)) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Could not find session for client");
         goto out_notify;
     }
@@ -436,8 +436,7 @@ int sd_proto_answer_request(struct sd_channel *channel,
         goto out_err;
     }
 
-    if (sd_sessions_add(&sessionid,
-                remote_key, &identity_key, params, nparams) < 0)
+    if (sd_sessions_add(&sessionid, params, nparams) < 0)
     {
         sd_log(LOG_LEVEL_ERROR, "Unable to add session");
         goto out_err;
@@ -516,7 +515,7 @@ int sd_proto_handle_termination(struct sd_channel *channel,
     }
 
     /* If session could not be found we have nothing to do */
-    if (sd_sessions_find(&session, msg->capability->objectid, NULL) < 0) {
+    if (sd_sessions_find(&session, msg->capability->objectid) < 0) {
         goto out;
     }
 
@@ -529,7 +528,7 @@ int sd_proto_handle_termination(struct sd_channel *channel,
         goto out;
     }
 
-    if (sd_sessions_remove(NULL, cap.objectid, NULL) < 0) {
+    if (sd_sessions_remove(NULL, cap.objectid) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Unable to terminate session");
         goto out;
     }

@@ -374,8 +374,7 @@ static int invoke(struct sd_channel *channel, int argc, char **argv)
 }
 
 static int handle_register(struct sd_channel *channel,
-        const struct sd_sign_key_public *invoker,
-        const struct sd_session *session)
+        const struct sd_sign_key_public *invoker)
 {
     struct sd_sign_key_hex hex;
     struct registrant *c;
@@ -391,10 +390,10 @@ static int handle_register(struct sd_channel *channel,
     }
 
     memcpy(&c->channel, channel, sizeof(struct sd_channel));
-    memcpy(&c->identity, &remote_identity, sizeof(session->invoker));
+    memcpy(&c->identity, &invoker, sizeof(struct sd_sign_key_public));
     c->next = NULL;
 
-    sd_sign_key_hex_from_key(&hex, &session->invoker);
+    sd_sign_key_hex_from_key(&hex, invoker);
     sd_log(LOG_LEVEL_DEBUG, "Identity %s registered", hex.data);
     sd_log(LOG_LEVEL_VERBOSE, "%d identities registered", n + 1);
 
@@ -406,6 +405,7 @@ static int handle_register(struct sd_channel *channel,
 }
 
 static int handle_request(struct sd_channel *channel,
+        const struct sd_sign_key_public *invoker,
         const struct sd_session *session)
 {
     CapabilityRequest request = CAPABILITY_REQUEST__INIT;
@@ -472,10 +472,10 @@ static int handle_request(struct sd_channel *channel,
         goto out;
     }
 
-    request.requester_identity.data = (uint8_t *) session->invoker.data;
-    request.requester_identity.len = sizeof(session->invoker.data);
-    request.invoker_identity.data = (uint8_t *) invoker_identity.data;
-    request.invoker_identity.len = sizeof(invoker_identity.data);
+    request.requester_identity.data = (uint8_t *) invoker->data;
+    request.requester_identity.len = sizeof(invoker->data);
+    request.invoker_identity.data = (uint8_t *) invoker->data;
+    request.invoker_identity.len = sizeof(invoker->data);
 
     request.service_identity.data = (uint8_t *) service_identity.data;
     request.service_identity.len = sizeof(service_identity.data);
@@ -517,7 +517,7 @@ out:
 }
 
 static int handle(struct sd_channel *channel,
-        const struct sd_sign_key_public *remote_identity,
+        const struct sd_sign_key_public *invoker,
         const struct sd_session *session,
         const struct sd_cfg *cfg)
 {
@@ -533,9 +533,9 @@ static int handle(struct sd_channel *channel,
     }
 
     if (!strcmp(mode, "register")) {
-        return handle_register(channel, remote_identity, session);
+        return handle_register(channel, invoker);
     } else if (!strcmp(mode, "request")) {
-        return handle_request(channel, session);
+        return handle_request(channel, invoker, session);
     } else {
         sd_log(LOG_LEVEL_ERROR, "Unable to handle connection mode '%s'", mode);
         return -1;

@@ -292,10 +292,8 @@ static void request_constructs_session()
     assert_success(sd_proto_send_request(&invoker, &requester, &local, &local_keys.pk, params, ARRAY_SIZE(params)));
     sd_join(&t, NULL);
 
-    assert_success(sd_sessions_remove(&added, invoker.objectid, &local_keys.pk));
+    assert_success(sd_sessions_remove(&added, invoker.objectid));
     assert_int_equal(invoker.objectid, added.sessionid);
-    assert_memory_equal(&local_keys.pk, &added.invoker, sizeof(local_keys.pk));
-    assert_memory_equal(&local_keys.pk, &added.issuer, sizeof(local_keys.pk));
 
     sd_session_free(&added);
 }
@@ -314,11 +312,9 @@ static void request_without_params_succeeds()
     assert_success(sd_proto_send_request(&invoker, &requester, &local, &local_keys.pk, NULL, 0));
     sd_join(&t, NULL);
 
-    assert_success(sd_sessions_remove(&added, invoker.objectid, &local_keys.pk));
+    assert_success(sd_sessions_remove(&added, invoker.objectid));
     assert_int_equal(invoker.objectid, added.sessionid);
     assert_int_equal(added.nparameters, 0);
-    assert_memory_equal(&local_keys.pk, &added.issuer, sizeof(local_keys.pk));
-    assert_memory_equal(&local_keys.pk, &added.invoker, sizeof(local_keys.pk));
 
     sd_session_free(&added);
 }
@@ -341,10 +337,8 @@ static void whitlisted_request_constructs_session()
     assert_success(sd_proto_send_request(&invoker, &requester, &local, &local_keys.pk, params, ARRAY_SIZE(params)));
     sd_join(&t, NULL);
 
-    assert_success(sd_sessions_remove(&added, invoker.objectid, &local_keys.pk));
+    assert_success(sd_sessions_remove(&added, invoker.objectid));
     assert_int_equal(invoker.objectid, added.sessionid);
-    assert_memory_equal(&local_keys.pk, &added.issuer, sizeof(local_keys.pk));
-    assert_memory_equal(&local_keys.pk, &added.invoker, sizeof(local_keys.pk));
 
     sd_session_free(&added);
 }
@@ -364,8 +358,7 @@ static void service_connects()
 
     sd_spawn(&t, handle_session, &args);
 
-    assert_success(sd_sessions_add(&sessionid, &local_keys.pk, &local_keys.pk,
-                params, ARRAY_SIZE(params)));
+    assert_success(sd_sessions_add(&sessionid, params, ARRAY_SIZE(params)));
     assert_success(sd_caps_add(sessionid));
     assert_success(sd_caps_create_reference(&cap, sessionid, SD_CAP_RIGHT_EXEC, &local_keys.pk));
 
@@ -406,7 +399,7 @@ static void termination_kills_session()
     struct sd_cap cap;
     uint32_t sessionid;
 
-    assert_success(sd_sessions_add(&sessionid, &local_keys.pk, &remote_keys.pk, NULL, 0));
+    assert_success(sd_sessions_add(&sessionid, NULL, 0));
     assert_success(sd_caps_add(sessionid));
     assert_success(sd_caps_create_reference(&cap, sessionid, SD_CAP_RIGHT_TERM, &local_keys.pk));
 
@@ -414,7 +407,7 @@ static void termination_kills_session()
     assert_success(sd_proto_initiate_termination(&local, &cap));
     sd_join(&t, NULL);
 
-    assert_failure(sd_sessions_find(NULL, sessionid, &remote_keys.pk));
+    assert_failure(sd_sessions_find(NULL, sessionid));
 }
 
 static void terminating_nonexistent_does_nothing()
