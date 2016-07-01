@@ -1,13 +1,20 @@
 syntax = "proto2";
 
-message EphemeralKey {
-    required bytes signature = 1;
-    required bytes sign_pk = 2;
-    required bytes ephm_pk = 3;
+message InitiatorKey {
+    required bytes sign_pk = 1;
+    required bytes ephm_pk = 2;
+    required uint32 sessionid = 3;
 }
 
-message SignedKeys {
-    required bytes signature = 1;
-    required bytes sender_pk = 2;
-    required bytes receiver_pk = 3;
+message ResponderKey {
+    required bytes sign_pk = 1;
+    required bytes ephm_pk = 2;
+    required uint32 sessionid = 3;
+    required bytes signature = 4;
+}
+
+message AcknowledgeKey {
+    required bytes sign_pk = 1;
+    required uint32 sessionid = 2;
+    required bytes signature = 3;
 }
