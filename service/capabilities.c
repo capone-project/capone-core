@@ -177,12 +177,12 @@ static int relay_capability_request(struct sd_channel *channel,
         const CapabilityRequest *request,
         const struct sd_cfg *cfg)
 {
-    Capability cap = CAPABILITY__INIT;
+    Capability cap_message = CAPABILITY__INIT;
     char *host = NULL, *port = NULL;
     struct sd_channel service_channel;
     struct sd_sign_key_pair local_keys;
     struct sd_sign_key_public service_key, invoker_key;
-    struct sd_session session;
+    struct sd_cap requester_cap, invoker_cap;
     struct sd_parameter *params = NULL;
     size_t i;
     int ret = 0;
@@ -214,21 +214,26 @@ static int relay_capability_request(struct sd_channel *channel,
         goto out;
     }
 
-    if ((ret = sd_proto_send_request(&cap.sessionid, &service_channel, &invoker_key,
+    if ((ret = sd_proto_send_request(&invoker_cap, &requester_cap,
+                    &service_channel, &invoker_key,
                     params, request->n_parameters)) < 0)
     {
         sd_log(LOG_LEVEL_ERROR, "Unable to send request to remote service");
         goto out;
     }
 
-    cap.sessionid = session.sessionid;
-    cap.requestid = request->requestid;
-    cap.identity.data = invoker_key.data;
-    cap.identity.len = sizeof(invoker_key.data);
-    cap.service.data = service_key.data;
-    cap.service.len = sizeof(service_key.data);
+    cap_message.requestid = request->requestid;
+    cap_message.identity.data = invoker_key.data;
+    cap_message.identity.len = sizeof(invoker_key.data);
+    cap_message.service.data = service_key.data;
+    cap_message.service.len = sizeof(service_key.data);
 
-    if ((ret = sd_channel_write_protobuf(channel, &cap.base)) < 0) {
+    cap_message.capability = malloc(sizeof(CapabilityMessage));
+    cap_message.capability->objectid = invoker_cap.objectid;
+    cap_message.capability->rights = invoker_cap.rights;
+    cap_message.capability->secret = invoker_cap.secret;
+
+    if ((ret = sd_channel_write_protobuf(channel, &cap_message.base)) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Unable to send requested capability");
         goto out;
     }
@@ -340,8 +345,11 @@ static int invoke_request(struct sd_channel *channel)
 
     printf("identity:   %s\n"
            "service:    %s\n"
-           "sessionid:  %"PRIu32"\n",
-           identity_hex.data, service_hex.data, capability->sessionid);
+           "sessionid:  %"PRIu32"\n"
+           "secret:     %"PRIu32"\n",
+           identity_hex.data, service_hex.data,
+           capability->capability->objectid,
+           capability->capability->secret);
 
     capability__free_unpacked(capability, NULL);
 
@@ -366,7 +374,7 @@ static int invoke(struct sd_channel *channel, int argc, char **argv)
 }
 
 static int handle_register(struct sd_channel *channel,
-        const struct sd_session *session)
+        const struct sd_sign_key_public *invoker)
 {
     struct sd_sign_key_hex hex;
     struct registrant *c;
@@ -382,10 +390,10 @@ static int handle_register(struct sd_channel *channel,
     }
 
     memcpy(&c->channel, channel, sizeof(struct sd_channel));
-    memcpy(&c->identity, &session->invoker, sizeof(session->invoker));
+    memcpy(&c->identity, &invoker, sizeof(struct sd_sign_key_public));
     c->next = NULL;
 
-    sd_sign_key_hex_from_key(&hex, &session->invoker);
+    sd_sign_key_hex_from_key(&hex, invoker);
     sd_log(LOG_LEVEL_DEBUG, "Identity %s registered", hex.data);
     sd_log(LOG_LEVEL_VERBOSE, "%d identities registered", n + 1);
 
@@ -397,6 +405,7 @@ static int handle_register(struct sd_channel *channel,
 }
 
 static int handle_request(struct sd_channel *channel,
+        const struct sd_sign_key_public *invoker,
         const struct sd_session *session)
 {
     CapabilityRequest request = CAPABILITY_REQUEST__INIT;
@@ -463,10 +472,10 @@ static int handle_request(struct sd_channel *channel,
         goto out;
     }
 
-    request.requester_identity.data = (uint8_t *) session->invoker.data;
-    request.requester_identity.len = sizeof(session->invoker.data);
-    request.invoker_identity.data = (uint8_t *) invoker_identity.data;
-    request.invoker_identity.len = sizeof(invoker_identity.data);
+    request.requester_identity.data = (uint8_t *) invoker->data;
+    request.requester_identity.len = sizeof(invoker->data);
+    request.invoker_identity.data = (uint8_t *) invoker->data;
+    request.invoker_identity.len = sizeof(invoker->data);
 
     request.service_identity.data = (uint8_t *) service_identity.data;
     request.service_identity.len = sizeof(service_identity.data);
@@ -508,6 +517,7 @@ out:
 }
 
 static int handle(struct sd_channel *channel,
+        const struct sd_sign_key_public *invoker,
         const struct sd_session *session,
         const struct sd_cfg *cfg)
 {
@@ -523,9 +533,9 @@ static int handle(struct sd_channel *channel,
     }
 
     if (!strcmp(mode, "register")) {
-        return handle_register(channel, session);
+        return handle_register(channel, invoker);
     } else if (!strcmp(mode, "request")) {
-        return handle_request(channel, session);
+        return handle_request(channel, invoker, session);
     } else {
         sd_log(LOG_LEVEL_ERROR, "Unable to handle connection mode '%s'", mode);
         return -1;

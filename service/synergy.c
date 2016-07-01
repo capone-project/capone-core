@@ -94,6 +94,7 @@ out:
 }
 
 static int handle(struct sd_channel *channel,
+        const struct sd_sign_key_public *invoker,
         const struct sd_session *session,
         const struct sd_cfg *cfg)
 {
@@ -112,6 +113,7 @@ static int handle(struct sd_channel *channel,
 
     UNUSED(cfg);
     UNUSED(session);
+    UNUSED(invoker);
 
     if (sd_server_init(&server, "127.0.0.1", NULL, SD_CHANNEL_TYPE_TCP) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Could not initialize synergy relay socket");

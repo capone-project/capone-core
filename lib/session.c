@@ -39,8 +39,6 @@ int sd_sessions_init(void)
 }
 
 int sd_sessions_add(uint32_t *out,
-        const struct sd_sign_key_public *issuer,
-        const struct sd_sign_key_public *invoker,
         const struct sd_parameter *params,
         size_t nparams)
 {
@@ -66,8 +64,6 @@ int sd_sessions_add(uint32_t *out,
     sessions[i].sessionid = id;
     *out = id;
 
-    memcpy(sessions[i].issuer.data, issuer->data, sizeof(issuer->data));
-    memcpy(sessions[i].invoker.data, invoker->data, sizeof(invoker->data));
     sessions[i].nparameters = sd_parameters_dup(&sessions[i].parameters,
             params, nparams);
 
@@ -76,15 +72,13 @@ int sd_sessions_add(uint32_t *out,
     return 0;
 }
 
-int sd_sessions_remove(struct sd_session *out,
-        uint32_t sessionid,
-        const struct sd_sign_key_public *invoker)
+int sd_sessions_remove(struct sd_session *out, uint32_t sessionid)
 {
     ssize_t i;
 
     pthread_mutex_lock(&mutex);
 
-    i = sd_sessions_find(out, sessionid, invoker);
+    i = sd_sessions_find(out, sessionid);
     if (i >= 0) {
         memset(&sessions[i], 0, sizeof(struct sd_session));
         used[i] = 0;
@@ -100,9 +94,7 @@ int sd_sessions_remove(struct sd_session *out,
     return 0;
 }
 
-int sd_sessions_find(struct sd_session *out,
-        uint32_t sessionid,
-        const struct sd_sign_key_public *invoker)
+int sd_sessions_find(struct sd_session *out, uint32_t sessionid)
 {
     size_t i;
 
@@ -113,9 +105,7 @@ int sd_sessions_find(struct sd_session *out,
             continue;
 
         s = &sessions[i];
-        if (s->sessionid == sessionid &&
-                memcmp(s->invoker.data, invoker->data, sizeof(invoker->data)) == 0)
-        {
+        if (s->sessionid == sessionid) {
             if (out)
                 memcpy(out, s, sizeof(struct sd_session));
 

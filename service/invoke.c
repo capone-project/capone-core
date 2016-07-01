@@ -54,20 +54,22 @@ static int invoke(struct sd_channel *channel, int argc, char **argv)
 }
 
 static int handle(struct sd_channel *channel,
+        const struct sd_sign_key_public *invoker,
         const struct sd_session *session,
         const struct sd_cfg *cfg)
 {
     const char *service_identity, *service_address, *service_type,
-          *service_port, *sessionid_string;
+          *service_port, *sessionid_string, *secret_string;
     const char **service_params = NULL;
     struct sd_service service;
     struct sd_sign_key_pair local_keys;
     struct sd_sign_key_public remote_key;
     struct sd_channel remote_channel;
-    uint32_t sessionid;
+    struct sd_cap cap;
     size_t nparams;
 
     UNUSED(channel);
+    UNUSED(invoker);
 
     sd_parameters_get_value(&service_identity,
             "service-identity", session->parameters, session->nparameters);
@@ -79,12 +81,14 @@ static int handle(struct sd_channel *channel,
             "service-type", session->parameters, session->nparameters);
     sd_parameters_get_value(&sessionid_string,
             "sessionid", session->parameters, session->nparameters);
+    sd_parameters_get_value(&secret_string,
+            "secret", session->parameters, session->nparameters);
 
     nparams = sd_parameters_get_values(&service_params,
             "service-args", session->parameters, session->nparameters);
 
     if (service_identity == NULL || service_address == NULL || service_type == NULL
-            || service_port == NULL || sessionid_string == NULL)
+            || service_port == NULL || sessionid_string == NULL || secret_string == NULL)
     {
         sd_log(LOG_LEVEL_ERROR, "Not all parameters were set");
         goto out;
@@ -100,8 +104,13 @@ static int handle(struct sd_channel *channel,
         goto out;
     }
 
-    if (parse_uint32t(&sessionid, sessionid_string) < 0) {
+    if (parse_uint32t(&cap.objectid, sessionid_string) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Invalid session ID");
+        goto out;
+    }
+
+    if (parse_uint32t(&cap.secret, secret_string) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Invalid secret");
         goto out;
     }
 
@@ -116,7 +125,7 @@ static int handle(struct sd_channel *channel,
         goto out;
     }
 
-    if (sd_proto_initiate_session(&remote_channel, sessionid) < 0) {
+    if (sd_proto_initiate_session(&remote_channel, &cap) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Could not connect to session");
         goto out;
     }

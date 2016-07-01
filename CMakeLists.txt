@@ -45,7 +45,9 @@ PROTOBUF_GENERATE_C(PROTO_SOURCES PROTO_HEADERS
     proto/test.proto)
 
 ADD_LIBRARY(sd SHARED
+    lib/acl.c
     lib/bench.c
+    lib/caps.c
     lib/cfg.c
     lib/channel.c
     lib/common.c
@@ -85,6 +87,7 @@ ADD_EXECUTABLE(sd-server sd-server.c)
 TARGET_LINK_LIBRARIES(sd-server sd)
 
 ADD_EXECUTABLE(sd-test sd-test.c
+    test/acl.c
     test/cfg.c
     test/channel.c
     test/common.c

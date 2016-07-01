@@ -27,9 +27,6 @@
 
 #include "proto.h"
 
-static int is_whitelisted(const struct sd_sign_key_public *key,
-        const struct sd_sign_key_public *whitelist,
-        size_t nwhitelist);
 static ssize_t convert_params(struct sd_parameter **out,
         Parameter **params,
         size_t nparams);
@@ -121,13 +118,19 @@ int sd_proto_receive_connection_type(enum sd_connection_type *out,
     return ret;
 }
 
-int sd_proto_initiate_session(struct sd_channel *channel, int sessionid)
+int sd_proto_initiate_session(struct sd_channel *channel,
+        const struct sd_cap *cap)
 {
     SessionInitiationMessage initiation = SESSION_INITIATION_MESSAGE__INIT;
     SessionResult *result = NULL;
     int ret = 0;
 
-    initiation.sessionid = sessionid;
+    initiation.capability = malloc(sizeof(CapabilityMessage));
+    capability_message__init(initiation.capability);
+    initiation.capability->objectid = cap->objectid;
+    initiation.capability->rights = cap->rights;
+    initiation.capability->secret = cap->secret;
+
     if (sd_channel_write_protobuf(channel, &initiation.base) < 0 ) {
         sd_log(LOG_LEVEL_ERROR, "Could not initiate session");
         ret = -1;
@@ -145,9 +148,12 @@ int sd_proto_initiate_session(struct sd_channel *channel, int sessionid)
 
     if (result->result != 0) {
         ret = -1;
+        goto out;
     }
 
 out:
+    if (initiation.capability)
+        capability_message__free_unpacked(initiation.capability, NULL);
     if (result)
         session_result__free_unpacked(result, NULL);
 
@@ -162,6 +168,7 @@ int sd_proto_handle_session(struct sd_channel *channel,
     SessionInitiationMessage *initiation = NULL;
     SessionResult msg = SESSION_RESULT__INIT;
     struct sd_session session;
+    struct sd_cap cap;
     int err;
 
     memset(&session, 0, sizeof(session));
@@ -174,10 +181,22 @@ int sd_proto_handle_session(struct sd_channel *channel,
         goto out;
     }
 
-    if ((err = sd_sessions_remove(&session, initiation->sessionid, remote_key)) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not find session for client");
+    cap.objectid = initiation->capability->objectid;
+    cap.rights = initiation->capability->rights;
+    cap.secret = initiation->capability->secret;
+
+    if (sd_caps_verify(&cap, remote_key, SD_CAP_RIGHT_EXEC) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Could not authorize session initiation");
+        err = -1;
+        goto out_notify;
     }
 
+    if ((err = sd_sessions_remove(&session, cap.objectid)) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Could not find session for client");
+        goto out_notify;
+    }
+
+out_notify:
     msg.result = err;
     if (sd_channel_write_protobuf(channel, &msg.base) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Could not send session ack");
@@ -187,7 +206,7 @@ int sd_proto_handle_session(struct sd_channel *channel,
     if (err)
         goto out;
 
-    if ((err = service->handle(channel, &session, cfg)) < 0) {
+    if ((err = service->handle(channel, remote_key, &session, cfg)) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Service could not handle connection");
         goto out;
     }
@@ -201,7 +220,8 @@ out:
     return 0;
 }
 
-int sd_proto_send_request(uint32_t *sessionid,
+int sd_proto_send_request(struct sd_cap *invoker_cap,
+        struct sd_cap *requester_cap,
         struct sd_channel *channel,
         const struct sd_sign_key_public *invoker,
         const struct sd_parameter *params, size_t nparams)
@@ -227,7 +247,13 @@ int sd_proto_send_request(uint32_t *sessionid,
         goto out;
     }
 
-    *sessionid = session->sessionid;
+    invoker_cap->objectid = session->invoker_cap->objectid;
+    invoker_cap->rights = session->invoker_cap->rights;
+    invoker_cap->secret = session->invoker_cap->secret;
+
+    requester_cap->objectid = session->requester_cap->objectid;
+    requester_cap->rights = session->requester_cap->rights;
+    requester_cap->secret = session->requester_cap->secret;
 
 out:
     if (session)
@@ -276,20 +302,12 @@ int sd_proto_send_query(struct sd_query_results *out,
 }
 
 int sd_proto_answer_query(struct sd_channel *channel,
-        const struct sd_service *service,
-        const struct sd_sign_key_public *remote_key,
-        const struct sd_sign_key_public *whitelist,
-        size_t nwhitelist)
+        const struct sd_service *service)
 {
     ServiceDescription results = SERVICE_DESCRIPTION__INIT;
     Parameter **parameters;
     const struct sd_parameter *params;
     int i, n, err;
-
-    if (!is_whitelisted(remote_key, whitelist, nwhitelist)) {
-        sd_log(LOG_LEVEL_ERROR, "Received connection from unknown signature key");
-        return -1;
-    }
 
     results.name = service->name;
     results.category = service->category;
@@ -349,21 +367,34 @@ void sd_query_results_free(struct sd_query_results *results)
     results->nparams = 0;
 }
 
+static int create_cap(CapabilityMessage **out, uint32_t objectid, uint32_t rights, const struct sd_sign_key_public *key)
+{
+    CapabilityMessage *msg;
+    struct sd_cap cap;
+
+    if (sd_caps_create_reference(&cap, objectid, rights, key) < 0)
+        return -1;
+
+    msg = malloc(sizeof(CapabilityMessage));
+    capability_message__init(msg);
+    msg->objectid = objectid;
+    msg->rights = rights;
+    msg->secret = cap.secret;
+
+    *out = msg;
+
+    return 0;
+}
+
 int sd_proto_answer_request(struct sd_channel *channel,
-        const struct sd_sign_key_public *remote_key,
-        const struct sd_sign_key_public *whitelist,
-        size_t nwhitelist)
+        const struct sd_sign_key_public *remote_key)
 {
     SessionRequestMessage *request = NULL;
     SessionMessage session_message = SESSION_MESSAGE__INIT;
     struct sd_sign_key_public identity_key;
     struct sd_parameter *params = NULL;
     ssize_t nparams = 0;
-
-    if (!is_whitelisted(remote_key, whitelist, nwhitelist)) {
-        sd_log(LOG_LEVEL_ERROR, "Received connection from unknown signature key");
-        goto out_err;
-    }
+    uint32_t sessionid;
 
     if (sd_channel_receive_protobuf(channel,
             &session_request_message__descriptor,
@@ -387,16 +418,29 @@ int sd_proto_answer_request(struct sd_channel *channel,
         goto out_err;
     }
 
-    if (sd_sessions_add(&session_message.sessionid,
-                remote_key, &identity_key, params, nparams) < 0)
+    if (sd_sessions_add(&sessionid, params, nparams) < 0)
     {
         sd_log(LOG_LEVEL_ERROR, "Unable to add session");
         goto out_err;
     }
 
+    if (sd_caps_add(sessionid) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Unable to add internal capability");
+        goto out_err;
+    }
+
+    if (create_cap(&session_message.invoker_cap, sessionid, SD_CAP_RIGHT_EXEC | SD_CAP_RIGHT_TERM, &identity_key) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Unable to add invoker capability");
+        goto out_err;
+    }
+    if (create_cap(&session_message.requester_cap, sessionid, SD_CAP_RIGHT_TERM, remote_key) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Unable to add invoker capability");
+        goto out_err;
+    }
+
     if (sd_channel_write_protobuf(channel, &session_message.base) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Unable to send connection session");
-        sd_sessions_remove(NULL, session_message.sessionid, &identity_key);
+        sd_caps_delete(sessionid);
         goto out_err;
     }
 
@@ -413,28 +457,34 @@ out_err:
 }
 
 int sd_proto_initiate_termination(struct sd_channel *channel,
-        int sessionid, const struct sd_sign_key_public *invoker)
+        const struct sd_cap *cap)
 {
     SessionTerminationMessage msg = SESSION_TERMINATION_MESSAGE__INIT;
+    int err = 0;
 
-    msg.sessionid  = sessionid;
-    msg.identity.data = (uint8_t *) invoker->data;
-    msg.identity.len = sizeof(invoker->data);
+    msg.capability = malloc(sizeof(CapabilityMessage));
+    capability_message__init(msg.capability);
+    msg.capability->objectid = cap->objectid;
+    msg.capability->secret = cap->secret;
+    msg.capability->rights = cap->rights;
 
-    if (sd_channel_write_protobuf(channel, &msg.base) < 0) {
+    if ((err = sd_channel_write_protobuf(channel, &msg.base)) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Unable to write termination message");
-        return -1;
+        goto out;
     }
 
-    return 0;
+out:
+    capability_message__free_unpacked(msg.capability, NULL);
+
+    return err;
 }
 
 int sd_proto_handle_termination(struct sd_channel *channel,
         const struct sd_sign_key_public *remote_key)
 {
     SessionTerminationMessage *msg = NULL;
-    struct sd_sign_key_public invoker_pk;
     struct sd_session session;
+    struct sd_cap cap;
     int err = 0;
 
     if (sd_channel_receive_protobuf(channel,
@@ -446,25 +496,21 @@ int sd_proto_handle_termination(struct sd_channel *channel,
         goto out;
     }
 
-    if (sd_sign_key_public_from_bin(&invoker_pk,
-            msg->identity.data, msg->identity.len) < 0)
-    {
-        sd_log(LOG_LEVEL_ERROR, "Termination protobuf contains invalid invoker");
-        err = -1;
-        goto out;
-    }
-
     /* If session could not be found we have nothing to do */
-    if (sd_sessions_find(&session, msg->sessionid, &invoker_pk) < 0) {
+    if (sd_sessions_find(&session, msg->capability->objectid) < 0) {
         goto out;
     }
 
-    /* Skip if session issuer does not match our remote's identity */
-    if (memcmp(&session.issuer, remote_key, sizeof(session.issuer))) {
+    cap.objectid = msg->capability->objectid;
+    cap.rights = msg->capability->rights;
+    cap.secret = msg->capability->secret;
+
+    if (sd_caps_verify(&cap, remote_key, SD_CAP_RIGHT_TERM) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Received unauthorized request");
         goto out;
     }
 
-    if (sd_sessions_remove(NULL, msg->sessionid, &invoker_pk) < 0) {
+    if (sd_sessions_remove(NULL, cap.objectid) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Unable to terminate session");
         goto out;
     }
@@ -474,25 +520,6 @@ out:
         session_termination_message__free_unpacked(msg, NULL);
 
     return err;
-}
-
-static int is_whitelisted(const struct sd_sign_key_public *key,
-        const struct sd_sign_key_public *whitelist,
-        size_t nwhitelist)
-{
-    uint32_t i;
-
-    if (nwhitelist == 0) {
-        return 1;
-    }
-
-    for (i = 0; i < nwhitelist; i++) {
-        if (!memcmp(key->data, whitelist[i].data, sizeof(key->data))) {
-            return 1;
-        }
-    }
-
-    return 0;
 }
 
 static ssize_t convert_params(struct sd_parameter **out,

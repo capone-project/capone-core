@@ -17,6 +17,6 @@ message CapabilityRequest {
 message Capability {
     required bytes identity = 1;
     required bytes service = 2;
-    required uint32 sessionid = 3;
-    required uint32 requestid = 4;
+    required uint32 requestid = 3;
+    required CapabilityMessage capability = 4;
 }

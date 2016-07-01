@@ -48,10 +48,12 @@ static int invoke(struct sd_channel *channel, int argc, char **argv)
 }
 
 static int handle(struct sd_channel *channel,
+        const struct sd_sign_key_public *invoker,
         const struct sd_session *session,
         const struct sd_cfg *cfg)
 {
     UNUSED(cfg);
+    UNUSED(invoker);
 
     return sd_channel_write_data(channel,
             (uint8_t *) session->parameters[0].value,
