@@ -1,0 +1,7 @@
+syntax = "proto2";
+
+message ChannelMessage {
+    optional uint32 errcode = 1;
+    optional string errmsg = 2;
+    optional bytes msg = 3;
+}

@@ -286,6 +286,22 @@ ssize_t sd_channel_receive_data(struct sd_channel *c, uint8_t *buf, size_t maxle
  */
 int sd_channel_write_protobuf(struct sd_channel *c, ProtobufCMessage *msg);
 
+/** @brief Write an error to the channel
+ *
+ * When a receiver expects a certain protobuf which we are not
+ * able to correctly serve due to an error, this function can be
+ * called instead of sd_channel_write_protobuf to report this
+ * error to the caller.
+ *
+ * @param[in] c Channel to write data to.
+ * @param[in] code Error code
+ * @param[in] msg Error message
+ * @return <code>0</code> on success, <code>-1</code> otherwise
+ *
+ * \see sd_channel_write_protobuf
+ */
+int sd_channel_write_error(struct sd_channel *c, uint32_t code, const char *msg);
+
 /** @brief Receive a protocol buffer from the channel
  *
  * Receive a serialized protocol buffer message and deserialize
