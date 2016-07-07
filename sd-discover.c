@@ -37,6 +37,11 @@
 
 static struct sd_sign_key_pair local_keys;
 
+static struct known_keys {
+    struct sd_sign_key_public key;
+    struct known_keys *next;
+} *known_keys;
+
 static int send_discover(struct sd_channel *channel)
 {
     DiscoverMessage msg = DISCOVER_MESSAGE__INIT;
@@ -83,6 +88,7 @@ out:
 
 static int handle_announce(struct sd_channel *channel)
 {
+    struct known_keys *it;
     struct sd_sign_key_hex remote_key;
     AnnounceMessage *announce = NULL;
     unsigned i;
@@ -101,6 +107,21 @@ static int handle_announce(struct sd_channel *channel)
         puts("Unable to retrieve remote sign key");
         goto out;
     }
+
+    for (it = known_keys; it; it = it->next) {
+        if (!memcmp(it->key.data, announce->sign_key.data,
+                    sizeof(struct sd_sign_key_public)))
+        {
+            sd_log(LOG_LEVEL_DEBUG, "Ignoring known key %s", remote_key.data);
+            err = 0;
+            goto out;
+        }
+    }
+
+    it = malloc(sizeof(struct known_keys));
+    it->next = known_keys;
+    memcpy(&it->key, announce->sign_key.data, sizeof(struct sd_sign_key_public));
+    known_keys = it;
 
     printf("%s - %s (v%s)\n", announce->name, remote_key.data, announce->version);
 
