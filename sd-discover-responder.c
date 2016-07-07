@@ -44,9 +44,20 @@ static struct sd_sign_key_pair sign_keys;
 static void announce(struct sd_channel *channel,
         DiscoverMessage *msg)
 {
+    size_t i;
+
     if (strcmp(msg->version, VERSION)) {
         sd_log(LOG_LEVEL_ERROR, "Cannot handle announce message version %s",
                 msg->version);
+        return;
+    }
+
+    for (i = 0; i < msg->n_known_keys; i++) {
+        if (msg->known_keys[i].len != sizeof(struct sd_sign_key_public))
+            continue;
+        if (memcmp(msg->known_keys[i].data, sign_keys.pk.data, sizeof(struct sd_sign_key_public)))
+            continue;
+        sd_log(LOG_LEVEL_DEBUG, "Skipping announce due to alreay being known");
         return;
     }
 

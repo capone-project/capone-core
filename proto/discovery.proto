@@ -16,4 +16,5 @@ message AnnounceMessage {
 message DiscoverMessage {
     required string version = 1;
     required uint32 port = 2;
+    repeated bytes known_keys = 3;
 }

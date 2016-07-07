@@ -45,17 +45,39 @@ static struct known_keys {
 static int send_discover(struct sd_channel *channel)
 {
     DiscoverMessage msg = DISCOVER_MESSAGE__INIT;
+    struct known_keys *it;
+    size_t i, keys;
+    int err;
 
     msg.version = VERSION;
     msg.port = LISTEN_PORT;
 
-    if (sd_channel_write_protobuf(channel, &msg.base) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Unable to send discover: %s",
-                strerror(errno));
-        return -1;
+    for (keys = 0, it = known_keys; it && keys < 50; it = it->next, keys++);
+
+    msg.n_known_keys = keys;
+    if (keys > 0) {
+        msg.known_keys = calloc(keys, sizeof(ProtobufCBinaryData));
+
+        for (i = 0, it = known_keys; i < keys; i++, it = it->next) {
+            msg.known_keys[i].len = sizeof(struct sd_sign_key_public);
+            msg.known_keys[i].data = malloc(sizeof(struct sd_sign_key_public));
+            memcpy(msg.known_keys[i].data, &it->key.data, sizeof(struct sd_sign_key_public));
+        }
+    } else {
+        msg.known_keys = NULL;
     }
 
-    return 0;
+    err = sd_channel_write_protobuf(channel, &msg.base);
+
+    for (i = 0; i < keys; i++) {
+        free(msg.known_keys[i].data);
+    }
+    free(msg.known_keys);
+
+    if (err)
+        sd_log(LOG_LEVEL_ERROR, "Unable to send discover: %s", strerror(errno));
+
+    return err;
 }
 
 static void *probe(void *payload)
@@ -91,7 +113,7 @@ static int handle_announce(struct sd_channel *channel)
     struct known_keys *it;
     struct sd_sign_key_hex remote_key;
     AnnounceMessage *announce = NULL;
-    unsigned i;
+    unsigned i = 0;
     int err = -1;
 
     if (sd_channel_receive_protobuf(channel,
