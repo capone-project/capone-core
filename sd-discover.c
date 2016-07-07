@@ -102,7 +102,7 @@ static void handle_announce(struct sd_channel *channel)
             goto out;
         }
 
-        printf("%s (v%s)\n", remote_key.data, announce->version);
+        printf("%s - %s (v%s)\n", announce->name, remote_key.data, announce->version);
 
         for (i = 0; i < announce->n_services; i++) {
             AnnounceMessage__Service *service = announce->services[i];

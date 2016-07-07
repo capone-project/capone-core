@@ -179,6 +179,8 @@ int main(int argc, char *argv[])
 {
     AnnounceMessage__Service **service_messages;
     struct sd_service *services;
+    struct sd_cfg cfg;
+    char *name;
     int i, numservices;
 
     if (argc == 2 && !strcmp(argv[1], "--version")) {
@@ -199,17 +201,25 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    if (sd_sign_key_pair_from_config_file(&sign_keys, argv[1]) < 0) {
+    sd_cfg_parse(&cfg, argv[1]);
+
+    if ((name = sd_cfg_get_str_value(&cfg, "core", "name")) == NULL) {
+        sd_log(LOG_LEVEL_ERROR, "Unable to read server name");
+        return -1;
+    }
+
+    if (sd_sign_key_pair_from_config(&sign_keys, &cfg) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Unable to read local keys");
         return -1;
     }
 
-    if ((numservices = sd_services_from_config_file(&services, argv[1])) <= 0) {
+    if ((numservices = sd_services_from_config(&services, &cfg)) <= 0) {
         sd_log(LOG_LEVEL_ERROR, "Unable to read service configuration");
         return -1;
     }
 
     announce_message__init(&announce_message);
+    announce_message.name = name;
     announce_message.version = VERSION;
     announce_message.sign_key.data = sign_keys.pk.data;
     announce_message.sign_key.len = sizeof(sign_keys.pk.data);
