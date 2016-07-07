@@ -81,41 +81,42 @@ out:
     return NULL;
 }
 
-static void handle_announce(struct sd_channel *channel)
+static int handle_announce(struct sd_channel *channel)
 {
     struct sd_sign_key_hex remote_key;
     AnnounceMessage *announce = NULL;
     unsigned i;
+    int err = -1;
 
-    while (true) {
-        if (sd_channel_receive_protobuf(channel,
-                    (ProtobufCMessageDescriptor *) &announce_message__descriptor,
-                    (ProtobufCMessage **) &announce) < 0) {
-            puts("Unable to receive protobuf");
-            goto out;
-        }
-
-        if (sd_sign_key_hex_from_bin(&remote_key,
-                    announce->sign_key.data, announce->sign_key.len) < 0)
-        {
-            puts("Unable to retrieve remote sign key");
-            goto out;
-        }
-
-        printf("%s - %s (v%s)\n", announce->name, remote_key.data, announce->version);
-
-        for (i = 0; i < announce->n_services; i++) {
-            AnnounceMessage__Service *service = announce->services[i];
-
-            printf("\t%s -> %s (%s)\n", service->port, service->name, service->category);
-        }
-
-        announce_message__free_unpacked(announce, NULL);
+    if (sd_channel_receive_protobuf(channel,
+                (ProtobufCMessageDescriptor *) &announce_message__descriptor,
+                (ProtobufCMessage **) &announce) < 0) {
+        puts("Unable to receive protobuf");
+        goto out;
     }
+
+    if (sd_sign_key_hex_from_bin(&remote_key,
+                announce->sign_key.data, announce->sign_key.len) < 0)
+    {
+        puts("Unable to retrieve remote sign key");
+        goto out;
+    }
+
+    printf("%s - %s (v%s)\n", announce->name, remote_key.data, announce->version);
+
+    for (i = 0; i < announce->n_services; i++) {
+        AnnounceMessage__Service *service = announce->services[i];
+
+        printf("\t%s -> %s (%s)\n", service->port, service->name, service->category);
+    }
+
+    err = 0;
 
 out:
     if (announce)
         announce_message__free_unpacked(announce, NULL);
+
+    return err;
 }
 
 static void undirected_discovery()
@@ -143,10 +144,14 @@ static void undirected_discovery()
         goto out;
     }
 
-    handle_announce(&channel);
+    while (true) {
+        if (handle_announce(&channel) < 0) {
+            puts("Unable to handle announce");
+            goto out;
+        }
+    }
 
 out:
-    sd_channel_close(&channel);
     sd_kill(&t);
 }
 
@@ -175,7 +180,10 @@ static void directed_discovery(const struct sd_sign_key_public *remote_key,
         goto out;
     }
 
-    handle_announce(&channel);
+    if (handle_announce(&channel) < 0) {
+        puts("Unable to handle announce");
+        goto out;
+    }
 
 out:
     sd_channel_close(&channel);
