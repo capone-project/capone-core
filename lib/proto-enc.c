@@ -172,13 +172,14 @@ static int receive_signed_key(struct sd_encrypt_key_public *out,
         goto out;
     }
 
+    /* Verify parameters */
     if (msg->sessionid != id) {
         sd_log(LOG_LEVEL_ERROR, "Received invalid session id");
         goto out;
-    }
-
-    /* Check lengths */
-    if (sd_sign_key_public_from_bin(&msg_sign_key, msg->sign_pk.data, msg->sign_pk.len) < 0) {
+    } else if (msg->signature.len != crypto_sign_BYTES) {
+        sd_log(LOG_LEVEL_ERROR, "Received invalid signature");
+        goto out;
+    } else if (sd_sign_key_public_from_bin(&msg_sign_key, msg->sign_pk.data, msg->sign_pk.len) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Initiator's long-term signature key is invalid");
         goto out;
     } else if (sd_encrypt_key_public_from_bin(&msg_emph_key, msg->ephm_pk.data, msg->ephm_pk.len) < 0) {
