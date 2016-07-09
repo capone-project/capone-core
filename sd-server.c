@@ -210,7 +210,7 @@ static int setup(struct sd_cfg *cfg, int argc, char *argv[])
 
     servicename = argv[2];
 
-    memset(&cfg, 0, sizeof(cfg));
+    memset(cfg, 0, sizeof(*cfg));
 
     if (sd_cfg_parse(cfg, argv[1]) < 0) {
         puts("Could not parse config");
