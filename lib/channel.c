@@ -38,8 +38,6 @@
 #include "lib/log.h"
 #include "lib/common.h"
 
-#include "proto/channel.pb-c.h"
-
 #include "channel.h"
 
 #define DEFAULT_BLOCKLEN 512
