@@ -311,10 +311,9 @@ int sd_channel_write_data(struct sd_channel *c, uint8_t *data, uint32_t datalen)
 
 int sd_channel_write_protobuf(struct sd_channel *c, const ProtobufCMessage *msg)
 {
-    ChannelMessage cmsg = CHANNEL_MESSAGE__INIT;
     const char *pkgname, *descrname;
     size_t size;
-    uint8_t buf[4096], cbuf[4096];
+    uint8_t buf[4096];
 
     if (!protobuf_c_message_check(msg)) {
         sd_log(LOG_LEVEL_ERROR, "Invalid protobuf message");
@@ -334,46 +333,6 @@ int sd_channel_write_protobuf(struct sd_channel *c, const ProtobufCMessage *msg)
             pkgname ? pkgname : "", descrname ? descrname : "", size);
 
     protobuf_c_message_pack(msg, buf);
-
-    cmsg.has_errcode = false;
-    cmsg.has_msg = true;
-    cmsg.msg.data = buf;
-    cmsg.msg.len = size;
-
-    size = protobuf_c_message_get_packed_size(&cmsg.base);
-    if (size > sizeof(cbuf)) {
-        sd_log(LOG_LEVEL_ERROR, "Protobuf message exceeds buffer length");
-        return -1;
-    }
-
-    protobuf_c_message_pack(&cmsg.base, cbuf);
-
-    return sd_channel_write_data(c, cbuf, size);
-}
-
-int sd_channel_write_error(struct sd_channel *c, uint32_t errcode, const char *errmsg)
-{
-    ChannelMessage msg = CHANNEL_MESSAGE__INIT;
-    uint8_t buf[4096];
-    size_t size;
-
-    if (errcode == 0) {
-        sd_log(LOG_LEVEL_ERROR, "Cannot write error with error code 0");
-        return -1;
-    }
-
-    msg.has_errcode = true;
-    msg.has_msg = false;
-    msg.errcode = errcode;
-    msg.errmsg = (char *) errmsg;
-
-    size = protobuf_c_message_get_packed_size(&msg.base);
-    if (size > sizeof(buf)) {
-        sd_log(LOG_LEVEL_ERROR, "Protobuf message exceeds buffer length");
-        return -1;
-    }
-
-    protobuf_c_message_pack(&msg.base, buf);
 
     return sd_channel_write_data(c, buf, size);
 }
@@ -445,47 +404,29 @@ ssize_t sd_channel_receive_data(struct sd_channel *c, uint8_t *out, size_t maxle
 
 int sd_channel_receive_protobuf(struct sd_channel *c, const ProtobufCMessageDescriptor *descr, ProtobufCMessage **msg)
 {
-    ChannelMessage *cmsg;
-    ProtobufCMessage *result;
+    ProtobufCMessage *result = NULL;
     uint8_t buf[4096];
     ssize_t len;
-    int ret;
+    int ret = -1;
 
-    len = sd_channel_receive_data(c, buf, sizeof(buf));
-    if (len < 0) {
-        return -1;
-    }
-
-    cmsg = (ChannelMessage *) protobuf_c_message_unpack(&channel_message__descriptor, NULL, len, buf);
-    if (cmsg == NULL) {
-        sd_log(LOG_LEVEL_ERROR, "Channel message could not be unpacked");
-        return -1;
-    }
-
-    if (cmsg->has_errcode)
+    if ((len = sd_channel_receive_data(c, buf, sizeof(buf))) < 0)
         goto out;
 
     sd_log(LOG_LEVEL_TRACE, "Receiving protobuf %s:%s of length %"PRIuMAX,
-            descr->package_name, descr->name, cmsg->msg.len);
+            descr->package_name, descr->name, len);
 
-    result = protobuf_c_message_unpack(descr, NULL, cmsg->msg.len, cmsg->msg.data);
-    if (result == NULL) {
+    if ((result = protobuf_c_message_unpack(descr, NULL, len, buf)) == NULL) {
         sd_log(LOG_LEVEL_ERROR, "Protobuf message could not be unpacked");
-        return -1;
+        goto out;
     }
+
+    ret = 0;
 
 out:
-    if (cmsg->errcode) {
-        sd_log(LOG_LEVEL_ERROR, "Received error code %"PRIu32": %s",
-                cmsg->errcode, cmsg->errmsg);
-        ret = -cmsg->errcode;
-    } else {
-        ret = 0;
+    if (ret < 0 && result)
+        protobuf_c_message_free_unpacked(result, NULL);
+    else
         *msg = result;
-    }
-
-    if (cmsg)
-        protobuf_c_message_free_unpacked(&cmsg->base, NULL);
 
     return ret;
 }

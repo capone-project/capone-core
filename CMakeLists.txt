@@ -39,7 +39,6 @@ SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Werror -pedantic -std=c89")
 
 PROTOBUF_GENERATE_C(PROTO_SOURCES PROTO_HEADERS
     proto/capabilities.proto
-    proto/channel.proto
     proto/connect.proto
     proto/discovery.proto
     proto/encryption.proto
