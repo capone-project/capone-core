@@ -284,7 +284,7 @@ ssize_t sd_channel_receive_data(struct sd_channel *c, uint8_t *buf, size_t maxle
  *
  * \see sd_channel_write_data
  */
-int sd_channel_write_protobuf(struct sd_channel *c, ProtobufCMessage *msg);
+int sd_channel_write_protobuf(struct sd_channel *c, const ProtobufCMessage *msg);
 
 /** @brief Write an error to the channel
  *

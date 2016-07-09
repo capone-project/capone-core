@@ -309,7 +309,7 @@ int sd_channel_write_data(struct sd_channel *c, uint8_t *data, uint32_t datalen)
     return 0;
 }
 
-int sd_channel_write_protobuf(struct sd_channel *c, ProtobufCMessage *msg)
+int sd_channel_write_protobuf(struct sd_channel *c, const ProtobufCMessage *msg)
 {
     ChannelMessage cmsg = CHANNEL_MESSAGE__INIT;
     const char *pkgname, *descrname;
