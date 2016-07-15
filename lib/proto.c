@@ -399,65 +399,69 @@ int sd_proto_answer_request(struct sd_channel *channel,
     struct sd_parameter *params = NULL;
     ssize_t nparams = 0;
     uint32_t sessionid;
+    int err = -1;
 
     if (sd_channel_receive_protobuf(channel,
             &session_request_message__descriptor,
             (ProtobufCMessage **) &request) < 0)
     {
         sd_log(LOG_LEVEL_ERROR, "Unable to receive request");
-        goto out_err;
+        goto out;
     }
 
     if (sd_sign_key_public_from_bin(&identity_key,
                 request->invoker.data, request->invoker.len) < 0)
     {
         sd_log(LOG_LEVEL_ERROR, "Unable to parse invoker key");
-        goto out_err;
+        goto out;
     }
 
     if ((nparams = convert_params(&params,
                     request->parameters, request->n_parameters)) < 0)
     {
         sd_log(LOG_LEVEL_ERROR, "Unable to convert parameters");
-        goto out_err;
+        goto out;
     }
 
     if (sd_sessions_add(&sessionid, params, nparams) < 0)
     {
         sd_log(LOG_LEVEL_ERROR, "Unable to add session");
-        goto out_err;
+        goto out;
     }
 
     if (sd_caps_add(sessionid) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Unable to add internal capability");
-        goto out_err;
+        goto out;
     }
 
     if (create_cap(&session_message.invoker_cap, sessionid, SD_CAP_RIGHT_EXEC | SD_CAP_RIGHT_TERM, &identity_key) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Unable to add invoker capability");
-        goto out_err;
+        goto out;
     }
     if (create_cap(&session_message.requester_cap, sessionid, SD_CAP_RIGHT_TERM, remote_key) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Unable to add invoker capability");
-        goto out_err;
+        goto out;
     }
 
     if (sd_channel_write_protobuf(channel, &session_message.base) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Unable to send connection session");
         sd_caps_delete(sessionid);
-        goto out_err;
+        goto out;
     }
 
-    sd_parameters_free(params, nparams);
-    session_request_message__free_unpacked(request, NULL);
-    return 0;
+    err = 0;
 
-out_err:
+out:
     sd_parameters_free(params, nparams);
 
-    if (request != NULL)
+    if (session_message.invoker_cap)
+        capability_message__free_unpacked(session_message.invoker_cap, NULL);
+    if (session_message.requester_cap)
+        capability_message__free_unpacked(session_message.requester_cap, NULL);
+    if (request)
         session_request_message__free_unpacked(request, NULL);
-    return -1;
+
+    return err;
 }
 
 int sd_proto_initiate_termination(struct sd_channel *channel,
