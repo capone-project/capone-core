@@ -135,6 +135,8 @@ int sd_acl_remove_right(struct sd_acl *acl,
     else
         acl->entries = it->next;
 
+    free(it);
+
     return 0;
 }
 
