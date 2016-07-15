@@ -50,6 +50,25 @@ static uint32_t hash(uint32_t objectid,
     return hash;
 }
 
+int sd_cap_from_protobuf(struct sd_cap *out, const CapabilityMessage *msg)
+{
+    out->objectid = msg->objectid;
+    out->rights = msg->rights;
+    out->secret = msg->secret;
+
+    return 0;
+}
+
+int sd_cap_to_protobuf(CapabilityMessage *out, const struct sd_cap *cap)
+{
+    capability_message__init(out);
+    out->objectid = cap->objectid;
+    out->rights = cap->rights;
+    out->secret = cap->secret;
+
+    return 0;
+}
+
 int sd_caps_add(uint32_t objectid)
 {
     struct entry *e, *cap;

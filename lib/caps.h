@@ -29,6 +29,7 @@
 
 #include <stdbool.h>
 #include "lib/keys.h"
+#include "proto/connect.pb-c.h"
 
 enum sd_cap_rights {
     SD_CAP_RIGHT_EXEC = 1 << 0,
@@ -40,6 +41,12 @@ struct sd_cap {
     uint32_t rights;
     uint32_t secret;
 };
+
+/** @brief Create capability from Protobuf */
+int sd_cap_from_protobuf(struct sd_cap *out, const CapabilityMessage *msg);
+
+/** @brief Create Protobuf from capability */
+int sd_cap_to_protobuf(CapabilityMessage *out, const struct sd_cap *cap);
 
 /** @brief Add a new internal capability
  *
