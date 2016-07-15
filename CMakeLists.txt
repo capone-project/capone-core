@@ -88,6 +88,7 @@ TARGET_LINK_LIBRARIES(sd-server sd)
 
 ADD_EXECUTABLE(sd-test sd-test.c
     test/acl.c
+    test/caps.c
     test/cfg.c
     test/channel.c
     test/common.c

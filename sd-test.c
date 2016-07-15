@@ -23,6 +23,7 @@
 #include "test/test.h"
 
 extern int acl_test_run_suite(void);
+extern int caps_test_run_suite(void);
 extern int cfg_test_run_suite(void);
 extern int channel_test_run_suite(void);
 extern int common_test_run_suite(void);
@@ -35,6 +36,7 @@ extern int parameter_test_run_suite(void);
 
 static int (*suite_fns[])(void) = {
     acl_test_run_suite,
+    caps_test_run_suite,
     cfg_test_run_suite,
     channel_test_run_suite,
     common_test_run_suite,
