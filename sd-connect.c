@@ -105,6 +105,7 @@ static int cmd_query(int argc, char *argv[])
 
 static int cmd_request(int argc, char *argv[])
 {
+    char invoker_hex[SD_CAP_SECRET_LEN], requester_hex[SD_CAP_SECRET_LEN];
     const char *config, *invoker, *key, *host, *port;
     struct sd_cap requester_cap, invoker_cap;
     struct sd_sign_key_public invoker_key;
@@ -157,12 +158,16 @@ static int cmd_request(int argc, char *argv[])
         goto out_err;
     }
 
+    sodium_bin2hex(invoker_hex, sizeof(invoker_hex),
+            invoker_cap.secret, SD_CAP_SECRET_LEN);
+    sodium_bin2hex(requester_hex, sizeof(requester_hex),
+            requester_cap.secret, SD_CAP_SECRET_LEN);
+
     printf("sessionid:          %"PRIu32"\n"
-           "invoker-secret:     %"PRIu32"\n"
-           "requester-secret:   %"PRIu32"\n",
+           "invoker-secret:     %s\n"
+           "requester-secret:   %s\n",
            invoker_cap.objectid,
-           invoker_cap.secret,
-           requester_cap.secret);
+           invoker_hex, requester_hex);
 
     sd_channel_close(&channel);
 

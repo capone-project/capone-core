@@ -26,37 +26,40 @@
 struct caps {
     struct entry {
         uint32_t objectid;
-        uint32_t secret;
+        uint8_t secret[SD_CAP_SECRET_LEN];
         struct entry *next;
     } *l;
 };
 
 static struct caps clist;
 
-static uint32_t hash(uint32_t objectid,
+static int hash(uint8_t *out,
+        uint32_t objectid,
         uint32_t rights,
-        uint32_t secret,
+        uint8_t *secret,
         const struct sd_sign_key_public *key)
 {
     crypto_generichash_state state;
-    uint32_t hash;
+    uint8_t hash[SD_CAP_SECRET_LEN];
 
     crypto_generichash_init(&state, NULL, 0, sizeof(secret));
 
     crypto_generichash_update(&state, key->data, sizeof(key->data));
     crypto_generichash_update(&state, (unsigned char *) &objectid, sizeof(objectid));
     crypto_generichash_update(&state, (unsigned char *) &rights, sizeof(rights));
-    crypto_generichash_update(&state, (unsigned char *) &secret, sizeof(secret));
+    crypto_generichash_update(&state, (unsigned char *) secret, SD_CAP_SECRET_LEN);
 
-    crypto_generichash_final(&state, (unsigned char *) &hash, sizeof(hash));
+    crypto_generichash_final(&state, hash, sizeof(hash));
 
-    return hash;
+    memcpy(out, hash, SD_CAP_SECRET_LEN);
+
+    return 0;
 }
 
 int sd_cap_parse(struct sd_cap *out, const char *id, const char *secret, enum sd_cap_rights rights)
 {
     uint32_t objectid;
-    uint32_t hash;
+    uint8_t hash[SD_CAP_SECRET_LEN];
     int err = -1;
 
     if (parse_uint32t(&objectid, id) < 0) {
@@ -64,14 +67,21 @@ int sd_cap_parse(struct sd_cap *out, const char *id, const char *secret, enum sd
         goto out;
     }
 
-    if (parse_uint32t(&hash, secret) < 0) {
+    if (strlen(secret) != SD_CAP_SECRET_LEN * 2) {
+        sd_log(LOG_LEVEL_ERROR, "Invalid secret length");
+        goto out;
+    }
+
+    if (sodium_hex2bin(hash, sizeof(hash), secret, strlen(secret),
+                NULL, NULL, NULL) != 0)
+    {
         sd_log(LOG_LEVEL_ERROR, "Invalid secret");
         goto out;
     }
 
     out->objectid = objectid;
     out->rights = rights;
-    out->secret = hash;
+    memcpy(out->secret, hash, SD_CAP_SECRET_LEN);
 
     err = 0;
 
@@ -81,9 +91,12 @@ out:
 
 int sd_cap_from_protobuf(struct sd_cap *out, const CapabilityMessage *msg)
 {
+    if (msg->secret.len != SD_CAP_SECRET_LEN)
+        return -1;
+
     out->objectid = msg->objectid;
     out->rights = msg->rights;
-    out->secret = msg->secret;
+    memcpy(out->secret, msg->secret.data, SD_CAP_SECRET_LEN);
 
     return 0;
 }
@@ -93,7 +106,9 @@ int sd_cap_to_protobuf(CapabilityMessage *out, const struct sd_cap *cap)
     capability_message__init(out);
     out->objectid = cap->objectid;
     out->rights = cap->rights;
-    out->secret = cap->secret;
+    out->secret.data = malloc(SD_CAP_SECRET_LEN);
+    out->secret.len = SD_CAP_SECRET_LEN;
+    memcpy(out->secret.data, cap->secret, SD_CAP_SECRET_LEN);
 
     return 0;
 }
@@ -104,7 +119,7 @@ int sd_caps_add(uint32_t objectid)
 
     cap = malloc(sizeof(struct entry));
     cap->objectid = objectid;
-    cap->secret = randombytes_random();
+    randombytes_buf(cap->secret, SD_CAP_SECRET_LEN);
     cap->next = NULL;
 
     for (e = clist.l; e; e = e->next) {
@@ -170,7 +185,7 @@ int sd_caps_create_reference(struct sd_cap *out, uint32_t objectid, uint32_t rig
     cap = malloc(sizeof(struct sd_cap));
     cap->objectid = objectid;
     cap->rights = rights;
-    cap->secret = hash(objectid, rights, e->secret, key);
+    hash(cap->secret, objectid, rights, e->secret, key);
 
     memcpy(out, cap, sizeof(struct sd_cap));
 
@@ -180,6 +195,7 @@ int sd_caps_create_reference(struct sd_cap *out, uint32_t objectid, uint32_t rig
 int sd_caps_verify(const struct sd_cap *ref, const struct sd_sign_key_public *key, uint32_t rights)
 {
     struct entry *e;
+    uint8_t secret[SD_CAP_SECRET_LEN];
 
     if (rights & ~ref->rights)
         return -1;
@@ -189,7 +205,9 @@ int sd_caps_verify(const struct sd_cap *ref, const struct sd_sign_key_public *ke
         if (ref->objectid != e->objectid)
             continue;
         /* Secret must the root secret */
-        if (ref->secret != hash(ref->objectid, ref->rights, e->secret, key))
+        if (hash(secret, ref->objectid, ref->rights, e->secret, key) < 0)
+            continue;
+        if (memcmp(secret, ref->secret, SD_CAP_SECRET_LEN))
             continue;
 
         return 0;

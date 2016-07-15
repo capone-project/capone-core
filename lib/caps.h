@@ -31,6 +31,8 @@
 #include "lib/keys.h"
 #include "proto/connect.pb-c.h"
 
+#define SD_CAP_SECRET_LEN 32
+
 enum sd_cap_rights {
     SD_CAP_RIGHT_EXEC = 1 << 0,
     SD_CAP_RIGHT_TERM = 1 << 1
@@ -39,7 +41,7 @@ enum sd_cap_rights {
 struct sd_cap {
     uint32_t objectid;
     uint32_t rights;
-    uint32_t secret;
+    uint8_t secret[SD_CAP_SECRET_LEN];
 };
 
 /** @brief Parse a capability from strings */

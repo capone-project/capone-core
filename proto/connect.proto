@@ -14,7 +14,7 @@ message ConnectionInitiationMessage {
 message CapabilityMessage {
     required uint32 objectid = 1;
     required uint32 rights = 2;
-    required uint32 secret = 3;
+    required bytes secret = 3;
 }
 
 message Parameter {

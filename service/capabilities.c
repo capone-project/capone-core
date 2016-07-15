@@ -327,6 +327,7 @@ static int invoke_request(struct sd_channel *channel)
 {
     Capability *capability;
     struct sd_sign_key_hex identity_hex, service_hex;
+    char cap_hex[SD_CAP_SECRET_LEN * 2 + 1];
 
     if (sd_channel_receive_protobuf(channel, &capability__descriptor,
                 (ProtobufCMessage **) &capability) < 0)
@@ -344,13 +345,20 @@ static int invoke_request(struct sd_channel *channel)
         return -1;
     }
 
+    if (sodium_bin2hex(cap_hex, sizeof(cap_hex),
+                capability->capability->secret.data,
+                capability->capability->secret.len) == NULL)
+    {
+        sd_log(LOG_LEVEL_ERROR, "Unable to parse capability secret");
+        return -1;
+    }
+
     printf("identity:   %s\n"
            "service:    %s\n"
            "sessionid:  %"PRIu32"\n"
-           "secret:     %"PRIu32"\n",
+           "secret:     %s\n",
            identity_hex.data, service_hex.data,
-           capability->capability->objectid,
-           capability->capability->secret);
+           capability->capability->objectid, cap_hex);
 
     capability__free_unpacked(capability, NULL);
 
