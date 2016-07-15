@@ -20,6 +20,9 @@
 
 #include "caps.h"
 
+#include "lib/common.h"
+#include "lib/log.h"
+
 struct caps {
     struct entry {
         uint32_t objectid;
@@ -48,6 +51,32 @@ static uint32_t hash(uint32_t objectid,
     crypto_generichash_final(&state, (unsigned char *) &hash, sizeof(hash));
 
     return hash;
+}
+
+int sd_cap_parse(struct sd_cap *out, const char *id, const char *secret, enum sd_cap_rights rights)
+{
+    uint32_t objectid;
+    uint32_t hash;
+    int err = -1;
+
+    if (parse_uint32t(&objectid, id) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Invalid session ID");
+        goto out;
+    }
+
+    if (parse_uint32t(&hash, secret) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Invalid secret");
+        goto out;
+    }
+
+    out->objectid = objectid;
+    out->rights = rights;
+    out->secret = hash;
+
+    err = 0;
+
+out:
+    return err;
 }
 
 int sd_cap_from_protobuf(struct sd_cap *out, const CapabilityMessage *msg)

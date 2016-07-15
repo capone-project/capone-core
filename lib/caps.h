@@ -42,6 +42,9 @@ struct sd_cap {
     uint32_t secret;
 };
 
+/** @brief Parse a capability from strings */
+int sd_cap_parse(struct sd_cap *out, const char *id, const char *secret, enum sd_cap_rights rights);
+
 /** @brief Create capability from Protobuf */
 int sd_cap_from_protobuf(struct sd_cap *out, const CapabilityMessage *msg);
 
