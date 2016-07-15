@@ -212,7 +212,10 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    sd_cfg_parse(&cfg, argv[1]);
+    if (sd_cfg_parse(&cfg, argv[1]) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Unable to read configuration");
+        return -1;
+    }
 
     if ((name = sd_cfg_get_str_value(&cfg, "core", "name")) == NULL) {
         sd_log(LOG_LEVEL_ERROR, "Unable to read server name");
