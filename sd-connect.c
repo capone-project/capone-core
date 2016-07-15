@@ -208,15 +208,10 @@ static int cmd_connect(int argc, char *argv[])
         return -1;
     }
 
-    if (parse_uint32t(&cap.objectid, session) < 0) {
-        printf("Invalid session ID %s\n", session);
+    if (sd_cap_parse(&cap, session, secret, SD_CAP_RIGHT_EXEC) < 0) {
+        puts("Invalid capability");
         return -1;
     }
-    if (parse_uint32t(&cap.secret, secret) < 0) {
-        printf("Invalid secret %s\n", secret);
-        return -1;
-    }
-    cap.rights = SD_CAP_RIGHT_EXEC;
 
     if (sd_proto_initiate_connection(&channel, host, port,
                 &local_keys, &remote_key, SD_CONNECTION_TYPE_CONNECT) < 0) {
@@ -267,15 +262,10 @@ static int cmd_terminate(int argc, char *argv[])
         return -1;
     }
 
-    if (parse_uint32t(&cap.objectid, session) < 0) {
-        printf("Invalid session ID %s\n", session);
+    if (sd_cap_parse(&cap, session, capability, SD_CAP_RIGHT_TERM) < 0) {
+        puts("Invalid capability\n");
         return -1;
     }
-    if (parse_uint32t(&cap.secret, capability) < 0) {
-        printf("Invalid capability %s\n", session);
-        return -1;
-    }
-    cap.rights = SD_CAP_RIGHT_TERM;
 
     if (sd_proto_initiate_connection(&channel, host, port,
                 &local_keys, &remote_key, SD_CONNECTION_TYPE_TERMINATE) < 0) {

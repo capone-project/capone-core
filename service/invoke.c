@@ -104,13 +104,8 @@ static int handle(struct sd_channel *channel,
         goto out;
     }
 
-    if (parse_uint32t(&cap.objectid, sessionid_string) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Invalid session ID");
-        goto out;
-    }
-
-    if (parse_uint32t(&cap.secret, secret_string) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Invalid secret");
+    if (sd_cap_parse(&cap, sessionid_string, secret_string, SD_CAP_RIGHT_EXEC) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Invalid capability");
         goto out;
     }
 
