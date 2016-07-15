@@ -198,6 +198,7 @@ void sd_parameters_proto_free(Parameter **params, size_t nparams)
     for (i = 0; i < nparams; i++) {
         free(params[i]->key);
         free(params[i]->value);
+        free(params[i]);
     }
 
     free(params);

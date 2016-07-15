@@ -233,6 +233,7 @@ int sd_proto_send_request(struct sd_cap *invoker_cap,
     SessionMessage *session = NULL;
     Parameter **parameters = NULL;
     int err = -1;
+    size_t i;
 
     request.invoker.data = (uint8_t *) invoker->data;
     request.invoker.len = sizeof(invoker->data);
@@ -262,6 +263,9 @@ int sd_proto_send_request(struct sd_cap *invoker_cap,
 out:
     if (session)
         session_message__free_unpacked(session, NULL);
+    for (i = 0; i < request.n_parameters; i++)
+        parameter__free_unpacked(request.parameters[i], NULL);
+    free(request.parameters);
 
     sd_parameters_proto_free(parameters, nparams);
 
@@ -539,6 +543,9 @@ static ssize_t convert_params(struct sd_parameter **out,
     size_t i;
 
     *out = NULL;
+
+    if (nparams == 0)
+        return 0;
 
     params = malloc(sizeof(struct sd_parameter) * nparams);
     for (i = 0; i < nparams; i++) {

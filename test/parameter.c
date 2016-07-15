@@ -171,8 +171,9 @@ static void test_filtering_mixed_items()
         { "matching", "value3" },
     };
 
-    assert_int_equal(sd_parameters_filter(&results, "matching",
-                parameters, ARRAY_SIZE(parameters)), 2);
+    nresults = sd_parameters_filter(&results, "matching",
+            parameters, ARRAY_SIZE(parameters));
+    assert_int_equal(nresults, 2);
     assert_string_equal(results[0].key, parameters[0].key);
     assert_string_equal(results[0].value, parameters[0].value);
     assert_string_equal(results[1].key, parameters[2].key);
