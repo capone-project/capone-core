@@ -24,14 +24,12 @@
 #include "lib/log.h"
 
 struct caps {
-    struct entry {
-        uint32_t objectid;
-        uint8_t secret[SD_CAP_SECRET_LEN];
-        struct entry *next;
-    } *l;
+    uint32_t objectid;
+    uint8_t secret[SD_CAP_SECRET_LEN];
+    struct caps *next;
 };
 
-static struct caps clist;
+static struct caps *clist;
 
 static int hash(uint8_t *out,
         uint32_t objectid,
@@ -115,14 +113,14 @@ int sd_cap_to_protobuf(CapabilityMessage *out, const struct sd_cap *cap)
 
 int sd_caps_add(uint32_t objectid)
 {
-    struct entry *e, *cap;
+    struct caps *e, *cap;
 
-    cap = malloc(sizeof(struct entry));
+    cap = malloc(sizeof(struct caps));
     cap->objectid = objectid;
     randombytes_buf(cap->secret, SD_CAP_SECRET_LEN);
     cap->next = NULL;
 
-    for (e = clist.l; e; e = e->next) {
+    for (e = clist; e; e = e->next) {
         if (e->objectid == objectid)
             return -1;
     }
@@ -130,40 +128,42 @@ int sd_caps_add(uint32_t objectid)
     if (e)
         e->next = cap;
     else
-        clist.l = cap;
+        clist = cap;
 
     return 0;
 }
 
 void sd_caps_clear(void)
 {
-    struct entry *e, *next;
+    struct caps *e, *next;
 
-    for (e = clist.l; e; e = next) {
+    for (e = clist; e; e = next) {
         next = e->next;
         free(e);
     }
 
-    clist.l = NULL;
+    clist = NULL;
 }
 
 int sd_caps_delete(uint32_t objectid)
 {
-    struct entry *e, *prev;
-    int ret = 0;
+    struct caps *it, *prev, *next;
+    int ret = -1;
 
-    for (prev = NULL, e = clist.l; e; prev = e, e = e->next) {
-        if (e->objectid != objectid)
+    for (prev = NULL, it = clist; it; prev = it, it = next) {
+        next = it->next;
+
+        if (it->objectid != objectid)
             continue;
 
         if (prev)
-            prev->next = e->next;
+            prev->next = it->next;
         else
-            clist.l->next = e->next;
+            clist = it->next;
 
-        free(e);
+        free(it);
 
-        ret = 1;
+        ret = 0;
     }
 
     return ret;
@@ -172,9 +172,9 @@ int sd_caps_delete(uint32_t objectid)
 int sd_caps_create_reference(struct sd_cap *out, uint32_t objectid, uint32_t rights, const struct sd_sign_key_public *key)
 {
     struct sd_cap *cap;
-    struct entry *e;
+    struct caps *e;
 
-    for (e = clist.l; e; e = e->next) {
+    for (e = clist; e; e = e->next) {
         if (e->objectid == objectid)
             break;
     }
@@ -194,13 +194,13 @@ int sd_caps_create_reference(struct sd_cap *out, uint32_t objectid, uint32_t rig
 
 int sd_caps_verify(const struct sd_cap *ref, const struct sd_sign_key_public *key, uint32_t rights)
 {
-    struct entry *e;
+    struct caps *e;
     uint8_t secret[SD_CAP_SECRET_LEN];
 
     if (rights & ~ref->rights)
         return -1;
 
-    for (e = clist.l; e; e = e->next) {
+    for (e = clist; e; e = e->next) {
         /* Object ID must match */
         if (ref->objectid != e->objectid)
             continue;
