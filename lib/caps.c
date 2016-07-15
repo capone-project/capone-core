@@ -168,7 +168,6 @@ int sd_caps_delete(uint32_t objectid)
 
 int sd_caps_create_reference(struct sd_cap *out, uint32_t objectid, uint32_t rights, const struct sd_sign_key_public *key)
 {
-    struct sd_cap *cap;
     struct caps *e;
 
     for (e = clist; e; e = e->next) {
@@ -179,12 +178,9 @@ int sd_caps_create_reference(struct sd_cap *out, uint32_t objectid, uint32_t rig
     if (!e)
         return -1;
 
-    cap = malloc(sizeof(struct sd_cap));
-    cap->objectid = objectid;
-    cap->rights = rights;
-    hash(cap->secret, objectid, rights, e->secret, key);
-
-    memcpy(out, cap, sizeof(struct sd_cap));
+    out->objectid = objectid;
+    out->rights = rights;
+    hash(out->secret, objectid, rights, e->secret, key);
 
     return 0;
 }
