@@ -115,20 +115,17 @@ int sd_caps_add(uint32_t objectid)
 {
     struct caps *e, *cap;
 
-    cap = malloc(sizeof(struct caps));
-    cap->objectid = objectid;
-    randombytes_buf(cap->secret, SD_CAP_SECRET_LEN);
-    cap->next = NULL;
-
     for (e = clist; e; e = e->next) {
         if (e->objectid == objectid)
             return -1;
     }
 
-    if (e)
-        e->next = cap;
-    else
-        clist = cap;
+    cap = malloc(sizeof(struct caps));
+    cap->objectid = objectid;
+    randombytes_buf(cap->secret, SD_CAP_SECRET_LEN);
+    cap->next = clist;
+
+    clist = cap;
 
     return 0;
 }
