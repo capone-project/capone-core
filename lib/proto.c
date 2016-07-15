@@ -126,10 +126,11 @@ int sd_proto_initiate_session(struct sd_channel *channel,
     int ret = 0;
 
     initiation.capability = malloc(sizeof(CapabilityMessage));
-    capability_message__init(initiation.capability);
-    initiation.capability->objectid = cap->objectid;
-    initiation.capability->rights = cap->rights;
-    initiation.capability->secret = cap->secret;
+    if (sd_cap_to_protobuf(initiation.capability, cap) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Could not read capability");
+        ret = -1;
+        goto out;
+    }
 
     if (sd_channel_write_protobuf(channel, &initiation.base) < 0 ) {
         sd_log(LOG_LEVEL_ERROR, "Could not initiate session");
@@ -181,9 +182,11 @@ int sd_proto_handle_session(struct sd_channel *channel,
         goto out;
     }
 
-    cap.objectid = initiation->capability->objectid;
-    cap.rights = initiation->capability->rights;
-    cap.secret = initiation->capability->secret;
+    if (sd_cap_from_protobuf(&cap, initiation->capability) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Could not read capability");
+        err = -1;
+        goto out_notify;
+    }
 
     if (sd_caps_verify(&cap, remote_key, SD_CAP_RIGHT_EXEC) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Could not authorize session initiation");
@@ -229,31 +232,32 @@ int sd_proto_send_request(struct sd_cap *invoker_cap,
     SessionRequestMessage request = SESSION_REQUEST_MESSAGE__INIT;
     SessionMessage *session = NULL;
     Parameter **parameters = NULL;
-    int err;
+    int err = -1;
 
     request.invoker.data = (uint8_t *) invoker->data;
     request.invoker.len = sizeof(invoker->data);
     request.n_parameters = sd_parameters_to_proto(&request.parameters, params, nparams);
 
-    if ((err = sd_channel_write_protobuf(channel, &request.base)) < 0) {
+    if (sd_channel_write_protobuf(channel, &request.base) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Unable to send connection request");
         goto out;
     }
 
-    if ((err = sd_channel_receive_protobuf(channel,
+    if (sd_channel_receive_protobuf(channel,
             &session_message__descriptor,
-            (ProtobufCMessage **) &session)) < 0) {
+            (ProtobufCMessage **) &session) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Unable to receive session");
         goto out;
     }
 
-    invoker_cap->objectid = session->invoker_cap->objectid;
-    invoker_cap->rights = session->invoker_cap->rights;
-    invoker_cap->secret = session->invoker_cap->secret;
+    if (sd_cap_from_protobuf(invoker_cap, session->invoker_cap) < 0 ||
+            sd_cap_from_protobuf(requester_cap, session->requester_cap) <0)
+    {
+        sd_log(LOG_LEVEL_ERROR, "Unable to read capabilities");
+        goto out;
+    }
 
-    requester_cap->objectid = session->requester_cap->objectid;
-    requester_cap->rights = session->requester_cap->rights;
-    requester_cap->secret = session->requester_cap->secret;
+    err = 0;
 
 out:
     if (session)
@@ -376,10 +380,10 @@ static int create_cap(CapabilityMessage **out, uint32_t objectid, uint32_t right
         return -1;
 
     msg = malloc(sizeof(CapabilityMessage));
-    capability_message__init(msg);
-    msg->objectid = objectid;
-    msg->rights = rights;
-    msg->secret = cap.secret;
+    if (sd_cap_to_protobuf(msg, &cap) < 0) {
+        free(msg);
+        return -1;
+    }
 
     *out = msg;
 
@@ -463,10 +467,10 @@ int sd_proto_initiate_termination(struct sd_channel *channel,
     int err = 0;
 
     msg.capability = malloc(sizeof(CapabilityMessage));
-    capability_message__init(msg.capability);
-    msg.capability->objectid = cap->objectid;
-    msg.capability->secret = cap->secret;
-    msg.capability->rights = cap->rights;
+    if ((err = sd_cap_to_protobuf(msg.capability, cap)) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Unable to write termination message");
+        goto out;
+    }
 
     if ((err = sd_channel_write_protobuf(channel, &msg.base)) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Unable to write termination message");
@@ -485,14 +489,13 @@ int sd_proto_handle_termination(struct sd_channel *channel,
     SessionTerminationMessage *msg = NULL;
     struct sd_session session;
     struct sd_cap cap;
-    int err = 0;
+    int err = -1;
 
     if (sd_channel_receive_protobuf(channel,
             &session_termination_message__descriptor,
             (ProtobufCMessage **) &msg) < 0)
     {
         sd_log(LOG_LEVEL_ERROR, "Unable to receive termination protobuf");
-        err = -1;
         goto out;
     }
 
@@ -501,9 +504,10 @@ int sd_proto_handle_termination(struct sd_channel *channel,
         goto out;
     }
 
-    cap.objectid = msg->capability->objectid;
-    cap.rights = msg->capability->rights;
-    cap.secret = msg->capability->secret;
+    if (sd_cap_from_protobuf(&cap, msg->capability) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Received invalid capability");
+        goto out;
+    }
 
     if (sd_caps_verify(&cap, remote_key, SD_CAP_RIGHT_TERM) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Received unauthorized request");
@@ -514,6 +518,8 @@ int sd_proto_handle_termination(struct sd_channel *channel,
         sd_log(LOG_LEVEL_ERROR, "Unable to terminate session");
         goto out;
     }
+
+    err = 0;
 
 out:
     if (msg)

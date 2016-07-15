@@ -229,9 +229,10 @@ static int relay_capability_request(struct sd_channel *channel,
     cap_message.service.len = sizeof(service_key.data);
 
     cap_message.capability = malloc(sizeof(CapabilityMessage));
-    cap_message.capability->objectid = invoker_cap.objectid;
-    cap_message.capability->rights = invoker_cap.rights;
-    cap_message.capability->secret = invoker_cap.secret;
+    if (sd_cap_to_protobuf(cap_message.capability, &invoker_cap) < 0) {
+        sd_log(LOG_LEVEL_ERROR, "Unable to parse capability");
+        goto out;
+    }
 
     if ((ret = sd_channel_write_protobuf(channel, &cap_message.base)) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Unable to send requested capability");
