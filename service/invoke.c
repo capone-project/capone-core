@@ -104,7 +104,7 @@ static int handle(struct sd_channel *channel,
         goto out;
     }
 
-    if (sd_cap_parse(&cap, sessionid_string, secret_string, SD_CAP_RIGHT_EXEC) < 0) {
+    if (sd_cap_parse(&cap, sessionid_string, secret_string, SD_CAP_RIGHT_EXEC | SD_CAP_RIGHT_TERM) < 0) {
         sd_log(LOG_LEVEL_ERROR, "Invalid capability");
         goto out;
     }
