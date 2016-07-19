@@ -105,7 +105,7 @@ static int cmd_query(int argc, char *argv[])
 
 static int cmd_request(int argc, char *argv[])
 {
-    char invoker_hex[SD_CAP_SECRET_LEN], requester_hex[SD_CAP_SECRET_LEN];
+    char invoker_hex[SD_CAP_SECRET_LEN * 2 + 1], requester_hex[SD_CAP_SECRET_LEN * 2 + 1];
     const char *config, *invoker, *key, *host, *port;
     struct sd_cap requester_cap, invoker_cap;
     struct sd_sign_key_public invoker_key;
