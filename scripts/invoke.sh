@@ -9,13 +9,13 @@ CLIENT_KEY=$(cat ${CLIENT_CFG} | sed -n 's/^public_key=\(.*\)$/\1/p')
 
 INVOKER_CFG=../config/server.conf
 INVOKER_KEY=$(cat ${INVOKER_CFG} | sed -n 's/^public_key=\(.*\)$/\1/p')
-INVOKER_ADDR=192.168.0.100
+INVOKER_ADDR=127.0.0.1
 INVOKER_PORT=1239
 
 SERVICE_CFG=../config/server.conf
 SERVICE_KEY=$(cat ${SERVICE_CFG} | sed -n 's/^public_key=\(.*\)$/\1/p')
 SERVICE_TYPE=exec
-SERVICE_ADDR=192.168.0.100
+SERVICE_ADDR=127.0.0.1
 SERVICE_PORT=1237
 SERVICE_ARGS="command=ls
               arg=-l"
@@ -26,7 +26,9 @@ SERVICE_SESSION=$(./sd-connect request \
     ${SERVICE_KEY} \
     ${SERVICE_ADDR} \
     ${SERVICE_PORT} \
-    ${SERVICE_ARGS} | awk '{print $2}')
+    ${SERVICE_ARGS})
+SERVICE_ID="$(echo "$SERVICE_SESSION" | awk 'NR == 1 { print $2 }')"
+SERVICE_SECRET="$(echo "$SERVICE_SESSION" | awk 'NR == 2 { print $2 }')"
 
 INVOKE_SESSION=$(./sd-connect request \
     ${CLIENT_CFG} \
@@ -38,7 +40,10 @@ INVOKE_SESSION=$(./sd-connect request \
     service-address=${SERVICE_ADDR} \
     service-port=${SERVICE_PORT} \
     service-type=${SERVICE_TYPE} \
-    sessionid=${SERVICE_SESSION} | awk '{print $2}')
+    sessionid=${SERVICE_ID} \
+    secret=${SERVICE_SECRET})
+INVOKE_ID="$(echo "$INVOKE_SESSION" | awk 'NR == 1 { print $2 }')"
+INVOKE_SECRET="$(echo "$INVOKE_SESSION" | awk 'NR == 2 { print $2 }')"
 
 ./sd-connect connect \
     ${CLIENT_CFG} \
@@ -46,4 +51,5 @@ INVOKE_SESSION=$(./sd-connect request \
     ${INVOKER_ADDR} \
     ${INVOKER_PORT} \
     invoke \
-    ${INVOKE_SESSION}
+    ${INVOKE_ID} \
+    ${INVOKE_SECRET}
