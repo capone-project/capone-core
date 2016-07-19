@@ -204,8 +204,7 @@ static int setup(struct sd_cfg *cfg, int argc, char *argv[])
         return 0;
     } else if (argc < 3 || argc > 5) {
         printf("USAGE: %s <CONFIG> <SERVICENAME> [<REQUEST_ACL> [<QUERY_ACL>]]\n", argv[0]);
-        err = -1;
-        goto out;
+        return -1;
     }
 
     servicename = argv[2];
