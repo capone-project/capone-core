@@ -213,7 +213,7 @@ static int cmd_connect(int argc, char *argv[])
         return -1;
     }
 
-    if (sd_cap_parse(&cap, session, secret, SD_CAP_RIGHT_EXEC) < 0) {
+    if (sd_cap_parse(&cap, session, secret, SD_CAP_RIGHT_EXEC | SD_CAP_RIGHT_TERM) < 0) {
         puts("Invalid capability");
         return -1;
     }
