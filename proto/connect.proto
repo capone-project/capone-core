@@ -11,12 +11,6 @@ message ConnectionInitiationMessage {
     required Type type = 1;
 }
 
-message CapabilityMessage {
-    required uint32 objectid = 1;
-    required uint32 rights = 2;
-    required bytes secret = 3;
-}
-
 message Parameter {
     required string key = 1;
     optional string value = 2;
@@ -30,6 +24,12 @@ message ServiceDescription {
     required string location = 5;
     required string port = 6;
     repeated Parameter parameters = 7;
+}
+
+message CapabilityMessage {
+    required uint32 objectid = 1;
+    required uint32 rights = 2;
+    required bytes secret = 3;
 }
 
 message SessionRequestMessage {
