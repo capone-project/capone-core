@@ -399,7 +399,7 @@ static int handle_register(struct sd_channel *channel,
     }
 
     memcpy(&c->channel, channel, sizeof(struct sd_channel));
-    memcpy(&c->identity, &invoker, sizeof(struct sd_sign_key_public));
+    memcpy(&c->identity, invoker, sizeof(struct sd_sign_key_public));
     c->next = NULL;
 
     sd_sign_key_hex_from_key(&hex, invoker);
