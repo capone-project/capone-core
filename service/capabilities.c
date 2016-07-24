@@ -402,11 +402,11 @@ static int handle_register(struct sd_channel *channel,
     memcpy(&c->identity, invoker, sizeof(struct sd_sign_key_public));
     c->next = NULL;
 
+    pthread_mutex_unlock(&registrants_mutex);
+
     sd_sign_key_hex_from_key(&hex, invoker);
     sd_log(LOG_LEVEL_DEBUG, "Identity %s registered", hex.data);
     sd_log(LOG_LEVEL_VERBOSE, "%d identities registered", n + 1);
-
-    pthread_mutex_unlock(&registrants_mutex);
 
     channel->fd = -1;
 
