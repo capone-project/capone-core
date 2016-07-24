@@ -229,7 +229,7 @@ static int cmd_connect(int argc, char *argv[])
         return -1;
     }
 
-    if (service.invoke(&channel, argc - 8, argv + 8) < 0) {
+    if (service.invoke(&channel, argc - 9, argv + 9) < 0) {
         puts("Could not invoke service");
         return -1;
     }
