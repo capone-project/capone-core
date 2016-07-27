@@ -195,7 +195,7 @@ int main(int argc, char *argv[])
     int i, numservices;
 
     if (argc == 2 && !strcmp(argv[1], "--version")) {
-        puts("sd-discover-responder " VERSION "\n"
+        puts("cpn-discover-responder " VERSION "\n"
              "Copyright (C) 2016 Patrick Steinhardt\n"
              "License GPLv3: GNU GPL version 3 <http://gnu.org/licenses/gpl.html>.\n"
              "This is free software; you are free to change and redistribute it.\n"

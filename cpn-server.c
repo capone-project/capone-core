@@ -196,7 +196,7 @@ static int setup(struct cpn_cfg *cfg, int argc, char *argv[])
     int err;
 
     if (argc == 2 && !strcmp(argv[1], "--version")) {
-        puts("sd-server " VERSION "\n"
+        puts("cpn-server " VERSION "\n"
              "Copyright (C) 2016 Patrick Steinhardt\n"
              "License GPLv3: GNU GPL version 3 <http://gnu.org/licenses/gpl.html>.\n"
              "This is free software; you are free to change and redistribute it.\n"
