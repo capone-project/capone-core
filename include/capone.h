@@ -16,23 +16,22 @@
  */
 
 /**
- * \defgroup cpn-lib SD Library
+ * \defgroup cpn-lib Capone Library
  * @{
  */
 
-#ifndef CPN_LIB_SD_H
-#define CPN_LIB_SD_H
+#ifndef CPN_LIB_CAPONE_H
+#define CPN_LIB_CAPONE_H
 
-#include "cfg.h"
-#include "channel.h"
-#include "common.h"
-#include "keys.h"
-#include "log.h"
-#include "proto.h"
-#include "sd.h"
-#include "server.h"
-#include "service.h"
-#include "session.h"
+#include "capone/cfg.h"
+#include "capone/channel.h"
+#include "capone/common.h"
+#include "capone/keys.h"
+#include "capone/log.h"
+#include "capone/proto.h"
+#include "capone/server.h"
+#include "capone/service.h"
+#include "capone/session.h"
 
 #endif
 
