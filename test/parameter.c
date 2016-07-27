@@ -15,8 +15,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "lib/common.h"
-#include "lib/parameter.h"
+#include "capone/common.h"
+#include "capone/parameter.h"
 
 #include "test.h"
 

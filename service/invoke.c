@@ -17,11 +17,11 @@
 
 #include "invoke.h"
 
-#include "lib/channel.h"
-#include "lib/common.h"
-#include "lib/log.h"
-#include "lib/proto.h"
-#include "lib/service.h"
+#include "capone/channel.h"
+#include "capone/common.h"
+#include "capone/log.h"
+#include "capone/proto.h"
+#include "capone/service.h"
 
 static const char *version(void)
 {

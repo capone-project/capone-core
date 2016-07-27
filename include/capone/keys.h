@@ -44,7 +44,7 @@
 
 #include <sodium.h>
 
-#include "lib/cfg.h"
+#include "capone/cfg.h"
 
 /** @brief Secret signature key used to sign data */
 struct cpn_sign_key_secret {

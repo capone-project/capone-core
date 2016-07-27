@@ -20,10 +20,10 @@
 
 #include "exec.h"
 
-#include "lib/common.h"
-#include "lib/channel.h"
-#include "lib/log.h"
-#include "lib/service.h"
+#include "capone/common.h"
+#include "capone/channel.h"
+#include "capone/log.h"
+#include "capone/service.h"
 
 static const char *version(void)
 {

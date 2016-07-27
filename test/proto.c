@@ -17,12 +17,12 @@
 
 #include <string.h>
 
-#include "lib/channel.h"
-#include "lib/common.h"
-#include "lib/proto.h"
-#include "lib/server.h"
-#include "lib/service.h"
-#include "lib/session.h"
+#include "capone/channel.h"
+#include "capone/common.h"
+#include "capone/proto.h"
+#include "capone/server.h"
+#include "capone/service.h"
+#include "capone/session.h"
 
 #include "service/test.h"
 

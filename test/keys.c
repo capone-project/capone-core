@@ -17,8 +17,8 @@
 
 #include <string.h>
 
-#include "lib/cfg.h"
-#include "lib/keys.h"
+#include "capone/cfg.h"
+#include "capone/keys.h"
 
 #include "test.h"
 

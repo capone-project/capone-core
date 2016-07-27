@@ -17,9 +17,8 @@
 
 #include <string.h>
 
-#include "lib/common.h"
-
-#include "acl.h"
+#include "capone/acl.h"
+#include "capone/common.h"
 
 struct cpn_acl_entry {
     struct cpn_sign_key_public identity;

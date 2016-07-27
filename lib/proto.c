@@ -17,15 +17,14 @@
 
 #include <string.h>
 
-#include "lib/common.h"
-#include "lib/channel.h"
-#include "lib/log.h"
-#include "lib/parameter.h"
-#include "lib/session.h"
+#include "capone/common.h"
+#include "capone/channel.h"
+#include "capone/log.h"
+#include "capone/parameter.h"
+#include "capone/session.h"
+#include "capone/proto.h"
 
 #include "proto/connect.pb-c.h"
-
-#include "proto.h"
 
 static ssize_t convert_params(struct cpn_parameter **out,
         Parameter **params,

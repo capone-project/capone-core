@@ -17,7 +17,7 @@
 
 #include <string.h>
 
-#include "lib/acl.h"
+#include "capone/acl.h"
 
 #include "test.h"
 

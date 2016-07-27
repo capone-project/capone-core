@@ -20,8 +20,8 @@
 
 #include <sodium.h>
 
-#include "lib/common.h"
-#include "lib/keys.h"
+#include "capone/common.h"
+#include "capone/keys.h"
 
 int main(int argc, char *argv[])
 {

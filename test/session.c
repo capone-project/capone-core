@@ -17,10 +17,10 @@
 
 #include <string.h>
 
-#include "lib/common.h"
-#include "lib/keys.h"
-#include "lib/session.h"
-#include "lib/service.h"
+#include "capone/common.h"
+#include "capone/keys.h"
+#include "capone/session.h"
+#include "capone/service.h"
 
 #include "test.h"
 

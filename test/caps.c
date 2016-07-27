@@ -17,7 +17,7 @@
 
 #include <string.h>
 
-#include "lib/caps.h"
+#include "capone/caps.h"
 
 #include "test.h"
 

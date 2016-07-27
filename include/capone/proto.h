@@ -40,9 +40,9 @@
 #ifndef CPN_LIB_PROTO_H
 #define CPN_LIB_PROTO_H
 
-#include "lib/caps.h"
-#include "lib/channel.h"
-#include "lib/service.h"
+#include "capone/caps.h"
+#include "capone/channel.h"
+#include "capone/service.h"
 
 /** @brief Connection types specifying the end point
  *

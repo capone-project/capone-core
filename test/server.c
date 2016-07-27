@@ -15,7 +15,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "lib/server.h"
+#include "capone/server.h"
 
 #include "test.h"
 

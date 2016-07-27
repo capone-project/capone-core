@@ -20,10 +20,9 @@
 
 #include <pthread.h>
 
-#include "lib/log.h"
-#include "lib/service.h"
-
-#include "session.h"
+#include "capone/log.h"
+#include "capone/service.h"
+#include "capone/session.h"
 
 #define MAX_SESSIONS 1024
 

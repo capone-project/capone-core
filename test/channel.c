@@ -24,8 +24,8 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
-#include "lib/common.h"
-#include "lib/channel.h"
+#include "capone/common.h"
+#include "capone/channel.h"
 
 #include "proto/test.pb-c.h"
 

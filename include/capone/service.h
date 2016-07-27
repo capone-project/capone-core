@@ -34,9 +34,9 @@
 #ifndef CPN_LIB_SERVICE_H
 #define CPN_LIB_SERVICE_H
 
-#include "lib/cfg.h"
-#include "lib/keys.h"
-#include "lib/session.h"
+#include "capone/cfg.h"
+#include "capone/keys.h"
+#include "capone/session.h"
 
 struct cpn_channel;
 

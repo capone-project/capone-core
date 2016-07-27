@@ -17,8 +17,8 @@
 
 #include <string.h>
 
-#include "lib/channel.h"
-#include "lib/log.h"
+#include "capone/channel.h"
+#include "capone/log.h"
 
 #include "proto/encryption.pb-c.h"
 

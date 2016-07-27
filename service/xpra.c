@@ -21,10 +21,10 @@
 
 #include "xpra.h"
 
-#include "lib/common.h"
-#include "lib/log.h"
-#include "lib/server.h"
-#include "lib/service.h"
+#include "capone/common.h"
+#include "capone/log.h"
+#include "capone/server.h"
+#include "capone/service.h"
 
 static const char *version(void)
 {

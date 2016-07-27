@@ -18,9 +18,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "lib/log.h"
-
-#include "parameter.h"
+#include "capone/log.h"
+#include "capone/parameter.h"
 
 size_t cpn_parameters_dup(struct cpn_parameter **out,
         const struct cpn_parameter *params, size_t nparams)

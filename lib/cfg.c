@@ -28,9 +28,9 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-#include "common.h"
-#include "cfg.h"
-#include "log.h"
+#include "capone/common.h"
+#include "capone/cfg.h"
+#include "capone/log.h"
 
 static int map_file(char **out, size_t *outlen, const char *path)
 {

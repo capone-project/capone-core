@@ -18,11 +18,11 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "lib/bench.h"
-#include "lib/channel.h"
-#include "lib/common.h"
-#include "lib/keys.h"
-#include "lib/server.h"
+#include "capone/bench.h"
+#include "capone/channel.h"
+#include "capone/common.h"
+#include "capone/keys.h"
+#include "capone/server.h"
 
 #define PORT "43281"
 

@@ -17,8 +17,8 @@
 
 #include <string.h>
 
-#include "lib/common.h"
-#include "lib/log.h"
+#include "capone/common.h"
+#include "capone/log.h"
 
 #include "test/test.h"
 

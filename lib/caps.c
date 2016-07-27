@@ -18,10 +18,9 @@
 #include <sodium.h>
 #include <string.h>
 
-#include "caps.h"
-
-#include "lib/common.h"
-#include "lib/log.h"
+#include "capone/caps.h"
+#include "capone/common.h"
+#include "capone/log.h"
 
 struct caps {
     uint32_t objectid;

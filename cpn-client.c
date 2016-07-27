@@ -21,10 +21,10 @@
 #include <sodium.h>
 #include <inttypes.h>
 
-#include "lib/common.h"
-#include "lib/channel.h"
-#include "lib/proto.h"
-#include "lib/service.h"
+#include "capone/common.h"
+#include "capone/channel.h"
+#include "capone/proto.h"
+#include "capone/service.h"
 
 static struct cpn_sign_key_pair local_keys;
 static struct cpn_sign_key_public remote_key;

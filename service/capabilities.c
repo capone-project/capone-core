@@ -25,14 +25,14 @@
 
 #include "proto/capabilities.pb-c.h"
 
-#include "lib/cfg.h"
-#include "lib/channel.h"
-#include "lib/common.h"
-#include "lib/keys.h"
-#include "lib/parameter.h"
-#include "lib/proto.h"
-#include "lib/service.h"
-#include "lib/log.h"
+#include "capone/cfg.h"
+#include "capone/channel.h"
+#include "capone/common.h"
+#include "capone/keys.h"
+#include "capone/parameter.h"
+#include "capone/proto.h"
+#include "capone/service.h"
+#include "capone/log.h"
 
 static struct registrant {
     struct cpn_sign_key_public identity;

@@ -15,8 +15,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "lib/cfg.h"
-#include "lib/common.h"
+#include "capone/cfg.h"
+#include "capone/common.h"
 
 #include "test.h"
 

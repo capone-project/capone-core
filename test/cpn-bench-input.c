@@ -26,10 +26,10 @@
 #include <X11/extensions/XInput2.h>
 #include <X11/extensions/XTest.h>
 
-#include "lib/bench.h"
-#include "lib/common.h"
-#include "lib/channel.h"
-#include "lib/server.h"
+#include "capone/bench.h"
+#include "capone/common.h"
+#include "capone/channel.h"
+#include "capone/server.h"
 
 #define PORT "43269"
 #define REPEATS 1000

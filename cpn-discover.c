@@ -25,11 +25,11 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
-#include "lib/common.h"
-#include "lib/cfg.h"
-#include "lib/log.h"
-#include "lib/proto.h"
-#include "lib/server.h"
+#include "capone/common.h"
+#include "capone/cfg.h"
+#include "capone/log.h"
+#include "capone/proto.h"
+#include "capone/server.h"
 
 #include "proto/discovery.pb-c.h"
 

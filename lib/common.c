@@ -21,11 +21,10 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#include "lib/channel.h"
-#include "lib/cfg.h"
-#include "lib/log.h"
-
-#include "common.h"
+#include "capone/channel.h"
+#include "capone/cfg.h"
+#include "capone/log.h"
+#include "capone/common.h"
 
 int cpn_spawn(struct cpn_thread *t, thread_fn fn, void *payload)
 {

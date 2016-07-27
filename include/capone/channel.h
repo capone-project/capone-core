@@ -67,7 +67,7 @@
 
 #include <sodium/crypto_box.h>
 
-#include "lib/keys.h"
+#include "capone/keys.h"
 
 /** @brief Network communication type */
 enum cpn_channel_type {

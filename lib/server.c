@@ -24,9 +24,8 @@
 #include <sys/socket.h>
 #include <netdb.h>
 
-#include "lib/log.h"
-
-#include "server.h"
+#include "capone/log.h"
+#include "capone/server.h"
 
 static int get_server_socket(struct sockaddr_storage *addr, const char *host,
         const char *port, enum cpn_channel_type type)

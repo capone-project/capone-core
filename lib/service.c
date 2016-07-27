@@ -20,9 +20,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "lib/common.h"
-#include "lib/log.h"
-#include "lib/service.h"
+#include "capone/common.h"
+#include "capone/log.h"
+#include "capone/service.h"
 
 #include "service/capabilities.h"
 #include "service/exec.h"

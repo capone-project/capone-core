@@ -23,12 +23,12 @@
 
 #include <sodium.h>
 
-#include "lib/acl.h"
-#include "lib/common.h"
-#include "lib/log.h"
-#include "lib/proto.h"
-#include "lib/server.h"
-#include "lib/service.h"
+#include "capone/acl.h"
+#include "capone/common.h"
+#include "capone/log.h"
+#include "capone/proto.h"
+#include "capone/server.h"
+#include "capone/service.h"
 
 struct handle_connection_args {
     const struct cpn_cfg *cfg;

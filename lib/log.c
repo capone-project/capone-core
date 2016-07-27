@@ -20,7 +20,7 @@
 #include <string.h>
 #include <time.h>
 
-#include "log.h"
+#include "capone/log.h"
 
 static enum log_level current_log_level = LOG_LEVEL_VERBOSE;
 

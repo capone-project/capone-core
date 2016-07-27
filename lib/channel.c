@@ -35,10 +35,9 @@
 #include <sodium/utils.h>
 #include <sodium/randombytes.h>
 
-#include "lib/log.h"
-#include "lib/common.h"
-
-#include "channel.h"
+#include "capone/log.h"
+#include "capone/common.h"
+#include "capone/channel.h"
 
 #define DEFAULT_BLOCKLEN 512
 #define MAX_BLOCKLEN 4096

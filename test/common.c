@@ -17,7 +17,7 @@
 
 #include <time.h>
 
-#include "lib/common.h"
+#include "capone/common.h"
 
 #include "test.h"
 

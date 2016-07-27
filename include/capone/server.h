@@ -33,7 +33,7 @@
 #ifndef CPN_LIB_SERVER_H
 #define CPN_LIB_SERVER_H
 
-#include "lib/channel.h"
+#include "capone/channel.h"
 
 /** @brief Server struct bundling data for a server socket
  *

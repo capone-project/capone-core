@@ -17,9 +17,9 @@
 
 #include <string.h>
 
-#include "lib/common.h"
-#include "lib/channel.h"
-#include "lib/service.h"
+#include "capone/common.h"
+#include "capone/channel.h"
+#include "capone/service.h"
 
 #include "test.h"
 

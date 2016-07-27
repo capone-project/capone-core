@@ -17,10 +17,9 @@
 
 #include <string.h>
 
-#include "lib/cfg.h"
-#include "lib/log.h"
-
-#include "keys.h"
+#include "capone/cfg.h"
+#include "capone/log.h"
+#include "capone/keys.h"
 
 int cpn_sign_key_pair_generate(struct cpn_sign_key_pair *out)
 {
