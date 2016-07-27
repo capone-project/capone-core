@@ -3,7 +3,7 @@ CMAKE_MINIMUM_REQUIRED (VERSION 2.8)
 SET(CMAKE_LEGACY_CYGWIN_WIN32 0)
 SET(CMAKE_MACOSX_RPATH ON)
 
-PROJECT(sd C)
+PROJECT(capone C)
 
 SET(CMAKE_INCLUDE_CURRENT_DIR ON)
 
@@ -44,7 +44,7 @@ PROTOBUF_GENERATE_C(PROTO_SOURCES PROTO_HEADERS
     proto/encryption.proto
     proto/test.proto)
 
-ADD_LIBRARY(sd SHARED
+ADD_LIBRARY(cpn SHARED
     lib/acl.c
     lib/bench.c
     lib/caps.c
@@ -66,27 +66,27 @@ ADD_LIBRARY(sd SHARED
     service/test.c
     service/xpra.c
     ${PROTO_SOURCES})
-TARGET_LINK_LIBRARIES(sd
+TARGET_LINK_LIBRARIES(cpn
     ${SODIUM_LIBRARIES}
     ${PROTOBUFC_LIBRARIES}
     ${CMAKE_THREAD_LIBS_INIT})
 
-ADD_EXECUTABLE(sd-connect sd-connect.c)
-TARGET_LINK_LIBRARIES(sd-connect sd)
+ADD_EXECUTABLE(cpn-client cpn-client.c)
+TARGET_LINK_LIBRARIES(cpn-client cpn)
 
-ADD_EXECUTABLE(sd-discover sd-discover.c)
-TARGET_LINK_LIBRARIES(sd-discover sd)
+ADD_EXECUTABLE(cpn-discover cpn-discover.c)
+TARGET_LINK_LIBRARIES(cpn-discover cpn)
 
-ADD_EXECUTABLE(sd-discover-responder sd-discover-responder.c)
-TARGET_LINK_LIBRARIES(sd-discover-responder sd)
+ADD_EXECUTABLE(cpn-discover-responder cpn-discover-responder.c)
+TARGET_LINK_LIBRARIES(cpn-discover-responder cpn)
 
-ADD_EXECUTABLE(sd-genkey sd-genkey.c)
-TARGET_LINK_LIBRARIES(sd-genkey sd)
+ADD_EXECUTABLE(cpn-genkey cpn-genkey.c)
+TARGET_LINK_LIBRARIES(cpn-genkey cpn)
 
-ADD_EXECUTABLE(sd-server sd-server.c)
-TARGET_LINK_LIBRARIES(sd-server sd)
+ADD_EXECUTABLE(cpn-server cpn-server.c)
+TARGET_LINK_LIBRARIES(cpn-server cpn)
 
-ADD_EXECUTABLE(sd-test sd-test.c
+ADD_EXECUTABLE(cpn-test cpn-test.c
     test/acl.c
     test/caps.c
     test/cfg.c
@@ -98,15 +98,15 @@ ADD_EXECUTABLE(sd-test sd-test.c
     test/server.c
     test/service.c
     test/session.c)
-TARGET_LINK_LIBRARIES(sd-test sd cmocka)
+TARGET_LINK_LIBRARIES(cpn-test cpn cmocka)
 
-ADD_EXECUTABLE(sd-bench-throughput sd-bench-throughput.c)
-TARGET_LINK_LIBRARIES(sd-bench-throughput sd)
+ADD_EXECUTABLE(cpn-bench-throughput cpn-bench-throughput.c)
+TARGET_LINK_LIBRARIES(cpn-bench-throughput cpn)
 
-ADD_EXECUTABLE(sd-bench-latency sd-bench-latency.c)
-TARGET_LINK_LIBRARIES(sd-bench-latency sd)
+ADD_EXECUTABLE(cpn-bench-latency cpn-bench-latency.c)
+TARGET_LINK_LIBRARIES(cpn-bench-latency cpn)
 
 IF(X11_FOUND)
-    ADD_EXECUTABLE(sd-bench-input sd-bench-input.c)
-    TARGET_LINK_LIBRARIES(sd-bench-input sd ${X11_LIBRARIES})
+    ADD_EXECUTABLE(cpn-bench-input cpn-bench-input.c)
+    TARGET_LINK_LIBRARIES(cpn-bench-input cpn ${X11_LIBRARIES})
 ENDIF(X11_FOUND)
