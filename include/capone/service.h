@@ -20,8 +20,8 @@
  */
 
 /**
- * \defgroup sd-service Service
- * \ingroup sd-lib
+ * \defgroup cpn-service Service
+ * \ingroup cpn-lib
  *
  * @brief Module providing service handling
  *

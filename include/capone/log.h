@@ -16,8 +16,8 @@
  */
 
 /**
- * \defgroup sd-log Logging
- * \ingroup sd-lib
+ * \defgroup cpn-log Logging
+ * \ingroup cpn-lib
  *
  * @brief Module providing logging functions
  *

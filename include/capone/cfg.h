@@ -16,8 +16,8 @@
  */
 
 /**
- * \defgroup sd-cfg Configuration
- * \ingroup sd-lib
+ * \defgroup cpn-cfg Configuration
+ * \ingroup cpn-lib
  *
  * @brief Module handling parsing of configurations.
  *

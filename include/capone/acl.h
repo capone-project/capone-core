@@ -16,8 +16,8 @@
  */
 
 /**
- * \defgroup sd-acl Access control list management
- * \ingroup sd-lib
+ * \defgroup cpn-acl Access control list management
+ * \ingroup cpn-lib
  *
  * @brief Module for handling access control lists
  *

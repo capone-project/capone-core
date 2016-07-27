@@ -16,8 +16,8 @@
  */
 
 /**
- * \defgroup sd-channel Channel
- * \ingroup sd-lib
+ * \defgroup cpn-channel Channel
+ * \ingroup cpn-lib
  *
  * @brief Module handling network connections.
  *

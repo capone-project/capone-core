@@ -16,8 +16,8 @@
  */
 
 /**
- * \defgroup sd-common Common
- * \ingroup sd-lib
+ * \defgroup cpn-common Common
+ * \ingroup cpn-lib
  *
  * @brief Module for commonly used functions
  *

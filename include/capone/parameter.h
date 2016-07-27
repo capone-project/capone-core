@@ -17,7 +17,7 @@
 
 /**
  * \defgroup parameter Parameter
- * \ingroup sd-lib
+ * \ingroup cpn-lib
  *
  * @brief Module handling parameters
  *

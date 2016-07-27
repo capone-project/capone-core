@@ -16,8 +16,8 @@
  */
 
 /**
- * \defgroup sd-caps Capabilities
- * \ingroup sd-lib
+ * \defgroup cpn-caps Capabilities
+ * \ingroup cpn-lib
  *
  * @brief Module handling capabilities
  *

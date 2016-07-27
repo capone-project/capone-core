@@ -16,8 +16,8 @@
  */
 
 /**
- * \defgroup sd-keys Key Management
- * \ingroup sd-lib
+ * \defgroup cpn-keys Key Management
+ * \ingroup cpn-lib
  *
  * @brief Module for key handling
  *

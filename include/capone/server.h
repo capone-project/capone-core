@@ -16,8 +16,8 @@
  */
 
 /**
- * \defgroup sd-server Server
- * \ingroup sd-lib
+ * \defgroup cpn-server Server
+ * \ingroup cpn-lib
  *
  * @brief Module providing networked servers
  *

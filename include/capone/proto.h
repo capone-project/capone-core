@@ -16,8 +16,8 @@
  */
 
 /**
- * \defgroup sd-proto Protocols
- * \ingroup sd-lib
+ * \defgroup cpn-proto Protocols
+ * \ingroup cpn-lib
  *
  * @brief Module handling protocols
  *

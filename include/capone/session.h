@@ -16,8 +16,8 @@
  */
 
 /**
- * \defgroup sd-session Session
- * \ingroup sd-lib
+ * \defgroup cpn-session Session
+ * \ingroup cpn-lib
  *
  * @brief Module handling session management
  *

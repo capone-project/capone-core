@@ -16,7 +16,7 @@
  */
 
 /**
- * \defgroup sd-lib SD Library
+ * \defgroup cpn-lib SD Library
  * @{
  */
 
