@@ -2,7 +2,7 @@
 
 set -e
 
-cd source/sd/build
+cd build
 
 CONTROLLER_KEY=d0c09c8cd02d960c285ee9d616d809d86024c27b915f8b1ee21a9b8c127f611c
 
@@ -24,7 +24,7 @@ SERVICE_PARAMS="service-parameters=command=ls
                 service-parameters=arg=-l
                 service-parameters=arg=/"
 
-CAP_SESSION="$(./sd-connect request \
+CAP_SESSION="$(./cpn-client request \
     ${CLIENT_CFG} \
     ${CLIENT_KEY} \
     ${CAP_KEY} \
@@ -40,7 +40,7 @@ CAP_SESSION="$(./sd-connect request \
 CAP_ID="$(echo "$CAP_SESSION" | awk 'NR == 1 { print $2 }')"
 CAP_SECRET="$(echo "$CAP_SESSION" | awk 'NR == 2 { print $2 }')"
 
-SERVICE_SESSION="$(./sd-connect connect \
+SERVICE_SESSION="$(./cpn-client connect \
     ${CLIENT_CFG} \
     ${CAP_KEY} \
     ${CAP_ADDR} \
@@ -52,7 +52,7 @@ SERVICE_SESSION="$(./sd-connect connect \
 SERVICE_ID="$(echo "$SERVICE_SESSION" | awk 'NR == 3 { print $2 }')"
 SERVICE_SECRET="$(echo "$SERVICE_SESSION" | awk 'NR == 4 { print $2 }')"
 
-./sd-connect connect \
+./cpn-connect connect \
     ${CLIENT_CFG} \
     ${SERVICE_KEY} \
     ${SERVICE_ADDR} \

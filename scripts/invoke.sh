@@ -2,7 +2,7 @@
 
 set -e
 
-cd source/sd/build
+cd build
 
 CLIENT_CFG=../config/client.conf
 CLIENT_KEY=$(cat ${CLIENT_CFG} | sed -n 's/^public_key=\(.*\)$/\1/p')
@@ -20,7 +20,7 @@ SERVICE_PORT=1237
 SERVICE_ARGS="command=ls
               arg=-l"
 
-SERVICE_SESSION=$(./sd-connect request \
+SERVICE_SESSION=$(./cpn-client request \
     ${CLIENT_CFG} \
     ${INVOKER_KEY} \
     ${SERVICE_KEY} \
@@ -30,7 +30,7 @@ SERVICE_SESSION=$(./sd-connect request \
 SERVICE_ID="$(echo "$SERVICE_SESSION" | awk 'NR == 1 { print $2 }')"
 SERVICE_SECRET="$(echo "$SERVICE_SESSION" | awk 'NR == 2 { print $2 }')"
 
-INVOKE_SESSION=$(./sd-connect request \
+INVOKE_SESSION=$(./cpn-client request \
     ${CLIENT_CFG} \
     ${CLIENT_KEY} \
     ${INVOKER_KEY} \
@@ -45,7 +45,7 @@ INVOKE_SESSION=$(./sd-connect request \
 INVOKE_ID="$(echo "$INVOKE_SESSION" | awk 'NR == 1 { print $2 }')"
 INVOKE_SECRET="$(echo "$INVOKE_SESSION" | awk 'NR == 2 { print $2 }')"
 
-./sd-connect connect \
+./cpn-client connect \
     ${CLIENT_CFG} \
     ${INVOKER_KEY} \
     ${INVOKER_ADDR} \
