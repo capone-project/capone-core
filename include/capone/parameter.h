@@ -131,7 +131,7 @@ int cpn_parameters_get_values(const char ***out, const char *value, const struct
  */
 void cpn_parameters_free(struct cpn_parameter *params, size_t nparams);
 
-/** @brief Convert sd parameters to proto parameters
+/** @brief Convert cpn parameters to proto parameters
  *
  * Convert parameters into an array of pointers to parameters as
  * required by protobuf messages. The out value needs to be freed
