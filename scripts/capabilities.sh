@@ -6,16 +6,16 @@ cd build
 
 CONTROLLER_KEY=d0c09c8cd02d960c285ee9d616d809d86024c27b915f8b1ee21a9b8c127f611c
 
-CLIENT_CFG=../config/client.conf
+CLIENT_CFG=scripts/config/client.conf
 CLIENT_KEY=$(cat ${CLIENT_CFG} | sed -n 's/^public_key=\(.*\)$/\1/p')
 
-CAP_CFG=../config/server.conf
+CAP_CFG=scripts/config/server.conf
 CAP_KEY=32798491bf871fbee6f4ea8e504a545d66e2bb14dde6404d910d0d3d90a20b35
 CAP_KEY=$(cat ${CAP_CFG} | sed -n 's/^public_key=\(.*\)$/\1/p')
 CAP_ADDR=localhost
 CAP_PORT=1238
 
-SERVICE_CFG=../config/server.conf
+SERVICE_CFG=scripts/config/server.conf
 SERVICE_KEY=$(cat ${SERVICE_CFG} | sed -n 's/^public_key=\(.*\)$/\1/p')
 SERVICE_TYPE=exec
 SERVICE_ADDR=192.168.178.38

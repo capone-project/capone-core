@@ -4,15 +4,15 @@ set -e
 
 cd build
 
-CLIENT_CFG=../config/client.conf
+CLIENT_CFG=scripts/config/client.conf
 CLIENT_KEY=$(cat ${CLIENT_CFG} | sed -n 's/^public_key=\(.*\)$/\1/p')
 
-INVOKER_CFG=../config/server.conf
+INVOKER_CFG=scripts/config/server.conf
 INVOKER_KEY=$(cat ${INVOKER_CFG} | sed -n 's/^public_key=\(.*\)$/\1/p')
 INVOKER_ADDR=127.0.0.1
 INVOKER_PORT=1239
 
-SERVICE_CFG=../config/server.conf
+SERVICE_CFG=scripts/config/server.conf
 SERVICE_KEY=$(cat ${SERVICE_CFG} | sed -n 's/^public_key=\(.*\)$/\1/p')
 SERVICE_TYPE=exec
 SERVICE_ADDR=127.0.0.1
