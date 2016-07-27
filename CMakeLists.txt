@@ -86,7 +86,7 @@ TARGET_LINK_LIBRARIES(cpn-genkey cpn)
 ADD_EXECUTABLE(cpn-server cpn-server.c)
 TARGET_LINK_LIBRARIES(cpn-server cpn)
 
-ADD_EXECUTABLE(cpn-test cpn-test.c
+ADD_EXECUTABLE(cpn-test test/cpn-test.c
     test/acl.c
     test/caps.c
     test/cfg.c
@@ -100,13 +100,13 @@ ADD_EXECUTABLE(cpn-test cpn-test.c
     test/session.c)
 TARGET_LINK_LIBRARIES(cpn-test cpn cmocka)
 
-ADD_EXECUTABLE(cpn-bench-throughput cpn-bench-throughput.c)
+ADD_EXECUTABLE(cpn-bench-throughput test/cpn-bench-throughput.c)
 TARGET_LINK_LIBRARIES(cpn-bench-throughput cpn)
 
-ADD_EXECUTABLE(cpn-bench-latency cpn-bench-latency.c)
+ADD_EXECUTABLE(cpn-bench-latency test/cpn-bench-latency.c)
 TARGET_LINK_LIBRARIES(cpn-bench-latency cpn)
 
 IF(X11_FOUND)
-    ADD_EXECUTABLE(cpn-bench-input cpn-bench-input.c)
+    ADD_EXECUTABLE(cpn-bench-input test/cpn-bench-input.c)
     TARGET_LINK_LIBRARIES(cpn-bench-input cpn ${X11_LIBRARIES})
 ENDIF(X11_FOUND)
