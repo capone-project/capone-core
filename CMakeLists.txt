@@ -25,8 +25,8 @@ CHECK_FUNCTION_EXISTS(sched_setaffinity HAVE_SCHED)
 CHECK_FUNCTION_EXISTS(clock_gettime HAVE_CLOCK_GETTIME)
 CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/config.h.in ${CMAKE_CURRENT_BINARY_DIR}/config.h)
 
-INCLUDE_DIRECTORIES("${PROJECT_SOURCE_PATH}include"
-    ${PROJECT_BIN_PATH})
+INCLUDE_DIRECTORIES("${PROJECT_SOURCE_DIR}/include"
+    "${PROJECT_BINARY_DIR}/include")
 INCLUDE_DIRECTORIES(SYSTEM
     ${PROTOBUFC_INCLUDE_DIRS}
     ${CMOCKA_INCLUDE_DIR}
@@ -40,11 +40,11 @@ ADD_DEFINITIONS(-D_DEFAULT_SOURCE)
 SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Werror -pedantic -std=c89")
 
 PROTOBUF_GENERATE_C(PROTO_SOURCES PROTO_HEADERS
-    proto/capabilities.proto
-    proto/connect.proto
-    proto/discovery.proto
-    proto/encryption.proto
-    proto/test.proto)
+    include/capone/proto/capabilities.proto
+    include/capone/proto/connect.proto
+    include/capone/proto/discovery.proto
+    include/capone/proto/encryption.proto
+    include/capone/proto/test.proto)
 
 ADD_LIBRARY(cpn SHARED
     lib/acl.c

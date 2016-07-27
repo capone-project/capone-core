@@ -27,7 +27,7 @@
 #include "capone/common.h"
 #include "capone/channel.h"
 
-#include "proto/test.pb-c.h"
+#include "capone/proto/test.pb-c.h"
 
 #include "test.h"
 

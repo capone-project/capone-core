@@ -20,7 +20,7 @@
 #include "capone/channel.h"
 #include "capone/log.h"
 
-#include "proto/encryption.pb-c.h"
+#include "capone/proto/encryption.pb-c.h"
 
 static int send_ephemeral_key(struct cpn_channel *channel,
         uint32_t id,

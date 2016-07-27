@@ -24,7 +24,7 @@
 #include "capone/session.h"
 #include "capone/proto.h"
 
-#include "proto/connect.pb-c.h"
+#include "capone/proto/connect.pb-c.h"
 
 static ssize_t convert_params(struct cpn_parameter **out,
         Parameter **params,

@@ -33,7 +33,7 @@
 
 #include <unistd.h>
 
-#include "proto/capabilities.pb-c.h"
+#include "capone/proto/capabilities.pb-c.h"
 
 /** @brief Service parameters
  *

@@ -23,8 +23,6 @@
 #include <string.h>
 #include <inttypes.h>
 
-#include "proto/capabilities.pb-c.h"
-
 #include "capone/cfg.h"
 #include "capone/channel.h"
 #include "capone/common.h"
@@ -33,6 +31,8 @@
 #include "capone/proto.h"
 #include "capone/service.h"
 #include "capone/log.h"
+
+#include "capone/proto/capabilities.pb-c.h"
 
 static struct registrant {
     struct cpn_sign_key_public identity;

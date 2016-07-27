@@ -31,7 +31,7 @@
 #include "capone/proto.h"
 #include "capone/server.h"
 
-#include "proto/discovery.pb-c.h"
+#include "capone/proto/discovery.pb-c.h"
 
 #define LISTEN_PORT 6668
 

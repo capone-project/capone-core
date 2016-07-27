@@ -34,7 +34,7 @@
 #include "capone/server.h"
 #include "capone/service.h"
 
-#include "proto/discovery.pb-c.h"
+#include "capone/proto/discovery.pb-c.h"
 
 static AnnounceMessage announce_message;
 static struct cpn_sign_key_pair sign_keys;
