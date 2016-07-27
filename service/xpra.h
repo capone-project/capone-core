@@ -41,6 +41,6 @@
  * tunneled through an encrypted channel.
  */
 
-struct sd_service;
+struct cpn_service;
 
-int sd_xpra_init_service(struct sd_service *service);
+int cpn_xpra_init_service(struct cpn_service *service);

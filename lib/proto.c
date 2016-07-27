@@ -27,31 +27,31 @@
 
 #include "proto.h"
 
-static ssize_t convert_params(struct sd_parameter **out,
+static ssize_t convert_params(struct cpn_parameter **out,
         Parameter **params,
         size_t nparams);
 
-int sd_proto_initiate_connection(struct sd_channel *channel,
+int cpn_proto_initiate_connection(struct cpn_channel *channel,
         const char *host,
         const char *port,
-        const struct sd_sign_key_pair *local_keys,
-        const struct sd_sign_key_public *remote_key,
-        enum sd_connection_type type)
+        const struct cpn_sign_key_pair *local_keys,
+        const struct cpn_sign_key_public *remote_key,
+        enum cpn_connection_type type)
 {
     ConnectionInitiationMessage conntype = CONNECTION_INITIATION_MESSAGE__INIT;
 
-    if (sd_channel_init_from_host(channel, host, port, SD_CHANNEL_TYPE_TCP) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not initialize channel");
+    if (cpn_channel_init_from_host(channel, host, port, SD_CHANNEL_TYPE_TCP) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Could not initialize channel");
         return -1;
     }
 
-    if (sd_channel_connect(channel) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not connect to server");
+    if (cpn_channel_connect(channel) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Could not connect to server");
         return -1;
     }
 
-    if (sd_proto_initiate_encryption(channel, local_keys, remote_key) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Unable to initiate encryption");
+    if (cpn_proto_initiate_encryption(channel, local_keys, remote_key) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Unable to initiate encryption");
         return -1;
     }
 
@@ -69,28 +69,28 @@ int sd_proto_initiate_connection(struct sd_channel *channel,
             conntype.type = CONNECTION_INITIATION_MESSAGE__TYPE__TERMINATE;
             break;
         default:
-            sd_log(LOG_LEVEL_ERROR, "Unknown connection type");
+            cpn_log(LOG_LEVEL_ERROR, "Unknown connection type");
             return -1;
     }
 
-    if (sd_channel_write_protobuf(channel, &conntype.base) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not send connection type");
+    if (cpn_channel_write_protobuf(channel, &conntype.base) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Could not send connection type");
         return -1;
     }
 
     return 0;
 }
 
-int sd_proto_receive_connection_type(enum sd_connection_type *out,
-        struct sd_channel *channel)
+int cpn_proto_receive_connection_type(enum cpn_connection_type *out,
+        struct cpn_channel *channel)
 {
     ConnectionInitiationMessage *initiation;
     int ret = 0;;
 
-    if (sd_channel_receive_protobuf(channel,
+    if (cpn_channel_receive_protobuf(channel,
                 (ProtobufCMessageDescriptor *) &connection_initiation_message__descriptor,
                 (ProtobufCMessage **) &initiation) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Failed receiving connection type");
+        cpn_log(LOG_LEVEL_ERROR, "Failed receiving connection type");
         return -1;
     }
 
@@ -118,31 +118,31 @@ int sd_proto_receive_connection_type(enum sd_connection_type *out,
     return ret;
 }
 
-int sd_proto_initiate_session(struct sd_channel *channel,
-        const struct sd_cap *cap)
+int cpn_proto_initiate_session(struct cpn_channel *channel,
+        const struct cpn_cap *cap)
 {
     SessionInitiationMessage initiation = SESSION_INITIATION_MESSAGE__INIT;
     SessionResult *result = NULL;
     int ret = 0;
 
     initiation.capability = malloc(sizeof(CapabilityMessage));
-    if (sd_cap_to_protobuf(initiation.capability, cap) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not read capability");
+    if (cpn_cap_to_protobuf(initiation.capability, cap) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Could not read capability");
         ret = -1;
         goto out;
     }
 
-    if (sd_channel_write_protobuf(channel, &initiation.base) < 0 ) {
-        sd_log(LOG_LEVEL_ERROR, "Could not initiate session");
+    if (cpn_channel_write_protobuf(channel, &initiation.base) < 0 ) {
+        cpn_log(LOG_LEVEL_ERROR, "Could not initiate session");
         ret = -1;
         goto out;
     }
 
-    if (sd_channel_receive_protobuf(channel,
+    if (cpn_channel_receive_protobuf(channel,
                 &session_result__descriptor,
                 (ProtobufCMessage **) &result) < 0)
     {
-        sd_log(LOG_LEVEL_ERROR, "Could not receive session OK");
+        cpn_log(LOG_LEVEL_ERROR, "Could not receive session OK");
         ret = -1;
         goto out;
     }
@@ -161,48 +161,48 @@ out:
     return ret;
 }
 
-int sd_proto_handle_session(struct sd_channel *channel,
-        const struct sd_sign_key_public *remote_key,
-        const struct sd_service *service,
-        const struct sd_cfg *cfg)
+int cpn_proto_handle_session(struct cpn_channel *channel,
+        const struct cpn_sign_key_public *remote_key,
+        const struct cpn_service *service,
+        const struct cpn_cfg *cfg)
 {
     SessionInitiationMessage *initiation = NULL;
     SessionResult msg = SESSION_RESULT__INIT;
-    struct sd_session session;
-    struct sd_cap cap;
+    struct cpn_session session;
+    struct cpn_cap cap;
     int err;
 
     memset(&session, 0, sizeof(session));
 
-    if ((err = sd_channel_receive_protobuf(channel,
+    if ((err = cpn_channel_receive_protobuf(channel,
                 &session_initiation_message__descriptor,
                 (ProtobufCMessage **) &initiation)) < 0)
     {
-        sd_log(LOG_LEVEL_ERROR, "Could not receive connection initiation");
+        cpn_log(LOG_LEVEL_ERROR, "Could not receive connection initiation");
         goto out;
     }
 
-    if (sd_cap_from_protobuf(&cap, initiation->capability) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not read capability");
+    if (cpn_cap_from_protobuf(&cap, initiation->capability) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Could not read capability");
         err = -1;
         goto out_notify;
     }
 
-    if (sd_caps_verify(&cap, remote_key, SD_CAP_RIGHT_EXEC) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not authorize session initiation");
+    if (cpn_caps_verify(&cap, remote_key, SD_CAP_RIGHT_EXEC) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Could not authorize session initiation");
         err = -1;
         goto out_notify;
     }
 
-    if ((err = sd_sessions_remove(&session, cap.objectid)) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not find session for client");
+    if ((err = cpn_sessions_remove(&session, cap.objectid)) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Could not find session for client");
         goto out_notify;
     }
 
 out_notify:
     msg.result = err;
-    if (sd_channel_write_protobuf(channel, &msg.base) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not send session ack");
+    if (cpn_channel_write_protobuf(channel, &msg.base) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Could not send session ack");
         goto out;
     }
 
@@ -210,24 +210,24 @@ out_notify:
         goto out;
 
     if ((err = service->handle(channel, remote_key, &session, cfg)) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Service could not handle connection");
+        cpn_log(LOG_LEVEL_ERROR, "Service could not handle connection");
         goto out;
     }
 
 out:
     if (initiation) {
         session_initiation_message__free_unpacked(initiation, NULL);
-        sd_session_free(&session);
+        cpn_session_free(&session);
     }
 
     return 0;
 }
 
-int sd_proto_send_request(struct sd_cap *invoker_cap,
-        struct sd_cap *requester_cap,
-        struct sd_channel *channel,
-        const struct sd_sign_key_public *invoker,
-        const struct sd_parameter *params, size_t nparams)
+int cpn_proto_send_request(struct cpn_cap *invoker_cap,
+        struct cpn_cap *requester_cap,
+        struct cpn_channel *channel,
+        const struct cpn_sign_key_public *invoker,
+        const struct cpn_parameter *params, size_t nparams)
 {
     SessionRequestMessage request = SESSION_REQUEST_MESSAGE__INIT;
     SessionMessage *session = NULL;
@@ -237,24 +237,24 @@ int sd_proto_send_request(struct sd_cap *invoker_cap,
 
     request.invoker.data = (uint8_t *) invoker->data;
     request.invoker.len = sizeof(invoker->data);
-    request.n_parameters = sd_parameters_to_proto(&request.parameters, params, nparams);
+    request.n_parameters = cpn_parameters_to_proto(&request.parameters, params, nparams);
 
-    if (sd_channel_write_protobuf(channel, &request.base) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Unable to send connection request");
+    if (cpn_channel_write_protobuf(channel, &request.base) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Unable to send connection request");
         goto out;
     }
 
-    if (sd_channel_receive_protobuf(channel,
+    if (cpn_channel_receive_protobuf(channel,
             &session_message__descriptor,
             (ProtobufCMessage **) &session) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Unable to receive session");
+        cpn_log(LOG_LEVEL_ERROR, "Unable to receive session");
         goto out;
     }
 
-    if (sd_cap_from_protobuf(invoker_cap, session->invoker_cap) < 0 ||
-            sd_cap_from_protobuf(requester_cap, session->requester_cap) <0)
+    if (cpn_cap_from_protobuf(invoker_cap, session->invoker_cap) < 0 ||
+            cpn_cap_from_protobuf(requester_cap, session->requester_cap) <0)
     {
-        sd_log(LOG_LEVEL_ERROR, "Unable to read capabilities");
+        cpn_log(LOG_LEVEL_ERROR, "Unable to read capabilities");
         goto out;
     }
 
@@ -267,22 +267,22 @@ out:
         parameter__free_unpacked(request.parameters[i], NULL);
     free(request.parameters);
 
-    sd_parameters_proto_free(parameters, nparams);
+    cpn_parameters_proto_free(parameters, nparams);
 
     return err;
 }
 
-int sd_proto_send_query(struct sd_query_results *out,
-        struct sd_channel *channel)
+int cpn_proto_send_query(struct cpn_query_results *out,
+        struct cpn_channel *channel)
 {
     ServiceDescription *msg;
-    struct sd_query_results results;
+    struct cpn_query_results results;
 
-    memset(out, 0, sizeof(struct sd_query_results));
+    memset(out, 0, sizeof(struct cpn_query_results));
 
-    if (sd_channel_receive_protobuf(channel, &service_description__descriptor,
+    if (cpn_channel_receive_protobuf(channel, &service_description__descriptor,
             (ProtobufCMessage **) &msg) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not receive query results");
+        cpn_log(LOG_LEVEL_ERROR, "Could not receive query results");
         return -1;
     }
 
@@ -309,12 +309,12 @@ int sd_proto_send_query(struct sd_query_results *out,
     return 0;
 }
 
-int sd_proto_answer_query(struct sd_channel *channel,
-        const struct sd_service *service)
+int cpn_proto_answer_query(struct cpn_channel *channel,
+        const struct cpn_service *service)
 {
     ServiceDescription results = SERVICE_DESCRIPTION__INIT;
     Parameter **parameters;
-    const struct sd_parameter *params;
+    const struct cpn_parameter *params;
     int i, n, err;
 
     results.name = service->name;
@@ -338,8 +338,8 @@ int sd_proto_answer_query(struct sd_channel *channel,
     results.parameters = parameters;
     results.n_parameters = n;
 
-    if ((err = sd_channel_write_protobuf(channel, (ProtobufCMessage *) &results)) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not send query results");
+    if ((err = cpn_channel_write_protobuf(channel, (ProtobufCMessage *) &results)) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Could not send query results");
         goto out;
     }
 
@@ -352,7 +352,7 @@ out:
     return err;
 }
 
-void sd_query_results_free(struct sd_query_results *results)
+void cpn_query_results_free(struct cpn_query_results *results)
 {
     if (results == NULL)
         return;
@@ -370,21 +370,21 @@ void sd_query_results_free(struct sd_query_results *results)
     free(results->port);
     results->port = NULL;
 
-    sd_parameters_free(results->params, results->nparams);
+    cpn_parameters_free(results->params, results->nparams);
     results->params = NULL;
     results->nparams = 0;
 }
 
-static int create_cap(CapabilityMessage **out, uint32_t objectid, uint32_t rights, const struct sd_sign_key_public *key)
+static int create_cap(CapabilityMessage **out, uint32_t objectid, uint32_t rights, const struct cpn_sign_key_public *key)
 {
     CapabilityMessage *msg;
-    struct sd_cap cap;
+    struct cpn_cap cap;
 
-    if (sd_caps_create_reference(&cap, objectid, rights, key) < 0)
+    if (cpn_caps_create_reference(&cap, objectid, rights, key) < 0)
         return -1;
 
     msg = malloc(sizeof(CapabilityMessage));
-    if (sd_cap_to_protobuf(msg, &cap) < 0) {
+    if (cpn_cap_to_protobuf(msg, &cap) < 0) {
         free(msg);
         return -1;
     }
@@ -394,69 +394,69 @@ static int create_cap(CapabilityMessage **out, uint32_t objectid, uint32_t right
     return 0;
 }
 
-int sd_proto_answer_request(struct sd_channel *channel,
-        const struct sd_sign_key_public *remote_key)
+int cpn_proto_answer_request(struct cpn_channel *channel,
+        const struct cpn_sign_key_public *remote_key)
 {
     SessionRequestMessage *request = NULL;
     SessionMessage session_message = SESSION_MESSAGE__INIT;
-    struct sd_sign_key_public identity_key;
-    struct sd_parameter *params = NULL;
+    struct cpn_sign_key_public identity_key;
+    struct cpn_parameter *params = NULL;
     ssize_t nparams = 0;
     uint32_t sessionid;
     int err = -1;
 
-    if (sd_channel_receive_protobuf(channel,
+    if (cpn_channel_receive_protobuf(channel,
             &session_request_message__descriptor,
             (ProtobufCMessage **) &request) < 0)
     {
-        sd_log(LOG_LEVEL_ERROR, "Unable to receive request");
+        cpn_log(LOG_LEVEL_ERROR, "Unable to receive request");
         goto out;
     }
 
-    if (sd_sign_key_public_from_bin(&identity_key,
+    if (cpn_sign_key_public_from_bin(&identity_key,
                 request->invoker.data, request->invoker.len) < 0)
     {
-        sd_log(LOG_LEVEL_ERROR, "Unable to parse invoker key");
+        cpn_log(LOG_LEVEL_ERROR, "Unable to parse invoker key");
         goto out;
     }
 
     if ((nparams = convert_params(&params,
                     request->parameters, request->n_parameters)) < 0)
     {
-        sd_log(LOG_LEVEL_ERROR, "Unable to convert parameters");
+        cpn_log(LOG_LEVEL_ERROR, "Unable to convert parameters");
         goto out;
     }
 
-    if (sd_sessions_add(&sessionid, params, nparams) < 0)
+    if (cpn_sessions_add(&sessionid, params, nparams) < 0)
     {
-        sd_log(LOG_LEVEL_ERROR, "Unable to add session");
+        cpn_log(LOG_LEVEL_ERROR, "Unable to add session");
         goto out;
     }
 
-    if (sd_caps_add(sessionid) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Unable to add internal capability");
+    if (cpn_caps_add(sessionid) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Unable to add internal capability");
         goto out;
     }
 
     if (create_cap(&session_message.invoker_cap, sessionid, SD_CAP_RIGHT_EXEC | SD_CAP_RIGHT_TERM, &identity_key) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Unable to add invoker capability");
+        cpn_log(LOG_LEVEL_ERROR, "Unable to add invoker capability");
         goto out;
     }
     if (create_cap(&session_message.requester_cap, sessionid, SD_CAP_RIGHT_TERM, remote_key) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Unable to add invoker capability");
+        cpn_log(LOG_LEVEL_ERROR, "Unable to add invoker capability");
         goto out;
     }
 
-    if (sd_channel_write_protobuf(channel, &session_message.base) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Unable to send connection session");
-        sd_caps_delete(sessionid);
+    if (cpn_channel_write_protobuf(channel, &session_message.base) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Unable to send connection session");
+        cpn_caps_delete(sessionid);
         goto out;
     }
 
     err = 0;
 
 out:
-    sd_parameters_free(params, nparams);
+    cpn_parameters_free(params, nparams);
 
     if (session_message.invoker_cap)
         capability_message__free_unpacked(session_message.invoker_cap, NULL);
@@ -468,20 +468,20 @@ out:
     return err;
 }
 
-int sd_proto_initiate_termination(struct sd_channel *channel,
-        const struct sd_cap *cap)
+int cpn_proto_initiate_termination(struct cpn_channel *channel,
+        const struct cpn_cap *cap)
 {
     SessionTerminationMessage msg = SESSION_TERMINATION_MESSAGE__INIT;
     int err = 0;
 
     msg.capability = malloc(sizeof(CapabilityMessage));
-    if ((err = sd_cap_to_protobuf(msg.capability, cap)) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Unable to write termination message");
+    if ((err = cpn_cap_to_protobuf(msg.capability, cap)) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Unable to write termination message");
         goto out;
     }
 
-    if ((err = sd_channel_write_protobuf(channel, &msg.base)) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Unable to write termination message");
+    if ((err = cpn_channel_write_protobuf(channel, &msg.base)) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Unable to write termination message");
         goto out;
     }
 
@@ -491,39 +491,39 @@ out:
     return err;
 }
 
-int sd_proto_handle_termination(struct sd_channel *channel,
-        const struct sd_sign_key_public *remote_key)
+int cpn_proto_handle_termination(struct cpn_channel *channel,
+        const struct cpn_sign_key_public *remote_key)
 {
     SessionTerminationMessage *msg = NULL;
-    struct sd_session session;
-    struct sd_cap cap;
+    struct cpn_session session;
+    struct cpn_cap cap;
     int err = -1;
 
-    if (sd_channel_receive_protobuf(channel,
+    if (cpn_channel_receive_protobuf(channel,
             &session_termination_message__descriptor,
             (ProtobufCMessage **) &msg) < 0)
     {
-        sd_log(LOG_LEVEL_ERROR, "Unable to receive termination protobuf");
+        cpn_log(LOG_LEVEL_ERROR, "Unable to receive termination protobuf");
         goto out;
     }
 
     /* If session could not be found we have nothing to do */
-    if (sd_sessions_find(&session, msg->capability->objectid) < 0) {
+    if (cpn_sessions_find(&session, msg->capability->objectid) < 0) {
         goto out;
     }
 
-    if (sd_cap_from_protobuf(&cap, msg->capability) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Received invalid capability");
+    if (cpn_cap_from_protobuf(&cap, msg->capability) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Received invalid capability");
         goto out;
     }
 
-    if (sd_caps_verify(&cap, remote_key, SD_CAP_RIGHT_TERM) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Received unauthorized request");
+    if (cpn_caps_verify(&cap, remote_key, SD_CAP_RIGHT_TERM) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Received unauthorized request");
         goto out;
     }
 
-    if (sd_sessions_remove(NULL, cap.objectid) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Unable to terminate session");
+    if (cpn_sessions_remove(NULL, cap.objectid) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Unable to terminate session");
         goto out;
     }
 
@@ -536,10 +536,10 @@ out:
     return err;
 }
 
-static ssize_t convert_params(struct sd_parameter **out,
+static ssize_t convert_params(struct cpn_parameter **out,
         Parameter **parameters, size_t nparams)
 {
-    struct sd_parameter *params;
+    struct cpn_parameter *params;
     size_t i;
 
     *out = NULL;
@@ -547,7 +547,7 @@ static ssize_t convert_params(struct sd_parameter **out,
     if (nparams == 0)
         return 0;
 
-    params = malloc(sizeof(struct sd_parameter) * nparams);
+    params = malloc(sizeof(struct cpn_parameter) * nparams);
     for (i = 0; i < nparams; i++) {
         Parameter *msgparam = parameters[i];
 

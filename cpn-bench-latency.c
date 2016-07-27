@@ -31,20 +31,20 @@
 static uint32_t blocklen;
 
 struct client_args {
-    struct sd_sign_key_pair client_keys;
-    struct sd_sign_key_pair server_keys;
+    struct cpn_sign_key_pair client_keys;
+    struct cpn_sign_key_pair server_keys;
 };
 
 static void *client(void *payload)
 {
     struct client_args *args;
-    struct sd_channel channel;
+    struct cpn_channel channel;
     uint64_t start, end, time;
     int i;
 
     args = (struct client_args *) payload;
 
-    if (sd_bench_set_affinity(2) < 0) {
+    if (cpn_bench_set_affinity(2) < 0) {
         puts("Unable to set sched affinity");
         return NULL;
     }
@@ -52,29 +52,29 @@ static void *client(void *payload)
     time = 0;
 
     for (i = 0; i < REPEATS; i++) {
-        if (sd_channel_init_from_host(&channel, "127.0.0.1", PORT, SD_CHANNEL_TYPE_TCP) < 0) {
+        if (cpn_channel_init_from_host(&channel, "127.0.0.1", PORT, SD_CHANNEL_TYPE_TCP) < 0) {
             puts("Unable to init connection");
             return NULL;
         }
 
-        start = sd_bench_nsecs();
-        if (sd_channel_connect(&channel) < 0) {
+        start = cpn_bench_nsecs();
+        if (cpn_channel_connect(&channel) < 0) {
             puts("Unable to connect to server");
             return NULL;
         }
 
-        if (sd_channel_set_blocklen(&channel, blocklen) < 0) {
+        if (cpn_channel_set_blocklen(&channel, blocklen) < 0) {
             puts("Unable to set block length");
             return NULL;
         }
 
-        if (sd_proto_initiate_encryption(&channel, &args->client_keys, &args->server_keys.pk) < 0) {
+        if (cpn_proto_initiate_encryption(&channel, &args->client_keys, &args->server_keys.pk) < 0) {
             puts("Unable to initiate encryption");
             return NULL;
         }
-        end = sd_bench_nsecs();
+        end = cpn_bench_nsecs();
 
-        if (sd_channel_close(&channel) < 0) {
+        if (cpn_channel_close(&channel) < 0) {
             puts("Unable to close channel");
         }
 
@@ -88,10 +88,10 @@ static void *client(void *payload)
 
 int main(int argc, char *argv[])
 {
-    struct sd_thread t;
+    struct cpn_thread t;
     struct client_args args;
-    struct sd_server server;
-    struct sd_channel channel;
+    struct cpn_server server;
+    struct cpn_channel channel;
     uint64_t start, end, time;
     int i;
 
@@ -105,31 +105,31 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    if (sd_bench_set_affinity(3) < 0) {
+    if (cpn_bench_set_affinity(3) < 0) {
         puts("Unable to set sched affinity");
         return -1;
     }
 
-    if (sd_sign_key_pair_generate(&args.server_keys) < 0) {
+    if (cpn_sign_key_pair_generate(&args.server_keys) < 0) {
         puts("Unable to generate server sign key");
         return -1;
     }
-    if (sd_sign_key_pair_generate(&args.client_keys) < 0) {
+    if (cpn_sign_key_pair_generate(&args.client_keys) < 0) {
         puts("Unable to generate client sign key");
         return -1;
     }
 
-    if (sd_server_init(&server, NULL, PORT, SD_CHANNEL_TYPE_TCP) < 0) {
+    if (cpn_server_init(&server, NULL, PORT, SD_CHANNEL_TYPE_TCP) < 0) {
         puts("Unable to init server");
         return -1;
     }
 
-    if (sd_server_listen(&server) < 0) {
+    if (cpn_server_listen(&server) < 0) {
         puts("Unable to listen");
         return -1;
     }
 
-    if (sd_spawn(&t, client, &args) < 0) {
+    if (cpn_spawn(&t, client, &args) < 0) {
         puts("Unable to spawn client");
         return -1;
     }
@@ -137,31 +137,31 @@ int main(int argc, char *argv[])
     time = 0;
 
     for (i = 0; i < REPEATS; i++) {
-        if (sd_server_accept(&server, &channel) < 0) {
+        if (cpn_server_accept(&server, &channel) < 0) {
             puts("Unable to accept connection");
             return -1;
         }
 
-        if (sd_channel_set_blocklen(&channel, blocklen) < 0) {
+        if (cpn_channel_set_blocklen(&channel, blocklen) < 0) {
             puts("Unable to set block length");
             return -1;
         }
 
-        start = sd_bench_nsecs();
-        if (sd_proto_await_encryption(&channel, &args.server_keys, &args.client_keys.pk) < 0) {
+        start = cpn_bench_nsecs();
+        if (cpn_proto_await_encryption(&channel, &args.server_keys, &args.client_keys.pk) < 0) {
             puts("Unable to await encryption");
             return -1;
         }
-        end = sd_bench_nsecs();
+        end = cpn_bench_nsecs();
 
-        if (sd_channel_close(&channel) < 0) {
+        if (cpn_channel_close(&channel) < 0) {
             puts("Unable to close channel");
         }
 
         time += end - start;
     }
 
-    if (sd_join(&t, NULL) < 0) {
+    if (cpn_join(&t, NULL) < 0) {
         puts("Unable to await client thread");
         return -1;
     }

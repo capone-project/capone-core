@@ -27,19 +27,19 @@
 
 #define MAX_SESSIONS 1024
 
-static struct sd_session sessions[MAX_SESSIONS];
+static struct cpn_session sessions[MAX_SESSIONS];
 static char used[MAX_SESSIONS];
 static uint32_t sessionid = 0;
 
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
-int sd_sessions_init(void)
+int cpn_sessions_init(void)
 {
     return 0;
 }
 
-int sd_sessions_add(uint32_t *out,
-        const struct sd_parameter *params,
+int cpn_sessions_add(uint32_t *out,
+        const struct cpn_parameter *params,
         size_t nparams)
 {
     uint32_t id;
@@ -57,49 +57,49 @@ int sd_sessions_add(uint32_t *out,
     pthread_mutex_unlock(&mutex);
 
     if (i == MAX_SESSIONS) {
-        sd_log(LOG_LEVEL_ERROR, "No session space left");
+        cpn_log(LOG_LEVEL_ERROR, "No session space left");
         return -1;
     }
 
     sessions[i].sessionid = id;
     *out = id;
 
-    sessions[i].nparameters = sd_parameters_dup(&sessions[i].parameters,
+    sessions[i].nparameters = cpn_parameters_dup(&sessions[i].parameters,
             params, nparams);
 
-    sd_log(LOG_LEVEL_DEBUG, "Created session %"PRIu32, sessionid);
+    cpn_log(LOG_LEVEL_DEBUG, "Created session %"PRIu32, sessionid);
 
     return 0;
 }
 
-int sd_sessions_remove(struct sd_session *out, uint32_t sessionid)
+int cpn_sessions_remove(struct cpn_session *out, uint32_t sessionid)
 {
     ssize_t i;
 
     pthread_mutex_lock(&mutex);
 
-    i = sd_sessions_find(out, sessionid);
+    i = cpn_sessions_find(out, sessionid);
     if (i >= 0) {
-        memset(&sessions[i], 0, sizeof(struct sd_session));
+        memset(&sessions[i], 0, sizeof(struct cpn_session));
         used[i] = 0;
     }
 
     pthread_mutex_unlock(&mutex);
 
     if (i < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Session not found");
+        cpn_log(LOG_LEVEL_ERROR, "Session not found");
         return -1;
     }
 
     return 0;
 }
 
-int sd_sessions_find(struct sd_session *out, uint32_t sessionid)
+int cpn_sessions_find(struct cpn_session *out, uint32_t sessionid)
 {
     size_t i;
 
     for (i = 0; i < MAX_SESSIONS; i++) {
-        struct sd_session *s;
+        struct cpn_session *s;
 
         if (!used[i])
             continue;
@@ -107,7 +107,7 @@ int sd_sessions_find(struct sd_session *out, uint32_t sessionid)
         s = &sessions[i];
         if (s->sessionid == sessionid) {
             if (out)
-                memcpy(out, s, sizeof(struct sd_session));
+                memcpy(out, s, sizeof(struct cpn_session));
 
             return 0;
         }
@@ -116,7 +116,7 @@ int sd_sessions_find(struct sd_session *out, uint32_t sessionid)
     return -1;
 }
 
-int sd_sessions_clear(void)
+int cpn_sessions_clear(void)
 {
     size_t i;
     pthread_mutex_lock(&mutex);
@@ -125,7 +125,7 @@ int sd_sessions_clear(void)
         if (!used[i])
             continue;
 
-        sd_session_free(&sessions[i]);
+        cpn_session_free(&sessions[i]);
     }
 
     memset(used, 0, sizeof(used));
@@ -135,7 +135,7 @@ int sd_sessions_clear(void)
     return 0;
 }
 
-void sd_session_free(struct sd_session *session)
+void cpn_session_free(struct cpn_session *session)
 {
-    sd_parameters_free(session->parameters, session->nparameters);
+    cpn_parameters_free(session->parameters, session->nparameters);
 }

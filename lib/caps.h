@@ -33,25 +33,25 @@
 
 #define SD_CAP_SECRET_LEN 32
 
-enum sd_cap_rights {
+enum cpn_cap_rights {
     SD_CAP_RIGHT_EXEC = 1 << 0,
     SD_CAP_RIGHT_TERM = 1 << 1
 };
 
-struct sd_cap {
+struct cpn_cap {
     uint32_t objectid;
     uint32_t rights;
     uint8_t secret[SD_CAP_SECRET_LEN];
 };
 
 /** @brief Parse a capability from strings */
-int sd_cap_parse(struct sd_cap *out, const char *id, const char *secret, enum sd_cap_rights rights);
+int cpn_cap_parse(struct cpn_cap *out, const char *id, const char *secret, enum cpn_cap_rights rights);
 
 /** @brief Create capability from Protobuf */
-int sd_cap_from_protobuf(struct sd_cap *out, const CapabilityMessage *msg);
+int cpn_cap_from_protobuf(struct cpn_cap *out, const CapabilityMessage *msg);
 
 /** @brief Create Protobuf from capability */
-int sd_cap_to_protobuf(CapabilityMessage *out, const struct sd_cap *cap);
+int cpn_cap_to_protobuf(CapabilityMessage *out, const struct cpn_cap *cap);
 
 /** @brief Add a new internal capability
  *
@@ -64,7 +64,7 @@ int sd_cap_to_protobuf(CapabilityMessage *out, const struct sd_cap *cap);
  *            internal capability
  * @return <code>0</code> on success, <code>-1</code> otherwise
  */
-int sd_caps_add(uint32_t objectid);
+int cpn_caps_add(uint32_t objectid);
 
 /** @brief Delete internal capability
  *
@@ -76,10 +76,10 @@ int sd_caps_add(uint32_t objectid);
  * @return <code>0</code> on success, <code>-1</code> if no
  *         capability was deleted
  */
-int sd_caps_delete(uint32_t objectid);
+int cpn_caps_delete(uint32_t objectid);
 
 /** @brief Delete all internal capabilities */
-void sd_caps_clear(void);
+void cpn_caps_clear(void);
 
 /** @brief Create an external reference to an internal capability
  *
@@ -96,7 +96,7 @@ void sd_caps_clear(void);
  *            capability shall be granted
  * @return <code>0</code> on success, <code>-1</code> otherwise
  */
-int sd_caps_create_reference(struct sd_cap *out, uint32_t objectid, uint32_t rights, const struct sd_sign_key_public *key);
+int cpn_caps_create_reference(struct cpn_cap *out, uint32_t objectid, uint32_t rights, const struct cpn_sign_key_public *key);
 
 /** @brief Verify that the given capability is valid
  *
@@ -110,7 +110,7 @@ int sd_caps_create_reference(struct sd_cap *out, uint32_t objectid, uint32_t rig
  * @return <code>0</code> if the capability is valid for the
  *         given key and rights, <code>-1</code> otherwise
  */
-int sd_caps_verify(const struct sd_cap *ref, const struct sd_sign_key_public *key, uint32_t rights);
+int cpn_caps_verify(const struct cpn_cap *ref, const struct cpn_sign_key_public *key, uint32_t rights);
 
 #endif
 

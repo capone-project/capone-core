@@ -30,6 +30,6 @@
  * channel.
  */
 
-struct sd_service;
+struct cpn_service;
 
-int sd_exec_init_service(struct sd_service *service);
+int cpn_exec_init_service(struct cpn_service *service);

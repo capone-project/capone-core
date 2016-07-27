@@ -36,7 +36,7 @@
 
 #include "bench.h"
 
-uint64_t sd_bench_nsecs(void)
+uint64_t cpn_bench_nsecs(void)
 {
 #ifdef HAVE_CLOCK_GETTIME
     struct timespec t;
@@ -53,7 +53,7 @@ uint64_t sd_bench_nsecs(void)
 #endif
 }
 
-int sd_bench_set_affinity(uint8_t cpu)
+int cpn_bench_set_affinity(uint8_t cpu)
 {
 #ifdef HAVE_SCHED
     cpu_set_t mask;

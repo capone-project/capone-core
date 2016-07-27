@@ -50,7 +50,7 @@
  * server. They are used to distinguish what to do on the server
  * side and how to handle the incoming request.
  */
-enum sd_connection_type {
+enum cpn_connection_type {
     /** @brief Query a service */
     SD_CONNECTION_TYPE_QUERY,
     /** @brief Connect to an established session */
@@ -67,33 +67,33 @@ enum sd_connection_type {
  * detailed information on the service and parameters that can be
  * set by the client.
  */
-struct sd_query_results {
+struct cpn_query_results {
     /** @brief Name of the service
-     * \see sd_service::name
+     * \see cpn_service::name
      */
     char *name;
     /** @brief Category of the service
-     * \see sd_service::category
+     * \see cpn_service::category
      */
     char *category;
     /** @brief Type of the service
-     * \see sd_service::type
+     * \see cpn_service::type
      */
     char *type;
     /** @brief Version of the service
-     * \see sd_service::version
+     * \see cpn_service::version
      */
     char *version;
     /** @brief Location of the service
-     * \see sd_service::location
+     * \see cpn_service::location
      */
     char *location;
     /** @brief Port of the service
-     * \see sd_service::port
+     * \see cpn_service::port
      */
     char *port;
     /** @brief Parameters that may be set */
-    struct sd_parameter *params;
+    struct cpn_parameter *params;
     /** @brief Number of parameters */
     size_t nparams;
 };
@@ -114,12 +114,12 @@ struct sd_query_results {
  * @param[in] type Connection type to initialize
  * @return <code>0</code> on success, <code>-1</code> otherwise
  */
-int sd_proto_initiate_connection(struct sd_channel *channel,
+int cpn_proto_initiate_connection(struct cpn_channel *channel,
         const char *host,
         const char *port,
-        const struct sd_sign_key_pair *local_keys,
-        const struct sd_sign_key_public *remote_key,
-        enum sd_connection_type type);
+        const struct cpn_sign_key_pair *local_keys,
+        const struct cpn_sign_key_public *remote_key,
+        enum cpn_connection_type type);
 
 /** @brief Receive connection type on an established connection
  *
@@ -130,8 +130,8 @@ int sd_proto_initiate_connection(struct sd_channel *channel,
  * @param[in] channel Channel connected to the client
  * @return <code>0</code> on success, <code>-1</code> otherwise
  */
-int sd_proto_receive_connection_type(enum sd_connection_type *out,
-        struct sd_channel *channel);
+int cpn_proto_receive_connection_type(enum cpn_connection_type *out,
+        struct cpn_channel *channel);
 
 /** @brief Initiate an encrypted connection
  *
@@ -146,11 +146,11 @@ int sd_proto_receive_connection_type(enum sd_connection_type *out,
  * @param[in] remote_sign_key Remote long-term signature key
  * @return <code>0</code> on success, <code>-1</code> otherwise
  *
- * \see sd_proto_await_encryption
+ * \see cpn_proto_await_encryption
  */
-int sd_proto_initiate_encryption(struct sd_channel *channel,
-        const struct sd_sign_key_pair *sign_keys,
-        const struct sd_sign_key_public *remote_sign_key);
+int cpn_proto_initiate_encryption(struct cpn_channel *channel,
+        const struct cpn_sign_key_pair *sign_keys,
+        const struct cpn_sign_key_public *remote_sign_key);
 
 /** @brief Await encryption initiated by the client
  *
@@ -162,11 +162,11 @@ int sd_proto_initiate_encryption(struct sd_channel *channel,
  * @param[in] remote_sign_key Remote long-term signature key
  * @return <code>0</code> on success, <code>-1</code> otherwise
  *
- * \see sd_proto_initiate_encryption
+ * \see cpn_proto_initiate_encryption
  */
-int sd_proto_await_encryption(struct sd_channel *channel,
-        const struct sd_sign_key_pair *sign_keys,
-        struct sd_sign_key_public *remote_sign_key);
+int cpn_proto_await_encryption(struct cpn_channel *channel,
+        const struct cpn_sign_key_pair *sign_keys,
+        struct cpn_sign_key_public *remote_sign_key);
 
 /** @brief Query a remote service for its parameters
  *
@@ -178,10 +178,10 @@ int sd_proto_await_encryption(struct sd_channel *channel,
  * @param[in] channel Channel connected to the remote server
  * @return <code>0</code> on success, <code>-1</code> otherwise
  *
- * \see sd_proto_answer_query
+ * \see cpn_proto_answer_query
  */
-int sd_proto_send_query(struct sd_query_results *out,
-        struct sd_channel *channel);
+int cpn_proto_send_query(struct cpn_query_results *out,
+        struct cpn_channel *channel);
 
 /** @brief Answer a query from a client
  *
@@ -193,16 +193,16 @@ int sd_proto_send_query(struct sd_query_results *out,
  * @param[in] service Service to send query results for
  * @return <code>0</code> on success, <code>-1</code> otherwise
  *
- * \see sd_proto_send_query
+ * \see cpn_proto_send_query
  */
-int sd_proto_answer_query(struct sd_channel *channel,
-        const struct sd_service *service);
+int cpn_proto_answer_query(struct cpn_channel *channel,
+        const struct cpn_service *service);
 
 /** @brief Free query results
  *
  * @param[in] results Results to free
  */
-void sd_query_results_free(struct sd_query_results *results);
+void cpn_query_results_free(struct cpn_query_results *results);
 
 /** @brief Send a session request to the service
  *
@@ -223,13 +223,13 @@ void sd_query_results_free(struct sd_query_results *results);
  * @param[in] nparams Number of parameters
  * @return <code>0</code> on success, <code>-1</code> otherwise
  *
- * \see sd_proto_answer_request
+ * \see cpn_proto_answer_request
  */
-int sd_proto_send_request(struct sd_cap *invoker_cap,
-        struct sd_cap *requester_cap,
-        struct sd_channel *channel,
-        const struct sd_sign_key_public *invoker,
-        const struct sd_parameter *params, size_t nparams);
+int cpn_proto_send_request(struct cpn_cap *invoker_cap,
+        struct cpn_cap *requester_cap,
+        struct cpn_channel *channel,
+        const struct cpn_sign_key_public *invoker,
+        const struct cpn_parameter *params, size_t nparams);
 
 /** @brief Handle a session request
  *
@@ -242,10 +242,10 @@ int sd_proto_send_request(struct sd_cap *invoker_cap,
  * @param[in] remote_key Long term signature key of the client
  * @return <code>0</code> on success, <code>-1</code> otherwise
  *
- * \see sd_proto_send_request
+ * \see cpn_proto_send_request
  */
-int sd_proto_answer_request(struct sd_channel *channel,
-        const struct sd_sign_key_public *remote_key);
+int cpn_proto_answer_request(struct cpn_channel *channel,
+        const struct cpn_sign_key_public *remote_key);
 
 /** @brief Start a session
  *
@@ -260,10 +260,10 @@ int sd_proto_answer_request(struct sd_channel *channel,
  * @param[in] cap Capability referencing the session
  * @return <code>0</code> on success, <code>-1</code> otherwise
  *
- * \see sd_proto_handle_session
+ * \see cpn_proto_handle_session
  */
-int sd_proto_initiate_session(struct sd_channel *channel,
-        const struct sd_cap *cap);
+int cpn_proto_initiate_session(struct cpn_channel *channel,
+        const struct cpn_cap *cap);
 
 /** @brief Handle incoming session invocation
  *
@@ -277,12 +277,12 @@ int sd_proto_initiate_session(struct sd_channel *channel,
  * @param[in] cfg Configuration of the server
  * @return <code>0</code> on success, <code>-1</code> otherwise
  *
- * \see sd_proto_initiate_session
+ * \see cpn_proto_initiate_session
  */
-int sd_proto_handle_session(struct sd_channel *channel,
-        const struct sd_sign_key_public *remote_key,
-        const struct sd_service *service,
-        const struct sd_cfg *cfg);
+int cpn_proto_handle_session(struct cpn_channel *channel,
+        const struct cpn_sign_key_public *remote_key,
+        const struct cpn_service *service,
+        const struct cpn_cfg *cfg);
 
 /** @brief Initiate session termination
  *
@@ -299,10 +299,10 @@ int sd_proto_handle_session(struct sd_channel *channel,
  *            object
  * @return <code>0</code> on success, <code>-1</code> otherwise
  *
- * \see sd_proto_handle_termination
+ * \see cpn_proto_handle_termination
  */
-int sd_proto_initiate_termination(struct sd_channel *channel,
-        const struct sd_cap *cap);
+int cpn_proto_initiate_termination(struct cpn_channel *channel,
+        const struct cpn_cap *cap);
 
 /** @brief Handle incoming session termination
  *
@@ -318,10 +318,10 @@ int sd_proto_initiate_termination(struct sd_channel *channel,
  * @param[in] remote_key Long term signature key of the client
  * @return <code>0</code> on success, <code>-1</code> otherwise
  *
- * \see sd_proto_initiate_termination
+ * \see cpn_proto_initiate_termination
  */
-int sd_proto_handle_termination(struct sd_channel *channel,
-        const struct sd_sign_key_public *remote_key);
+int cpn_proto_handle_termination(struct cpn_channel *channel,
+        const struct cpn_sign_key_public *remote_key);
 
 #endif
 

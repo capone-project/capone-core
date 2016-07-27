@@ -25,7 +25,7 @@
 
 int main(int argc, char *argv[])
 {
-    struct sd_sign_key_pair keys;
+    struct cpn_sign_key_pair keys;
     char pkhex[sizeof(keys.pk.data) * 2 + 1],
          skhex[sizeof(keys.sk.data) * 2 + 1];
 
@@ -43,7 +43,7 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    if (sd_sign_key_pair_generate(&keys) < 0) {
+    if (cpn_sign_key_pair_generate(&keys) < 0) {
         puts("Error generating key pair");
         return -1;
     }

@@ -117,7 +117,7 @@ void *process_events(void *ptr)
         select(MAX(x11fd1, x11fd2) + 1, &fds, NULL, NULL, NULL);
 
         if (start == 0)
-            start = sd_bench_nsecs();
+            start = cpn_bench_nsecs();
 
         if (FD_ISSET(x11fd1, &fds)) {
             XNextEvent(dpy1, &ev);
@@ -131,7 +131,7 @@ void *process_events(void *ptr)
 
         i++;
     }
-    end = sd_bench_nsecs();
+    end = cpn_bench_nsecs();
     printf("delay (in ns): %"PRIu64"\n", end - start);
 
     return NULL;
@@ -140,7 +140,7 @@ void *process_events(void *ptr)
 int main(int argc, char *argv[])
 {
     struct payload payload;
-    struct sd_thread t;
+    struct cpn_thread t;
     Display *dpy;
     int i, retval = 0;
 
@@ -152,7 +152,7 @@ int main(int argc, char *argv[])
     payload.dpy1 = argv[1];
     payload.dpy2 = argv[2];
 
-    sd_spawn(&t, process_events, &payload);
+    cpn_spawn(&t, process_events, &payload);
 
     if ((dpy = XOpenDisplay(argv[1])) == NULL) {
         retval = -1;
@@ -188,7 +188,7 @@ int main(int argc, char *argv[])
     }
 
 out:
-    sd_join(&t, NULL);
+    cpn_join(&t, NULL);
 
     return retval;
 }

@@ -21,28 +21,28 @@
 
 #include "acl.h"
 
-struct sd_acl_entry {
-    struct sd_sign_key_public identity;
-    enum sd_acl_right right;
+struct cpn_acl_entry {
+    struct cpn_sign_key_public identity;
+    enum cpn_acl_right right;
 
     char wildcard;
 
-    struct sd_acl_entry *next;
+    struct cpn_acl_entry *next;
 };
 
-static bool entry_matches(const struct sd_acl_entry *e,
-        const struct sd_sign_key_public *identity, enum sd_acl_right right)
+static bool entry_matches(const struct cpn_acl_entry *e,
+        const struct cpn_sign_key_public *identity, enum cpn_acl_right right)
 {
-    if (memcmp(e->identity.data, identity->data, sizeof(struct sd_sign_key_public)))
+    if (memcmp(e->identity.data, identity->data, sizeof(struct cpn_sign_key_public)))
         return false;
     if (e->right != right)
         return false;
     return true;
 }
 
-static int add_entry(struct sd_acl *acl, struct sd_acl_entry *e)
+static int add_entry(struct cpn_acl *acl, struct cpn_acl_entry *e)
 {
-    struct sd_acl_entry *it;
+    struct cpn_acl_entry *it;
 
     for (it = acl->entries; it; it = it->next)
         if (e->wildcard && it->wildcard && e->right == it->right)
@@ -59,14 +59,14 @@ static int add_entry(struct sd_acl *acl, struct sd_acl_entry *e)
     return 0;
 }
 
-void sd_acl_init(struct sd_acl *acl)
+void cpn_acl_init(struct cpn_acl *acl)
 {
     acl->entries = NULL;
 }
 
-void sd_acl_clear(struct sd_acl *acl)
+void cpn_acl_clear(struct cpn_acl *acl)
 {
-    struct sd_acl_entry *it, *next;
+    struct cpn_acl_entry *it, *next;
 
     for (it = acl->entries; it; it = next) {
         next = it->next;
@@ -77,16 +77,16 @@ void sd_acl_clear(struct sd_acl *acl)
     acl->entries = NULL;
 }
 
-int sd_acl_add_right(struct sd_acl *acl,
-        const struct sd_sign_key_public *identity,
-        enum sd_acl_right right)
+int cpn_acl_add_right(struct cpn_acl *acl,
+        const struct cpn_sign_key_public *identity,
+        enum cpn_acl_right right)
 {
-    struct sd_acl_entry *e;
+    struct cpn_acl_entry *e;
 
-    e = malloc(sizeof(struct sd_acl_entry));
+    e = malloc(sizeof(struct cpn_acl_entry));
 
-    memset(e, 0, sizeof(struct sd_acl_entry));
-    memcpy(&e->identity, identity, sizeof(struct sd_sign_key_public));
+    memset(e, 0, sizeof(struct cpn_acl_entry));
+    memcpy(&e->identity, identity, sizeof(struct cpn_sign_key_public));
     e->right = right;
     e->wildcard = 0;
 
@@ -98,14 +98,14 @@ int sd_acl_add_right(struct sd_acl *acl,
     return 0;
 }
 
-int sd_acl_add_wildcard(struct sd_acl *acl,
-        enum sd_acl_right right)
+int cpn_acl_add_wildcard(struct cpn_acl *acl,
+        enum cpn_acl_right right)
 {
-    struct sd_acl_entry *e;
+    struct cpn_acl_entry *e;
 
-    e = malloc(sizeof(struct sd_acl_entry));
+    e = malloc(sizeof(struct cpn_acl_entry));
 
-    memset(e, 0, sizeof(struct sd_acl_entry));
+    memset(e, 0, sizeof(struct cpn_acl_entry));
     e->right = right;
     e->wildcard = 1;
 
@@ -117,11 +117,11 @@ int sd_acl_add_wildcard(struct sd_acl *acl,
     return 0;
 }
 
-int sd_acl_remove_right(struct sd_acl *acl,
-        const struct sd_sign_key_public *identity,
-        enum sd_acl_right right)
+int cpn_acl_remove_right(struct cpn_acl *acl,
+        const struct cpn_sign_key_public *identity,
+        enum cpn_acl_right right)
 {
-    struct sd_acl_entry *it, *prev;
+    struct cpn_acl_entry *it, *prev;
 
     for (prev = NULL, it = acl->entries; it; prev = it, it = it->next)
         if (entry_matches(it, identity, right))
@@ -140,11 +140,11 @@ int sd_acl_remove_right(struct sd_acl *acl,
     return 0;
 }
 
-bool sd_acl_is_allowed(const struct sd_acl *acl,
-        const struct sd_sign_key_public *identity,
-        enum sd_acl_right right)
+bool cpn_acl_is_allowed(const struct cpn_acl *acl,
+        const struct cpn_sign_key_public *identity,
+        enum cpn_acl_right right)
 {
-    struct sd_acl_entry *it;
+    struct cpn_acl_entry *it;
 
     for (it = acl->entries; it; it = it->next)
         if (it->wildcard && it->right == right)

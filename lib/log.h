@@ -67,7 +67,7 @@ enum log_level {
  * @param[in] lvl Log level of the message.
  * @param[in] msgformat Format string.
  */
-void sd_log(enum log_level lvl, const char *msgformat, ...);
+void cpn_log(enum log_level lvl, const char *msgformat, ...);
 
 /** @brief Set log level
  *
@@ -76,7 +76,7 @@ void sd_log(enum log_level lvl, const char *msgformat, ...);
  *
  * @param[in] lvl Log level to set
  */
-void sd_log_set_level(enum log_level lvl);
+void cpn_log_set_level(enum log_level lvl);
 
 #endif
 

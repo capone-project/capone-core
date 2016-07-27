@@ -33,44 +33,44 @@ struct client_args {
 };
 
 static char encrypt;
-static struct sd_symmetric_key key;
+static struct cpn_symmetric_key key;
 
 static void *client(void *payload)
 {
     struct client_args *args = (struct client_args *) payload;
-    struct sd_channel channel;
+    struct cpn_channel channel;
     uint8_t *data = malloc(args->datalen);
     uint64_t start, end;
     uint32_t i;
 
-    if (sd_bench_set_affinity(2) < 0) {
+    if (cpn_bench_set_affinity(2) < 0) {
         puts("Unable to set sched affinity");
         goto out;
     }
 
-    if (sd_channel_init_from_host(&channel, "127.0.0.1", PORT, SD_CHANNEL_TYPE_TCP) < 0) {
+    if (cpn_channel_init_from_host(&channel, "127.0.0.1", PORT, SD_CHANNEL_TYPE_TCP) < 0) {
         puts("Unable to init connection");
         goto out;
     }
-    if (sd_channel_connect(&channel) < 0) {
+    if (cpn_channel_connect(&channel) < 0) {
         puts("Unable to connect to server");
         goto out;
     }
 
     if (encrypt) {
-        sd_channel_enable_encryption(&channel, &key, SD_CHANNEL_NONCE_CLIENT);
+        cpn_channel_enable_encryption(&channel, &key, SD_CHANNEL_NONCE_CLIENT);
     }
 
-    sd_channel_set_blocklen(&channel, args->blocklen);
+    cpn_channel_set_blocklen(&channel, args->blocklen);
 
-    start = sd_bench_nsecs();
+    start = cpn_bench_nsecs();
     for (i = 0; i < args->repeats; i++) {
-        if (sd_channel_write_data(&channel, data, args->datalen) < 0) {
+        if (cpn_channel_write_data(&channel, data, args->datalen) < 0) {
             puts("Unable to write data");
             goto out;
         }
     }
-    end = sd_bench_nsecs();
+    end = cpn_bench_nsecs();
 
     printf("send (ns):\t%"PRIu64"\n", (end - start) / args->repeats);
 
@@ -88,9 +88,9 @@ static void usage(const char *executable)
 int main(int argc, char *argv[])
 {
     struct client_args args;
-    struct sd_thread t;
-    struct sd_server server;
-    struct sd_channel channel;
+    struct cpn_thread t;
+    struct cpn_server server;
+    struct cpn_channel channel;
     uint8_t *data;
     uint64_t start, end;
     uint32_t i;
@@ -104,7 +104,7 @@ int main(int argc, char *argv[])
         encrypt = 0;
     } else if (!strcmp(argv[1], "--encrypted")) {
         encrypt = 1;
-        sd_symmetric_key_generate(&key);
+        cpn_symmetric_key_generate(&key);
     } else {
         usage(argv[0]);
         return -1;
@@ -127,47 +127,47 @@ int main(int argc, char *argv[])
     /* Always average over 1GB of data sent */
     args.repeats = (1024 * 1024 * 1024) / args.datalen;
 
-    if (sd_bench_set_affinity(3) < 0) {
+    if (cpn_bench_set_affinity(3) < 0) {
         puts("Unable to set sched affinity");
         return -1;
     }
 
-    if (sd_server_init(&server, NULL, PORT, SD_CHANNEL_TYPE_TCP) < 0) {
+    if (cpn_server_init(&server, NULL, PORT, SD_CHANNEL_TYPE_TCP) < 0) {
         puts("Unable to init server");
         return -1;
     }
 
-    if (sd_server_listen(&server) < 0) {
+    if (cpn_server_listen(&server) < 0) {
         puts("Unable to listen");
         return -1;
     }
 
-    if (sd_spawn(&t, client, &args) < 0) {
+    if (cpn_spawn(&t, client, &args) < 0) {
         puts("Unable to spawn client");
         return -1;
     }
 
-    if (sd_server_accept(&server, &channel) < 0) {
+    if (cpn_server_accept(&server, &channel) < 0) {
         puts("Unable to accept connection");
         return -1;
     }
 
     if (encrypt) {
-        sd_channel_enable_encryption(&channel, &key, SD_CHANNEL_NONCE_SERVER);
+        cpn_channel_enable_encryption(&channel, &key, SD_CHANNEL_NONCE_SERVER);
     }
 
-    sd_channel_set_blocklen(&channel, args.blocklen);
+    cpn_channel_set_blocklen(&channel, args.blocklen);
 
-    start = sd_bench_nsecs();
+    start = cpn_bench_nsecs();
     for (i = 0; i < args.repeats; i++) {
-        if (sd_channel_receive_data(&channel, data, args.datalen) < 0) {
+        if (cpn_channel_receive_data(&channel, data, args.datalen) < 0) {
             puts("Unable to receive data");
             return -1;
         }
     }
-    end = sd_bench_nsecs();
+    end = cpn_bench_nsecs();
 
-    if (sd_join(&t, NULL) < 0) {
+    if (cpn_join(&t, NULL) < 0) {
         puts("Unable to await client thread");
         return -1;
     }

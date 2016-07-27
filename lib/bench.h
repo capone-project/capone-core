@@ -17,7 +17,7 @@
 
 #include <stdint.h>
 
-uint64_t sd_bench_nsecs(void);
+uint64_t cpn_bench_nsecs(void);
 
-int sd_bench_set_affinity(uint8_t cpu);
+int cpn_bench_set_affinity(uint8_t cpu);
 

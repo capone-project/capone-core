@@ -38,7 +38,7 @@
 #include "lib/keys.h"
 #include "lib/session.h"
 
-struct sd_channel;
+struct cpn_channel;
 
 /** @brief Function executed when a client starts a remote service
  *
@@ -49,7 +49,7 @@ struct sd_channel;
  * @param[in] argv Array of arguments specified by the client
  * @return <code>0</code> on success, <code>-1</code> otherwise
  */
-typedef int (*invoke_fn)(struct sd_channel *channel, int argc, char **argv);
+typedef int (*invoke_fn)(struct cpn_channel *channel, int argc, char **argv);
 
 /** @brief Function executed when a service is started by a client
  *
@@ -61,17 +61,17 @@ typedef int (*invoke_fn)(struct sd_channel *channel, int argc, char **argv);
  * @param[in] cfg Configuration of the server
  * @return <code>0</code> on success, <code>-1</code> otherwise
  */
-typedef int (*handle_fn)(struct sd_channel *channel,
-        const struct sd_sign_key_public *invoker,
-        const struct sd_session *session,
-        const struct sd_cfg *cfg);
+typedef int (*handle_fn)(struct cpn_channel *channel,
+        const struct cpn_sign_key_public *invoker,
+        const struct cpn_session *session,
+        const struct cpn_cfg *cfg);
 
 /** @brief Function retrieving available parameters for a service
  *
  * @param[out] out Statically allocated parameters available for the service
  * @return Number of parameters
  */
-typedef int (*parameters_fn)(const struct sd_parameter **out);
+typedef int (*parameters_fn)(const struct cpn_parameter **out);
 
 /** @brief Function retrieving the service's version
  *
@@ -81,7 +81,7 @@ typedef const char *(*version_fn)(void);
 
 /** @brief Structure wrapping a service's functionality
  */
-struct sd_service {
+struct cpn_service {
     /** @brief Name of the service
      *
      * The name is chosen freely by the user specifying the
@@ -135,11 +135,11 @@ struct sd_service {
  *
  * @param[out] out Service to initialize
  * @param[in] type Type of the service to initialize. \see
- *            sd_service::type
+ *            cpn_service::type
  * @return <code>0</code> on success, <code>-1</code> on error
  *         or if the service type was not found
  */
-int sd_service_from_type(struct sd_service *out, const char *type);
+int cpn_service_from_type(struct cpn_service *out, const char *type);
 
 /** @brief Initialize a service from a configuration file
  *
@@ -161,7 +161,7 @@ int sd_service_from_type(struct sd_service *out, const char *type);
  * @param[in] file Configuration file to parse
  * @return <code>0</code> on success, <code>-1</code> on error
  */
-int sd_service_from_config_file(struct sd_service *out, const char *name, const char *file);
+int cpn_service_from_config_file(struct cpn_service *out, const char *name, const char *file);
 
 /** @brief Initialize a service from a configuration
  *
@@ -172,9 +172,9 @@ int sd_service_from_config_file(struct sd_service *out, const char *name, const 
  * @param[in] cfg Configuration to initialize from.
  * @return <code>0</code> on success, <code>-1</code> on error
  *
- * \see sd_service_from_config_file
+ * \see cpn_service_from_config_file
  */
-int sd_service_from_config(struct sd_service *out, const char *name, const struct sd_cfg *cfg);
+int cpn_service_from_config(struct cpn_service *out, const char *name, const struct cpn_cfg *cfg);
 
 /** @brief Initialize a service from a configuration section
  *
@@ -185,15 +185,15 @@ int sd_service_from_config(struct sd_service *out, const char *name, const struc
  * @param[in] section section to initialize from.
  * @return <code>0</code> on success, <code>-1</code> on error
  *
- * \see sd_service_from_config_file
+ * \see cpn_service_from_config_file
  */
-int sd_service_from_section(struct sd_service *out, const struct sd_cfg_section *section);
+int cpn_service_from_section(struct cpn_service *out, const struct cpn_cfg_section *section);
 
 /** @brief Free a service
  *
  * @param[in] service Service to free
  */
-void sd_service_free(struct sd_service *service);
+void cpn_service_free(struct cpn_service *service);
 
 /** @brief Initialize services from a configuration file
  *
@@ -204,9 +204,9 @@ void sd_service_free(struct sd_service *service);
  * @param[in] file Configuration file to initialize from.
  * return Number of services parsed or <code>-1</code> on failure
  *
- * \see sd_service_from_config_file
+ * \see cpn_service_from_config_file
  */
-int sd_services_from_config_file(struct sd_service **out, const char *file);
+int cpn_services_from_config_file(struct cpn_service **out, const char *file);
 
 /** @brief Initialize services from a configuration
  *
@@ -217,9 +217,9 @@ int sd_services_from_config_file(struct sd_service **out, const char *file);
  * @param[in] cfg Configuration file to initialize from.
  * return Number of services parsed or <code>-1</code> on failure
  *
- * \see sd_service_from_config_file
+ * \see cpn_service_from_config_file
  */
-int sd_services_from_config(struct sd_service **out, const struct sd_cfg *cfg);
+int cpn_services_from_config(struct cpn_service **out, const struct cpn_cfg *cfg);
 
 #endif
 

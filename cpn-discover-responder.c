@@ -37,71 +37,71 @@
 #include "proto/discovery.pb-c.h"
 
 static AnnounceMessage announce_message;
-static struct sd_sign_key_pair sign_keys;
+static struct cpn_sign_key_pair sign_keys;
 
 #define LISTEN_PORT "6667"
 
-static void announce(struct sd_channel *channel,
+static void announce(struct cpn_channel *channel,
         DiscoverMessage *msg)
 {
     size_t i;
 
     if (strcmp(msg->version, VERSION)) {
-        sd_log(LOG_LEVEL_ERROR, "Cannot handle announce message version %s",
+        cpn_log(LOG_LEVEL_ERROR, "Cannot handle announce message version %s",
                 msg->version);
         return;
     }
 
     for (i = 0; i < msg->n_known_keys; i++) {
-        if (msg->known_keys[i].len != sizeof(struct sd_sign_key_public))
+        if (msg->known_keys[i].len != sizeof(struct cpn_sign_key_public))
             continue;
-        if (memcmp(msg->known_keys[i].data, sign_keys.pk.data, sizeof(struct sd_sign_key_public)))
+        if (memcmp(msg->known_keys[i].data, sign_keys.pk.data, sizeof(struct cpn_sign_key_public)))
             continue;
-        sd_log(LOG_LEVEL_DEBUG, "Skipping announce due to alreay being known");
+        cpn_log(LOG_LEVEL_DEBUG, "Skipping announce due to alreay being known");
         return;
     }
 
-    if (sd_channel_write_protobuf(channel, &announce_message.base) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not write announce message");
+    if (cpn_channel_write_protobuf(channel, &announce_message.base) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Could not write announce message");
         return;
     }
 
-    sd_log(LOG_LEVEL_DEBUG, "Sent announce");
+    cpn_log(LOG_LEVEL_DEBUG, "Sent announce");
 }
 
-static void handle_udp(struct sd_channel *channel)
+static void handle_udp(struct cpn_channel *channel)
 {
     DiscoverMessage *msg = NULL;
-    struct sd_channel client_channel;
+    struct cpn_channel client_channel;
     char host[128], port[16];
     int ret;
 
-    if (sd_channel_receive_protobuf(channel, &discover_message__descriptor,
+    if (cpn_channel_receive_protobuf(channel, &discover_message__descriptor,
             (ProtobufCMessage **) &msg) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Unable to receive envelope");
+        cpn_log(LOG_LEVEL_ERROR, "Unable to receive envelope");
         goto out;
     }
 
-    sd_log(LOG_LEVEL_DEBUG, "Received discovery message");
+    cpn_log(LOG_LEVEL_DEBUG, "Received discovery message");
 
     if ((ret = getnameinfo((struct sockaddr *) &channel->addr, channel->addrlen,
                 host, sizeof(host), NULL, 0, NI_NUMERICHOST)) != 0)
     {
-        sd_log(LOG_LEVEL_ERROR, "Could not extract address: %s",
+        cpn_log(LOG_LEVEL_ERROR, "Could not extract address: %s",
                 gai_strerror(ret));
         goto out;
     }
     snprintf(port, sizeof(port), "%u", msg->port);
 
-    if (sd_channel_init_from_host(&client_channel, host, port, SD_CHANNEL_TYPE_UDP) < 0) {
-        sd_log(LOG_LEVEL_ERROR,"Could not initialize client channel");
+    if (cpn_channel_init_from_host(&client_channel, host, port, SD_CHANNEL_TYPE_UDP) < 0) {
+        cpn_log(LOG_LEVEL_ERROR,"Could not initialize client channel");
         goto out;
     }
 
     announce(&client_channel, msg);
 
-    if (sd_channel_close(&client_channel) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not close client channel");
+    if (cpn_channel_close(&client_channel) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Could not close client channel");
     }
 
 out:
@@ -109,50 +109,50 @@ out:
         discover_message__free_unpacked(msg, NULL);
 }
 
-static void handle_tcp(struct sd_channel *channel)
+static void handle_tcp(struct cpn_channel *channel)
 {
-    struct sd_sign_key_public remote_sign_key;
+    struct cpn_sign_key_public remote_sign_key;
     DiscoverMessage *msg = NULL;
 
-    if (sd_proto_await_encryption(channel, &sign_keys, &remote_sign_key) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Unable to await encryption");
+    if (cpn_proto_await_encryption(channel, &sign_keys, &remote_sign_key) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Unable to await encryption");
         goto out;
     }
 
-    if (sd_channel_receive_protobuf(channel, &discover_message__descriptor,
+    if (cpn_channel_receive_protobuf(channel, &discover_message__descriptor,
             (ProtobufCMessage **) &msg) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Unable to receive envelope");
+        cpn_log(LOG_LEVEL_ERROR, "Unable to receive envelope");
         goto out;
     }
 
-    sd_log(LOG_LEVEL_DEBUG, "Received directed discovery");
+    cpn_log(LOG_LEVEL_DEBUG, "Received directed discovery");
 
     announce(channel, msg);
 
 out:
-    sd_channel_close(channel);
+    cpn_channel_close(channel);
     if (msg)
         discover_message__free_unpacked(msg, NULL);
 }
 
 static void handle_connections()
 {
-    struct sd_server udp_server, tcp_server;
-    struct sd_channel channel;
+    struct cpn_server udp_server, tcp_server;
+    struct cpn_channel channel;
     fd_set fds;
     int nfds;
 
-    if (sd_server_init(&udp_server, NULL, LISTEN_PORT, SD_CHANNEL_TYPE_UDP) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Unable to init listening channel");
+    if (cpn_server_init(&udp_server, NULL, LISTEN_PORT, SD_CHANNEL_TYPE_UDP) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Unable to init listening channel");
         return;
     }
 
-    if (sd_server_init(&tcp_server, NULL, LISTEN_PORT, SD_CHANNEL_TYPE_TCP) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Unable to init listening channel");
+    if (cpn_server_init(&tcp_server, NULL, LISTEN_PORT, SD_CHANNEL_TYPE_TCP) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Unable to init listening channel");
         return;
     }
-    if (sd_server_listen(&tcp_server) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Unable to listen on TCP channel");
+    if (cpn_server_listen(&tcp_server) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Unable to listen on TCP channel");
         return;
     }
 
@@ -164,21 +164,21 @@ static void handle_connections()
         FD_SET(tcp_server.fd, &fds);
 
         if (select(nfds, &fds, NULL, NULL, NULL) < 0) {
-            sd_log(LOG_LEVEL_ERROR, "Unable to select on channels");
+            cpn_log(LOG_LEVEL_ERROR, "Unable to select on channels");
             continue;
         }
 
         if (FD_ISSET(udp_server.fd, &fds)) {
-            if (sd_server_accept(&udp_server, &channel) < 0) {
-                sd_log(LOG_LEVEL_ERROR, "Unable to accept UDP connection");
+            if (cpn_server_accept(&udp_server, &channel) < 0) {
+                cpn_log(LOG_LEVEL_ERROR, "Unable to accept UDP connection");
                 continue;
             }
             handle_udp(&channel);
         }
 
         if (FD_ISSET(tcp_server.fd, &fds)) {
-            if (sd_server_accept(&tcp_server, &channel) < 0) {
-                sd_log(LOG_LEVEL_ERROR, "Unable to accept TCP connection");
+            if (cpn_server_accept(&tcp_server, &channel) < 0) {
+                cpn_log(LOG_LEVEL_ERROR, "Unable to accept TCP connection");
                 continue;
             }
             handle_tcp(&channel);
@@ -189,8 +189,8 @@ static void handle_connections()
 int main(int argc, char *argv[])
 {
     AnnounceMessage__Service **service_messages;
-    struct sd_service *services;
-    struct sd_cfg cfg;
+    struct cpn_service *services;
+    struct cpn_cfg cfg;
     char *name;
     int i, numservices;
 
@@ -212,23 +212,23 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    if (sd_cfg_parse(&cfg, argv[1]) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Unable to read configuration");
+    if (cpn_cfg_parse(&cfg, argv[1]) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Unable to read configuration");
         return -1;
     }
 
-    if ((name = sd_cfg_get_str_value(&cfg, "core", "name")) == NULL) {
-        sd_log(LOG_LEVEL_ERROR, "Unable to read server name");
+    if ((name = cpn_cfg_get_str_value(&cfg, "core", "name")) == NULL) {
+        cpn_log(LOG_LEVEL_ERROR, "Unable to read server name");
         return -1;
     }
 
-    if (sd_sign_key_pair_from_config(&sign_keys, &cfg) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Unable to read local keys");
+    if (cpn_sign_key_pair_from_config(&sign_keys, &cfg) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Unable to read local keys");
         return -1;
     }
 
-    if ((numservices = sd_services_from_config(&services, &cfg)) <= 0) {
-        sd_log(LOG_LEVEL_ERROR, "Unable to read service configuration");
+    if ((numservices = cpn_services_from_config(&services, &cfg)) <= 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Unable to read service configuration");
         return -1;
     }
 

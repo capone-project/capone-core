@@ -22,43 +22,43 @@
 
 #include "keys.h"
 
-int sd_sign_key_pair_generate(struct sd_sign_key_pair *out)
+int cpn_sign_key_pair_generate(struct cpn_sign_key_pair *out)
 {
     return crypto_sign_ed25519_keypair(out->pk.data, out->sk.data);
 }
 
-int sd_sign_key_pair_from_config(struct sd_sign_key_pair *out, const struct sd_cfg *cfg)
+int cpn_sign_key_pair_from_config(struct cpn_sign_key_pair *out, const struct cpn_cfg *cfg)
 {
     uint8_t sign_pk[crypto_sign_PUBLICKEYBYTES],
             sign_sk[crypto_sign_SECRETKEYBYTES];
     char *value;
 
-    value = sd_cfg_get_str_value(cfg, "core", "public_key");
+    value = cpn_cfg_get_str_value(cfg, "core", "public_key");
     if (value == NULL) {
-        sd_log(LOG_LEVEL_ERROR, "Could not retrieve public key from config");
+        cpn_log(LOG_LEVEL_ERROR, "Could not retrieve public key from config");
         goto out_err;
     }
     if (strlen(value) != crypto_sign_PUBLICKEYBYTES * 2) {
-        sd_log(LOG_LEVEL_ERROR, "Invalid public key length");
+        cpn_log(LOG_LEVEL_ERROR, "Invalid public key length");
         goto out_err;
     }
     if (sodium_hex2bin(sign_pk, sizeof(sign_pk), value, strlen(value), NULL, NULL, NULL) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not decode public key");
+        cpn_log(LOG_LEVEL_ERROR, "Could not decode public key");
         goto out_err;
     }
     free(value);
 
-    value = sd_cfg_get_str_value(cfg, "core", "secret_key");
+    value = cpn_cfg_get_str_value(cfg, "core", "secret_key");
     if (value == NULL) {
-        sd_log(LOG_LEVEL_ERROR, "Could not retrieve secret key from config");
+        cpn_log(LOG_LEVEL_ERROR, "Could not retrieve secret key from config");
         goto out_err;
     }
     if (strlen(value) != crypto_sign_SECRETKEYBYTES * 2) {
-        sd_log(LOG_LEVEL_ERROR, "Invalid secret key length");
+        cpn_log(LOG_LEVEL_ERROR, "Invalid secret key length");
         goto out_err;
     }
     if (sodium_hex2bin(sign_sk, sizeof(sign_sk), value, strlen(value), NULL, NULL, NULL)) {
-        sd_log(LOG_LEVEL_ERROR, "Could not decode public key");
+        cpn_log(LOG_LEVEL_ERROR, "Could not decode public key");
         goto out_err;
     }
     free(value);
@@ -75,46 +75,46 @@ out_err:
     return -1;
 }
 
-int sd_sign_key_pair_from_config_file(struct sd_sign_key_pair *out, const char *file)
+int cpn_sign_key_pair_from_config_file(struct cpn_sign_key_pair *out, const char *file)
 {
-    struct sd_cfg cfg;
+    struct cpn_cfg cfg;
     int ret = 0;
 
     memset(&cfg, 0, sizeof(cfg));
 
-    if (sd_cfg_parse(&cfg, file) < 0) {
+    if (cpn_cfg_parse(&cfg, file) < 0) {
         ret = -1;
         goto out;
     }
 
-    if (sd_sign_key_pair_from_config(out, &cfg) < 0) {
+    if (cpn_sign_key_pair_from_config(out, &cfg) < 0) {
         ret = -1;
         goto out;
     }
 
 out:
-    sd_cfg_free(&cfg);
+    cpn_cfg_free(&cfg);
 
     return ret;
 }
 
-int sd_sign_key_public_from_hex(struct sd_sign_key_public *out, const char *hex)
+int cpn_sign_key_public_from_hex(struct cpn_sign_key_public *out, const char *hex)
 {
     int hexlen;
 
     hexlen = strlen(hex);
     if (hexlen != crypto_sign_PUBLICKEYBYTES * 2) {
-        sd_log(LOG_LEVEL_ERROR, "Hex length does not match required public sign key length");
+        cpn_log(LOG_LEVEL_ERROR, "Hex length does not match required public sign key length");
         return -1;
     }
 
     return sodium_hex2bin(out->data, sizeof(out->data), hex, hexlen, NULL, NULL, NULL);
 }
 
-int sd_sign_key_public_from_bin(struct sd_sign_key_public *out, const uint8_t *pk, size_t pklen)
+int cpn_sign_key_public_from_bin(struct cpn_sign_key_public *out, const uint8_t *pk, size_t pklen)
 {
     if (pklen != crypto_sign_PUBLICKEYBYTES) {
-        sd_log(LOG_LEVEL_ERROR, "Passed in buffer does not match required public sign key length");
+        cpn_log(LOG_LEVEL_ERROR, "Passed in buffer does not match required public sign key length");
         return -1;
     }
 
@@ -123,31 +123,31 @@ int sd_sign_key_public_from_bin(struct sd_sign_key_public *out, const uint8_t *p
     return 0;
 }
 
-int sd_sign_key_hex_from_bin(struct sd_sign_key_hex *out, const uint8_t *pk, size_t pklen)
+int cpn_sign_key_hex_from_bin(struct cpn_sign_key_hex *out, const uint8_t *pk, size_t pklen)
 {
-    struct sd_sign_key_public key;
+    struct cpn_sign_key_public key;
 
-    if (sd_sign_key_public_from_bin(&key, pk, pklen) < 0)
+    if (cpn_sign_key_public_from_bin(&key, pk, pklen) < 0)
         return -1;
 
-    sd_sign_key_hex_from_key(out, &key);
+    cpn_sign_key_hex_from_key(out, &key);
     return 0;
 }
 
-void sd_sign_key_hex_from_key(struct sd_sign_key_hex *out, const struct sd_sign_key_public *key)
+void cpn_sign_key_hex_from_key(struct cpn_sign_key_hex *out, const struct cpn_sign_key_public *key)
 {
     sodium_bin2hex(out->data, sizeof(out->data), key->data, sizeof(key->data));
 }
 
-int sd_encrypt_key_pair_generate(struct sd_encrypt_key_pair *out)
+int cpn_encrypt_key_pair_generate(struct cpn_encrypt_key_pair *out)
 {
     return crypto_box_keypair(out->pk.data, out->sk.data);
 }
 
-int sd_encrypt_key_public_from_bin(struct sd_encrypt_key_public *out, uint8_t *pk, size_t pklen)
+int cpn_encrypt_key_public_from_bin(struct cpn_encrypt_key_public *out, uint8_t *pk, size_t pklen)
 {
     if (pklen != crypto_box_PUBLICKEYBYTES) {
-        sd_log(LOG_LEVEL_ERROR, "Passed in buffer does not match required public encrypt key length");
+        cpn_log(LOG_LEVEL_ERROR, "Passed in buffer does not match required public encrypt key length");
         return -1;
     }
 
@@ -156,29 +156,29 @@ int sd_encrypt_key_public_from_bin(struct sd_encrypt_key_public *out, uint8_t *p
     return 0;
 }
 
-int sd_symmetric_key_generate(struct sd_symmetric_key *out)
+int cpn_symmetric_key_generate(struct cpn_symmetric_key *out)
 {
     randombytes(out->data, sizeof(out->data));
     return 0;
 }
 
-int sd_symmetric_key_from_hex(struct sd_symmetric_key *out, const char *hex)
+int cpn_symmetric_key_from_hex(struct cpn_symmetric_key *out, const char *hex)
 {
     int hexlen;
 
     hexlen = strlen(hex);
     if (hexlen != crypto_secretbox_KEYBYTES * 2) {
-        sd_log(LOG_LEVEL_ERROR, "Hex length does not match required symmetric key length");
+        cpn_log(LOG_LEVEL_ERROR, "Hex length does not match required symmetric key length");
         return -1;
     }
 
     return sodium_hex2bin(out->data, sizeof(out->data), hex, hexlen, NULL, NULL, NULL);
 }
 
-int sd_symmetric_key_from_bin(struct sd_symmetric_key *out, const uint8_t *key, size_t keylen)
+int cpn_symmetric_key_from_bin(struct cpn_symmetric_key *out, const uint8_t *key, size_t keylen)
 {
     if (keylen != crypto_secretbox_KEYBYTES) {
-        sd_log(LOG_LEVEL_ERROR, "Passed in buffer does not match required symmetric key length");
+        cpn_log(LOG_LEVEL_ERROR, "Passed in buffer does not match required symmetric key length");
         return -1;
     }
 
@@ -187,18 +187,18 @@ int sd_symmetric_key_from_bin(struct sd_symmetric_key *out, const uint8_t *key, 
     return 0;
 }
 
-int sd_symmetric_key_hex_from_bin(struct sd_symmetric_key_hex *out, const uint8_t *data, size_t datalen)
+int cpn_symmetric_key_hex_from_bin(struct cpn_symmetric_key_hex *out, const uint8_t *data, size_t datalen)
 {
-    struct sd_symmetric_key key;
+    struct cpn_symmetric_key key;
 
-    if (sd_symmetric_key_from_bin(&key, data, datalen) < 0)
+    if (cpn_symmetric_key_from_bin(&key, data, datalen) < 0)
         return -1;
 
-    sd_symmetric_key_hex_from_key(out, &key);
+    cpn_symmetric_key_hex_from_key(out, &key);
     return 0;
 }
 
-void sd_symmetric_key_hex_from_key(struct sd_symmetric_key_hex *out, const struct sd_symmetric_key *key)
+void cpn_symmetric_key_hex_from_key(struct cpn_symmetric_key_hex *out, const struct cpn_symmetric_key *key)
 {
     sodium_bin2hex(out->data, sizeof(out->data), key->data, sizeof(key->data));
 }

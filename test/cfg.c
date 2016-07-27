@@ -28,7 +28,7 @@
         assert_string_equal((c).sections[(section)].entries[(n)].value, (expected_value));    \
     } while (0)
 
-static struct sd_cfg config;
+static struct cpn_cfg config;
 static char *value = NULL;
 
 static int setup()
@@ -39,7 +39,7 @@ static int setup()
 
 static int teardown()
 {
-    sd_cfg_free(&config);
+    cpn_cfg_free(&config);
     free(value);
     return 0;
 }
@@ -48,7 +48,7 @@ static void parse_empty()
 {
     const char text[] = "";
 
-    assert_success(sd_cfg_parse_string(&config, text, sizeof(text)));
+    assert_success(cpn_cfg_parse_string(&config, text, sizeof(text)));
     assert_int_equal(config.sections, 0);
 }
 
@@ -58,7 +58,7 @@ static void parse_simple()
         "[one]\n"
         "two=three";
 
-    assert_success(sd_cfg_parse_string(&config, text, sizeof(text)));
+    assert_success(cpn_cfg_parse_string(&config, text, sizeof(text)));
 
     assert_int_equal(config.numsections, 1);
     assert_int_equal(config.sections[0].numentries, 1);
@@ -75,7 +75,7 @@ static void parse_empty_line()
         "\n"
         "four=five\n";
 
-    assert_success(sd_cfg_parse_string(&config, text, sizeof(text)));
+    assert_success(cpn_cfg_parse_string(&config, text, sizeof(text)));
 
     assert_int_equal(config.numsections, 1);
     assert_int_equal(config.sections[0].numentries, 2);
@@ -91,7 +91,7 @@ static void parse_multiple_sections()
         "[one]\n"
         "[two]";
 
-    assert_success(sd_cfg_parse_string(&config, text, sizeof(text)));
+    assert_success(cpn_cfg_parse_string(&config, text, sizeof(text)));
 
     assert_int_equal(config.numsections, 2);
 
@@ -106,7 +106,7 @@ static void parse_leading_whitespace()
 {
     const char text[] = " \n\t  \t[one]\n";
 
-    assert_success(sd_cfg_parse_string(&config, text, sizeof(text)));
+    assert_success(cpn_cfg_parse_string(&config, text, sizeof(text)));
 
     assert_int_equal(config.numsections, 1);
     assert_cfg_section(config, 0, "one");
@@ -118,7 +118,7 @@ static void parse_trailing_whitespace()
         "[one]\t   \t\n\t\n"
         "[two]";
 
-    assert_success(sd_cfg_parse_string(&config, text, sizeof(text)));
+    assert_success(cpn_cfg_parse_string(&config, text, sizeof(text)));
 
     assert_int_equal(config.numsections, 2);
     assert_cfg_section(config, 0, "one");
@@ -130,7 +130,7 @@ static void parse_invalid_without_section()
     const char text[] =
         "one=two";
 
-    assert_failure(sd_cfg_parse_string(&config, text, sizeof(text)));
+    assert_failure(cpn_cfg_parse_string(&config, text, sizeof(text)));
     assert_int_equal(config.numsections, 0);
 }
 
@@ -139,7 +139,7 @@ static void parse_invalid_section_format()
     const char text[] =
         "[bla";
 
-    assert_failure(sd_cfg_parse_string(&config, text, sizeof(text)));
+    assert_failure(cpn_cfg_parse_string(&config, text, sizeof(text)));
     assert_int_equal(config.numsections, 0);
 }
 
@@ -149,7 +149,7 @@ static void parse_invalid_missing_assignment()
         "[one]\n"
         "two three";
 
-    assert_failure(sd_cfg_parse_string(&config, text, sizeof(text)));
+    assert_failure(cpn_cfg_parse_string(&config, text, sizeof(text)));
     assert_null(config.sections);
     assert_int_equal(config.numsections, 0);
 }
@@ -160,92 +160,92 @@ static void parse_invalid_missing_value()
         "[one]\n"
         "two=";
 
-    assert_failure(sd_cfg_parse_string(&config, text, sizeof(text)));
+    assert_failure(cpn_cfg_parse_string(&config, text, sizeof(text)));
     assert_null(config.sections);
     assert_int_equal(config.numsections, 0);
 }
 
 static void get_section_simple()
 {
-    const struct sd_cfg_section *s;
+    const struct cpn_cfg_section *s;
     const char text[] =
         "[one]\n"
         "two=three";
 
-    assert_success(sd_cfg_parse_string(&config, text, sizeof(text)));
+    assert_success(cpn_cfg_parse_string(&config, text, sizeof(text)));
 
-    s = sd_cfg_get_section(&config, "one");
+    s = cpn_cfg_get_section(&config, "one");
     assert_non_null(s);
     assert_string_equal(s->name, "one");
 }
 
 static void get_section_with_multiple_sections()
 {
-    const struct sd_cfg_section *s;
+    const struct cpn_cfg_section *s;
     const char text[] =
         "[one]\n"
         "[two]\n"
         "three=four\n"
         "[five]\n";
 
-    assert_success(sd_cfg_parse_string(&config, text, sizeof(text)));
+    assert_success(cpn_cfg_parse_string(&config, text, sizeof(text)));
 
-    s = sd_cfg_get_section(&config, "one");
+    s = cpn_cfg_get_section(&config, "one");
     assert_non_null(s);
     assert_string_equal(s->name, "one");
 
-    s = sd_cfg_get_section(&config, "two");
+    s = cpn_cfg_get_section(&config, "two");
     assert_non_null(s);
     assert_string_equal(s->name, "two");
 
-    s = sd_cfg_get_section(&config, "five");
+    s = cpn_cfg_get_section(&config, "five");
     assert_non_null(s);
     assert_string_equal(s->name, "five");
 }
 
 static void get_section_nonexisting()
 {
-    const struct sd_cfg_section *s;
+    const struct cpn_cfg_section *s;
     const char text[] =
         "[one]\n"
         "two=three";
 
-    assert_success(sd_cfg_parse_string(&config, text, sizeof(text)));
+    assert_success(cpn_cfg_parse_string(&config, text, sizeof(text)));
 
-    s = sd_cfg_get_section(&config, "two");
+    s = cpn_cfg_get_section(&config, "two");
     assert_null(s);
 }
 
 static void get_entry_simple()
 {
-    const struct sd_cfg_section *s;
-    const struct sd_cfg_entry *e;
+    const struct cpn_cfg_section *s;
+    const struct cpn_cfg_entry *e;
     const char text[] =
         "[one]\n"
         "two=three";
 
-    assert_success(sd_cfg_parse_string(&config, text, sizeof(text)));
+    assert_success(cpn_cfg_parse_string(&config, text, sizeof(text)));
 
-    s = sd_cfg_get_section(&config, "one");
+    s = cpn_cfg_get_section(&config, "one");
     assert_non_null(s);
 
-    e = sd_cfg_get_entry(s, "two");
+    e = cpn_cfg_get_entry(s, "two");
     assert_non_null(e);
     assert_string_equal(e->name, "two");
 }
 
 static void get_entry_nonexisting()
 {
-    const struct sd_cfg_section *s;
-    const struct sd_cfg_entry *e;
+    const struct cpn_cfg_section *s;
+    const struct cpn_cfg_entry *e;
     const char text[] =
         "[one]\n";
 
-    assert_success(sd_cfg_parse_string(&config, text, sizeof(text)));
+    assert_success(cpn_cfg_parse_string(&config, text, sizeof(text)));
 
-    s = sd_cfg_get_section(&config, "one");
+    s = cpn_cfg_get_section(&config, "one");
     assert_non_null(s);
-    e = sd_cfg_get_entry(s, "two");
+    e = cpn_cfg_get_entry(s, "two");
     assert_null(e);
 }
 
@@ -255,9 +255,9 @@ static void get_str_value_simple()
         "[one]\n"
         "two=three";
 
-    assert_success(sd_cfg_parse_string(&config, text, sizeof(text)));
+    assert_success(cpn_cfg_parse_string(&config, text, sizeof(text)));
 
-    value = sd_cfg_get_str_value(&config, "one", "two");
+    value = cpn_cfg_get_str_value(&config, "one", "two");
     assert_string_equal(value, "three");
 }
 
@@ -267,9 +267,9 @@ static void get_str_value_nonexisting()
         "[one]\n"
         "two=three";
 
-    assert_success(sd_cfg_parse_string(&config, text, sizeof(text)));
+    assert_success(cpn_cfg_parse_string(&config, text, sizeof(text)));
 
-    value = sd_cfg_get_str_value(&config, "four", "five");
+    value = cpn_cfg_get_str_value(&config, "four", "five");
     assert_null(value);
 }
 
@@ -280,9 +280,9 @@ static void get_int_value_simple()
         "two=12345";
     int i;
 
-    assert_success(sd_cfg_parse_string(&config, text, sizeof(text)));
+    assert_success(cpn_cfg_parse_string(&config, text, sizeof(text)));
 
-    i = sd_cfg_get_int_value(&config, "one", "two");
+    i = cpn_cfg_get_int_value(&config, "one", "two");
     assert_int_equal(i, 12345);
 }
 
@@ -292,8 +292,8 @@ static void get_int_value_nonexisting()
         "[one]\n"
         "";
 
-    assert_success(sd_cfg_parse_string(&config, text, sizeof(text)));
-    assert_success(sd_cfg_get_int_value(&config, "one", "two"));
+    assert_success(cpn_cfg_parse_string(&config, text, sizeof(text)));
+    assert_success(cpn_cfg_get_int_value(&config, "one", "two"));
 }
 
 static void get_int_value_invalid()
@@ -302,8 +302,8 @@ static void get_int_value_invalid()
         "[one]\n"
         "two=xvlc";
 
-    assert_success(sd_cfg_parse_string(&config, text, sizeof(text)));
-    assert_success(sd_cfg_get_int_value(&config, "one", "two"));
+    assert_success(cpn_cfg_parse_string(&config, text, sizeof(text)));
+    assert_success(cpn_cfg_get_int_value(&config, "one", "two"));
 }
 
 int cfg_test_run_suite(void)

@@ -30,9 +30,9 @@ static const char *version(void)
     return "0.0.1";
 }
 
-static int parameters(const struct sd_parameter **out)
+static int parameters(const struct cpn_parameter **out)
 {
-    static const struct sd_parameter params[] = {
+    static const struct cpn_parameter params[] = {
         { "command", NULL },
         { "arg", NULL },
         { "env", NULL },
@@ -43,12 +43,12 @@ static int parameters(const struct sd_parameter **out)
     return ARRAY_SIZE(params);
 }
 
-static int invoke(struct sd_channel *channel, int argc, char **argv)
+static int invoke(struct cpn_channel *channel, int argc, char **argv)
 {
     UNUSED(argc);
     UNUSED(argv);
 
-    if (sd_channel_relay(channel, 1, STDOUT_FILENO) < 0) {
+    if (cpn_channel_relay(channel, 1, STDOUT_FILENO) < 0) {
         return -1;
     }
 
@@ -101,10 +101,10 @@ static void exec(const char *cmd,
     _exit(0);
 }
 
-static int handle(struct sd_channel *channel,
-        const struct sd_sign_key_public *invoker,
-        const struct sd_session *session,
-        const struct sd_cfg *cfg)
+static int handle(struct cpn_channel *channel,
+        const struct cpn_sign_key_public *invoker,
+        const struct cpn_session *session,
+        const struct cpn_cfg *cfg)
 {
     const char *cmd, **args = NULL, **envs = NULL;
     int pid, nargs, nenvs;
@@ -114,24 +114,24 @@ static int handle(struct sd_channel *channel,
     UNUSED(cfg);
     UNUSED(invoker);
 
-    if (sd_parameters_get_value(&cmd, "command", session->parameters, session->nparameters) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Missing 'command' parameter");
+    if (cpn_parameters_get_value(&cmd, "command", session->parameters, session->nparameters) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Missing 'command' parameter");
         return -1;
     }
 
-    nargs = sd_parameters_get_values(&args, "arg", session->parameters, session->nparameters);
-    nenvs = sd_parameters_get_values(&envs, "env", session->parameters, session->nparameters);
+    nargs = cpn_parameters_get_values(&args, "arg", session->parameters, session->nparameters);
+    nenvs = cpn_parameters_get_values(&envs, "env", session->parameters, session->nparameters);
 
     if ((error = pipe(stdout_fds)) < 0 ||
             (error = pipe(stderr_fds)) < 0)
     {
-        sd_log(LOG_LEVEL_ERROR, "Unable to create pipes to child");
+        cpn_log(LOG_LEVEL_ERROR, "Unable to create pipes to child");
         goto out;
     }
 
     pid = fork();
     if (pid < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Unable to fork");
+        cpn_log(LOG_LEVEL_ERROR, "Unable to fork");
         error = -1;
         goto out;
     }
@@ -149,8 +149,8 @@ static int handle(struct sd_channel *channel,
         close(stdout_fds[1]);
         close(stderr_fds[1]);
 
-        if (sd_channel_relay(channel, 2, stdout_fds[0], stderr_fds[0]) < 0) {
-            sd_log(LOG_LEVEL_ERROR, "Unable to relay exec output");
+        if (cpn_channel_relay(channel, 2, stdout_fds[0], stderr_fds[0]) < 0) {
+            cpn_log(LOG_LEVEL_ERROR, "Unable to relay exec output");
             error = -1;
             goto out;
         }
@@ -168,7 +168,7 @@ out:
     return error;
 }
 
-int sd_exec_init_service(struct sd_service *service)
+int cpn_exec_init_service(struct cpn_service *service)
 {
     service->category = "Shell";
     service->version = version;

@@ -62,7 +62,7 @@
  * name is used to be able to map the value to a specific domain
  * where the value is used for.
  */
-struct sd_cfg_entry {
+struct cpn_cfg_entry {
     /** @brief The entry's name */
     char *name;
     /** @brief The entry's value. May be <code>NULL</code> */
@@ -74,11 +74,11 @@ struct sd_cfg_entry {
  * Sections are use to group together multiple entries. Each
  * section has a name required to identify the section itself.
  */
-struct sd_cfg_section {
+struct cpn_cfg_section {
     /** @brief The seciton's name */
     char *name;
     /** @brief The entries contained in the section. May be <code>NULL>/code> */
-    struct sd_cfg_entry *entries;
+    struct cpn_cfg_entry *entries;
     /** @brief Number of entries contained in the section */
     size_t numentries;
 };
@@ -88,9 +88,9 @@ struct sd_cfg_section {
  * A configuration represents a file or string containing
  * multiple sections, which themselves contain entries.
  */
-struct sd_cfg {
+struct cpn_cfg {
     /** @brief Sections contained in the configuration */
-    struct sd_cfg_section *sections;
+    struct cpn_cfg_section *sections;
     /** @brief Number of sections contained in the configuration */
     size_t numsections;
 };
@@ -100,7 +100,7 @@ struct sd_cfg {
  * @param[in]  path Path to the file that is to be parsed.
  * @return <code>0</code> on success, <code>-1</code> otherwise
  * */
-int sd_cfg_parse(struct sd_cfg *c, const char *path);
+int cpn_cfg_parse(struct cpn_cfg *c, const char *path);
 
 /** @brief Parse a configuration string
  * @param[out] c Pointer to an allocated configuration struct.
@@ -108,10 +108,10 @@ int sd_cfg_parse(struct sd_cfg *c, const char *path);
  * @param[in] len Length of the C string.
  * @return <code>0</code> on success, <code>-1</code> otherwise
  */
-int sd_cfg_parse_string(struct sd_cfg *c, const char *ptr, size_t len);
+int cpn_cfg_parse_string(struct cpn_cfg *c, const char *ptr, size_t len);
 
 /** @brief Free contents of a configuration struct */
-void sd_cfg_free(struct sd_cfg *c);
+void cpn_cfg_free(struct cpn_cfg *c);
 
 /** @brief Get named section of a configuration
  *
@@ -123,7 +123,7 @@ void sd_cfg_free(struct sd_cfg *c);
  * @return A pointer to the section or <code>NULL</code> if it
  *         was not found.
  */
-const struct sd_cfg_section *sd_cfg_get_section(const struct sd_cfg *c, const char *name);
+const struct cpn_cfg_section *cpn_cfg_get_section(const struct cpn_cfg *c, const char *name);
 
 /** @brief Get entry of a section
  *
@@ -135,7 +135,7 @@ const struct sd_cfg_section *sd_cfg_get_section(const struct sd_cfg *c, const ch
  * @return A pointer to the entry or <code>NULL</code> if it was
  *         not found.
  */
-const struct sd_cfg_entry *sd_cfg_get_entry(const struct sd_cfg_section *s, const char *name);
+const struct cpn_cfg_entry *cpn_cfg_get_entry(const struct cpn_cfg_section *s, const char *name);
 
 /** @brief Get the value associated with a section and key
  *
@@ -150,7 +150,7 @@ const struct sd_cfg_entry *sd_cfg_get_entry(const struct sd_cfg_section *s, cons
  * @return A newly allocated string containing the value or
  *         <code>NULL</code>.
  */
-char *sd_cfg_get_str_value(const struct sd_cfg *c, const char *section, const char *key);
+char *cpn_cfg_get_str_value(const struct cpn_cfg *c, const char *section, const char *key);
 
 /** @brief Get the integer associated with a section and key
  *
@@ -161,9 +161,9 @@ char *sd_cfg_get_str_value(const struct sd_cfg *c, const char *section, const ch
  *         impossible to parse the integer, <code>0</code> is
  *         returned.
  *
- * \see sd_cfg_get_str_value
+ * \see cpn_cfg_get_str_value
  */
-int sd_cfg_get_int_value(const struct sd_cfg *c, const char *section, const char *key);
+int cpn_cfg_get_int_value(const struct cpn_cfg *c, const char *section, const char *key);
 
 #endif
 

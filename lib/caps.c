@@ -35,7 +35,7 @@ static int hash(uint8_t *out,
         uint32_t objectid,
         uint32_t rights,
         uint8_t *secret,
-        const struct sd_sign_key_public *key)
+        const struct cpn_sign_key_public *key)
 {
     crypto_generichash_state state;
     uint8_t hash[SD_CAP_SECRET_LEN];
@@ -54,26 +54,26 @@ static int hash(uint8_t *out,
     return 0;
 }
 
-int sd_cap_parse(struct sd_cap *out, const char *id, const char *secret, enum sd_cap_rights rights)
+int cpn_cap_parse(struct cpn_cap *out, const char *id, const char *secret, enum cpn_cap_rights rights)
 {
     uint32_t objectid;
     uint8_t hash[SD_CAP_SECRET_LEN];
     int err = -1;
 
     if (parse_uint32t(&objectid, id) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Invalid session ID");
+        cpn_log(LOG_LEVEL_ERROR, "Invalid session ID");
         goto out;
     }
 
     if (strlen(secret) != SD_CAP_SECRET_LEN * 2) {
-        sd_log(LOG_LEVEL_ERROR, "Invalid secret length");
+        cpn_log(LOG_LEVEL_ERROR, "Invalid secret length");
         goto out;
     }
 
     if (sodium_hex2bin(hash, sizeof(hash), secret, strlen(secret),
                 NULL, NULL, NULL) != 0)
     {
-        sd_log(LOG_LEVEL_ERROR, "Invalid secret");
+        cpn_log(LOG_LEVEL_ERROR, "Invalid secret");
         goto out;
     }
 
@@ -87,7 +87,7 @@ out:
     return err;
 }
 
-int sd_cap_from_protobuf(struct sd_cap *out, const CapabilityMessage *msg)
+int cpn_cap_from_protobuf(struct cpn_cap *out, const CapabilityMessage *msg)
 {
     if (msg->secret.len != SD_CAP_SECRET_LEN)
         return -1;
@@ -99,7 +99,7 @@ int sd_cap_from_protobuf(struct sd_cap *out, const CapabilityMessage *msg)
     return 0;
 }
 
-int sd_cap_to_protobuf(CapabilityMessage *out, const struct sd_cap *cap)
+int cpn_cap_to_protobuf(CapabilityMessage *out, const struct cpn_cap *cap)
 {
     capability_message__init(out);
     out->objectid = cap->objectid;
@@ -111,7 +111,7 @@ int sd_cap_to_protobuf(CapabilityMessage *out, const struct sd_cap *cap)
     return 0;
 }
 
-int sd_caps_add(uint32_t objectid)
+int cpn_caps_add(uint32_t objectid)
 {
     struct caps *e, *cap;
 
@@ -130,7 +130,7 @@ int sd_caps_add(uint32_t objectid)
     return 0;
 }
 
-void sd_caps_clear(void)
+void cpn_caps_clear(void)
 {
     struct caps *e, *next;
 
@@ -142,7 +142,7 @@ void sd_caps_clear(void)
     clist = NULL;
 }
 
-int sd_caps_delete(uint32_t objectid)
+int cpn_caps_delete(uint32_t objectid)
 {
     struct caps *it, *prev, *next;
     int ret = -1;
@@ -166,7 +166,7 @@ int sd_caps_delete(uint32_t objectid)
     return ret;
 }
 
-int sd_caps_create_reference(struct sd_cap *out, uint32_t objectid, uint32_t rights, const struct sd_sign_key_public *key)
+int cpn_caps_create_reference(struct cpn_cap *out, uint32_t objectid, uint32_t rights, const struct cpn_sign_key_public *key)
 {
     struct caps *e;
 
@@ -185,7 +185,7 @@ int sd_caps_create_reference(struct sd_cap *out, uint32_t objectid, uint32_t rig
     return 0;
 }
 
-int sd_caps_verify(const struct sd_cap *ref, const struct sd_sign_key_public *key, uint32_t rights)
+int cpn_caps_verify(const struct cpn_cap *ref, const struct cpn_sign_key_public *key, uint32_t rights)
 {
     struct caps *e;
     uint8_t secret[SD_CAP_SECRET_LEN];

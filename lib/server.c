@@ -29,7 +29,7 @@
 #include "server.h"
 
 static int get_server_socket(struct sockaddr_storage *addr, const char *host,
-        const char *port, enum sd_channel_type type)
+        const char *port, enum cpn_channel_type type)
 {
     struct addrinfo hints, *servinfo, *hint;
     int ret, fd, opt;
@@ -46,14 +46,14 @@ static int get_server_socket(struct sockaddr_storage *addr, const char *host,
             hints.ai_protocol = IPPROTO_UDP;
             break;
         default:
-            sd_log(LOG_LEVEL_ERROR, "Unknown channel type");
+            cpn_log(LOG_LEVEL_ERROR, "Unknown channel type");
             return -1;
     }
     hints.ai_flags = AI_PASSIVE;
 
     ret = getaddrinfo(host, port, &hints, &servinfo);
     if (ret != 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not get addrinfo for address %s:%s",
+        cpn_log(LOG_LEVEL_ERROR, "Could not get addrinfo for address %s:%s",
                 host, port);
         return -1;
     }
@@ -67,7 +67,7 @@ static int get_server_socket(struct sockaddr_storage *addr, const char *host,
         if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0 ||
                 bind(fd, hint->ai_addr, hint->ai_addrlen) < 0)
         {
-            sd_log(LOG_LEVEL_DEBUG, "Unsuitable socket: %s", strerror(errno));
+            cpn_log(LOG_LEVEL_DEBUG, "Unsuitable socket: %s", strerror(errno));
             close(fd);
             continue;
         }
@@ -76,13 +76,13 @@ static int get_server_socket(struct sockaddr_storage *addr, const char *host,
     }
 
     if (hint == NULL) {
-        sd_log(LOG_LEVEL_ERROR, "Unable to resolve address");
+        cpn_log(LOG_LEVEL_ERROR, "Unable to resolve address");
         freeaddrinfo(servinfo);
         return -1;
     }
 
     if ((size_t) hint->ai_addrlen > sizeof(struct sockaddr_storage)) {
-        sd_log(LOG_LEVEL_ERROR, "Hint's addrlen is greater than sockaddr_storage length");
+        cpn_log(LOG_LEVEL_ERROR, "Hint's addrlen is greater than sockaddr_storage length");
         freeaddrinfo(servinfo);
         close(fd);
         return -1;
@@ -94,15 +94,15 @@ static int get_server_socket(struct sockaddr_storage *addr, const char *host,
     return fd;
 }
 
-int sd_server_init(struct sd_server *server,
-        const char *host, const char *port, enum sd_channel_type type)
+int cpn_server_init(struct cpn_server *server,
+        const char *host, const char *port, enum cpn_channel_type type)
 {
     int fd;
     struct sockaddr_storage addr;
 
     fd = get_server_socket(&addr, host, port, type);
     if (fd < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Unable to get socket: %s", strerror(errno));
+        cpn_log(LOG_LEVEL_ERROR, "Unable to get socket: %s", strerror(errno));
         return -1;
     }
 
@@ -113,10 +113,10 @@ int sd_server_init(struct sd_server *server,
     return 0;
 }
 
-int sd_server_close(struct sd_server *server)
+int cpn_server_close(struct cpn_server *server)
 {
     if (server->fd < 0) {
-        sd_log(LOG_LEVEL_WARNING, "Closing channel with invalid fd");
+        cpn_log(LOG_LEVEL_WARNING, "Closing channel with invalid fd");
         return -1;
     }
 
@@ -126,19 +126,19 @@ int sd_server_close(struct sd_server *server)
     return 0;
 }
 
-int sd_server_enable_broadcast(struct sd_server *server)
+int cpn_server_enable_broadcast(struct cpn_server *server)
 {
     int val = 1;
 
     if (setsockopt(server->fd, SOL_SOCKET, SO_BROADCAST, &val, sizeof(val)) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Unable to set option on socket: %s", strerror(errno));
+        cpn_log(LOG_LEVEL_ERROR, "Unable to set option on socket: %s", strerror(errno));
         return -1;
     }
 
     return 0;
 }
 
-int sd_server_listen(struct sd_server *s)
+int cpn_server_listen(struct cpn_server *s)
 {
     int fd;
 
@@ -146,14 +146,14 @@ int sd_server_listen(struct sd_server *s)
 
     fd = listen(s->fd, 16);
     if (fd < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not listen: %s", strerror(errno));
+        cpn_log(LOG_LEVEL_ERROR, "Could not listen: %s", strerror(errno));
         return -1;
     }
 
     return 0;
 }
 
-int sd_server_accept(struct sd_server *s, struct sd_channel *out)
+int cpn_server_accept(struct cpn_server *s, struct cpn_channel *out)
 {
     int fd;
     socklen_t addrsize;
@@ -171,7 +171,7 @@ int sd_server_accept(struct sd_server *s, struct sd_channel *out)
                 if (fd < 0) {
                     if (errno == EAGAIN || errno == EINTR)
                         continue;
-                    sd_log(LOG_LEVEL_ERROR, "Could not accept connection: %s",
+                    cpn_log(LOG_LEVEL_ERROR, "Could not accept connection: %s",
                             strerror(errno));
                     return -1;
                 }
@@ -182,20 +182,20 @@ int sd_server_accept(struct sd_server *s, struct sd_channel *out)
         case SD_CHANNEL_TYPE_UDP:
             if (recvfrom(s->fd, NULL, 0, MSG_PEEK,
                         (struct sockaddr *)&addr, &addrsize) < 0) {
-                sd_log(LOG_LEVEL_ERROR, "Could not peek message");
+                cpn_log(LOG_LEVEL_ERROR, "Could not peek message");
                 return -1;
             }
             fd = s->fd;
             break;
         default:
-            sd_log(LOG_LEVEL_ERROR, "Unknown channel type");
+            cpn_log(LOG_LEVEL_ERROR, "Unknown channel type");
             return -1;
     }
 
-    return sd_channel_init_from_fd(out, fd, &addr, addrsize, s->type);
+    return cpn_channel_init_from_fd(out, fd, &addr, addrsize, s->type);
 }
 
-int sd_server_get_address(struct sd_server *s,
+int cpn_server_get_address(struct cpn_server *s,
         char *host, size_t hostlen, char *port, size_t portlen)
 {
     struct sockaddr_storage addr;
@@ -203,13 +203,13 @@ int sd_server_get_address(struct sd_server *s,
 
     addrlen = sizeof(addr);
     if (getsockname(s->fd, (struct sockaddr *)&addr, &addrlen) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not get socket name: %s", strerror(errno));
+        cpn_log(LOG_LEVEL_ERROR, "Could not get socket name: %s", strerror(errno));
         return -1;
     }
 
     if (getnameinfo((struct sockaddr *) &addr,
                 addrlen, host, hostlen, port, portlen, 0) != 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not resolve name info: %s", strerror(errno));
+        cpn_log(LOG_LEVEL_ERROR, "Could not resolve name info: %s", strerror(errno));
         return -1;
     }
 

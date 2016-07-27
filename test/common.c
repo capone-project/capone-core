@@ -63,7 +63,7 @@ static void spawn_with_null_thread_succeeds()
     t.tv_sec = 0;
     t.tv_nsec = 100000;
 
-    assert_success(sd_spawn(NULL, spawn_fn, NULL));
+    assert_success(cpn_spawn(NULL, spawn_fn, NULL));
 
     for (i = 0; i < 20; i++) {
         if (data == 1)
@@ -76,37 +76,37 @@ static void spawn_with_null_thread_succeeds()
 
 static void kill_succeeds_for_running_thread()
 {
-    struct sd_thread t;
+    struct cpn_thread t;
 
-    assert_success(sd_spawn(&t, blocking_fn, NULL));
-    assert_success(sd_kill(&t));
+    assert_success(cpn_spawn(&t, blocking_fn, NULL));
+    assert_success(cpn_kill(&t));
 }
 
 static void join_gets_result()
 {
-    struct sd_thread t;
+    struct cpn_thread t;
     int *ptr;
 
-    assert_success(sd_spawn(&t, spawn_fn, NULL));
-    assert_success(sd_join(&t, (void **) &ptr));
+    assert_success(cpn_spawn(&t, spawn_fn, NULL));
+    assert_success(cpn_join(&t, (void **) &ptr));
     assert_ptr_equal(ptr, &data);
 }
 
 static void join_without_retval_succeeds()
 {
-    struct sd_thread t;
+    struct cpn_thread t;
 
-    assert_success(sd_spawn(&t, spawn_fn, NULL));
-    assert_success(sd_join(&t, NULL));
+    assert_success(cpn_spawn(&t, spawn_fn, NULL));
+    assert_success(cpn_join(&t, NULL));
 }
 
 static void spawn_hands_over_arg()
 {
-    struct sd_thread t;
+    struct cpn_thread t;
     int i = 2;
 
-    assert_success(sd_spawn(&t, spawn_fn, &i));
-    assert_success(sd_join(&t, NULL));
+    assert_success(cpn_spawn(&t, spawn_fn, &i));
+    assert_success(cpn_join(&t, NULL));
     assert_int_equal(i, data);
 }
 

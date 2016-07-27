@@ -28,46 +28,46 @@
 
 #include "test.h"
 
-extern void stub_sockets(struct sd_channel *local, struct sd_channel *remote);
+extern void stub_sockets(struct cpn_channel *local, struct cpn_channel *remote);
 
 struct initiate_connection_args {
-    enum sd_connection_type type;
+    enum cpn_connection_type type;
 };
 
 struct await_encryption_args {
-    struct sd_channel *c;
-    struct sd_sign_key_pair *k;
+    struct cpn_channel *c;
+    struct cpn_sign_key_pair *k;
 };
 
 struct await_query_args {
     struct await_encryption_args enc_args;
-    struct sd_service *s;
+    struct cpn_service *s;
 };
 
 struct await_request_args {
     struct await_encryption_args enc_args;
-    struct sd_service *s;
-    struct sd_sign_key_public *r;
-    struct sd_sign_key_public *whitelist;
+    struct cpn_service *s;
+    struct cpn_sign_key_public *r;
+    struct cpn_sign_key_public *whitelist;
     size_t nwhitelist;
 };
 
 struct handle_session_args {
     struct await_encryption_args enc_args;
-    struct sd_sign_key_public *remote_key;
-    struct sd_service *service;
-    struct sd_cfg *cfg;
+    struct cpn_sign_key_public *remote_key;
+    struct cpn_service *service;
+    struct cpn_cfg *cfg;
 };
 
 struct handle_termination_args {
-    struct sd_channel *channel;
-    struct sd_sign_key_public *terminator;
+    struct cpn_channel *channel;
+    struct cpn_sign_key_public *terminator;
 };
 
-static struct sd_cfg config;
-static struct sd_service service;
-static struct sd_channel local, remote;
-static struct sd_sign_key_pair local_keys, remote_keys;
+static struct cpn_cfg config;
+static struct cpn_service service;
+static struct cpn_channel local, remote;
+static struct cpn_sign_key_pair local_keys, remote_keys;
 
 static int setup()
 {
@@ -83,33 +83,33 @@ static int setup()
 
 static int teardown()
 {
-    sd_channel_close(&local);
-    sd_channel_close(&remote);
-    sd_sessions_clear();
-    sd_caps_clear();
+    cpn_channel_close(&local);
+    cpn_channel_close(&remote);
+    cpn_sessions_clear();
+    cpn_caps_clear();
     return 0;
 }
 
 static void *await_encryption(void *payload)
 {
     struct await_encryption_args *args = (struct await_encryption_args *) payload;
-    struct sd_sign_key_public remote_key;
+    struct cpn_sign_key_public remote_key;
 
-    UNUSED(sd_proto_await_encryption(args->c, args->k, &remote_key));
+    UNUSED(cpn_proto_await_encryption(args->c, args->k, &remote_key));
 
     return NULL;
 }
 
 static void *initiate_connection(void *payload)
 {
-    struct sd_channel c;
+    struct cpn_channel c;
     struct initiate_connection_args *args =
         (struct initiate_connection_args *) payload;
 
-    UNUSED(sd_proto_initiate_connection(&c, "127.0.0.1", "31248",
+    UNUSED(cpn_proto_initiate_connection(&c, "127.0.0.1", "31248",
                 &local_keys, &remote_keys.pk, args->type));
 
-    UNUSED(sd_channel_close(&c));
+    UNUSED(cpn_channel_close(&c));
 
     return NULL;
 }
@@ -120,7 +120,7 @@ static void *await_query(void *payload)
 
     UNUSED(await_encryption(&args->enc_args));
 
-    UNUSED(sd_proto_answer_query(args->enc_args.c, args->s));
+    UNUSED(cpn_proto_answer_query(args->enc_args.c, args->s));
 
     return NULL;
 }
@@ -131,7 +131,7 @@ static void *await_request(void *payload)
 
     await_encryption(&args->enc_args);
 
-    UNUSED(sd_proto_answer_request(args->enc_args.c, args->r));
+    UNUSED(cpn_proto_answer_request(args->enc_args.c, args->r));
 
     return NULL;
 }
@@ -142,7 +142,7 @@ static void *handle_session(void *payload)
 
     UNUSED(await_encryption(&args->enc_args));
 
-    UNUSED(sd_proto_handle_session(args->enc_args.c,
+    UNUSED(cpn_proto_handle_session(args->enc_args.c,
                 args->remote_key, args->service, args->cfg));
 
     return NULL;
@@ -152,56 +152,56 @@ static void *handle_termination(void *payload)
 {
     struct handle_termination_args *args = (struct handle_termination_args *) payload;
 
-    UNUSED(sd_proto_handle_termination(args->channel, args->terminator));
+    UNUSED(cpn_proto_handle_termination(args->channel, args->terminator));
 
     return NULL;
 }
 
 static void connection_initiation_succeeds()
 {
-    struct sd_thread t;
-    struct sd_server s;
-    struct sd_channel c;
+    struct cpn_thread t;
+    struct cpn_server s;
+    struct cpn_channel c;
     struct initiate_connection_args args;
-    struct sd_sign_key_public key;
-    enum sd_connection_type types[] = {
+    struct cpn_sign_key_public key;
+    enum cpn_connection_type types[] = {
         SD_CONNECTION_TYPE_CONNECT,
         SD_CONNECTION_TYPE_QUERY,
         SD_CONNECTION_TYPE_REQUEST
     };
-    enum sd_connection_type type;
+    enum cpn_connection_type type;
     size_t i;
 
-    assert_success(sd_server_init(&s, "127.0.0.1", "31248", SD_CHANNEL_TYPE_TCP));
-    assert_success(sd_server_listen(&s));
+    assert_success(cpn_server_init(&s, "127.0.0.1", "31248", SD_CHANNEL_TYPE_TCP));
+    assert_success(cpn_server_listen(&s));
 
     for (i = 0; i < ARRAY_SIZE(types); i++) {
         args.type = types[i];
 
-        assert_success(sd_spawn(&t, initiate_connection, &args));
-        assert_success(sd_server_accept(&s, &c));
-        assert_success(sd_proto_await_encryption(&c, &remote_keys, &key));
-        assert_success(sd_proto_receive_connection_type(&type, &c));
+        assert_success(cpn_spawn(&t, initiate_connection, &args));
+        assert_success(cpn_server_accept(&s, &c));
+        assert_success(cpn_proto_await_encryption(&c, &remote_keys, &key));
+        assert_success(cpn_proto_receive_connection_type(&type, &c));
         assert_int_equal(type, args.type);
 
-        assert_success(sd_channel_close(&c));
-        assert_success(sd_join(&t, NULL));
+        assert_success(cpn_channel_close(&c));
+        assert_success(cpn_join(&t, NULL));
     }
 
-    assert_success(sd_server_close(&s));
+    assert_success(cpn_server_close(&s));
 }
 
 static void encryption_initiation_succeeds()
 {
-    struct sd_thread t;
+    struct cpn_thread t;
     struct await_encryption_args args = {
         &remote, &remote_keys
     };
 
-    sd_spawn(&t, await_encryption, &args);
-    assert_success(sd_proto_initiate_encryption(&local,
+    cpn_spawn(&t, await_encryption, &args);
+    assert_success(cpn_proto_initiate_encryption(&local,
                 &local_keys, &remote_keys.pk));
-    sd_join(&t, NULL);
+    cpn_join(&t, NULL);
 
     assert(local.crypto == SD_CHANNEL_CRYPTO_SYMMETRIC);
     assert_memory_equal(&local.key, &remote.key, sizeof(local.key));
@@ -211,34 +211,34 @@ static void encryption_initiation_succeeds()
 
 static void encryption_initiation_fails_with_wrong_remote_key()
 {
-    struct sd_thread t;
+    struct cpn_thread t;
     struct await_encryption_args args = {
         &remote, &remote_keys
     };
 
-    sd_spawn(&t, await_encryption, &args);
+    cpn_spawn(&t, await_encryption, &args);
 
-    assert_failure(sd_proto_initiate_encryption(&local,
+    assert_failure(cpn_proto_initiate_encryption(&local,
                 &local_keys, &local_keys.pk));
 
     shutdown(local.fd, SHUT_RDWR);
     shutdown(remote.fd, SHUT_RDWR);
-    sd_join(&t, NULL);
+    cpn_join(&t, NULL);
 }
 
 static void query_succeeds()
 {
-    struct sd_thread t;
+    struct cpn_thread t;
     struct await_query_args args = {
         { &remote, &remote_keys }, &service
     };
-    struct sd_query_results results;
+    struct cpn_query_results results;
 
-    sd_spawn(&t, await_query, &args);
-    assert_success(sd_proto_initiate_encryption(&local,
+    cpn_spawn(&t, await_query, &args);
+    assert_success(cpn_proto_initiate_encryption(&local,
                 &local_keys, &remote_keys.pk));
-    assert_success(sd_proto_send_query(&results, &local));
-    sd_join(&t, NULL);
+    assert_success(cpn_proto_send_query(&results, &local));
+    cpn_join(&t, NULL);
 
     assert_string_equal(results.name, "Foo");
     assert_string_equal(results.type, "test");
@@ -249,7 +249,7 @@ static void query_succeeds()
     assert_int_equal(results.nparams, 1);
     assert_string_equal(results.params[0].key, "test");
 
-    sd_query_results_free(&results);
+    cpn_query_results_free(&results);
 }
 
 static void whitelisted_query_succeeds()
@@ -257,40 +257,40 @@ static void whitelisted_query_succeeds()
     struct await_query_args args = {
         { &remote, &remote_keys }, &service
     };
-    struct sd_thread t;
-    struct sd_query_results results;
+    struct cpn_thread t;
+    struct cpn_query_results results;
 
-    sd_spawn(&t, await_query, &args);
-    assert_success(sd_proto_initiate_encryption(&local,
+    cpn_spawn(&t, await_query, &args);
+    assert_success(cpn_proto_initiate_encryption(&local,
                 &local_keys, &remote_keys.pk));
-    assert_success(sd_proto_send_query(&results, &local));
-    sd_join(&t, NULL);
+    assert_success(cpn_proto_send_query(&results, &local));
+    cpn_join(&t, NULL);
 
-    sd_query_results_free(&results);
+    cpn_query_results_free(&results);
 }
 
 static void request_constructs_session()
 {
-    struct sd_parameter params[] = {
+    struct cpn_parameter params[] = {
         { "port", "9999" }
     };
     struct await_request_args args = {
         { &remote, &remote_keys }, &service, &local_keys.pk, NULL, 0
     };
-    struct sd_cap invoker, requester;
-    struct sd_session added;
-    struct sd_thread t;
+    struct cpn_cap invoker, requester;
+    struct cpn_session added;
+    struct cpn_thread t;
 
-    sd_spawn(&t, await_request, &args);
-    assert_success(sd_proto_initiate_encryption(&local, &local_keys,
+    cpn_spawn(&t, await_request, &args);
+    assert_success(cpn_proto_initiate_encryption(&local, &local_keys,
                 &remote_keys.pk));
-    assert_success(sd_proto_send_request(&invoker, &requester, &local, &local_keys.pk, params, ARRAY_SIZE(params)));
-    sd_join(&t, NULL);
+    assert_success(cpn_proto_send_request(&invoker, &requester, &local, &local_keys.pk, params, ARRAY_SIZE(params)));
+    cpn_join(&t, NULL);
 
-    assert_success(sd_sessions_remove(&added, invoker.objectid));
+    assert_success(cpn_sessions_remove(&added, invoker.objectid));
     assert_int_equal(invoker.objectid, added.sessionid);
 
-    sd_session_free(&added);
+    cpn_session_free(&added);
 }
 
 static void request_without_params_succeeds()
@@ -298,73 +298,73 @@ static void request_without_params_succeeds()
     struct await_request_args args = {
         { &remote, &remote_keys }, &service, &local_keys.pk, NULL, 0
     };
-    struct sd_cap invoker, requester;
-    struct sd_session added;
-    struct sd_thread t;
+    struct cpn_cap invoker, requester;
+    struct cpn_session added;
+    struct cpn_thread t;
 
-    sd_spawn(&t, await_request, &args);
-    assert_success(sd_proto_initiate_encryption(&local, &local_keys, &remote_keys.pk));
-    assert_success(sd_proto_send_request(&invoker, &requester, &local, &local_keys.pk, NULL, 0));
-    sd_join(&t, NULL);
+    cpn_spawn(&t, await_request, &args);
+    assert_success(cpn_proto_initiate_encryption(&local, &local_keys, &remote_keys.pk));
+    assert_success(cpn_proto_send_request(&invoker, &requester, &local, &local_keys.pk, NULL, 0));
+    cpn_join(&t, NULL);
 
-    assert_success(sd_sessions_remove(&added, invoker.objectid));
+    assert_success(cpn_sessions_remove(&added, invoker.objectid));
     assert_int_equal(invoker.objectid, added.sessionid);
     assert_int_equal(added.nparameters, 0);
 
-    sd_session_free(&added);
+    cpn_session_free(&added);
 }
 
 static void whitlisted_request_constructs_session()
 {
-    struct sd_parameter params[] = {
+    struct cpn_parameter params[] = {
         { "port", "9999" }
     };
     struct await_request_args args = {
         { &remote, &remote_keys }, &service, &local_keys.pk, &local_keys.pk, 1
     };
-    struct sd_session added;
-    struct sd_thread t;
-    struct sd_cap invoker, requester;
+    struct cpn_session added;
+    struct cpn_thread t;
+    struct cpn_cap invoker, requester;
 
-    sd_spawn(&t, await_request, &args);
-    assert_success(sd_proto_initiate_encryption(&local, &local_keys,
+    cpn_spawn(&t, await_request, &args);
+    assert_success(cpn_proto_initiate_encryption(&local, &local_keys,
                 &remote_keys.pk));
-    assert_success(sd_proto_send_request(&invoker, &requester, &local, &local_keys.pk, params, ARRAY_SIZE(params)));
-    sd_join(&t, NULL);
+    assert_success(cpn_proto_send_request(&invoker, &requester, &local, &local_keys.pk, params, ARRAY_SIZE(params)));
+    cpn_join(&t, NULL);
 
-    assert_success(sd_sessions_remove(&added, invoker.objectid));
+    assert_success(cpn_sessions_remove(&added, invoker.objectid));
     assert_int_equal(invoker.objectid, added.sessionid);
 
-    sd_session_free(&added);
+    cpn_session_free(&added);
 }
 
 static void service_connects()
 {
-    struct sd_parameter params[] = {
+    struct cpn_parameter params[] = {
         { "data", "parameter-data" }
     };
     struct handle_session_args args = {
         { &remote, &remote_keys }, &local_keys.pk, &service, &config
     };
-    struct sd_cap cap;
-    struct sd_thread t;
+    struct cpn_cap cap;
+    struct cpn_thread t;
     uint32_t sessionid;
     uint8_t *received;
 
-    sd_spawn(&t, handle_session, &args);
+    cpn_spawn(&t, handle_session, &args);
 
-    assert_success(sd_sessions_add(&sessionid, params, ARRAY_SIZE(params)));
-    assert_success(sd_caps_add(sessionid));
-    assert_success(sd_caps_create_reference(&cap, sessionid, SD_CAP_RIGHT_EXEC, &local_keys.pk));
+    assert_success(cpn_sessions_add(&sessionid, params, ARRAY_SIZE(params)));
+    assert_success(cpn_caps_add(sessionid));
+    assert_success(cpn_caps_create_reference(&cap, sessionid, SD_CAP_RIGHT_EXEC, &local_keys.pk));
 
-    assert_success(sd_proto_initiate_encryption(&local, &local_keys,
+    assert_success(cpn_proto_initiate_encryption(&local, &local_keys,
                 &remote_keys.pk));
-    assert_success(sd_proto_initiate_session(&local, &cap));
+    assert_success(cpn_proto_initiate_session(&local, &cap));
     assert_success(service.invoke(&local, 0, NULL) < 0);
 
-    sd_join(&t, NULL);
+    cpn_join(&t, NULL);
 
-    received = sd_test_service_get_data();
+    received = cpn_test_service_get_data();
     assert_string_equal(params[0].value, received);
 }
 
@@ -373,16 +373,16 @@ static void connect_refuses_without_session()
     struct handle_session_args args = {
         { &remote, &remote_keys }, &local_keys.pk, &service, &config
     };
-    struct sd_thread t;
-    struct sd_cap cap;
+    struct cpn_thread t;
+    struct cpn_cap cap;
 
-    sd_spawn(&t, handle_session, &args);
+    cpn_spawn(&t, handle_session, &args);
 
-    assert_success(sd_proto_initiate_encryption(&local, &local_keys,
+    assert_success(cpn_proto_initiate_encryption(&local, &local_keys,
                 &remote_keys.pk));
-    assert_failure(sd_proto_initiate_session(&local, &cap));
+    assert_failure(cpn_proto_initiate_session(&local, &cap));
 
-    sd_join(&t, NULL);
+    cpn_join(&t, NULL);
 }
 
 static void termination_kills_session()
@@ -390,19 +390,19 @@ static void termination_kills_session()
     struct handle_termination_args args = {
         &remote, &local_keys.pk
     };
-    struct sd_thread t;
-    struct sd_cap cap;
+    struct cpn_thread t;
+    struct cpn_cap cap;
     uint32_t sessionid;
 
-    assert_success(sd_sessions_add(&sessionid, NULL, 0));
-    assert_success(sd_caps_add(sessionid));
-    assert_success(sd_caps_create_reference(&cap, sessionid, SD_CAP_RIGHT_TERM, &local_keys.pk));
+    assert_success(cpn_sessions_add(&sessionid, NULL, 0));
+    assert_success(cpn_caps_add(sessionid));
+    assert_success(cpn_caps_create_reference(&cap, sessionid, SD_CAP_RIGHT_TERM, &local_keys.pk));
 
-    sd_spawn(&t, handle_termination, &args);
-    assert_success(sd_proto_initiate_termination(&local, &cap));
-    sd_join(&t, NULL);
+    cpn_spawn(&t, handle_termination, &args);
+    assert_success(cpn_proto_initiate_termination(&local, &cap));
+    cpn_join(&t, NULL);
 
-    assert_failure(sd_sessions_find(NULL, sessionid));
+    assert_failure(cpn_sessions_find(NULL, sessionid));
 }
 
 static void terminating_nonexistent_does_nothing()
@@ -410,12 +410,12 @@ static void terminating_nonexistent_does_nothing()
     struct handle_termination_args args = {
         &remote, &local_keys.pk
     };
-    struct sd_thread t;
-    struct sd_cap cap;
+    struct cpn_thread t;
+    struct cpn_cap cap;
 
-    sd_spawn(&t, handle_termination, &args);
-    assert_success(sd_proto_initiate_termination(&local, &cap));
-    sd_join(&t, NULL);
+    cpn_spawn(&t, handle_termination, &args);
+    assert_success(cpn_proto_initiate_termination(&local, &cap));
+    cpn_join(&t, NULL);
 }
 
 int proto_test_run_suite(void)
@@ -446,13 +446,13 @@ int proto_test_run_suite(void)
         test(terminating_nonexistent_does_nothing)
     };
 
-    assert_success(sd_sessions_init());
+    assert_success(cpn_sessions_init());
 
-    assert_success(sd_cfg_parse_string(&config, service_cfg, strlen(service_cfg)));
-    assert_success(sd_service_from_config(&service, "Foo", &config));
+    assert_success(cpn_cfg_parse_string(&config, service_cfg, strlen(service_cfg)));
+    assert_success(cpn_service_from_config(&service, "Foo", &config));
 
-    assert_success(sd_sign_key_pair_generate(&local_keys));
-    assert_success(sd_sign_key_pair_generate(&remote_keys));
+    assert_success(cpn_sign_key_pair_generate(&local_keys));
+    assert_success(cpn_sign_key_pair_generate(&remote_keys));
 
     return execute_test_suite("proto", tests, setup, teardown);
 }

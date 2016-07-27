@@ -31,9 +31,9 @@ static const char *version(void)
     return "0.0.1";
 }
 
-static int parameters(const struct sd_parameter **out)
+static int parameters(const struct cpn_parameter **out)
 {
-    static const struct sd_parameter params[] = {
+    static const struct cpn_parameter params[] = {
         { "port", NULL },
     };
 
@@ -41,10 +41,10 @@ static int parameters(const struct sd_parameter **out)
     return ARRAY_SIZE(params);
 }
 
-static int invoke(struct sd_channel *channel, int argc, char **argv)
+static int invoke(struct cpn_channel *channel, int argc, char **argv)
 {
     char buf[1], *port;
-    struct sd_channel xpra_channel;
+    struct cpn_channel xpra_channel;
 
     if (argc != 2 || strcmp(argv[0], "port")) {
         puts("Usage: xpra port <PORT>");
@@ -53,8 +53,8 @@ static int invoke(struct sd_channel *channel, int argc, char **argv)
 
     port = argv[1];
 
-    if (sd_channel_init_from_host(&xpra_channel, "127.0.0.1", port, SD_CHANNEL_TYPE_TCP) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not initialize local xpra channel");
+    if (cpn_channel_init_from_host(&xpra_channel, "127.0.0.1", port, SD_CHANNEL_TYPE_TCP) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Could not initialize local xpra channel");
         return -1;
     }
 
@@ -66,32 +66,32 @@ static int invoke(struct sd_channel *channel, int argc, char **argv)
      * server.
      */
     if (recv(channel->fd, buf, sizeof(buf), MSG_PEEK) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not await xpra connection");
+        cpn_log(LOG_LEVEL_ERROR, "Could not await xpra connection");
         return -1;
     }
 
-    if (sd_channel_connect(&xpra_channel) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not connect to local xpra server");
+    if (cpn_channel_connect(&xpra_channel) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Could not connect to local xpra server");
         return -1;
     }
 
-    if (sd_channel_relay(channel, 1, xpra_channel.fd) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not relay data from xpra connection");
+    if (cpn_channel_relay(channel, 1, xpra_channel.fd) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Could not relay data from xpra connection");
         return -1;
     }
 
-    sd_channel_close(&xpra_channel);
+    cpn_channel_close(&xpra_channel);
 
     return 0;
 }
 
-static int handle(struct sd_channel *channel,
-        const struct sd_sign_key_public *invoker,
-        const struct sd_session *session,
-        const struct sd_cfg *cfg)
+static int handle(struct cpn_channel *channel,
+        const struct cpn_sign_key_public *invoker,
+        const struct cpn_session *session,
+        const struct cpn_cfg *cfg)
 {
-    struct sd_server server;
-    struct sd_channel xpra_channel;
+    struct cpn_server server;
+    struct cpn_channel xpra_channel;
     char port[10], *args[] = {
         "xpra",
         "attach",
@@ -105,18 +105,18 @@ static int handle(struct sd_channel *channel,
     UNUSED(invoker);
     UNUSED(session);
 
-    if (sd_server_init(&server, "127.0.0.1", NULL, SD_CHANNEL_TYPE_TCP) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not initialize xpra relay socket");
+    if (cpn_server_init(&server, "127.0.0.1", NULL, SD_CHANNEL_TYPE_TCP) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Could not initialize xpra relay socket");
         return -1;
     }
 
-    if (sd_server_listen(&server) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not listen on xpra relay socket");
+    if (cpn_server_listen(&server) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Could not listen on xpra relay socket");
         return -1;
     }
 
-    if (sd_server_get_address(&server, NULL, 0, port, sizeof(port)) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not retrieve address of xpra relay socket");
+    if (cpn_server_get_address(&server, NULL, 0, port, sizeof(port)) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Could not retrieve address of xpra relay socket");
         return -1;
     }
 
@@ -127,19 +127,19 @@ static int handle(struct sd_channel *channel,
     pid = fork();
     if (pid == 0) {
         if (execvp("xpra", args) != 0) {
-            sd_log(LOG_LEVEL_ERROR, "Unable to execute xpra client");
+            cpn_log(LOG_LEVEL_ERROR, "Unable to execute xpra client");
             _exit(-1);
         }
 
         _exit(0);
     } else if (pid > 0) {
-        if (sd_server_accept(&server, &xpra_channel) < 0) {
-            sd_log(LOG_LEVEL_ERROR, "Could not accept xpra relay socket connection");
+        if (cpn_server_accept(&server, &xpra_channel) < 0) {
+            cpn_log(LOG_LEVEL_ERROR, "Could not accept xpra relay socket connection");
             return -1;
         }
 
-        if (sd_channel_relay(channel, 1, xpra_channel.fd) < 0) {
-            sd_log(LOG_LEVEL_ERROR, "Could not relay xpra socket");
+        if (cpn_channel_relay(channel, 1, xpra_channel.fd) < 0) {
+            cpn_log(LOG_LEVEL_ERROR, "Could not relay xpra socket");
             return -1;
         }
     } else {
@@ -147,13 +147,13 @@ static int handle(struct sd_channel *channel,
     }
 
     kill(pid, SIGKILL);
-    sd_log(LOG_LEVEL_VERBOSE, "Terminated xpra");
+    cpn_log(LOG_LEVEL_VERBOSE, "Terminated xpra");
     free(args[2]);
 
     return 0;
 }
 
-int sd_xpra_init_service(struct sd_service *service)
+int cpn_xpra_init_service(struct cpn_service *service)
 {
     service->category = "Display";
     service->version = version;

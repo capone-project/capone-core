@@ -40,13 +40,13 @@
  * This struct bundles together data required for accepting
  * connections on a server socket.
  */
-struct sd_server {
+struct cpn_server {
     /** File descriptor to listen on */
     int fd;
     /** Local address of the socket */
     struct sockaddr_storage addr;
     /** Type of the socket, either UDP or TCP. */
-    enum sd_channel_type type;
+    enum cpn_channel_type type;
 };
 
 /** Initialize a server socket with host and port
@@ -61,15 +61,15 @@ struct sd_server {
  * @param[in] type Type of the socket, either UDP or TCP.
  * @return <code>0</code> on success, <code>1</code> otherwise
  */
-int sd_server_init(struct sd_server *server,
-        const char *host, const char *port, enum sd_channel_type type);
+int cpn_server_init(struct cpn_server *server,
+        const char *host, const char *port, enum cpn_channel_type type);
 
 /** Close a server socket
  *
  * @param[in] server Server to close
  * @return <code>0</code> on success, <code>1</code> otherwise
  */
-int sd_server_close(struct sd_server *server);
+int cpn_server_close(struct cpn_server *server);
 
 /** Enable broadcasting on the server socket
  *
@@ -80,7 +80,7 @@ int sd_server_close(struct sd_server *server);
  * @param[in] server Server to enable broadcasting for.
  * @return <code>0</code> on success, <code>1</code> otherwise
  */
-int sd_server_enable_broadcast(struct sd_server *server);
+int cpn_server_enable_broadcast(struct cpn_server *server);
 
 /** Set server socket into listening state
  *
@@ -91,7 +91,7 @@ int sd_server_enable_broadcast(struct sd_server *server);
  * @param[in] server Server to enable listening for.
  * @return <code>0</code> on success, <code>1</code> otherwise
  */
-int sd_server_listen(struct sd_server *server);
+int cpn_server_listen(struct cpn_server *server);
 
 /** Accept a new connection
  *
@@ -105,7 +105,7 @@ int sd_server_listen(struct sd_server *server);
  * @param[out] out Channel connected to the connecting client.
  * @return <code>0</code> on success, <code>1</code> otherwise
  */
-int sd_server_accept(struct sd_server *server, struct sd_channel *out);
+int cpn_server_accept(struct cpn_server *server, struct cpn_channel *out);
 
 /** Get the address of a bound socket
  *
@@ -122,7 +122,7 @@ int sd_server_accept(struct sd_server *server, struct sd_channel *out);
  * @param[in] portlen Maximum length of the port buffer.
  * @return <code>0</code> on success, <code>1</code> otherwise
  */
-int sd_server_get_address(struct sd_server *s,
+int cpn_server_get_address(struct cpn_server *s,
         char *host, size_t hostlen, char *port, size_t portlen);
 
 #endif

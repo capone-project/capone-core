@@ -22,10 +22,10 @@
 
 #include "parameter.h"
 
-size_t sd_parameters_dup(struct sd_parameter **out,
-        const struct sd_parameter *params, size_t nparams)
+size_t cpn_parameters_dup(struct cpn_parameter **out,
+        const struct cpn_parameter *params, size_t nparams)
 {
-    struct sd_parameter *result;
+    struct cpn_parameter *result;
     size_t i;
 
     if (!nparams) {
@@ -33,7 +33,7 @@ size_t sd_parameters_dup(struct sd_parameter **out,
         return 0;
     }
 
-    result = calloc(nparams, sizeof(struct sd_parameter));
+    result = calloc(nparams, sizeof(struct cpn_parameter));
 
     for (i = 0; i < nparams; i++) {
         result[i].key = params[i].key ? strdup(params[i].key) : NULL;
@@ -44,12 +44,12 @@ size_t sd_parameters_dup(struct sd_parameter **out,
     return nparams;
 }
 
-ssize_t sd_parameters_parse(struct sd_parameter **out, int argc, char **argv)
+ssize_t cpn_parameters_parse(struct cpn_parameter **out, int argc, char **argv)
 {
-    struct sd_parameter *params;
+    struct cpn_parameter *params;
     int i;
 
-    params = malloc(sizeof(struct sd_parameter) * argc);
+    params = malloc(sizeof(struct cpn_parameter) * argc);
 
     for (i = 0; i < argc; i++) {
         const char *sep, *arg = argv[i];
@@ -69,10 +69,10 @@ ssize_t sd_parameters_parse(struct sd_parameter **out, int argc, char **argv)
     return i;
 }
 
-size_t sd_parameters_filter(struct sd_parameter **out, const char *key,
-        const struct sd_parameter *params, size_t nparams)
+size_t cpn_parameters_filter(struct cpn_parameter **out, const char *key,
+        const struct cpn_parameter *params, size_t nparams)
 {
-    struct sd_parameter *result;
+    struct cpn_parameter *result;
     size_t i, n = 0;
 
     for (i = 0; i < nparams; i++)
@@ -83,7 +83,7 @@ size_t sd_parameters_filter(struct sd_parameter **out, const char *key,
         return n;
     }
 
-    result = calloc(n, sizeof(struct sd_parameter));
+    result = calloc(n, sizeof(struct cpn_parameter));
 
     for (n = 0, i = 0; i < nparams; i++)
         if (!strcmp(params[i].key, key)) {
@@ -97,22 +97,22 @@ size_t sd_parameters_filter(struct sd_parameter **out, const char *key,
     return n;
 }
 
-int sd_parameters_get_value(const char **out, const char *value, const struct sd_parameter *parameters, size_t n)
+int cpn_parameters_get_value(const char **out, const char *value, const struct cpn_parameter *parameters, size_t n)
 {
     const char **values;
     int nvalues;
 
     *out = NULL;
 
-    nvalues = sd_parameters_get_values(&values, value, parameters, n);
+    nvalues = cpn_parameters_get_values(&values, value, parameters, n);
     if (nvalues < 0) {
-        sd_log(LOG_LEVEL_WARNING, "Could not retrieve parameter value '%s'", value);
+        cpn_log(LOG_LEVEL_WARNING, "Could not retrieve parameter value '%s'", value);
         goto out_err;
     } else if (nvalues == 0) {
-        sd_log(LOG_LEVEL_WARNING, "Requested parameter value '%s' not present", value);
+        cpn_log(LOG_LEVEL_WARNING, "Requested parameter value '%s' not present", value);
         goto out_err;
     } else if (nvalues > 1) {
-        sd_log(LOG_LEVEL_WARNING, "Requested parameter value '%s' has more than one value", value);
+        cpn_log(LOG_LEVEL_WARNING, "Requested parameter value '%s' has more than one value", value);
         goto out_err;
     }
 
@@ -126,9 +126,9 @@ out_err:
     return -1;
 }
 
-int sd_parameters_get_values(const char ***out, const char *value, const struct sd_parameter *parameters, size_t n)
+int cpn_parameters_get_values(const char ***out, const char *value, const struct cpn_parameter *parameters, size_t n)
 {
-    const struct sd_parameter *param;
+    const struct cpn_parameter *param;
     const char **values = NULL;
     int nvalues = 0;
     size_t i;
@@ -149,7 +149,7 @@ int sd_parameters_get_values(const char ***out, const char *value, const struct 
     return nvalues;
 }
 
-void sd_parameters_free(struct sd_parameter *params, size_t nparams)
+void cpn_parameters_free(struct cpn_parameter *params, size_t nparams)
 {
     size_t i;
 
@@ -164,7 +164,7 @@ void sd_parameters_free(struct sd_parameter *params, size_t nparams)
     free(params);
 }
 
-size_t sd_parameters_to_proto(Parameter ***out, const struct sd_parameter *params, size_t nparams)
+size_t cpn_parameters_to_proto(Parameter ***out, const struct cpn_parameter *params, size_t nparams)
 {
     size_t i;
 
@@ -188,7 +188,7 @@ size_t sd_parameters_to_proto(Parameter ***out, const struct sd_parameter *param
     return nparams;
 }
 
-void sd_parameters_proto_free(Parameter **params, size_t nparams)
+void cpn_parameters_proto_free(Parameter **params, size_t nparams)
 {
     size_t i;
 

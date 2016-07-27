@@ -27,19 +27,19 @@
 
 #include "common.h"
 
-int sd_spawn(struct sd_thread *t, thread_fn fn, void *payload)
+int cpn_spawn(struct cpn_thread *t, thread_fn fn, void *payload)
 {
     pthread_t stub;
 
     return pthread_create(t ? &t->t : &stub, NULL, fn, payload);
 }
 
-int sd_kill(struct sd_thread *t)
+int cpn_kill(struct cpn_thread *t)
 {
     return pthread_cancel(t->t);
 }
 
-int sd_join(struct sd_thread *t, void **out)
+int cpn_join(struct cpn_thread *t, void **out)
 {
     return pthread_join(t->t, out);
 }
@@ -51,7 +51,7 @@ int parse_uint32t(uint32_t *out, const char *num)
     int ret = 0;
 
     if (strspn(num, "1234567890") != strlen(num)) {
-        sd_log(LOG_LEVEL_ERROR, "uint32_t %s contains invalid chars", num);
+        cpn_log(LOG_LEVEL_ERROR, "uint32_t %s contains invalid chars", num);
         return -1;
     }
 
@@ -61,11 +61,11 @@ int parse_uint32t(uint32_t *out, const char *num)
 
     result = strtol(num, NULL, 10);
     if (errno != 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not parse uint32t %s", num);
+        cpn_log(LOG_LEVEL_ERROR, "Could not parse uint32t %s", num);
         ret = -1;
         goto out;
     } else if (result < 0 || result > UINT32_MAX) {
-        sd_log(LOG_LEVEL_ERROR, "Parsing %s results in overflow", num);
+        cpn_log(LOG_LEVEL_ERROR, "Parsing %s results in overflow", num);
         ret = -1;
         goto out;
     }

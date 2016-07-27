@@ -20,7 +20,7 @@
 
 #include "test.h"
 
-static struct sd_parameter *results;
+static struct cpn_parameter *results;
 static size_t nresults;
 
 static int setup()
@@ -32,13 +32,13 @@ static int setup()
 
 static int teardown()
 {
-    sd_parameters_free(results, nresults);
+    cpn_parameters_free(results, nresults);
     return 0;
 }
 
 static void test_duplicating_parameters()
 {
-    struct sd_parameter params[] = {
+    struct cpn_parameter params[] = {
         { "key1", "value1" },
         { "key2", "value2" },
         { "key2", "value3" },
@@ -46,7 +46,7 @@ static void test_duplicating_parameters()
     };
     size_t i;
 
-    nresults = sd_parameters_dup(&results, params, ARRAY_SIZE(params));
+    nresults = cpn_parameters_dup(&results, params, ARRAY_SIZE(params));
     assert_int_equal(nresults, ARRAY_SIZE(params));
 
     for (i = 0; i < ARRAY_SIZE(params) - 1; i++) {
@@ -63,7 +63,7 @@ static void test_parsing_parameter()
         "key=value"
     };
 
-    nresults = sd_parameters_parse(&results, ARRAY_SIZE(args), args);
+    nresults = cpn_parameters_parse(&results, ARRAY_SIZE(args), args);
     assert_int_equal(nresults, 1);
     assert_string_equal(results[0].key, "key");
     assert_string_equal(results[0].value, "value");
@@ -75,7 +75,7 @@ static void test_parsing_parameters()
         "key1=value1", "key2=value2"
     };
 
-    nresults = sd_parameters_parse(&results, ARRAY_SIZE(args), args);
+    nresults = cpn_parameters_parse(&results, ARRAY_SIZE(args), args);
     assert_int_equal(nresults, 2);
     assert_string_equal(results[0].key, "key1");
     assert_string_equal(results[0].value, "value1");
@@ -89,7 +89,7 @@ static void test_parsing_parameter_with_multiple_equals()
         "key=param=value"
     };
 
-    nresults = sd_parameters_parse(&results, ARRAY_SIZE(args), args);
+    nresults = cpn_parameters_parse(&results, ARRAY_SIZE(args), args);
     assert_int_equal(nresults, 1);
     assert_string_equal(results[0].key, "key");
     assert_string_equal(results[0].value, "param=value");
@@ -101,7 +101,7 @@ static void test_parsing_parameter_with_no_value()
         "key"
     };
 
-    nresults = sd_parameters_parse(&results, ARRAY_SIZE(args), args);
+    nresults = cpn_parameters_parse(&results, ARRAY_SIZE(args), args);
     assert_int_equal(nresults, 1);
     assert_string_equal(results[0].key, "key");
     assert_null(results[0].value);
@@ -113,7 +113,7 @@ static void test_parsing_parameter_with_empty_value()
         "key="
     };
 
-    nresults = sd_parameters_parse(&results, ARRAY_SIZE(args), args);
+    nresults = cpn_parameters_parse(&results, ARRAY_SIZE(args), args);
     assert_int_equal(nresults, 1);
     assert_string_equal(results[0].key, "key");
     assert_string_equal(results[0].value, "");
@@ -121,11 +121,11 @@ static void test_parsing_parameter_with_empty_value()
 
 static void test_filtering_matching_value()
 {
-    struct sd_parameter parameters[] = {
+    struct cpn_parameter parameters[] = {
         { "matching", "value" },
     };
 
-    nresults = sd_parameters_filter(&results, "matching",
+    nresults = cpn_parameters_filter(&results, "matching",
             parameters, ARRAY_SIZE(parameters));
     assert_int_equal(nresults, ARRAY_SIZE(parameters));
     assert_string_equal(results[0].key, "matching");
@@ -134,14 +134,14 @@ static void test_filtering_matching_value()
 
 static void test_filtering_matching_values()
 {
-    struct sd_parameter parameters[] = {
+    struct cpn_parameter parameters[] = {
         { "matching", "value1" },
         { "matching", "value2" },
         { "matching", "value3" },
     };
     size_t i;
 
-    nresults = sd_parameters_filter(&results, "matching",
+    nresults = cpn_parameters_filter(&results, "matching",
             parameters, ARRAY_SIZE(parameters));
     assert_int_equal(nresults, ARRAY_SIZE(parameters));
 
@@ -153,25 +153,25 @@ static void test_filtering_matching_values()
 
 static void test_filtering_nonmatching()
 {
-    struct sd_parameter parameters[] = {
+    struct cpn_parameter parameters[] = {
         { "nonmatching", "value1" },
         { "nonmatching", "value2" },
         { "nonmatching", "value3" },
     };
 
-    assert_int_equal(sd_parameters_filter(NULL, "matching",
+    assert_int_equal(cpn_parameters_filter(NULL, "matching",
                 parameters, ARRAY_SIZE(parameters)), 0);
 }
 
 static void test_filtering_mixed_items()
 {
-    struct sd_parameter parameters[] = {
+    struct cpn_parameter parameters[] = {
         { "matching", "value1" },
         { "nonmatching", "value2" },
         { "matching", "value3" },
     };
 
-    nresults = sd_parameters_filter(&results, "matching",
+    nresults = cpn_parameters_filter(&results, "matching",
             parameters, ARRAY_SIZE(parameters));
     assert_int_equal(nresults, 2);
     assert_string_equal(results[0].key, parameters[0].key);
@@ -182,62 +182,62 @@ static void test_filtering_mixed_items()
 
 static void test_getting_single_value()
 {
-    struct sd_parameter parameters[] = {
+    struct cpn_parameter parameters[] = {
         { "arg", "foo" },
     };
     const char *value;
 
-    assert_success(sd_parameters_get_value(&value,
+    assert_success(cpn_parameters_get_value(&value,
                 "arg", parameters, ARRAY_SIZE(parameters)));
     assert_string_equal(value, parameters[0].value);
 }
 
 static void test_getting_single_value_with_different_params()
 {
-    struct sd_parameter parameters[] = {
+    struct cpn_parameter parameters[] = {
         { "xvlc", "bar" },
         { "arg", "foo" },
     };
     const char *value;
 
-    assert_success(sd_parameters_get_value(&value,
+    assert_success(cpn_parameters_get_value(&value,
                 "arg", parameters, ARRAY_SIZE(parameters)));
     assert_string_equal(value, parameters[1].value);
 }
 
 static void test_getting_value_for_parameter_with_zero_values_fails()
 {
-    struct sd_parameter parameters[] = {
+    struct cpn_parameter parameters[] = {
         { "arg", NULL },
     };
     const char *value;
 
-    assert_failure(sd_parameters_get_value(&value,
+    assert_failure(cpn_parameters_get_value(&value,
                 "arg", parameters, ARRAY_SIZE(parameters)));
     assert_null(value);
 }
 
 static void test_getting_single_value_for_multiple_available_fails_with_multiple_args()
 {
-    struct sd_parameter parameters[] = {
+    struct cpn_parameter parameters[] = {
         { "arg", "foo" },
         { "arg", "foo" },
     };
     const char *value;
 
-    assert_failure(sd_parameters_get_value(&value,
+    assert_failure(cpn_parameters_get_value(&value,
                 "arg", parameters, ARRAY_SIZE(parameters)));
     assert_null(value);
 }
 
 static void test_getting_multiple_values_with_one_result()
 {
-    struct sd_parameter parameters[] = {
+    struct cpn_parameter parameters[] = {
         { "arg", "foo" },
     };
     const char **values;
 
-    assert_int_equal(sd_parameters_get_values(&values,
+    assert_int_equal(cpn_parameters_get_values(&values,
                 "arg", parameters, ARRAY_SIZE(parameters)), 1);
     assert_string_equal(values[0], parameters[0].value);
 
@@ -246,13 +246,13 @@ static void test_getting_multiple_values_with_one_result()
 
 static void test_getting_multiple_values_with_multiple_args()
 {
-    struct sd_parameter parameters[] = {
+    struct cpn_parameter parameters[] = {
         { "arg", "foo" },
         { "arg", "foo" },
     };
     const char **values;
 
-    assert_int_equal(sd_parameters_get_values(&values,
+    assert_int_equal(cpn_parameters_get_values(&values,
                 "arg", parameters, ARRAY_SIZE(parameters)), 2);
     assert_string_equal(values[0], parameters[0].value);
     assert_string_equal(values[1], parameters[1].value);
@@ -263,7 +263,7 @@ static void test_getting_multiple_values_with_multiple_args()
 static void test_converting_parameters()
 {
     Parameter **out;
-    struct sd_parameter parameters[] = {
+    struct cpn_parameter parameters[] = {
         { "arg1", "val1" },
         { "arg2", "val2" },
         { "arg3", "val3" },
@@ -271,33 +271,33 @@ static void test_converting_parameters()
     };
     size_t i;
 
-    assert_int_equal(sd_parameters_to_proto(&out, parameters, ARRAY_SIZE(parameters)),
+    assert_int_equal(cpn_parameters_to_proto(&out, parameters, ARRAY_SIZE(parameters)),
             ARRAY_SIZE(parameters));
     for (i = 0; i < ARRAY_SIZE(parameters); i++) {
         assert_string_equal(out[i]->key, parameters[i].key);
         assert_string_equal(out[i]->value, parameters[i].value);
     }
 
-    sd_parameters_proto_free(out, ARRAY_SIZE(parameters));
+    cpn_parameters_proto_free(out, ARRAY_SIZE(parameters));
 }
 
 static void test_converting_parameters_with_null_values()
 {
     Parameter **out;
-    struct sd_parameter parameters[] = {
+    struct cpn_parameter parameters[] = {
         { "arg1", NULL },
         { "arg2", NULL },
     };
     size_t i;
 
-    assert_int_equal(sd_parameters_to_proto(&out, parameters, ARRAY_SIZE(parameters)),
+    assert_int_equal(cpn_parameters_to_proto(&out, parameters, ARRAY_SIZE(parameters)),
             ARRAY_SIZE(parameters));
     for (i = 0; i < ARRAY_SIZE(parameters); i++) {
         assert_string_equal(out[i]->key, parameters[i].key);
         assert_null(out[i]->value);
     }
 
-    sd_parameters_proto_free(out, ARRAY_SIZE(parameters));
+    cpn_parameters_proto_free(out, ARRAY_SIZE(parameters));
 }
 
 int parameter_test_run_suite(void)

@@ -26,8 +26,8 @@
 #include "lib/proto.h"
 #include "lib/service.h"
 
-static struct sd_sign_key_pair local_keys;
-static struct sd_sign_key_public remote_key;
+static struct cpn_sign_key_pair local_keys;
+static struct cpn_sign_key_public remote_key;
 
 static void usage(const char *prog)
 {
@@ -42,8 +42,8 @@ static void usage(const char *prog)
 
 static int cmd_query(int argc, char *argv[])
 {
-    struct sd_query_results results;
-    struct sd_channel channel;
+    struct cpn_query_results results;
+    struct cpn_channel channel;
     char *config, *key, *host, *port;
     size_t i;
 
@@ -55,23 +55,23 @@ static int cmd_query(int argc, char *argv[])
     host = argv[4];
     port = argv[5];
 
-    if (sd_sign_key_pair_from_config_file(&local_keys, config) < 0) {
+    if (cpn_sign_key_pair_from_config_file(&local_keys, config) < 0) {
         puts("Could not parse sign keys");
         return -1;
     }
 
-    if (sd_sign_key_public_from_hex(&remote_key, key) < 0) {
+    if (cpn_sign_key_public_from_hex(&remote_key, key) < 0) {
         puts("Could not parse remote public key");
         return -1;
     }
 
-    if (sd_proto_initiate_connection(&channel, host, port,
+    if (cpn_proto_initiate_connection(&channel, host, port,
                 &local_keys, &remote_key, SD_CONNECTION_TYPE_QUERY) < 0) {
         puts("Could not establish connection");
         return -1;
     }
 
-    if (sd_proto_send_query(&results, &channel) < 0) {
+    if (cpn_proto_send_query(&results, &channel) < 0) {
         puts("Could not query service");
         return -1;
     }
@@ -92,13 +92,13 @@ static int cmd_query(int argc, char *argv[])
             results.port);
 
     for (i = 0; i < results.nparams; i++) {
-        struct sd_parameter *param = &results.params[i];
+        struct cpn_parameter *param = &results.params[i];
 
         printf("\tparam:    %s=%s\n", param->key, param->value);
     }
 
-    sd_query_results_free(&results);
-    sd_channel_close(&channel);
+    cpn_query_results_free(&results);
+    cpn_channel_close(&channel);
 
     return 0;
 }
@@ -107,10 +107,10 @@ static int cmd_request(int argc, char *argv[])
 {
     char invoker_hex[SD_CAP_SECRET_LEN * 2 + 1], requester_hex[SD_CAP_SECRET_LEN * 2 + 1];
     const char *config, *invoker, *key, *host, *port;
-    struct sd_cap requester_cap, invoker_cap;
-    struct sd_sign_key_public invoker_key;
-    struct sd_parameter *params = NULL;
-    struct sd_channel channel;
+    struct cpn_cap requester_cap, invoker_cap;
+    struct cpn_sign_key_public invoker_key;
+    struct cpn_parameter *params = NULL;
+    struct cpn_channel channel;
     ssize_t nparams;
 
     memset(&channel, 0, sizeof(channel));
@@ -125,33 +125,33 @@ static int cmd_request(int argc, char *argv[])
     host = argv[5];
     port = argv[6];
 
-    if ((nparams = sd_parameters_parse(&params, argc - 7, argv + 7)) < 0) {
+    if ((nparams = cpn_parameters_parse(&params, argc - 7, argv + 7)) < 0) {
         puts("Could not parse parameters");
         goto out_err;
     }
 
-    if (sd_sign_key_pair_from_config_file(&local_keys, config) < 0) {
+    if (cpn_sign_key_pair_from_config_file(&local_keys, config) < 0) {
         puts("Could not parse config");
         goto out_err;
     }
 
-    if (sd_sign_key_public_from_hex(&invoker_key, invoker) < 0) {
+    if (cpn_sign_key_public_from_hex(&invoker_key, invoker) < 0) {
         puts("Could not parse remote public key");
         goto out_err;
     }
 
-    if (sd_sign_key_public_from_hex(&remote_key, key) < 0) {
+    if (cpn_sign_key_public_from_hex(&remote_key, key) < 0) {
         puts("Could not parse remote public key");
         goto out_err;
     }
 
-    if (sd_proto_initiate_connection(&channel, host, port,
+    if (cpn_proto_initiate_connection(&channel, host, port,
                 &local_keys, &remote_key, SD_CONNECTION_TYPE_REQUEST) < 0) {
         puts("Could not establish connection");
         goto out_err;
     }
 
-    if (sd_proto_send_request(&invoker_cap, &requester_cap,
+    if (cpn_proto_send_request(&invoker_cap, &requester_cap,
                 &channel, &invoker_key, params, nparams) < 0)
     {
         puts("Unable to request session");
@@ -169,23 +169,23 @@ static int cmd_request(int argc, char *argv[])
            invoker_cap.objectid,
            invoker_hex, requester_hex);
 
-    sd_channel_close(&channel);
+    cpn_channel_close(&channel);
 
     return 0;
 
 out_err:
-    sd_channel_close(&channel);
-    sd_parameters_free(params, nparams);
+    cpn_channel_close(&channel);
+    cpn_parameters_free(params, nparams);
     return -1;
 }
 
 static int cmd_connect(int argc, char *argv[])
 {
     const char *config, *key, *host, *port, *service_type, *session, *secret;
-    struct sd_sign_key_public remote_key;
-    struct sd_service service;
-    struct sd_channel channel;
-    struct sd_cap cap;
+    struct cpn_sign_key_public remote_key;
+    struct cpn_service service;
+    struct cpn_channel channel;
+    struct cpn_cap cap;
 
     if (argc < 9)
         usage(argv[0]);
@@ -198,33 +198,33 @@ static int cmd_connect(int argc, char *argv[])
     session = argv[7];
     secret = argv[8];
 
-    if (sd_sign_key_pair_from_config_file(&local_keys, config) < 0) {
+    if (cpn_sign_key_pair_from_config_file(&local_keys, config) < 0) {
         puts("Could not parse config");
         return -1;
     }
 
-    if (sd_sign_key_public_from_hex(&remote_key, key) < 0) {
+    if (cpn_sign_key_public_from_hex(&remote_key, key) < 0) {
         puts("Could not parse remote public key");
         return -1;
     }
 
-    if (sd_service_from_type(&service, service_type) < 0) {
+    if (cpn_service_from_type(&service, service_type) < 0) {
         printf("Invalid service %s\n", service_type);
         return -1;
     }
 
-    if (sd_cap_parse(&cap, session, secret, SD_CAP_RIGHT_EXEC | SD_CAP_RIGHT_TERM) < 0) {
+    if (cpn_cap_parse(&cap, session, secret, SD_CAP_RIGHT_EXEC | SD_CAP_RIGHT_TERM) < 0) {
         puts("Invalid capability");
         return -1;
     }
 
-    if (sd_proto_initiate_connection(&channel, host, port,
+    if (cpn_proto_initiate_connection(&channel, host, port,
                 &local_keys, &remote_key, SD_CONNECTION_TYPE_CONNECT) < 0) {
         puts("Could not start connection");
         return -1;
     }
 
-    if (sd_proto_initiate_session(&channel, &cap) < 0) {
+    if (cpn_proto_initiate_session(&channel, &cap) < 0) {
         puts("Could not connect to session");
         return -1;
     }
@@ -234,17 +234,17 @@ static int cmd_connect(int argc, char *argv[])
         return -1;
     }
 
-    sd_channel_close(&channel);
+    cpn_channel_close(&channel);
 
     return 0;
 }
 
 static int cmd_terminate(int argc, char *argv[])
 {
-    struct sd_sign_key_public remote_key;
-    struct sd_sign_key_pair local_keys;
-    struct sd_channel channel;
-    struct sd_cap cap;
+    struct cpn_sign_key_public remote_key;
+    struct cpn_sign_key_pair local_keys;
+    struct cpn_channel channel;
+    struct cpn_cap cap;
     const char *config, *key, *host, *port, *session, *capability;
 
     if (argc != 8)
@@ -257,28 +257,28 @@ static int cmd_terminate(int argc, char *argv[])
     session = argv[6];
     capability = argv[7];
 
-    if (sd_sign_key_pair_from_config_file(&local_keys, config) < 0) {
+    if (cpn_sign_key_pair_from_config_file(&local_keys, config) < 0) {
         puts("Could not parse config");
         return -1;
     }
 
-    if (sd_sign_key_public_from_hex(&remote_key, key) < 0) {
+    if (cpn_sign_key_public_from_hex(&remote_key, key) < 0) {
         puts("Could not parse remote public key");
         return -1;
     }
 
-    if (sd_cap_parse(&cap, session, capability, SD_CAP_RIGHT_TERM) < 0) {
+    if (cpn_cap_parse(&cap, session, capability, SD_CAP_RIGHT_TERM) < 0) {
         puts("Invalid capability\n");
         return -1;
     }
 
-    if (sd_proto_initiate_connection(&channel, host, port,
+    if (cpn_proto_initiate_connection(&channel, host, port,
                 &local_keys, &remote_key, SD_CONNECTION_TYPE_TERMINATE) < 0) {
         puts("Could not start connection");
         return -1;
     }
 
-    if (sd_proto_initiate_termination(&channel, &cap) < 0) {
+    if (cpn_proto_initiate_termination(&channel, &cap) < 0) {
         puts("Could not initiate termination");
         return -1;
     }

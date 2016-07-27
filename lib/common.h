@@ -64,7 +64,7 @@ typedef void *(*thread_fn)(void *);
  * This struct abstracts the interna and provides an opaque
  * representation of a thread.
  */
-struct sd_thread {
+struct cpn_thread {
     pthread_t t;
 };
 
@@ -82,7 +82,7 @@ struct sd_thread {
  * @param[in] payload Payload that is passed to the function.
  * @return <code>0</code> on success, <code>-1</code> otherwise.
  */
-int sd_spawn(struct sd_thread *t, thread_fn fn, void *payload);
+int cpn_spawn(struct cpn_thread *t, thread_fn fn, void *payload);
 
 /** @brief Kill a spawned thread
  *
@@ -94,7 +94,7 @@ int sd_spawn(struct sd_thread *t, thread_fn fn, void *payload);
  *         Note that trying to kill a thread that is not running
  *         does not result in an error.
  */
-int sd_kill(struct sd_thread *t);
+int cpn_kill(struct cpn_thread *t);
 
 /** @brief Synchronize with a spawned thread
  *
@@ -109,7 +109,7 @@ int sd_kill(struct sd_thread *t);
  *             on the heap. May be <code>NULL</code>.
  * @return <code>0</code> on success, <code>-1</code> otherwise.
  */
-int sd_join(struct sd_thread *t, void **out);
+int cpn_join(struct cpn_thread *t, void **out);
 
 /** @brief Parse a string into an unsigned integer
  *

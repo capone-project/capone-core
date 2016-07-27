@@ -65,12 +65,12 @@
 #include "lib/parameter.h"
 
 /** @brief A session wrapping identities and parameters */
-struct sd_session {
+struct cpn_session {
     /** @brief Session identifier used to distinguish sessions */
     uint32_t sessionid;
 
     /** @brief Parameters chosen for the session */
-    struct sd_parameter *parameters;
+    struct cpn_parameter *parameters;
     /** @brief Number of parameters */
     size_t nparameters;
 };
@@ -83,7 +83,7 @@ struct sd_session {
  *
  * @return <code>0</code> on success, <code>-1</code> otherwise
  */
-int sd_sessions_init(void);
+int cpn_sessions_init(void);
 
 /** @brief Add a new session
  *
@@ -98,8 +98,8 @@ int sd_sessions_init(void);
  * @param[in] nparams Number of parameters.
  * @return <code>0</code> on success, <code>-1</code> otherwise
  */
-int sd_sessions_add(uint32_t *out,
-        const struct sd_parameter *params,
+int cpn_sessions_add(uint32_t *out,
+        const struct cpn_parameter *params,
         size_t nparams);
 
 /** @brief Remove a session
@@ -112,7 +112,7 @@ int sd_sessions_add(uint32_t *out,
  * @param[in] identity Session invoker to search for.
  * @return <code>0</code> on success, <code>-1</code> otherwise
  */
-int sd_sessions_remove(struct sd_session *out, uint32_t sessionid);
+int cpn_sessions_remove(struct cpn_session *out, uint32_t sessionid);
 
 /** @brief Find a session by identifier
  *
@@ -124,13 +124,13 @@ int sd_sessions_remove(struct sd_session *out, uint32_t sessionid);
  * @return <code>0</code> if the session has been found,
  *         <code>-1</code> otherwise
  */
-int sd_sessions_find(struct sd_session *out, uint32_t sessionid);
+int cpn_sessions_find(struct cpn_session *out, uint32_t sessionid);
 
 /** @brief Remove all established sessions
  *
  * @return <code>0</code> on success, <code>-1</code> otherwise
  */
-int sd_sessions_clear(void);
+int cpn_sessions_clear(void);
 
 /** @brief Free a session
  *
@@ -139,7 +139,7 @@ int sd_sessions_clear(void);
  *
  * @param[in] session Session to free
  */
-void sd_session_free(struct sd_session *session);
+void cpn_session_free(struct cpn_session *session);
 
 #endif
 

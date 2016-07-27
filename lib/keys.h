@@ -47,43 +47,43 @@
 #include "lib/cfg.h"
 
 /** @brief Secret signature key used to sign data */
-struct sd_sign_key_secret {
+struct cpn_sign_key_secret {
     uint8_t data[crypto_sign_SECRETKEYBYTES];
 };
 /** @brief Public signature key used to verify data */
-struct sd_sign_key_public {
+struct cpn_sign_key_public {
     uint8_t data[crypto_sign_PUBLICKEYBYTES];
 };
 /** @brief Signature key pair */
-struct sd_sign_key_pair {
-    struct sd_sign_key_secret sk;
-    struct sd_sign_key_public pk;
+struct cpn_sign_key_pair {
+    struct cpn_sign_key_secret sk;
+    struct cpn_sign_key_public pk;
 };
 /** @brief Hex representation of a public signature key */
-struct sd_sign_key_hex {
+struct cpn_sign_key_hex {
     char data[crypto_sign_PUBLICKEYBYTES * 2 + 1];
 };
 
 /** @brief Secret encryption key used to decrypt data */
-struct sd_encrypt_key_secret {
+struct cpn_encrypt_key_secret {
     uint8_t data[crypto_box_SECRETKEYBYTES];
 };
 /** @brief Public encryption key used to encrypt data */
-struct sd_encrypt_key_public {
+struct cpn_encrypt_key_public {
     uint8_t data[crypto_box_PUBLICKEYBYTES];
 };
 /** @brief Encryption key pair */
-struct sd_encrypt_key_pair {
-    struct sd_encrypt_key_secret sk;
-    struct sd_encrypt_key_public pk;
+struct cpn_encrypt_key_pair {
+    struct cpn_encrypt_key_secret sk;
+    struct cpn_encrypt_key_public pk;
 };
 
 /** @brief Symmetric key used to encrypt/decrypt data */
-struct sd_symmetric_key {
+struct cpn_symmetric_key {
     uint8_t data[crypto_secretbox_KEYBYTES];
 };
 /** @brief Hex representation of a symmetric key */
-struct sd_symmetric_key_hex {
+struct cpn_symmetric_key_hex {
     char data[crypto_secretbox_KEYBYTES * 2 + 1];
 };
 
@@ -92,7 +92,7 @@ struct sd_symmetric_key_hex {
  * @param[out] out Pointer to store key pair at.
  * @return <code>0</code>
  */
-int sd_sign_key_pair_generate(struct sd_sign_key_pair *out);
+int cpn_sign_key_pair_generate(struct cpn_sign_key_pair *out);
 
 /** @brief Read a signature key pair from a configuration
  *
@@ -104,7 +104,7 @@ int sd_sign_key_pair_generate(struct sd_sign_key_pair *out);
  * @param[in] cfg Configuration to read keys from.
  * @return <code>0</code> on success, <code>-1</code> otherwise
  */
-int sd_sign_key_pair_from_config(struct sd_sign_key_pair *out, const struct sd_cfg *cfg);
+int cpn_sign_key_pair_from_config(struct cpn_sign_key_pair *out, const struct cpn_cfg *cfg);
 
 /** @brief Read a signature key pair from a configuration file
  *
@@ -114,9 +114,9 @@ int sd_sign_key_pair_from_config(struct sd_sign_key_pair *out, const struct sd_c
  * @param[in] file Path of the configuration file.
  * @return <code>0</code> on success, <code>-1</code> otherwise
  *
- * \see sd_sign_key_pair_from_config
+ * \see cpn_sign_key_pair_from_config
  */
-int sd_sign_key_pair_from_config_file(struct sd_sign_key_pair *out, const char *file);
+int cpn_sign_key_pair_from_config_file(struct cpn_sign_key_pair *out, const char *file);
 
 /** @brief Read a public signature key from hex
  *
@@ -124,7 +124,7 @@ int sd_sign_key_pair_from_config_file(struct sd_sign_key_pair *out, const char *
  * @param[in] hex Hex representation of the key.
  * @return <code>0</code> on success, <code>-1</code> otherwise
  */
-int sd_sign_key_public_from_hex(struct sd_sign_key_public *out, const char *hex);
+int cpn_sign_key_public_from_hex(struct cpn_sign_key_public *out, const char *hex);
 
 /** @brief Read a public signature key from binary data
  *
@@ -133,7 +133,7 @@ int sd_sign_key_public_from_hex(struct sd_sign_key_public *out, const char *hex)
  * @param[in] pklen Length of the binary data.
  * @return <code>0</code> on success, <code>-1</code> otherwise
  */
-int sd_sign_key_public_from_bin(struct sd_sign_key_public *out, const uint8_t *pk, size_t pklen);
+int cpn_sign_key_public_from_bin(struct cpn_sign_key_public *out, const uint8_t *pk, size_t pklen);
 
 /** @brief Read a public signature key hex representation from binary data
  *
@@ -143,7 +143,7 @@ int sd_sign_key_public_from_bin(struct sd_sign_key_public *out, const uint8_t *p
  * @param[in] pklen Length of the binary data.
  * @return <code>0</code> on success, <code>-1</code> otherwise
  */
-int sd_sign_key_hex_from_bin(struct sd_sign_key_hex *out, const uint8_t *pk, size_t pklen);
+int cpn_sign_key_hex_from_bin(struct cpn_sign_key_hex *out, const uint8_t *pk, size_t pklen);
 
 /** @brief Convert public signature key into hex representation
  *
@@ -151,14 +151,14 @@ int sd_sign_key_hex_from_bin(struct sd_sign_key_hex *out, const uint8_t *pk, siz
  *             representation at.
  * @param[in] key Public signature key to convert.
  */
-void sd_sign_key_hex_from_key(struct sd_sign_key_hex *out, const struct sd_sign_key_public *key);
+void cpn_sign_key_hex_from_key(struct cpn_sign_key_hex *out, const struct cpn_sign_key_public *key);
 
 /** @brief Generate a new encryption key pair
  *
  * @param[out] out Pointer to store public encryption key pair at.
  * @return <code>0</code>
  */
-int sd_encrypt_key_pair_generate(struct sd_encrypt_key_pair *out);
+int cpn_encrypt_key_pair_generate(struct cpn_encrypt_key_pair *out);
 
 /** @brief Read a public encryption key from binary data
  *
@@ -167,7 +167,7 @@ int sd_encrypt_key_pair_generate(struct sd_encrypt_key_pair *out);
  * @param[in] pklen Length of the binary data.
  * @return <code>0</code> on success, <code>-1</code> otherwise
  */
-int sd_encrypt_key_public_from_bin(struct sd_encrypt_key_public *out,
+int cpn_encrypt_key_public_from_bin(struct cpn_encrypt_key_public *out,
         uint8_t *pk, size_t pklen);
 
 /** @brief Generate a new symmetric key
@@ -175,7 +175,7 @@ int sd_encrypt_key_public_from_bin(struct sd_encrypt_key_public *out,
  * @param[out] out Pointer to store symmetric key at.
  * @return <code>0</code>
  */
-int sd_symmetric_key_generate(struct sd_symmetric_key *out);
+int cpn_symmetric_key_generate(struct cpn_symmetric_key *out);
 
 /** @brief Read a symmetric key from hex
  *
@@ -183,7 +183,7 @@ int sd_symmetric_key_generate(struct sd_symmetric_key *out);
  * @param[in] hex Hex representation of the key.
  * @return <code>0</code> on success, <code>-1</code> otherwise
  */
-int sd_symmetric_key_from_hex(struct sd_symmetric_key *out, const char *hex);
+int cpn_symmetric_key_from_hex(struct cpn_symmetric_key *out, const char *hex);
 
 /** @brief Read a symmetric key from binary data
  *
@@ -192,7 +192,7 @@ int sd_symmetric_key_from_hex(struct sd_symmetric_key *out, const char *hex);
  * @param[in] pklen Length of the binary data.
  * @return <code>0</code> on success, <code>-1</code> otherwise
  */
-int sd_symmetric_key_from_bin(struct sd_symmetric_key *out, const uint8_t *key, size_t keylen);
+int cpn_symmetric_key_from_bin(struct cpn_symmetric_key *out, const uint8_t *key, size_t keylen);
 
 /** @brief Read a symmetric key from binary data
  *
@@ -201,7 +201,7 @@ int sd_symmetric_key_from_bin(struct sd_symmetric_key *out, const uint8_t *key, 
  * @param[in] pklen Length of the binary data.
  * @return <code>0</code> on success, <code>-1</code> otherwise
  */
-int sd_symmetric_key_hex_from_bin(struct sd_symmetric_key_hex *out, const uint8_t *data, size_t datalen);
+int cpn_symmetric_key_hex_from_bin(struct cpn_symmetric_key_hex *out, const uint8_t *data, size_t datalen);
 
 /** @brief Convert symmetric key into hex representation
  *
@@ -209,7 +209,7 @@ int sd_symmetric_key_hex_from_bin(struct sd_symmetric_key_hex *out, const uint8_
  *             representation at.
  * @param[in] key Public signature key to convert.
  */
-void sd_symmetric_key_hex_from_key(struct sd_symmetric_key_hex *out, const struct sd_symmetric_key *key);
+void cpn_symmetric_key_hex_from_key(struct cpn_symmetric_key_hex *out, const struct cpn_symmetric_key *key);
 
 #endif
 

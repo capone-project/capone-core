@@ -37,6 +37,6 @@
  * service.
  */
 
-struct sd_service;
+struct cpn_service;
 
-int sd_invoke_init_service(struct sd_service *service);
+int cpn_invoke_init_service(struct cpn_service *service);

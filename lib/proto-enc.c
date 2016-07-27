@@ -22,10 +22,10 @@
 
 #include "proto/encryption.pb-c.h"
 
-static int send_ephemeral_key(struct sd_channel *channel,
+static int send_ephemeral_key(struct cpn_channel *channel,
         uint32_t id,
-        const struct sd_sign_key_pair *sign_keys,
-        const struct sd_encrypt_key_public *encrypt_key)
+        const struct cpn_sign_key_pair *sign_keys,
+        const struct cpn_encrypt_key_public *encrypt_key)
 {
     InitiatorKey msg = INITIATOR_KEY__INIT;
 
@@ -35,8 +35,8 @@ static int send_ephemeral_key(struct sd_channel *channel,
     msg.ephm_pk.len = sizeof(encrypt_key->data);
     msg.sessionid = id;
 
-    if (sd_channel_write_protobuf(channel, &msg.base) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not send negotiation");
+    if (cpn_channel_write_protobuf(channel, &msg.base) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Could not send negotiation");
         return -1;
     }
 
@@ -44,27 +44,27 @@ static int send_ephemeral_key(struct sd_channel *channel,
 }
 
 static int receive_ephemeral_key(
-        struct sd_channel *channel,
+        struct cpn_channel *channel,
         uint32_t *id,
-        struct sd_sign_key_public *remote_sign_key,
-        struct sd_encrypt_key_public *remote_encrypt_key)
+        struct cpn_sign_key_public *remote_sign_key,
+        struct cpn_encrypt_key_public *remote_encrypt_key)
 {
     InitiatorKey *msg;
 
-    if (sd_channel_receive_protobuf(channel,
+    if (cpn_channel_receive_protobuf(channel,
                 &initiator_key__descriptor,
                 (ProtobufCMessage **) &msg) < 0)
     {
-        sd_log(LOG_LEVEL_ERROR, "Failed receiving negotiation response");
+        cpn_log(LOG_LEVEL_ERROR, "Failed receiving negotiation response");
         return -1;
     }
 
-    if (sd_sign_key_public_from_bin(remote_sign_key,
+    if (cpn_sign_key_public_from_bin(remote_sign_key,
                 msg->sign_pk.data, msg->sign_pk.len) < 0 ||
-            sd_encrypt_key_public_from_bin(remote_encrypt_key,
+            cpn_encrypt_key_public_from_bin(remote_encrypt_key,
                 msg->ephm_pk.data, msg->ephm_pk.len) < 0)
     {
-        sd_log(LOG_LEVEL_ERROR, "Invalid keys");
+        cpn_log(LOG_LEVEL_ERROR, "Invalid keys");
         return -1;
     }
 
@@ -77,10 +77,10 @@ static int receive_ephemeral_key(
 
 static size_t fill_sign_buffer(uint8_t **out,
         uint32_t id,
-        const struct sd_sign_key_public *s1,
-        const struct sd_sign_key_public *s2,
-        const struct sd_encrypt_key_public *e1,
-        const struct sd_encrypt_key_public *e2)
+        const struct cpn_sign_key_public *s1,
+        const struct cpn_sign_key_public *s2,
+        const struct cpn_encrypt_key_public *e1,
+        const struct cpn_encrypt_key_public *e2)
 {
     uint32_t offset = 0, len;
     uint8_t *buf;
@@ -107,12 +107,12 @@ static size_t fill_sign_buffer(uint8_t **out,
 }
 
 
-static int send_signed_key(struct sd_channel *channel,
+static int send_signed_key(struct cpn_channel *channel,
         uint32_t id,
-        const struct sd_sign_key_pair *sign_keys,
-        const struct sd_encrypt_key_public *local_emph_key,
-        const struct sd_sign_key_public *remote_sign_key,
-        const struct sd_encrypt_key_public *remote_emph_key)
+        const struct cpn_sign_key_pair *sign_keys,
+        const struct cpn_encrypt_key_public *local_emph_key,
+        const struct cpn_sign_key_public *remote_sign_key,
+        const struct cpn_encrypt_key_public *remote_emph_key)
 {
     ResponderKey msg = RESPONDER_KEY__INIT;
     uint8_t signature[crypto_sign_BYTES], *sign_data = NULL;
@@ -127,7 +127,7 @@ static int send_signed_key(struct sd_channel *channel,
     if ((err = crypto_sign_detached(signature, NULL, sign_data, sign_data_len,
                 sign_keys->sk.data)) < 0)
     {
-        sd_log(LOG_LEVEL_ERROR, "Unable to sign ephemeral key");
+        cpn_log(LOG_LEVEL_ERROR, "Unable to sign ephemeral key");
         goto out;
     }
 
@@ -139,8 +139,8 @@ static int send_signed_key(struct sd_channel *channel,
     msg.signature.data = signature;
     msg.signature.len = sizeof(signature);
 
-    if ((err = sd_channel_write_protobuf(channel, &msg.base)) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Received invalid ephemeral key signature");
+    if ((err = cpn_channel_write_protobuf(channel, &msg.base)) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Received invalid ephemeral key signature");
         goto out;
     }
 
@@ -150,45 +150,45 @@ out:
     return 0;
 }
 
-static int receive_signed_key(struct sd_encrypt_key_public *out,
-        struct sd_channel *channel,
+static int receive_signed_key(struct cpn_encrypt_key_public *out,
+        struct cpn_channel *channel,
         uint32_t id,
-        const struct sd_sign_key_public *local_sign_key,
-        const struct sd_encrypt_key_public *local_emph_key,
-        const struct sd_sign_key_public *remote_sign_key)
+        const struct cpn_sign_key_public *local_sign_key,
+        const struct cpn_encrypt_key_public *local_emph_key,
+        const struct cpn_sign_key_public *remote_sign_key)
 {
     ResponderKey *msg;
-    struct sd_sign_key_public msg_sign_key;
-    struct sd_encrypt_key_public msg_emph_key;
+    struct cpn_sign_key_public msg_sign_key;
+    struct cpn_encrypt_key_public msg_emph_key;
     size_t sign_data_len;
     uint8_t *sign_data = NULL;
     int ret = -1;
 
-    if (sd_channel_receive_protobuf(channel,
+    if (cpn_channel_receive_protobuf(channel,
             &responder_key__descriptor,
             (ProtobufCMessage **) &msg) < 0)
     {
-        sd_log(LOG_LEVEL_ERROR, "Unable to receive ephemeral key signature");
+        cpn_log(LOG_LEVEL_ERROR, "Unable to receive ephemeral key signature");
         goto out;
     }
 
     /* Verify parameters */
     if (msg->sessionid != id) {
-        sd_log(LOG_LEVEL_ERROR, "Received invalid session id");
+        cpn_log(LOG_LEVEL_ERROR, "Received invalid session id");
         goto out;
     } else if (msg->signature.len != crypto_sign_BYTES) {
-        sd_log(LOG_LEVEL_ERROR, "Received invalid signature");
+        cpn_log(LOG_LEVEL_ERROR, "Received invalid signature");
         goto out;
-    } else if (sd_sign_key_public_from_bin(&msg_sign_key, msg->sign_pk.data, msg->sign_pk.len) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Initiator's long-term signature key is invalid");
+    } else if (cpn_sign_key_public_from_bin(&msg_sign_key, msg->sign_pk.data, msg->sign_pk.len) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Initiator's long-term signature key is invalid");
         goto out;
-    } else if (sd_encrypt_key_public_from_bin(&msg_emph_key, msg->ephm_pk.data, msg->ephm_pk.len) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Initiator's ephemeral key is invalid");
+    } else if (cpn_encrypt_key_public_from_bin(&msg_emph_key, msg->ephm_pk.data, msg->ephm_pk.len) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Initiator's ephemeral key is invalid");
         goto out;
     }
 
     if (memcmp(&msg_sign_key, remote_sign_key, sizeof(msg_sign_key))) {
-        sd_log(LOG_LEVEL_ERROR, "Received unexpected sign key");
+        cpn_log(LOG_LEVEL_ERROR, "Received unexpected sign key");
         goto out;
     }
 
@@ -199,7 +199,7 @@ static int receive_signed_key(struct sd_encrypt_key_public *out,
     if (crypto_sign_verify_detached(msg->signature.data, sign_data, sign_data_len,
                 remote_sign_key->data) < 0)
     {
-        sd_log(LOG_LEVEL_ERROR, "Received invalid signature");
+        cpn_log(LOG_LEVEL_ERROR, "Received invalid signature");
         goto out;
     }
 
@@ -217,12 +217,12 @@ out:
     return ret;
 }
 
-static int send_key_verification(struct sd_channel *c,
+static int send_key_verification(struct cpn_channel *c,
         uint32_t id,
-        const struct sd_sign_key_pair *sign_keys,
-        const struct sd_encrypt_key_public *local_emph_key,
-        const struct sd_sign_key_public *remote_pk,
-        const struct sd_encrypt_key_public *remote_emph_pk)
+        const struct cpn_sign_key_pair *sign_keys,
+        const struct cpn_encrypt_key_public *local_emph_key,
+        const struct cpn_sign_key_public *remote_pk,
+        const struct cpn_encrypt_key_public *remote_emph_pk)
 {
     AcknowledgeKey msg = ACKNOWLEDGE_KEY__INIT;
     uint8_t signature[crypto_sign_BYTES], *sign_data = NULL;
@@ -237,7 +237,7 @@ static int send_key_verification(struct sd_channel *c,
     if ((err = crypto_sign_detached(signature, NULL, sign_data, sign_data_len,
                 sign_keys->sk.data)) < 0)
     {
-        sd_log(LOG_LEVEL_ERROR, "Unable to sign key verification");
+        cpn_log(LOG_LEVEL_ERROR, "Unable to sign key verification");
         goto out;
     }
 
@@ -247,8 +247,8 @@ static int send_key_verification(struct sd_channel *c,
     msg.signature.data = signature;
     msg.signature.len = sizeof(signature);
 
-    if (sd_channel_write_protobuf(c, &msg.base) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Unable to send verification message");
+    if (cpn_channel_write_protobuf(c, &msg.base) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Unable to send verification message");
         return -1;
     }
 
@@ -258,35 +258,35 @@ out:
     return err;
 }
 
-static int receive_key_verification(struct sd_channel *c,
+static int receive_key_verification(struct cpn_channel *c,
         uint32_t id,
-        const struct sd_sign_key_public *local_pk,
-        const struct sd_encrypt_key_public *local_emph_key,
-        const struct sd_sign_key_public *remote_pk,
-        const struct sd_encrypt_key_public *remote_emph_key)
+        const struct cpn_sign_key_public *local_pk,
+        const struct cpn_encrypt_key_public *local_emph_key,
+        const struct cpn_sign_key_public *remote_pk,
+        const struct cpn_encrypt_key_public *remote_emph_key)
 {
     AcknowledgeKey *msg = NULL;
     uint8_t *sign_data = NULL;
     size_t sign_data_len;
     int err = -1;
 
-    if (sd_channel_receive_protobuf(c,
+    if (cpn_channel_receive_protobuf(c,
             &acknowledge_key__descriptor,
             (ProtobufCMessage **) &msg) < 0)
     {
-        sd_log(LOG_LEVEL_ERROR, "Unable to receive acknowledge message");
+        cpn_log(LOG_LEVEL_ERROR, "Unable to receive acknowledge message");
         goto out;
     }
 
     if (msg->sessionid != id) {
-        sd_log(LOG_LEVEL_ERROR, "Verification has invalid session");
+        cpn_log(LOG_LEVEL_ERROR, "Verification has invalid session");
         goto out;
     } else if (msg->sign_pk.len != sizeof(remote_pk->data) ||
             memcmp(msg->sign_pk.data, remote_pk->data, msg->sign_pk.len)) {
-        sd_log(LOG_LEVEL_ERROR, "Verification key does not match");
+        cpn_log(LOG_LEVEL_ERROR, "Verification key does not match");
         goto out;
     } else if (msg->signature.len != crypto_sign_BYTES) {
-        sd_log(LOG_LEVEL_ERROR, "Verification has invalid signature length");
+        cpn_log(LOG_LEVEL_ERROR, "Verification has invalid signature length");
         goto out;
     }
 
@@ -296,7 +296,7 @@ static int receive_key_verification(struct sd_channel *c,
     if (crypto_sign_verify_detached(msg->signature.data, sign_data, sign_data_len,
                 remote_pk->data) < 0)
     {
-        sd_log(LOG_LEVEL_ERROR, "Received invalid signature");
+        cpn_log(LOG_LEVEL_ERROR, "Received invalid signature");
         goto out;
     }
 
@@ -310,33 +310,33 @@ out:
     return err;
 }
 
-int sd_proto_initiate_encryption(struct sd_channel *channel,
-        const struct sd_sign_key_pair *sign_keys,
-        const struct sd_sign_key_public *remote_sign_key)
+int cpn_proto_initiate_encryption(struct cpn_channel *channel,
+        const struct cpn_sign_key_pair *sign_keys,
+        const struct cpn_sign_key_public *remote_sign_key)
 {
-    struct sd_encrypt_key_pair emph_keys;
-    struct sd_encrypt_key_public remote_emph_key;
-    struct sd_symmetric_key shared_key;
+    struct cpn_encrypt_key_pair emph_keys;
+    struct cpn_encrypt_key_public remote_emph_key;
+    struct cpn_symmetric_key shared_key;
     uint8_t scalarmult[crypto_scalarmult_BYTES];
     crypto_generichash_state hash;
     uint32_t id;
 
-    if (sd_encrypt_key_pair_generate(&emph_keys) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Unable to generate key pair");
+    if (cpn_encrypt_key_pair_generate(&emph_keys) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Unable to generate key pair");
         return -1;
     }
 
     id = randombytes_random();
 
     if (send_ephemeral_key(channel, id, sign_keys, &emph_keys.pk) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Unable to send session key");
+        cpn_log(LOG_LEVEL_ERROR, "Unable to send session key");
         return -1;
     }
 
     if (receive_signed_key(&remote_emph_key, channel, id,
                 &sign_keys->pk, &emph_keys.pk, remote_sign_key) < 0)
     {
-        sd_log(LOG_LEVEL_ERROR, "Unable to receive ephemeral key signature");
+        cpn_log(LOG_LEVEL_ERROR, "Unable to receive ephemeral key signature");
         return -1;
     }
 
@@ -344,12 +344,12 @@ int sd_proto_initiate_encryption(struct sd_channel *channel,
                 sign_keys, &emph_keys.pk,
                 remote_sign_key, &remote_emph_key) < 0)
     {
-        sd_log(LOG_LEVEL_ERROR, "Unable to send key verification");
+        cpn_log(LOG_LEVEL_ERROR, "Unable to send key verification");
         return -1;
     }
 
     if (crypto_scalarmult(scalarmult, emph_keys.sk.data, remote_emph_key.data) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Unable to perform scalarmultiplication");
+        cpn_log(LOG_LEVEL_ERROR, "Unable to perform scalarmultiplication");
         return -1;
     }
 
@@ -359,38 +359,38 @@ int sd_proto_initiate_encryption(struct sd_channel *channel,
             crypto_generichash_update(&hash, remote_emph_key.data, sizeof(remote_emph_key.data)) < 0 ||
             crypto_generichash_final(&hash, shared_key.data, sizeof(shared_key.data)) < 0)
     {
-        sd_log(LOG_LEVEL_ERROR, "Unable to calculate h(q || pk1 || pk2)");
+        cpn_log(LOG_LEVEL_ERROR, "Unable to calculate h(q || pk1 || pk2)");
         return -1;
     }
 
     sodium_memzero(&emph_keys, sizeof(emph_keys));
 
-    if (sd_channel_enable_encryption(channel, &shared_key, 0) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not enable encryption");
+    if (cpn_channel_enable_encryption(channel, &shared_key, 0) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Could not enable encryption");
         return -1;
     }
 
     return 0;
 }
 
-int sd_proto_await_encryption(struct sd_channel *channel,
-        const struct sd_sign_key_pair *sign_keys,
-        struct sd_sign_key_public *remote_sign_key)
+int cpn_proto_await_encryption(struct cpn_channel *channel,
+        const struct cpn_sign_key_pair *sign_keys,
+        struct cpn_sign_key_public *remote_sign_key)
 {
-    struct sd_encrypt_key_pair emph_keys;
-    struct sd_encrypt_key_public remote_emph_key;
-    struct sd_symmetric_key shared_key;
+    struct cpn_encrypt_key_pair emph_keys;
+    struct cpn_encrypt_key_public remote_emph_key;
+    struct cpn_symmetric_key shared_key;
     uint8_t scalarmult[crypto_scalarmult_BYTES];
     uint32_t id;
     crypto_generichash_state hash;
 
     if (receive_ephemeral_key(channel, &id, remote_sign_key, &remote_emph_key) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Unable to receive session key");
+        cpn_log(LOG_LEVEL_ERROR, "Unable to receive session key");
         return -1;
     }
 
-    if (sd_encrypt_key_pair_generate(&emph_keys) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Unable to generate key pair");
+    if (cpn_encrypt_key_pair_generate(&emph_keys) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Unable to generate key pair");
         return -1;
     }
 
@@ -398,7 +398,7 @@ int sd_proto_await_encryption(struct sd_channel *channel,
                 sign_keys, &emph_keys.pk,
                 remote_sign_key, &remote_emph_key) < 0)
     {
-        sd_log(LOG_LEVEL_ERROR, "Unable to send ephemeral key signature");
+        cpn_log(LOG_LEVEL_ERROR, "Unable to send ephemeral key signature");
         return -1;
     }
 
@@ -406,12 +406,12 @@ int sd_proto_await_encryption(struct sd_channel *channel,
                 &sign_keys->pk, &emph_keys.pk,
                 remote_sign_key, &remote_emph_key) < 0)
     {
-        sd_log(LOG_LEVEL_ERROR, "Unable to receive verification");
+        cpn_log(LOG_LEVEL_ERROR, "Unable to receive verification");
         return -1;
     }
 
     if (crypto_scalarmult(scalarmult, emph_keys.sk.data, remote_emph_key.data) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Unable to perform scalarmultiplication");
+        cpn_log(LOG_LEVEL_ERROR, "Unable to perform scalarmultiplication");
         return -1;
     }
 
@@ -421,14 +421,14 @@ int sd_proto_await_encryption(struct sd_channel *channel,
             crypto_generichash_update(&hash, emph_keys.pk.data, sizeof(emph_keys.pk.data)) < 0 ||
             crypto_generichash_final(&hash, shared_key.data, sizeof(shared_key.data)) < 0)
     {
-        sd_log(LOG_LEVEL_ERROR, "Unable to calculate h(q || pk1 || pk2)");
+        cpn_log(LOG_LEVEL_ERROR, "Unable to calculate h(q || pk1 || pk2)");
         return -1;
     }
 
     sodium_memzero(&emph_keys, sizeof(emph_keys));
 
-    if (sd_channel_enable_encryption(channel, &shared_key, 1) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not enable encryption");
+    if (cpn_channel_enable_encryption(channel, &shared_key, 1) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Could not enable encryption");
         return -1;
     }
 

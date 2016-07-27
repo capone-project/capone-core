@@ -58,9 +58,9 @@ int main(int argc, char *argv[])
     }
 
     if (argc == 2 && !strcmp(argv[1], "--verbose"))
-        sd_log_set_level(LOG_LEVEL_VERBOSE);
+        cpn_log_set_level(LOG_LEVEL_VERBOSE);
     else
-        sd_log_set_level(LOG_LEVEL_NONE);
+        cpn_log_set_level(LOG_LEVEL_NONE);
 
     for (i = 0; i < ARRAY_SIZE(suite_fns); i++) {
         failed = suite_fns[i]();

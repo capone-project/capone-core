@@ -32,7 +32,7 @@ static const char *log_levels[] = {
     "ERROR",
 };
 
-void sd_log(enum log_level lvl, const char *msgformat, ...)
+void cpn_log(enum log_level lvl, const char *msgformat, ...)
 {
     char msg[3978], buf[4096], date[128];
     time_t t;
@@ -55,7 +55,7 @@ void sd_log(enum log_level lvl, const char *msgformat, ...)
     puts(buf);
 }
 
-void sd_log_set_level(enum log_level lvl)
+void cpn_log_set_level(enum log_level lvl)
 {
     current_log_level = lvl;
 }

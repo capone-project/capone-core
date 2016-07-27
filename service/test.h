@@ -25,8 +25,8 @@
  * parameters and writes their values to the client's channel.
  */
 
-struct sd_service;
+struct cpn_service;
 
-int sd_test_init_service(struct sd_service *service);
+int cpn_test_init_service(struct cpn_service *service);
 
-uint8_t *sd_test_service_get_data(void);
+uint8_t *cpn_test_service_get_data(void);

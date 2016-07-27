@@ -35,13 +35,13 @@
 #include "lib/log.h"
 
 static struct registrant {
-    struct sd_sign_key_public identity;
-    struct sd_channel channel;
+    struct cpn_sign_key_public identity;
+    struct cpn_channel channel;
     struct registrant *next;
 } *registrants;
 
 static struct client {
-    struct sd_channel channel;
+    struct cpn_channel channel;
     struct client *next;
     struct registrant *waitsfor;
     uint32_t requestid;
@@ -56,9 +56,9 @@ static const char *version(void)
     return "0.0.1";
 }
 
-static int parameters(const struct sd_parameter **out)
+static int parameters(const struct cpn_parameter **out)
 {
-    static const struct sd_parameter params[] = {
+    static const struct cpn_parameter params[] = {
         { "mode", "register" },
         { "mode", "request" },
         { "invoker", NULL },
@@ -79,7 +79,7 @@ static void relay_capability_for_registrant(struct registrant *r)
     struct client *c = NULL, *cprev;
     struct registrant *rprev;
 
-    if (sd_channel_receive_protobuf(&r->channel,
+    if (cpn_channel_receive_protobuf(&r->channel,
                 &capability__descriptor, (ProtobufCMessage **) &cap) < 0)
     {
         /* Kill erroneous registrants */
@@ -98,7 +98,7 @@ static void relay_capability_for_registrant(struct registrant *r)
         cprev = NULL;
         while (c) {
             if (c->waitsfor == r) {
-                sd_channel_close(&c->channel);
+                cpn_channel_close(&c->channel);
                 c = c->next;
 
                 if (cprev) {
@@ -115,7 +115,7 @@ static void relay_capability_for_registrant(struct registrant *r)
         }
         pthread_mutex_unlock(&clients_mutex);
 
-        sd_log(LOG_LEVEL_ERROR, "Unable to receive capability");
+        cpn_log(LOG_LEVEL_ERROR, "Unable to receive capability");
         goto out;
     }
 
@@ -131,8 +131,8 @@ static void relay_capability_for_registrant(struct registrant *r)
     if (!c)
         goto out;
 
-    if (sd_channel_write_protobuf(&c->channel, &cap->base) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Unable to push capability");
+    if (cpn_channel_write_protobuf(&c->channel, &cap->base) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Unable to push capability");
     }
 
 out:
@@ -173,52 +173,52 @@ static void *relay_capabilities()
     return NULL;
 }
 
-static int relay_capability_request(struct sd_channel *channel,
+static int relay_capability_request(struct cpn_channel *channel,
         const CapabilityRequest *request,
-        const struct sd_cfg *cfg)
+        const struct cpn_cfg *cfg)
 {
     Capability cap_message = CAPABILITY__INIT;
     char *host = NULL, *port = NULL;
-    struct sd_channel service_channel;
-    struct sd_sign_key_pair local_keys;
-    struct sd_sign_key_public service_key, invoker_key;
-    struct sd_cap requester_cap, invoker_cap;
-    struct sd_parameter *params = NULL;
+    struct cpn_channel service_channel;
+    struct cpn_sign_key_pair local_keys;
+    struct cpn_sign_key_public service_key, invoker_key;
+    struct cpn_cap requester_cap, invoker_cap;
+    struct cpn_parameter *params = NULL;
     size_t i;
     int ret = 0;
 
-    memset(&service_channel, 0, sizeof(struct sd_channel));
+    memset(&service_channel, 0, sizeof(struct cpn_channel));
 
-    if ((ret = sd_sign_key_pair_from_config(&local_keys, cfg)) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Unable to retrieve local key pair from config");
+    if ((ret = cpn_sign_key_pair_from_config(&local_keys, cfg)) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Unable to retrieve local key pair from config");
         goto out;
     }
 
-    sd_sign_key_public_from_bin(&service_key,
+    cpn_sign_key_public_from_bin(&service_key,
             request->service_identity.data, request->service_identity.len);
-    sd_sign_key_public_from_bin(&invoker_key,
+    cpn_sign_key_public_from_bin(&invoker_key,
             request->invoker_identity.data, request->invoker_identity.len);
 
     if (request->n_parameters) {
-        params = malloc(sizeof(struct sd_parameter) * request->n_parameters);
+        params = malloc(sizeof(struct cpn_parameter) * request->n_parameters);
         for (i = 0; i < request->n_parameters; i++) {
             params[i].key = request->parameters[i]->key;
             params[i].value = (const char *) &request->parameters[i]->value;
         }
     }
 
-    if ((ret = sd_proto_initiate_connection(&service_channel,
+    if ((ret = cpn_proto_initiate_connection(&service_channel,
                     request->service_address, request->service_port,
                     &local_keys, &service_key, SD_CONNECTION_TYPE_REQUEST)) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Unable to initiate connection type to remote service");
+        cpn_log(LOG_LEVEL_ERROR, "Unable to initiate connection type to remote service");
         goto out;
     }
 
-    if ((ret = sd_proto_send_request(&invoker_cap, &requester_cap,
+    if ((ret = cpn_proto_send_request(&invoker_cap, &requester_cap,
                     &service_channel, &invoker_key,
                     params, request->n_parameters)) < 0)
     {
-        sd_log(LOG_LEVEL_ERROR, "Unable to send request to remote service");
+        cpn_log(LOG_LEVEL_ERROR, "Unable to send request to remote service");
         goto out;
     }
 
@@ -229,18 +229,18 @@ static int relay_capability_request(struct sd_channel *channel,
     cap_message.service.len = sizeof(service_key.data);
 
     cap_message.capability = malloc(sizeof(CapabilityMessage));
-    if (sd_cap_to_protobuf(cap_message.capability, &invoker_cap) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Unable to parse capability");
+    if (cpn_cap_to_protobuf(cap_message.capability, &invoker_cap) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Unable to parse capability");
         goto out;
     }
 
-    if ((ret = sd_channel_write_protobuf(channel, &cap_message.base)) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Unable to send requested capability");
+    if ((ret = cpn_channel_write_protobuf(channel, &cap_message.base)) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Unable to send requested capability");
         goto out;
     }
 
 out:
-    sd_channel_close(&service_channel);
+    cpn_channel_close(&service_channel);
 
     free(params);
     free(host);
@@ -249,11 +249,11 @@ out:
     return ret;
 }
 
-static int invoke_register(struct sd_channel *channel, int argc, char **argv)
+static int invoke_register(struct cpn_channel *channel, int argc, char **argv)
 {
     CapabilityRequest *request;
-    struct sd_sign_key_hex requester, invoker, service;
-    struct sd_cfg cfg;
+    struct cpn_sign_key_hex requester, invoker, service;
+    struct cpn_cfg cfg;
     size_t i;
 
     if (argc != 1) {
@@ -261,27 +261,27 @@ static int invoke_register(struct sd_channel *channel, int argc, char **argv)
         return -1;
     }
 
-    if (sd_cfg_parse(&cfg, argv[0]) < 0) {
+    if (cpn_cfg_parse(&cfg, argv[0]) < 0) {
         puts("Could not find config");
         return -1;
     }
 
     while (true) {
-        if (sd_channel_receive_protobuf(channel, &capability_request__descriptor,
+        if (cpn_channel_receive_protobuf(channel, &capability_request__descriptor,
                 (ProtobufCMessage **) &request) < 0)
         {
-            sd_log(LOG_LEVEL_ERROR, "Error receiving registered capability requests");
+            cpn_log(LOG_LEVEL_ERROR, "Error receiving registered capability requests");
             return -1;
         }
 
-        if (sd_sign_key_hex_from_bin(&requester,
+        if (cpn_sign_key_hex_from_bin(&requester,
                     request->requester_identity.data, request->requester_identity.len) < 0 ||
-                sd_sign_key_hex_from_bin(&invoker,
+                cpn_sign_key_hex_from_bin(&invoker,
                     request->invoker_identity.data, request->invoker_identity.len) < 0 ||
-                sd_sign_key_hex_from_bin(&service,
+                cpn_sign_key_hex_from_bin(&service,
                     request->service_identity.data, request->service_identity.len) < 0)
         {
-            sd_log(LOG_LEVEL_ERROR, "Unable to parse remote keys");
+            cpn_log(LOG_LEVEL_ERROR, "Unable to parse remote keys");
             return -1;
         }
 
@@ -307,7 +307,7 @@ static int invoke_register(struct sd_channel *channel, int argc, char **argv)
 
             if (c == 'y') {
                 if (relay_capability_request(channel, request, &cfg) < 0)
-                    sd_log(LOG_LEVEL_ERROR, "Unable to relay capability");
+                    cpn_log(LOG_LEVEL_ERROR, "Unable to relay capability");
                 else
                     printf("Accepted capability request from %s\n", requester.data);
 
@@ -323,25 +323,25 @@ static int invoke_register(struct sd_channel *channel, int argc, char **argv)
     return 0;
 }
 
-static int invoke_request(struct sd_channel *channel)
+static int invoke_request(struct cpn_channel *channel)
 {
     Capability *capability;
-    struct sd_sign_key_hex identity_hex, service_hex;
+    struct cpn_sign_key_hex identity_hex, service_hex;
     char cap_hex[SD_CAP_SECRET_LEN * 2 + 1];
 
-    if (sd_channel_receive_protobuf(channel, &capability__descriptor,
+    if (cpn_channel_receive_protobuf(channel, &capability__descriptor,
                 (ProtobufCMessage **) &capability) < 0)
     {
-        sd_log(LOG_LEVEL_ERROR, "Unable to receive capability");
+        cpn_log(LOG_LEVEL_ERROR, "Unable to receive capability");
         return -1;
     }
 
-    if (sd_sign_key_hex_from_bin(&identity_hex,
+    if (cpn_sign_key_hex_from_bin(&identity_hex,
                 capability->identity.data, capability->identity.len) < 0 ||
-            sd_sign_key_hex_from_bin(&service_hex,
+            cpn_sign_key_hex_from_bin(&service_hex,
                 capability->service.data, capability->service.len) < 0)
     {
-        sd_log(LOG_LEVEL_ERROR, "Unable to parse capability keys");
+        cpn_log(LOG_LEVEL_ERROR, "Unable to parse capability keys");
         return -1;
     }
 
@@ -349,7 +349,7 @@ static int invoke_request(struct sd_channel *channel)
                 capability->capability->secret.data,
                 capability->capability->secret.len) == NULL)
     {
-        sd_log(LOG_LEVEL_ERROR, "Unable to parse capability secret");
+        cpn_log(LOG_LEVEL_ERROR, "Unable to parse capability secret");
         return -1;
     }
 
@@ -365,7 +365,7 @@ static int invoke_request(struct sd_channel *channel)
     return 0;
 }
 
-static int invoke(struct sd_channel *channel, int argc, char **argv)
+static int invoke(struct cpn_channel *channel, int argc, char **argv)
 {
     if (argc < 1) {
         puts("USAGE: capabilities (register|request)");
@@ -377,15 +377,15 @@ static int invoke(struct sd_channel *channel, int argc, char **argv)
     else if (!strcmp(argv[0], "request"))
         return invoke_request(channel);
     else {
-        sd_log(LOG_LEVEL_ERROR, "Unknown parameter '%s'", argv[0]);
+        cpn_log(LOG_LEVEL_ERROR, "Unknown parameter '%s'", argv[0]);
         return -1;
     }
 }
 
-static int handle_register(struct sd_channel *channel,
-        const struct sd_sign_key_public *invoker)
+static int handle_register(struct cpn_channel *channel,
+        const struct cpn_sign_key_public *invoker)
 {
-    struct sd_sign_key_hex hex;
+    struct cpn_sign_key_hex hex;
     struct registrant *c;
     int n = 0;
 
@@ -398,75 +398,75 @@ static int handle_register(struct sd_channel *channel,
         c = c->next;
     }
 
-    memcpy(&c->channel, channel, sizeof(struct sd_channel));
-    memcpy(&c->identity, invoker, sizeof(struct sd_sign_key_public));
+    memcpy(&c->channel, channel, sizeof(struct cpn_channel));
+    memcpy(&c->identity, invoker, sizeof(struct cpn_sign_key_public));
     c->next = NULL;
 
     pthread_mutex_unlock(&registrants_mutex);
 
-    sd_sign_key_hex_from_key(&hex, invoker);
-    sd_log(LOG_LEVEL_DEBUG, "Identity %s registered", hex.data);
-    sd_log(LOG_LEVEL_VERBOSE, "%d identities registered", n + 1);
+    cpn_sign_key_hex_from_key(&hex, invoker);
+    cpn_log(LOG_LEVEL_DEBUG, "Identity %s registered", hex.data);
+    cpn_log(LOG_LEVEL_VERBOSE, "%d identities registered", n + 1);
 
     channel->fd = -1;
 
     return 0;
 }
 
-static int handle_request(struct sd_channel *channel,
-        const struct sd_sign_key_public *invoker,
-        const struct sd_session *session)
+static int handle_request(struct cpn_channel *channel,
+        const struct cpn_sign_key_public *invoker,
+        const struct cpn_session *session)
 {
     CapabilityRequest request = CAPABILITY_REQUEST__INIT;
 
     const char *invoker_identity_hex, *service_identity_hex,
           *requested_identity_hex, *address, *port;
-    struct sd_sign_key_public invoker_identity, service_identity,
+    struct cpn_sign_key_public invoker_identity, service_identity,
                               requested_identity;
-    struct sd_parameter *params = NULL;
+    struct cpn_parameter *params = NULL;
     struct registrant *reg = NULL;
     struct client *client;
     size_t nparams = 0;
     int err = 0;
 
-    if (sd_parameters_get_value(&invoker_identity_hex, "invoker",
+    if (cpn_parameters_get_value(&invoker_identity_hex, "invoker",
                 session->parameters, session->nparameters) ||
-            sd_sign_key_public_from_hex(&invoker_identity, invoker_identity_hex))
+            cpn_sign_key_public_from_hex(&invoker_identity, invoker_identity_hex))
     {
-        sd_log(LOG_LEVEL_ERROR, "Invalid for-identity specified in capability request");
+        cpn_log(LOG_LEVEL_ERROR, "Invalid for-identity specified in capability request");
         err = -1;
         goto out;
     }
 
-    if (sd_parameters_get_value(&requested_identity_hex, "requested-identity",
+    if (cpn_parameters_get_value(&requested_identity_hex, "requested-identity",
                 session->parameters, session->nparameters) ||
-            sd_sign_key_public_from_hex(&requested_identity, requested_identity_hex))
+            cpn_sign_key_public_from_hex(&requested_identity, requested_identity_hex))
     {
-        sd_log(LOG_LEVEL_ERROR, "Invalid requested identity specified in capability request");
+        cpn_log(LOG_LEVEL_ERROR, "Invalid requested identity specified in capability request");
         err = -1;
         goto out;
     }
 
-    if (sd_parameters_get_value(&service_identity_hex, "service-identity",
+    if (cpn_parameters_get_value(&service_identity_hex, "service-identity",
                 session->parameters, session->nparameters) ||
-            sd_sign_key_public_from_hex(&service_identity, service_identity_hex))
+            cpn_sign_key_public_from_hex(&service_identity, service_identity_hex))
     {
-        sd_log(LOG_LEVEL_ERROR, "Invalid service-identity specified in capability request");
+        cpn_log(LOG_LEVEL_ERROR, "Invalid service-identity specified in capability request");
         err = -1;
         goto out;
     }
 
-    if (sd_parameters_get_value(&address, "service-address",
+    if (cpn_parameters_get_value(&address, "service-address",
                 session->parameters, session->nparameters) ||
-            sd_parameters_get_value(&port, "service-port",
+            cpn_parameters_get_value(&port, "service-port",
                 session->parameters, session->nparameters))
     {
-        sd_log(LOG_LEVEL_ERROR, "Service address not specified in capability request");
+        cpn_log(LOG_LEVEL_ERROR, "Service address not specified in capability request");
         err = -1;
         goto out;
     }
 
-    nparams = sd_parameters_filter(&params, "service-parameters",
+    nparams = cpn_parameters_filter(&params, "service-parameters",
             session->parameters, session->nparameters);
 
     pthread_mutex_lock(&registrants_mutex);
@@ -476,7 +476,7 @@ static int handle_request(struct sd_channel *channel,
     pthread_mutex_unlock(&registrants_mutex);
 
     if (reg == NULL) {
-        sd_log(LOG_LEVEL_ERROR, "Identity specified in capability request is not registered");
+        cpn_log(LOG_LEVEL_ERROR, "Identity specified in capability request is not registered");
         err = -1;
         goto out;
     }
@@ -491,11 +491,11 @@ static int handle_request(struct sd_channel *channel,
     request.service_address = (char *) address;
     request.service_port = (char *) port;
     request.requestid = requestid++;
-    request.n_parameters = sd_parameters_to_proto(&request.parameters,
+    request.n_parameters = cpn_parameters_to_proto(&request.parameters,
             params, nparams);
 
-    if (sd_channel_write_protobuf(&reg->channel, &request.base) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Unable to request capability request");
+    if (cpn_channel_write_protobuf(&reg->channel, &request.base) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Unable to request capability request");
         err = -1;
         goto out;
     }
@@ -503,14 +503,14 @@ static int handle_request(struct sd_channel *channel,
     pthread_mutex_lock(&clients_mutex);
     if (clients == NULL) {
         client = clients = malloc(sizeof(struct client));
-        sd_spawn(NULL, relay_capabilities, NULL);
+        cpn_spawn(NULL, relay_capabilities, NULL);
     } else {
         for (client = clients; client->next; client = client->next);
         client->next = malloc(sizeof(struct client));
         client = client->next;
     }
 
-    memcpy(&client->channel, channel, sizeof(struct sd_channel));
+    memcpy(&client->channel, channel, sizeof(struct cpn_channel));
     client->next = NULL;
     client->requestid = request.requestid;
     client->waitsfor = reg;
@@ -519,25 +519,25 @@ static int handle_request(struct sd_channel *channel,
     channel->fd = -1;
 
 out:
-    sd_parameters_proto_free(request.parameters, request.n_parameters);
-    sd_parameters_free(params, nparams);
+    cpn_parameters_proto_free(request.parameters, request.n_parameters);
+    cpn_parameters_free(params, nparams);
 
     return err;
 }
 
-static int handle(struct sd_channel *channel,
-        const struct sd_sign_key_public *invoker,
-        const struct sd_session *session,
-        const struct sd_cfg *cfg)
+static int handle(struct cpn_channel *channel,
+        const struct cpn_sign_key_public *invoker,
+        const struct cpn_session *session,
+        const struct cpn_cfg *cfg)
 {
     const char *mode;
 
     UNUSED(cfg);
 
-    if (sd_parameters_get_value(&mode, "mode",
+    if (cpn_parameters_get_value(&mode, "mode",
                 session->parameters, session->nparameters) < 0)
     {
-        sd_log(LOG_LEVEL_ERROR, "Required parameter 'mode' not set");
+        cpn_log(LOG_LEVEL_ERROR, "Required parameter 'mode' not set");
         return -1;
     }
 
@@ -546,14 +546,14 @@ static int handle(struct sd_channel *channel,
     } else if (!strcmp(mode, "request")) {
         return handle_request(channel, invoker, session);
     } else {
-        sd_log(LOG_LEVEL_ERROR, "Unable to handle connection mode '%s'", mode);
+        cpn_log(LOG_LEVEL_ERROR, "Unable to handle connection mode '%s'", mode);
         return -1;
     }
 
     return 0;
 }
 
-int sd_capabilities_init_service(struct sd_service *service)
+int cpn_capabilities_init_service(struct cpn_service *service)
 {
     memset(&registrants, 0, sizeof(registrants));
 

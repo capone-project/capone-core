@@ -31,15 +31,15 @@ static const char *version(void)
     return "0.0.1";
 }
 
-static int parameters(const struct sd_parameter **out)
+static int parameters(const struct cpn_parameter **out)
 {
     *out = NULL;
     return 0;
 }
 
-static int invoke(struct sd_channel *channel, int argc, char **argv)
+static int invoke(struct cpn_channel *channel, int argc, char **argv)
 {
-    struct sd_channel synergy_channel;
+    struct cpn_channel synergy_channel;
     char *args[] = {
         "synergys",
         "--address",
@@ -55,15 +55,15 @@ static int invoke(struct sd_channel *channel, int argc, char **argv)
     UNUSED(argc);
     UNUSED(argv);
 
-    if (sd_channel_init_from_host(&synergy_channel, "127.0.0.1", "34589", SD_CHANNEL_TYPE_TCP) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not initialize local synergy channel");
+    if (cpn_channel_init_from_host(&synergy_channel, "127.0.0.1", "34589", SD_CHANNEL_TYPE_TCP) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Could not initialize local synergy channel");
         return -1;
     }
 
     pid = fork();
     if (pid == 0) {
         if (execvp("synergys", args) != 0) {
-            sd_log(LOG_LEVEL_ERROR, "Unable to execute synergy client");
+            cpn_log(LOG_LEVEL_ERROR, "Unable to execute synergy client");
             _exit(-1);
         }
 
@@ -72,13 +72,13 @@ static int invoke(struct sd_channel *channel, int argc, char **argv)
         /* TODO: get better workaround to know synergys has * started */
         sleep(1);
 
-        if ((err = sd_channel_connect(&synergy_channel)) < 0) {
-            sd_log(LOG_LEVEL_ERROR, "Could not connect to local synergy server");
+        if ((err = cpn_channel_connect(&synergy_channel)) < 0) {
+            cpn_log(LOG_LEVEL_ERROR, "Could not connect to local synergy server");
             goto out;
         }
 
-        if ((err = sd_channel_relay(channel, 1, synergy_channel.fd)) < 0) {
-            sd_log(LOG_LEVEL_ERROR, "Could not relay synergy socket");
+        if ((err = cpn_channel_relay(channel, 1, synergy_channel.fd)) < 0) {
+            cpn_log(LOG_LEVEL_ERROR, "Could not relay synergy socket");
             goto out;
         }
     } else {
@@ -86,20 +86,20 @@ static int invoke(struct sd_channel *channel, int argc, char **argv)
     }
 
 out:
-    sd_channel_close(&synergy_channel);
+    cpn_channel_close(&synergy_channel);
     kill(pid, SIGKILL);
-    sd_log(LOG_LEVEL_VERBOSE, "Terminated synergy");
+    cpn_log(LOG_LEVEL_VERBOSE, "Terminated synergy");
 
     return err;
 }
 
-static int handle(struct sd_channel *channel,
-        const struct sd_sign_key_public *invoker,
-        const struct sd_session *session,
-        const struct sd_cfg *cfg)
+static int handle(struct cpn_channel *channel,
+        const struct cpn_sign_key_public *invoker,
+        const struct cpn_session *session,
+        const struct cpn_cfg *cfg)
 {
-    struct sd_server server;
-    struct sd_channel synergy_channel;
+    struct cpn_server server;
+    struct cpn_channel synergy_channel;
     char port[10], *args[] = {
         "synergyc",
         "--no-daemon",
@@ -115,18 +115,18 @@ static int handle(struct sd_channel *channel,
     UNUSED(session);
     UNUSED(invoker);
 
-    if (sd_server_init(&server, "127.0.0.1", NULL, SD_CHANNEL_TYPE_TCP) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not initialize synergy relay socket");
+    if (cpn_server_init(&server, "127.0.0.1", NULL, SD_CHANNEL_TYPE_TCP) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Could not initialize synergy relay socket");
         return -1;
     }
 
-    if (sd_server_listen(&server) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not listen on synergy relay socket");
+    if (cpn_server_listen(&server) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Could not listen on synergy relay socket");
         return -1;
     }
 
-    if (sd_server_get_address(&server, NULL, 0, port, sizeof(port)) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not retrieve address of synergy relay socket");
+    if (cpn_server_get_address(&server, NULL, 0, port, sizeof(port)) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Could not retrieve address of synergy relay socket");
         return -1;
     }
 
@@ -137,36 +137,36 @@ static int handle(struct sd_channel *channel,
     pid = fork();
     if (pid == 0) {
         if (execvp("synergyc", args) != 0) {
-            sd_log(LOG_LEVEL_ERROR, "Unable to execute synergy client");
+            cpn_log(LOG_LEVEL_ERROR, "Unable to execute synergy client");
             _exit(-1);
         }
 
         _exit(0);
     } else if (pid > 0) {
-        if (sd_server_accept(&server, &synergy_channel) < 0) {
-            sd_log(LOG_LEVEL_ERROR, "Could not accept synergy relay socket connection");
+        if (cpn_server_accept(&server, &synergy_channel) < 0) {
+            cpn_log(LOG_LEVEL_ERROR, "Could not accept synergy relay socket connection");
             return -1;
         }
 
-        if (sd_channel_relay(channel, 1, synergy_channel.fd) < 0) {
-            sd_log(LOG_LEVEL_ERROR, "Could not relay synergy socket");
+        if (cpn_channel_relay(channel, 1, synergy_channel.fd) < 0) {
+            cpn_log(LOG_LEVEL_ERROR, "Could not relay synergy socket");
             return -1;
         }
     } else {
         return -1;
     }
 
-    sd_server_close(&server);
-    sd_channel_close(&synergy_channel);
+    cpn_server_close(&server);
+    cpn_channel_close(&synergy_channel);
 
     kill(pid, SIGKILL);
-    sd_log(LOG_LEVEL_VERBOSE, "Terminated synergy");
+    cpn_log(LOG_LEVEL_VERBOSE, "Terminated synergy");
     free(args[5]);
 
     return 0;
 }
 
-int sd_synergy_init_service(struct sd_service *service)
+int cpn_synergy_init_service(struct cpn_service *service)
 {
     service->category = "Input";
     service->version = version;

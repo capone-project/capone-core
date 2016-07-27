@@ -21,33 +21,33 @@
 
 #include "test.h"
 
-static struct sd_cap cap;
-static struct sd_sign_key_public pk;
-static struct sd_sign_key_public other_pk;
+static struct cpn_cap cap;
+static struct cpn_sign_key_public pk;
+static struct cpn_sign_key_public other_pk;
 
 static int setup()
 {
     memset(&cap, 0, sizeof(cap));
     other_pk.data[0] = 1;
-    sd_caps_clear();
+    cpn_caps_clear();
     return 0;
 }
 
 static int teardown()
 {
-    sd_caps_clear();
+    cpn_caps_clear();
     return 0;
 }
 
 static void adding_capability_succeeds()
 {
-    assert_success(sd_caps_add(1));
+    assert_success(cpn_caps_add(1));
 }
 
 static void adding_capability_twice_fails()
 {
-    assert_success(sd_caps_add(1));
-    assert_failure(sd_caps_add(1));
+    assert_success(cpn_caps_add(1));
+    assert_failure(cpn_caps_add(1));
 }
 
 static void adding_multiple_capabilities_succeeds()
@@ -55,71 +55,71 @@ static void adding_multiple_capabilities_succeeds()
     int i;
 
     for (i = 1; i < 10; i++)
-        assert_success(sd_caps_add(i));
+        assert_success(cpn_caps_add(i));
 }
 
 static void deleting_capability_succeeds()
 {
-    assert_success(sd_caps_add(1));
-    assert_success(sd_caps_delete(1));
-    assert_success(sd_caps_add(1));
+    assert_success(cpn_caps_add(1));
+    assert_success(cpn_caps_delete(1));
+    assert_success(cpn_caps_add(1));
 }
 
 static void deleting_nonexistent_capability_fails()
 {
-    assert_failure(sd_caps_delete(1));
+    assert_failure(cpn_caps_delete(1));
 }
 
 static void deleting_different_capability_fails()
 {
-    assert_success(sd_caps_add(1));
-    assert_failure(sd_caps_delete(2));
+    assert_success(cpn_caps_add(1));
+    assert_failure(cpn_caps_delete(2));
 }
 
 static void clearing_capabilities_succeeds()
 {
-    assert_success(sd_caps_add(1));
-    sd_caps_clear();
-    assert_success(sd_caps_add(1));
+    assert_success(cpn_caps_add(1));
+    cpn_caps_clear();
+    assert_success(cpn_caps_add(1));
 }
 
 static void creating_ref_succeeds()
 {
-    assert_success(sd_caps_add(1));
-    assert_success(sd_caps_create_reference(&cap, 1, SD_CAP_RIGHT_EXEC, &pk));
+    assert_success(cpn_caps_add(1));
+    assert_success(cpn_caps_create_reference(&cap, 1, SD_CAP_RIGHT_EXEC, &pk));
 }
 
 static void creating_ref_for_nonexistent_cap_fails()
 {
-    assert_failure(sd_caps_create_reference(&cap, 1, SD_CAP_RIGHT_EXEC, &pk));
+    assert_failure(cpn_caps_create_reference(&cap, 1, SD_CAP_RIGHT_EXEC, &pk));
 }
 
 static void verifying_valid_ref_succeeds()
 {
-    assert_success(sd_caps_add(1));
-    assert_success(sd_caps_create_reference(&cap, 1, SD_CAP_RIGHT_EXEC, &pk));
-    assert_success(sd_caps_verify(&cap, &pk, SD_CAP_RIGHT_EXEC));
+    assert_success(cpn_caps_add(1));
+    assert_success(cpn_caps_create_reference(&cap, 1, SD_CAP_RIGHT_EXEC, &pk));
+    assert_success(cpn_caps_verify(&cap, &pk, SD_CAP_RIGHT_EXEC));
 }
 
 static void verifying_valid_ref_with_different_pk_fails()
 {
-    assert_success(sd_caps_add(1));
-    assert_success(sd_caps_create_reference(&cap, 1, SD_CAP_RIGHT_EXEC, &pk));
-    assert_failure(sd_caps_verify(&cap, &other_pk, SD_CAP_RIGHT_EXEC));
+    assert_success(cpn_caps_add(1));
+    assert_success(cpn_caps_create_reference(&cap, 1, SD_CAP_RIGHT_EXEC, &pk));
+    assert_failure(cpn_caps_verify(&cap, &other_pk, SD_CAP_RIGHT_EXEC));
 }
 
 static void verifying_valid_ref_with_different_rights_fails()
 {
-    assert_success(sd_caps_add(1));
-    assert_success(sd_caps_create_reference(&cap, 1, SD_CAP_RIGHT_EXEC, &pk));
-    assert_failure(sd_caps_verify(&cap, &pk, SD_CAP_RIGHT_TERM));
+    assert_success(cpn_caps_add(1));
+    assert_success(cpn_caps_create_reference(&cap, 1, SD_CAP_RIGHT_EXEC, &pk));
+    assert_failure(cpn_caps_verify(&cap, &pk, SD_CAP_RIGHT_TERM));
 }
 
 static void verifying_valid_ref_with_additional_rights_fails()
 {
-    assert_success(sd_caps_add(1));
-    assert_success(sd_caps_create_reference(&cap, 1, SD_CAP_RIGHT_EXEC, &pk));
-    assert_failure(sd_caps_verify(&cap, &pk, SD_CAP_RIGHT_EXEC | SD_CAP_RIGHT_TERM));
+    assert_success(cpn_caps_add(1));
+    assert_success(cpn_caps_create_reference(&cap, 1, SD_CAP_RIGHT_EXEC, &pk));
+    assert_failure(cpn_caps_verify(&cap, &pk, SD_CAP_RIGHT_EXEC | SD_CAP_RIGHT_TERM));
 }
 
 static void parsing_cap_succeeds()
@@ -130,7 +130,7 @@ static void parsing_cap_succeeds()
     memset(secret, 'a', sizeof(secret) - 1);
     secret[sizeof(secret) - 1] = '\0';
 
-    assert_success(sd_cap_parse(&cap, id, secret, SD_CAP_RIGHT_EXEC));
+    assert_success(cpn_cap_parse(&cap, id, secret, SD_CAP_RIGHT_EXEC));
     assert_int_equal(cap.objectid, 1380947);
 }
 
@@ -142,7 +142,7 @@ static void parsing_cap_with_invalid_id_fails()
     memset(secret, 'a', sizeof(secret) - 1);
     secret[sizeof(secret) - 1] = '\0';
 
-    assert_failure(sd_cap_parse(&cap, id, secret, SD_CAP_RIGHT_EXEC));
+    assert_failure(cpn_cap_parse(&cap, id, secret, SD_CAP_RIGHT_EXEC));
 }
 
 static void parsing_cap_with_invalid_secret_length_fails()
@@ -153,7 +153,7 @@ static void parsing_cap_with_invalid_secret_length_fails()
     memset(secret, 'a', sizeof(secret) - 1);
     secret[sizeof(secret) - 1] = '\0';
 
-    assert_failure(sd_cap_parse(&cap, id, secret, SD_CAP_RIGHT_EXEC));
+    assert_failure(cpn_cap_parse(&cap, id, secret, SD_CAP_RIGHT_EXEC));
 }
 
 static void parsing_cap_with_invalid_secret_chars_fails()
@@ -165,7 +165,7 @@ static void parsing_cap_with_invalid_secret_chars_fails()
     secret[sizeof(secret) - 2] = 'x';
     secret[sizeof(secret) - 1] = '\0';
 
-    assert_failure(sd_cap_parse(&cap, id, secret, SD_CAP_RIGHT_EXEC));
+    assert_failure(cpn_cap_parse(&cap, id, secret, SD_CAP_RIGHT_EXEC));
 }
 
 int caps_test_run_suite(void)

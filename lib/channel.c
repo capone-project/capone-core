@@ -45,7 +45,7 @@
 
 int getsock(struct sockaddr_storage *addr, size_t *addrlen,
         const char *host, const char *port,
-        enum sd_channel_type type)
+        enum cpn_channel_type type)
 {
     struct addrinfo hints, *servinfo, *hint;
     int ret, fd;
@@ -63,13 +63,13 @@ int getsock(struct sockaddr_storage *addr, size_t *addrlen,
             hints.ai_protocol = IPPROTO_UDP;
             break;
         default:
-            sd_log(LOG_LEVEL_ERROR, "Unknown channel type");
+            cpn_log(LOG_LEVEL_ERROR, "Unknown channel type");
             return -1;
     }
 
     ret = getaddrinfo(host, port, &hints, &servinfo);
     if (ret != 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not get addrinfo for address %s:%s",
+        cpn_log(LOG_LEVEL_ERROR, "Could not get addrinfo for address %s:%s",
                 host, port);
         return -1;
     }
@@ -83,13 +83,13 @@ int getsock(struct sockaddr_storage *addr, size_t *addrlen,
     }
 
     if (hint == NULL) {
-        sd_log(LOG_LEVEL_ERROR, "Unable to resolve address");
+        cpn_log(LOG_LEVEL_ERROR, "Unable to resolve address");
         freeaddrinfo(servinfo);
         return -1;
     }
 
     if ((unsigned int) hint->ai_addrlen > sizeof(struct sockaddr_storage)) {
-        sd_log(LOG_LEVEL_ERROR, "Hint's addrlen is greater than sockaddr_storage length");
+        cpn_log(LOG_LEVEL_ERROR, "Hint's addrlen is greater than sockaddr_storage length");
         freeaddrinfo(servinfo);
         close(fd);
         return -1;
@@ -102,8 +102,8 @@ int getsock(struct sockaddr_storage *addr, size_t *addrlen,
     return fd;
 }
 
-int sd_channel_init_from_host(struct sd_channel *c, const char *host,
-        const char *port, enum sd_channel_type type)
+int cpn_channel_init_from_host(struct cpn_channel *c, const char *host,
+        const char *port, enum cpn_channel_type type)
 {
     int fd;
     struct sockaddr_storage addr;
@@ -114,17 +114,17 @@ int sd_channel_init_from_host(struct sd_channel *c, const char *host,
         return -1;
     }
 
-    return sd_channel_init_from_fd(c, fd, &addr, addrlen, type);
+    return cpn_channel_init_from_fd(c, fd, &addr, addrlen, type);
 }
 
-int sd_channel_init_from_fd(struct sd_channel *c,
+int cpn_channel_init_from_fd(struct cpn_channel *c,
         int fd, const struct sockaddr_storage *addr, size_t addrlen,
-        enum sd_channel_type type)
+        enum cpn_channel_type type)
 {
     char *env;
     uint32_t blocklen;
 
-    memset(c, 0, sizeof(struct sd_channel));
+    memset(c, 0, sizeof(struct cpn_channel));
 
     env = getenv("SD_BLOCKLEN");
     if (env == NULL || parse_uint32t(&blocklen, env) < 0) {
@@ -143,7 +143,7 @@ int sd_channel_init_from_fd(struct sd_channel *c,
     return 0;
 }
 
-int sd_channel_set_blocklen(struct sd_channel *c, size_t len)
+int cpn_channel_set_blocklen(struct cpn_channel *c, size_t len)
 {
     if (len < sizeof(uint32_t) + crypto_box_MACBYTES + 1) {
         return -1;
@@ -156,7 +156,7 @@ int sd_channel_set_blocklen(struct sd_channel *c, size_t len)
     return 0;
 }
 
-int sd_channel_disable_encryption(struct sd_channel *c)
+int cpn_channel_disable_encryption(struct cpn_channel *c)
 {
     memset(&c->key, 0, sizeof(c->key));
 
@@ -165,8 +165,8 @@ int sd_channel_disable_encryption(struct sd_channel *c)
     return 0;
 }
 
-int sd_channel_enable_encryption(struct sd_channel *c,
-        const struct sd_symmetric_key *key, enum sd_channel_nonce nonce)
+int cpn_channel_enable_encryption(struct cpn_channel *c,
+        const struct cpn_symmetric_key *key, enum cpn_channel_nonce nonce)
 {
     memcpy(&c->key, key, sizeof(c->key));
 
@@ -187,10 +187,10 @@ int sd_channel_enable_encryption(struct sd_channel *c,
     return 0;
 }
 
-int sd_channel_close(struct sd_channel *c)
+int cpn_channel_close(struct cpn_channel *c)
 {
     if (c->fd < 0) {
-        sd_log(LOG_LEVEL_WARNING, "Closing channel with invalid fd");
+        cpn_log(LOG_LEVEL_WARNING, "Closing channel with invalid fd");
         return -1;
     }
 
@@ -200,7 +200,7 @@ int sd_channel_close(struct sd_channel *c)
     return 0;
 }
 
-bool sd_channel_is_closed(struct sd_channel *c)
+bool cpn_channel_is_closed(struct cpn_channel *c)
 {
     struct timeval tv = { 0, 0 };
     fd_set fds;
@@ -221,19 +221,19 @@ bool sd_channel_is_closed(struct sd_channel *c)
     return n == 0;
 }
 
-int sd_channel_connect(struct sd_channel *c)
+int cpn_channel_connect(struct cpn_channel *c)
 {
     assert(c->fd >= 0);
 
     if (connect(c->fd, (struct sockaddr*) &c->addr, c->addrlen) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not connect: %s", strerror(errno));
+        cpn_log(LOG_LEVEL_ERROR, "Could not connect: %s", strerror(errno));
         return -1;
     }
 
     return 0;
 }
 
-static int write_data(struct sd_channel *c, uint8_t *data, uint32_t datalen)
+static int write_data(struct cpn_channel *c, uint8_t *data, uint32_t datalen)
 {
     ssize_t ret;
     uint32_t written = 0;
@@ -248,12 +248,12 @@ static int write_data(struct sd_channel *c, uint8_t *data, uint32_t datalen)
                         (struct sockaddr *) &c->addr, sizeof(c->addr));
                 break;
             default:
-                sd_log(LOG_LEVEL_ERROR, "Unknown channel type");
+                cpn_log(LOG_LEVEL_ERROR, "Unknown channel type");
                 return -1;
         }
 
         if (ret <= 0) {
-            sd_log(LOG_LEVEL_ERROR, "Could not send data: %s",
+            cpn_log(LOG_LEVEL_ERROR, "Could not send data: %s",
                     strerror(errno));
             return -1;
         }
@@ -264,7 +264,7 @@ static int write_data(struct sd_channel *c, uint8_t *data, uint32_t datalen)
     return written;
 }
 
-int sd_channel_write_data(struct sd_channel *c, uint8_t *data, uint32_t datalen)
+int cpn_channel_write_data(struct cpn_channel *c, uint8_t *data, uint32_t datalen)
 {
     uint8_t block[MAX_BLOCKLEN];
     size_t written = 0, offset;
@@ -288,7 +288,7 @@ int sd_channel_write_data(struct sd_channel *c, uint8_t *data, uint32_t datalen)
         if (c->crypto == SD_CHANNEL_CRYPTO_SYMMETRIC) {
             if (crypto_secretbox_easy(block, block, c->blocklen - crypto_secretbox_MACBYTES,
                         c->local_nonce, c->key.data) < 0) {
-                sd_log(LOG_LEVEL_ERROR, "Unable to encrypt message");
+                cpn_log(LOG_LEVEL_ERROR, "Unable to encrypt message");
                 return -1;
             }
             sodium_increment(c->local_nonce, crypto_secretbox_NONCEBYTES);
@@ -296,7 +296,7 @@ int sd_channel_write_data(struct sd_channel *c, uint8_t *data, uint32_t datalen)
         }
 
         if (write_data(c, block, c->blocklen) < 0) {
-            sd_log(LOG_LEVEL_ERROR, "Unable to write encrypted data");
+            cpn_log(LOG_LEVEL_ERROR, "Unable to write encrypted data");
             return -1;
         }
         written += len;
@@ -307,35 +307,35 @@ int sd_channel_write_data(struct sd_channel *c, uint8_t *data, uint32_t datalen)
     return 0;
 }
 
-int sd_channel_write_protobuf(struct sd_channel *c, const ProtobufCMessage *msg)
+int cpn_channel_write_protobuf(struct cpn_channel *c, const ProtobufCMessage *msg)
 {
     const char *pkgname, *descrname;
     size_t size;
     uint8_t buf[4096];
 
     if (!protobuf_c_message_check(msg)) {
-        sd_log(LOG_LEVEL_ERROR, "Invalid protobuf message");
+        cpn_log(LOG_LEVEL_ERROR, "Invalid protobuf message");
         return -1;
     }
 
     size = protobuf_c_message_get_packed_size(msg);
     if (size > sizeof(buf)) {
-        sd_log(LOG_LEVEL_ERROR, "Protobuf message exceeds buffer length");
+        cpn_log(LOG_LEVEL_ERROR, "Protobuf message exceeds buffer length");
         return -1;
     }
 
     pkgname = msg->descriptor->package_name;
     descrname = msg->descriptor->name;
 
-    sd_log(LOG_LEVEL_TRACE, "Writing protobuf %s:%s of length %"PRIuMAX,
+    cpn_log(LOG_LEVEL_TRACE, "Writing protobuf %s:%s of length %"PRIuMAX,
             pkgname ? pkgname : "", descrname ? descrname : "", size);
 
     protobuf_c_message_pack(msg, buf);
 
-    return sd_channel_write_data(c, buf, size);
+    return cpn_channel_write_data(c, buf, size);
 }
 
-static int receive_data(struct sd_channel *c, uint8_t *out, size_t len)
+static int receive_data(struct cpn_channel *c, uint8_t *out, size_t len)
 {
     ssize_t ret;
     size_t received = 0;
@@ -352,7 +352,7 @@ static int receive_data(struct sd_channel *c, uint8_t *out, size_t len)
     return received;
 }
 
-ssize_t sd_channel_receive_data(struct sd_channel *c, uint8_t *out, size_t maxlen)
+ssize_t cpn_channel_receive_data(struct cpn_channel *c, uint8_t *out, size_t maxlen)
 {
     uint8_t block[MAX_BLOCKLEN];
     uint32_t pkglen, received = 0, offset = sizeof(uint32_t);
@@ -361,7 +361,7 @@ ssize_t sd_channel_receive_data(struct sd_channel *c, uint8_t *out, size_t maxle
         uint32_t networklen, blocklen;
 
         if (receive_data(c, block, c->blocklen) < 0) {
-            sd_log(LOG_LEVEL_ERROR, "Unable to receive data");
+            cpn_log(LOG_LEVEL_ERROR, "Unable to receive data");
             return -1;
         }
 
@@ -369,7 +369,7 @@ ssize_t sd_channel_receive_data(struct sd_channel *c, uint8_t *out, size_t maxle
             if (crypto_secretbox_open_easy(block, block, c->blocklen,
                         c->remote_nonce, c->key.data) < 0)
             {
-                sd_log(LOG_LEVEL_ERROR, "Unable to decrypt received block");
+                cpn_log(LOG_LEVEL_ERROR, "Unable to decrypt received block");
                 return -1;
             }
             sodium_increment(c->remote_nonce, crypto_secretbox_NONCEBYTES);
@@ -380,7 +380,7 @@ ssize_t sd_channel_receive_data(struct sd_channel *c, uint8_t *out, size_t maxle
             memcpy(&networklen, block, sizeof(networklen));
             pkglen = ntohl(networklen);
             if (pkglen > maxlen) {
-                sd_log(LOG_LEVEL_ERROR, "Received package length exceeds maxlen");
+                cpn_log(LOG_LEVEL_ERROR, "Received package length exceeds maxlen");
                 return -1;
             }
         }
@@ -400,21 +400,21 @@ ssize_t sd_channel_receive_data(struct sd_channel *c, uint8_t *out, size_t maxle
     return received;
 }
 
-int sd_channel_receive_protobuf(struct sd_channel *c, const ProtobufCMessageDescriptor *descr, ProtobufCMessage **msg)
+int cpn_channel_receive_protobuf(struct cpn_channel *c, const ProtobufCMessageDescriptor *descr, ProtobufCMessage **msg)
 {
     ProtobufCMessage *result = NULL;
     uint8_t buf[4096];
     ssize_t len;
     int ret = -1;
 
-    if ((len = sd_channel_receive_data(c, buf, sizeof(buf))) < 0)
+    if ((len = cpn_channel_receive_data(c, buf, sizeof(buf))) < 0)
         goto out;
 
-    sd_log(LOG_LEVEL_TRACE, "Receiving protobuf %s:%s of length %"PRIuMAX,
+    cpn_log(LOG_LEVEL_TRACE, "Receiving protobuf %s:%s of length %"PRIuMAX,
             descr->package_name, descr->name, len);
 
     if ((result = protobuf_c_message_unpack(descr, NULL, len, buf)) == NULL) {
-        sd_log(LOG_LEVEL_ERROR, "Protobuf message could not be unpacked");
+        cpn_log(LOG_LEVEL_ERROR, "Protobuf message could not be unpacked");
         goto out;
     }
 
@@ -429,7 +429,7 @@ out:
     return ret;
 }
 
-int sd_channel_relay(struct sd_channel *channel, int nfds, ...)
+int cpn_channel_relay(struct cpn_channel *channel, int nfds, ...)
 {
     fd_set fds;
     uint8_t buf[2048];
@@ -437,7 +437,7 @@ int sd_channel_relay(struct sd_channel *channel, int nfds, ...)
     va_list ap;
 
     if (nfds <= 0) {
-        sd_log(LOG_LEVEL_ERROR, "Relay called with nfds == 0");
+        cpn_log(LOG_LEVEL_ERROR, "Relay called with nfds == 0");
         return -1;
     }
 
@@ -464,17 +464,17 @@ int sd_channel_relay(struct sd_channel *channel, int nfds, ...)
         va_end(ap);
 
         if (select(maxfd + 1, &fds, NULL, NULL, NULL) <= 0) {
-            sd_log(LOG_LEVEL_ERROR, "Error selecting fds");
+            cpn_log(LOG_LEVEL_ERROR, "Error selecting fds");
             return -1;
         }
 
         if (FD_ISSET(channel->fd, &fds)) {
-            received = sd_channel_receive_data(channel, buf, sizeof(buf));
+            received = cpn_channel_receive_data(channel, buf, sizeof(buf));
             if (received == 0) {
-                sd_log(LOG_LEVEL_VERBOSE, "Channel closed, stopping relay");
+                cpn_log(LOG_LEVEL_VERBOSE, "Channel closed, stopping relay");
                 return 0;
             } else if (received < 0) {
-                sd_log(LOG_LEVEL_ERROR, "Error relaying data from channel: %s", strerror(errno));
+                cpn_log(LOG_LEVEL_ERROR, "Error relaying data from channel: %s", strerror(errno));
                 return -1;
             }
 
@@ -482,7 +482,7 @@ int sd_channel_relay(struct sd_channel *channel, int nfds, ...)
             while (written != received) {
                 ret = write(infd, buf + written, received - written);
                 if (ret <= 0) {
-                    sd_log(LOG_LEVEL_ERROR, "Error relaying data to fd: %s", strerror(errno));
+                    cpn_log(LOG_LEVEL_ERROR, "Error relaying data to fd: %s", strerror(errno));
                     return -1;
                 }
                 written += ret;
@@ -496,15 +496,15 @@ int sd_channel_relay(struct sd_channel *channel, int nfds, ...)
             if (FD_ISSET(fd, &fds)) {
                 received = read(fd, buf, sizeof(buf));
                 if (received == 0) {
-                    sd_log(LOG_LEVEL_VERBOSE, "File descriptor closed, stopping relay");
+                    cpn_log(LOG_LEVEL_VERBOSE, "File descriptor closed, stopping relay");
                     return 0;
                 } else if (received < 0) {
-                    sd_log(LOG_LEVEL_ERROR, "Error relaying data from fd");
+                    cpn_log(LOG_LEVEL_ERROR, "Error relaying data from fd");
                     return -1;
                 }
 
-                if (sd_channel_write_data(channel, buf, received) < 0) {
-                    sd_log(LOG_LEVEL_ERROR, "Error relaying data to channel");
+                if (cpn_channel_write_data(channel, buf, received) < 0) {
+                    cpn_log(LOG_LEVEL_ERROR, "Error relaying data to channel");
                     return -1;
                 }
             }

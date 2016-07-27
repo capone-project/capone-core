@@ -31,49 +31,49 @@
 #include "service/test.h"
 #include "service/xpra.h"
 
-static int fill_service(struct sd_service *service, const char *type)
+static int fill_service(struct cpn_service *service, const char *type)
 {
     if (!strcmp(type, "capabilities"))
-        return sd_capabilities_init_service(service);
+        return cpn_capabilities_init_service(service);
     if (!strcmp(type, "exec"))
-        return sd_exec_init_service(service);
+        return cpn_exec_init_service(service);
     if (!strcmp(type, "invoke"))
-        return sd_invoke_init_service(service);
+        return cpn_invoke_init_service(service);
     if (!strcmp(type, "synergy"))
-        return sd_synergy_init_service(service);
+        return cpn_synergy_init_service(service);
     if (!strcmp(type, "xpra"))
-        return sd_xpra_init_service(service);
+        return cpn_xpra_init_service(service);
     if (!strcmp(type, "test"))
-        return sd_test_init_service(service);
+        return cpn_test_init_service(service);
 
     return -1;
 }
 
-int sd_service_from_type(struct sd_service *out, const char *type)
+int cpn_service_from_type(struct cpn_service *out, const char *type)
 {
-    memset(out, 0, sizeof(struct sd_service));
+    memset(out, 0, sizeof(struct cpn_service));
 
     return fill_service(out, type);
 }
 
-int sd_services_from_config_file(struct sd_service **out, const char *file)
+int cpn_services_from_config_file(struct cpn_service **out, const char *file)
 {
-    struct sd_cfg cfg;
+    struct cpn_cfg cfg;
     int ret;
 
-    if (sd_cfg_parse(&cfg, file) < 0) {
+    if (cpn_cfg_parse(&cfg, file) < 0) {
         return -1;
     }
 
-    ret = sd_services_from_config(out, &cfg);
-    sd_cfg_free(&cfg);
+    ret = cpn_services_from_config(out, &cfg);
+    cpn_cfg_free(&cfg);
 
     return ret;
 }
 
-int sd_services_from_config(struct sd_service **out, const struct sd_cfg *cfg)
+int cpn_services_from_config(struct cpn_service **out, const struct cpn_cfg *cfg)
 {
-    struct sd_service *services = NULL;
+    struct cpn_service *services = NULL;
     int i, count = 0;
 
     for (i = 0; (size_t) i < cfg->numsections; i++) {
@@ -81,9 +81,9 @@ int sd_services_from_config(struct sd_service **out, const struct sd_cfg *cfg)
             continue;
 
         count++;
-        services = realloc(services, sizeof(struct sd_service) * count);
+        services = realloc(services, sizeof(struct cpn_service) * count);
 
-        if (sd_service_from_section(&services[count - 1], &cfg->sections[i]) < 0) {
+        if (cpn_service_from_section(&services[count - 1], &cfg->sections[i]) < 0) {
             goto out_err;
         }
     }
@@ -94,54 +94,54 @@ int sd_services_from_config(struct sd_service **out, const struct sd_cfg *cfg)
 
 out_err:
     for (i = 0; i < count; i++)
-        sd_service_free(&services[i]);
+        cpn_service_free(&services[i]);
     free(services);
 
     return -1;
 }
 
-int sd_service_from_config_file(struct sd_service *out, const char *name, const char *file)
+int cpn_service_from_config_file(struct cpn_service *out, const char *name, const char *file)
 {
-    struct sd_cfg cfg;
+    struct cpn_cfg cfg;
     int ret;
 
-    if (sd_cfg_parse(&cfg, file) < 0) {
+    if (cpn_cfg_parse(&cfg, file) < 0) {
         return -1;
     }
 
-    ret = sd_service_from_config(out, name, &cfg);
-    sd_cfg_free(&cfg);
+    ret = cpn_service_from_config(out, name, &cfg);
+    cpn_cfg_free(&cfg);
 
     return ret;
 }
 
-int sd_service_from_config(struct sd_service *out, const char *name, const struct sd_cfg *cfg)
+int cpn_service_from_config(struct cpn_service *out, const char *name, const struct cpn_cfg *cfg)
 {
     unsigned i, j;
 
     for (i = 0; i < cfg->numsections; i++) {
-        struct sd_cfg_section *s = &cfg->sections[i];
+        struct cpn_cfg_section *s = &cfg->sections[i];
         if (strcmp(s->name, "service"))
             continue;
 
         for (j = 0; j < s->numentries; j++) {
-            struct sd_cfg_entry *e = &s->entries[j];
+            struct cpn_cfg_entry *e = &s->entries[j];
 
             if (strcmp(e->name, "name"))
                 continue;
             if (!strcmp(e->value, name))
-                return sd_service_from_section(out, s);
+                return cpn_service_from_section(out, s);
         }
     }
 
-    sd_log(LOG_LEVEL_ERROR, "Could not find service '%s'", name);
+    cpn_log(LOG_LEVEL_ERROR, "Could not find service '%s'", name);
 
     return -1;
 }
 
-int sd_service_from_section(struct sd_service *out, const struct sd_cfg_section *section)
+int cpn_service_from_section(struct cpn_service *out, const struct cpn_cfg_section *section)
 {
-    struct sd_service service;
+    struct cpn_service service;
     unsigned i;
 
     memset(&service, 0, sizeof(service));
@@ -149,7 +149,7 @@ int sd_service_from_section(struct sd_service *out, const struct sd_cfg_section 
 #define MAYBE_ADD_ENTRY(field, entry, value)                                    \
     if (!strcmp(#field, entry)) {                                               \
         if (service.field != NULL) {                                         \
-            sd_log(LOG_LEVEL_ERROR, "Service config has been specified twice"); \
+            cpn_log(LOG_LEVEL_ERROR, "Service config has been specified twice"); \
             goto out_err;                                                       \
         }                                                                       \
         service.field = strdup(value);                                          \
@@ -165,7 +165,7 @@ int sd_service_from_section(struct sd_service *out, const struct sd_cfg_section 
         MAYBE_ADD_ENTRY(port, entry, value);
         MAYBE_ADD_ENTRY(location, entry, value);
 
-        sd_log(LOG_LEVEL_ERROR, "Unknown service config '%s'", entry);
+        cpn_log(LOG_LEVEL_ERROR, "Unknown service config '%s'", entry);
         goto out_err;
     }
 
@@ -176,12 +176,12 @@ int sd_service_from_section(struct sd_service *out, const struct sd_cfg_section 
             service.port == NULL ||
             service.location == NULL)
     {
-        sd_log(LOG_LEVEL_ERROR, "Not all service parameters were set");
+        cpn_log(LOG_LEVEL_ERROR, "Not all service parameters were set");
         goto out_err;
     }
 
     if (fill_service(&service, service.type) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Unknown service type '%s'", service.type);
+        cpn_log(LOG_LEVEL_ERROR, "Unknown service type '%s'", service.type);
         goto out_err;
     }
 
@@ -190,17 +190,17 @@ int sd_service_from_section(struct sd_service *out, const struct sd_cfg_section 
     return 0;
 
 out_err:
-    sd_service_free(&service);
+    cpn_service_free(&service);
 
     return -1;
 }
 
-void sd_service_free(struct sd_service *service)
+void cpn_service_free(struct cpn_service *service)
 {
     free(service->name);
     free(service->type);
     free(service->port);
     free(service->location);
 
-    memset(service, 0, sizeof(struct sd_service));
+    memset(service, 0, sizeof(struct cpn_service));
 }

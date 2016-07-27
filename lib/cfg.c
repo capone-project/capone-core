@@ -40,7 +40,7 @@ static int map_file(char **out, size_t *outlen, const char *path)
 
     fd = open(path,  O_RDONLY);
     if (fd < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not open file: %s",
+        cpn_log(LOG_LEVEL_ERROR, "Could not open file: %s",
                 strerror(errno));
         ret = fd;
         goto out;
@@ -48,14 +48,14 @@ static int map_file(char **out, size_t *outlen, const char *path)
 
     ret = fstat(fd, &st);
     if (ret < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not stat file: %s",
+        cpn_log(LOG_LEVEL_ERROR, "Could not stat file: %s",
                 strerror(errno));
         goto out;
     }
 
     ptr = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
     if (ptr == NULL) {
-        sd_log(LOG_LEVEL_ERROR, "Could not mmap file: %s",
+        cpn_log(LOG_LEVEL_ERROR, "Could not mmap file: %s",
                 strerror(errno));
         ret = -1;
         goto out;
@@ -100,13 +100,13 @@ static int parse_section(char *section, size_t maxlen, const char *line, size_t 
     ptr = line + 1;
     for (ptr = line + 1; ptr < line + len; ptr++) {
         if (!isalnum((unsigned char) *ptr)) {
-            sd_log(LOG_LEVEL_ERROR, "Invalid section: '%s'", section);
+            cpn_log(LOG_LEVEL_ERROR, "Invalid section: '%s'", section);
             return -1;
         }
     }
 
     if (len > maxlen) {
-        sd_log(LOG_LEVEL_ERROR, "Section longer than maxlen: '%s'", section);
+        cpn_log(LOG_LEVEL_ERROR, "Section longer than maxlen: '%s'", section);
         return -1;
     }
 
@@ -124,12 +124,12 @@ static int parse_config(char *key, size_t keylen, char *value, size_t valuelen, 
     assert(ptr);
 
     if (ptr - line >= (ssize_t) keylen) {
-        sd_log(LOG_LEVEL_ERROR, "Key longer than maxlen: '%s'", line);
+        cpn_log(LOG_LEVEL_ERROR, "Key longer than maxlen: '%s'", line);
         return -1;
     }
 
     if (len - (ptr - line) >= valuelen) {
-        sd_log(LOG_LEVEL_ERROR, "Value longer than maxlen: '%s'", line);
+        cpn_log(LOG_LEVEL_ERROR, "Value longer than maxlen: '%s'", line);
         return -1;
     }
 
@@ -175,41 +175,41 @@ static enum line_type parse_line(char *key, size_t keylen, char *value, size_t v
     return LINE_TYPE_INVALID;
 }
 
-static struct sd_cfg_section *add_section(struct sd_cfg *c, const char *name)
+static struct cpn_cfg_section *add_section(struct cpn_cfg *c, const char *name)
 {
-    struct sd_cfg_section *s;
+    struct cpn_cfg_section *s;
 
     c->numsections += 1;
-    c->sections = realloc(c->sections, sizeof(struct sd_cfg_section) * c->numsections);
+    c->sections = realloc(c->sections, sizeof(struct cpn_cfg_section) * c->numsections);
 
     s = &c->sections[c->numsections - 1];
-    memset(s, 0, sizeof(struct sd_cfg_section));
+    memset(s, 0, sizeof(struct cpn_cfg_section));
     s->name = strdup(name);
 
     return s;
 }
 
-static void add_config(struct sd_cfg_section *s, const char *key, const char *value)
+static void add_config(struct cpn_cfg_section *s, const char *key, const char *value)
 {
-    struct sd_cfg_entry *e;
+    struct cpn_cfg_entry *e;
 
     s->numentries += 1;
-    s->entries = realloc(s->entries, sizeof(struct sd_cfg_entry) * s->numentries);
+    s->entries = realloc(s->entries, sizeof(struct cpn_cfg_entry) * s->numentries);
 
     e = &s->entries[s->numentries - 1];
-    memset(e, 0, sizeof(struct sd_cfg_entry));
+    memset(e, 0, sizeof(struct cpn_cfg_entry));
     e->name = strdup(key);
     e->value = strdup(value);
 }
 
-int sd_cfg_parse_string(struct sd_cfg *c, const char *ptr, size_t len)
+int cpn_cfg_parse_string(struct cpn_cfg *c, const char *ptr, size_t len)
 {
-    struct sd_cfg_section *section = NULL;
+    struct cpn_cfg_section *section = NULL;
     const char *line = ptr;
     int ret = 0;
     size_t remaining;
 
-    memset(c, '\0', sizeof(struct sd_cfg));
+    memset(c, '\0', sizeof(struct cpn_cfg));
 
     do {
         char key[128], value[1024];
@@ -228,7 +228,7 @@ int sd_cfg_parse_string(struct sd_cfg *c, const char *ptr, size_t len)
                 break;
             case LINE_TYPE_CONFIG:
                 if (!section) {
-                    sd_log(LOG_LEVEL_ERROR, "Unable to add config without section: '%s'",
+                    cpn_log(LOG_LEVEL_ERROR, "Unable to add config without section: '%s'",
                             line);
                     ret = -1;
                     goto out;
@@ -243,13 +243,13 @@ int sd_cfg_parse_string(struct sd_cfg *c, const char *ptr, size_t len)
 
 out:
     if (ret != 0) {
-        sd_cfg_free(c);
+        cpn_cfg_free(c);
     }
 
     return ret;
 }
 
-int sd_cfg_parse(struct sd_cfg *c, const char *path)
+int cpn_cfg_parse(struct cpn_cfg *c, const char *path)
 {
     char *ptr;
     size_t len;
@@ -260,22 +260,22 @@ int sd_cfg_parse(struct sd_cfg *c, const char *path)
         return ret;
     }
 
-    ret = sd_cfg_parse_string(c, ptr, len);
+    ret = cpn_cfg_parse_string(c, ptr, len);
 
     munmap(ptr, len);
 
     return ret;
 }
 
-void sd_cfg_free(struct sd_cfg *c)
+void cpn_cfg_free(struct cpn_cfg *c)
 {
     unsigned section, entry;
 
     for (section = 0; section < c->numsections; section++) {
-        struct sd_cfg_section *s = &c->sections[section];
+        struct cpn_cfg_section *s = &c->sections[section];
 
         for (entry = 0; entry < s->numentries; entry++) {
-            struct sd_cfg_entry *e = &s->entries[entry];
+            struct cpn_cfg_entry *e = &s->entries[entry];
 
             free(e->name);
             free(e->value);
@@ -290,9 +290,9 @@ void sd_cfg_free(struct sd_cfg *c)
     c->sections = NULL;
 }
 
-const struct sd_cfg_section *sd_cfg_get_section(const struct sd_cfg *c, const char *name)
+const struct cpn_cfg_section *cpn_cfg_get_section(const struct cpn_cfg *c, const char *name)
 {
-    const struct sd_cfg_section *section;
+    const struct cpn_cfg_section *section;
     size_t i;
 
     for (i = 0; i < c->numsections; i++) {
@@ -305,9 +305,9 @@ const struct sd_cfg_section *sd_cfg_get_section(const struct sd_cfg *c, const ch
     return NULL;
 }
 
-const struct sd_cfg_entry *sd_cfg_get_entry(const struct sd_cfg_section *s, const char *name)
+const struct cpn_cfg_entry *cpn_cfg_get_entry(const struct cpn_cfg_section *s, const char *name)
 {
-    const struct sd_cfg_entry *entry;
+    const struct cpn_cfg_entry *entry;
     size_t i;
 
     for (i = 0; i < s->numentries; i++) {
@@ -320,17 +320,17 @@ const struct sd_cfg_entry *sd_cfg_get_entry(const struct sd_cfg_section *s, cons
     return NULL;
 }
 
-static const char *get_raw_value(const struct sd_cfg *c, const char *s, const char *key)
+static const char *get_raw_value(const struct cpn_cfg *c, const char *s, const char *key)
 {
-    const struct sd_cfg_section *section;
-    const struct sd_cfg_entry *entry;
+    const struct cpn_cfg_section *section;
+    const struct cpn_cfg_entry *entry;
 
-    section = sd_cfg_get_section(c, s);
+    section = cpn_cfg_get_section(c, s);
     if (section == NULL) {
         return NULL;
     }
 
-    entry = sd_cfg_get_entry(section, key);
+    entry = cpn_cfg_get_entry(section, key);
     if (entry == NULL) {
         return NULL;
     }
@@ -338,11 +338,11 @@ static const char *get_raw_value(const struct sd_cfg *c, const char *s, const ch
     return entry->value;
 }
 
-char *sd_cfg_get_str_value(const struct sd_cfg *c, const char *section, const char *key)
+char *cpn_cfg_get_str_value(const struct cpn_cfg *c, const char *section, const char *key)
 {
     const char *value = get_raw_value(c, section, key);
     if (value == NULL) {
-        sd_log(LOG_LEVEL_WARNING, "Could not find entry '%s' in section '%s'",
+        cpn_log(LOG_LEVEL_WARNING, "Could not find entry '%s' in section '%s'",
                 key, section);
         return NULL;
     }
@@ -350,13 +350,13 @@ char *sd_cfg_get_str_value(const struct sd_cfg *c, const char *section, const ch
     return strdup(value);
 }
 
-int sd_cfg_get_int_value(const struct sd_cfg *c, const char *section, const char *key)
+int cpn_cfg_get_int_value(const struct cpn_cfg *c, const char *section, const char *key)
 {
     const char *value = get_raw_value(c, section, key);
     int i, savederrno;
 
     if (value == NULL) {
-        sd_log(LOG_LEVEL_WARNING, "Could not find entry '%s' in section '%s'",
+        cpn_log(LOG_LEVEL_WARNING, "Could not find entry '%s' in section '%s'",
                 key, section);
         return 0;
     }
@@ -366,7 +366,7 @@ int sd_cfg_get_int_value(const struct sd_cfg *c, const char *section, const char
 
     i = strtol(value, NULL, 10);
     if (errno != 0) {
-        sd_log(LOG_LEVEL_WARNING, "Could not parse value '%s' as integer", value);
+        cpn_log(LOG_LEVEL_WARNING, "Could not parse value '%s' as integer", value);
         return 0;
     }
 

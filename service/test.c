@@ -30,9 +30,9 @@ static const char *version(void)
     return "0.0.1";
 }
 
-static int parameters(const struct sd_parameter **out)
+static int parameters(const struct cpn_parameter **out)
 {
-    static const struct sd_parameter params[] = {
+    static const struct cpn_parameter params[] = {
         { "test", NULL },
     };
 
@@ -40,27 +40,27 @@ static int parameters(const struct sd_parameter **out)
     return ARRAY_SIZE(params);
 }
 
-static int invoke(struct sd_channel *channel, int argc, char **argv)
+static int invoke(struct cpn_channel *channel, int argc, char **argv)
 {
     UNUSED(argc);
     UNUSED(argv);
-    return sd_channel_receive_data(channel, buf, sizeof(buf));
+    return cpn_channel_receive_data(channel, buf, sizeof(buf));
 }
 
-static int handle(struct sd_channel *channel,
-        const struct sd_sign_key_public *invoker,
-        const struct sd_session *session,
-        const struct sd_cfg *cfg)
+static int handle(struct cpn_channel *channel,
+        const struct cpn_sign_key_public *invoker,
+        const struct cpn_session *session,
+        const struct cpn_cfg *cfg)
 {
     UNUSED(cfg);
     UNUSED(invoker);
 
-    return sd_channel_write_data(channel,
+    return cpn_channel_write_data(channel,
             (uint8_t *) session->parameters[0].value,
             strlen(session->parameters[0].value));
 }
 
-int sd_test_init_service(struct sd_service *service)
+int cpn_test_init_service(struct cpn_service *service)
 {
     service->category = "Test";
     service->version = version;
@@ -71,7 +71,7 @@ int sd_test_init_service(struct sd_service *service)
     return 0;
 }
 
-uint8_t *sd_test_service_get_data(void)
+uint8_t *cpn_test_service_get_data(void)
 {
     return buf;
 }

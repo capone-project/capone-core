@@ -28,9 +28,9 @@ static const char *version(void)
     return "0.0.1";
 }
 
-static int parameters(const struct sd_parameter **out)
+static int parameters(const struct cpn_parameter **out)
 {
-    static const struct sd_parameter params[] = {
+    static const struct cpn_parameter params[] = {
         { "service-identity", NULL },
         { "service-address", NULL },
         { "service-port", NULL },
@@ -44,7 +44,7 @@ static int parameters(const struct sd_parameter **out)
     return ARRAY_SIZE(params);
 }
 
-static int invoke(struct sd_channel *channel, int argc, char **argv)
+static int invoke(struct cpn_channel *channel, int argc, char **argv)
 {
     UNUSED(argc);
     UNUSED(argv);
@@ -53,80 +53,80 @@ static int invoke(struct sd_channel *channel, int argc, char **argv)
     return 0;
 }
 
-static int handle(struct sd_channel *channel,
-        const struct sd_sign_key_public *invoker,
-        const struct sd_session *session,
-        const struct sd_cfg *cfg)
+static int handle(struct cpn_channel *channel,
+        const struct cpn_sign_key_public *invoker,
+        const struct cpn_session *session,
+        const struct cpn_cfg *cfg)
 {
     const char *service_identity, *service_address, *service_type,
           *service_port, *sessionid_string, *secret_string;
     const char **service_params = NULL;
-    struct sd_service service;
-    struct sd_sign_key_pair local_keys;
-    struct sd_sign_key_public remote_key;
-    struct sd_channel remote_channel;
-    struct sd_cap cap;
+    struct cpn_service service;
+    struct cpn_sign_key_pair local_keys;
+    struct cpn_sign_key_public remote_key;
+    struct cpn_channel remote_channel;
+    struct cpn_cap cap;
     size_t nparams;
 
     UNUSED(channel);
     UNUSED(invoker);
 
-    sd_parameters_get_value(&service_identity,
+    cpn_parameters_get_value(&service_identity,
             "service-identity", session->parameters, session->nparameters);
-    sd_parameters_get_value(&service_address,
+    cpn_parameters_get_value(&service_address,
             "service-address", session->parameters, session->nparameters);
-    sd_parameters_get_value(&service_port,
+    cpn_parameters_get_value(&service_port,
             "service-port", session->parameters, session->nparameters);
-    sd_parameters_get_value(&service_type,
+    cpn_parameters_get_value(&service_type,
             "service-type", session->parameters, session->nparameters);
-    sd_parameters_get_value(&sessionid_string,
+    cpn_parameters_get_value(&sessionid_string,
             "sessionid", session->parameters, session->nparameters);
-    sd_parameters_get_value(&secret_string,
+    cpn_parameters_get_value(&secret_string,
             "secret", session->parameters, session->nparameters);
 
-    nparams = sd_parameters_get_values(&service_params,
+    nparams = cpn_parameters_get_values(&service_params,
             "service-args", session->parameters, session->nparameters);
 
     if (service_identity == NULL || service_address == NULL || service_type == NULL
             || service_port == NULL || sessionid_string == NULL || secret_string == NULL)
     {
-        sd_log(LOG_LEVEL_ERROR, "Not all parameters were set");
+        cpn_log(LOG_LEVEL_ERROR, "Not all parameters were set");
         goto out;
     }
 
-    if (sd_sign_key_pair_from_config(&local_keys, cfg) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not parse config");
+    if (cpn_sign_key_pair_from_config(&local_keys, cfg) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Could not parse config");
         goto out;
     }
 
-    if (sd_sign_key_public_from_hex(&remote_key, service_identity) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not parse remote public key");
+    if (cpn_sign_key_public_from_hex(&remote_key, service_identity) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Could not parse remote public key");
         goto out;
     }
 
-    if (sd_cap_parse(&cap, sessionid_string, secret_string, SD_CAP_RIGHT_EXEC | SD_CAP_RIGHT_TERM) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Invalid capability");
+    if (cpn_cap_parse(&cap, sessionid_string, secret_string, SD_CAP_RIGHT_EXEC | SD_CAP_RIGHT_TERM) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Invalid capability");
         goto out;
     }
 
-    if (sd_service_from_type(&service, service_type) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Unknown service type");
+    if (cpn_service_from_type(&service, service_type) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Unknown service type");
         goto out;
     }
 
-    if (sd_proto_initiate_connection(&remote_channel, service_address, service_port,
+    if (cpn_proto_initiate_connection(&remote_channel, service_address, service_port,
                 &local_keys, &remote_key, SD_CONNECTION_TYPE_CONNECT) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not start invoke connection");
+        cpn_log(LOG_LEVEL_ERROR, "Could not start invoke connection");
         goto out;
     }
 
-    if (sd_proto_initiate_session(&remote_channel, &cap) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not connect to session");
+    if (cpn_proto_initiate_session(&remote_channel, &cap) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Could not connect to session");
         goto out;
     }
 
     if (service.invoke(&remote_channel, nparams, (char **) service_params) < 0) {
-        sd_log(LOG_LEVEL_ERROR, "Could not invoke service");
+        cpn_log(LOG_LEVEL_ERROR, "Could not invoke service");
         goto out;
     }
 
@@ -135,7 +135,7 @@ out:
     return 0;
 }
 
-int sd_invoke_init_service(struct sd_service *service)
+int cpn_invoke_init_service(struct cpn_service *service)
 {
     service->category = "Invoke";
     service->version = version;

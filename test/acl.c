@@ -21,8 +21,8 @@
 
 #include "test.h"
 
-static struct sd_acl acl;
-static struct sd_sign_key_public key1, key2;
+static struct cpn_acl acl;
+static struct cpn_sign_key_public key1, key2;
 
 static int setup()
 {
@@ -32,88 +32,88 @@ static int setup()
 
 static int teardown()
 {
-    sd_acl_clear(&acl);
+    cpn_acl_clear(&acl);
     return 0;
 }
 
 static void adding_entry_works()
 {
-    assert_success(sd_acl_add_right(&acl,&key1, SD_ACL_RIGHT_EXEC));
+    assert_success(cpn_acl_add_right(&acl,&key1, SD_ACL_RIGHT_EXEC));
 }
 
 static void adding_entry_twice_fails()
 {
-    assert_success(sd_acl_add_right(&acl, &key1, SD_ACL_RIGHT_EXEC));
-    assert_failure(sd_acl_add_right(&acl, &key1, SD_ACL_RIGHT_EXEC));
+    assert_success(cpn_acl_add_right(&acl, &key1, SD_ACL_RIGHT_EXEC));
+    assert_failure(cpn_acl_add_right(&acl, &key1, SD_ACL_RIGHT_EXEC));
 }
 
 static void adding_entry_with_different_rights_works()
 {
-    assert_success(sd_acl_add_right(&acl, &key1, SD_ACL_RIGHT_EXEC));
-    assert_success(sd_acl_add_right(&acl, &key1, SD_ACL_RIGHT_TERMINATE));
+    assert_success(cpn_acl_add_right(&acl, &key1, SD_ACL_RIGHT_EXEC));
+    assert_success(cpn_acl_add_right(&acl, &key1, SD_ACL_RIGHT_TERMINATE));
 }
 
 static void adding_entry_with_different_keys_works()
 {
-    assert_success(sd_acl_add_right(&acl, &key1, SD_ACL_RIGHT_EXEC));
-    assert_success(sd_acl_add_right(&acl, &key2, SD_ACL_RIGHT_EXEC));
+    assert_success(cpn_acl_add_right(&acl, &key1, SD_ACL_RIGHT_EXEC));
+    assert_success(cpn_acl_add_right(&acl, &key2, SD_ACL_RIGHT_EXEC));
 }
 
 static void adding_entry_allows()
 {
-    assert_success(sd_acl_add_right(&acl, &key1, SD_ACL_RIGHT_EXEC));
-    assert_true(sd_acl_is_allowed(&acl, &key1, SD_ACL_RIGHT_EXEC));
+    assert_success(cpn_acl_add_right(&acl, &key1, SD_ACL_RIGHT_EXEC));
+    assert_true(cpn_acl_is_allowed(&acl, &key1, SD_ACL_RIGHT_EXEC));
 }
 
 static void adding_entry_does_not_allow_other_rights()
 {
-    assert_success(sd_acl_add_right(&acl, &key1, SD_ACL_RIGHT_EXEC));
-    assert_true(sd_acl_is_allowed(&acl, &key1, SD_ACL_RIGHT_EXEC));
+    assert_success(cpn_acl_add_right(&acl, &key1, SD_ACL_RIGHT_EXEC));
+    assert_true(cpn_acl_is_allowed(&acl, &key1, SD_ACL_RIGHT_EXEC));
 }
 
 static void adding_wildcard_allows_right_for_everybody()
 {
-    assert_success(sd_acl_add_wildcard(&acl, SD_ACL_RIGHT_EXEC));
-    assert_true(sd_acl_is_allowed(&acl, &key1, SD_ACL_RIGHT_EXEC));
+    assert_success(cpn_acl_add_wildcard(&acl, SD_ACL_RIGHT_EXEC));
+    assert_true(cpn_acl_is_allowed(&acl, &key1, SD_ACL_RIGHT_EXEC));
 }
 
 static void adding_wildcard_allows_only_specific_right()
 {
-    assert_success(sd_acl_add_wildcard(&acl, SD_ACL_RIGHT_EXEC));
-    assert_false(sd_acl_is_allowed(&acl, &key1, SD_ACL_RIGHT_TERMINATE));
+    assert_success(cpn_acl_add_wildcard(&acl, SD_ACL_RIGHT_EXEC));
+    assert_false(cpn_acl_is_allowed(&acl, &key1, SD_ACL_RIGHT_TERMINATE));
 }
 
 static void removing_nonexistent_entry_fails()
 {
-    assert_failure(sd_acl_remove_right(&acl, &key1, SD_ACL_RIGHT_EXEC));
+    assert_failure(cpn_acl_remove_right(&acl, &key1, SD_ACL_RIGHT_EXEC));
 }
 
 static void removing_entry_removes_right()
 {
-    assert_success(sd_acl_add_right(&acl, &key1, SD_ACL_RIGHT_EXEC));
-    assert_success(sd_acl_remove_right(&acl, &key1, SD_ACL_RIGHT_EXEC));
-    assert_false(sd_acl_is_allowed(&acl, &key1, SD_ACL_RIGHT_EXEC));
+    assert_success(cpn_acl_add_right(&acl, &key1, SD_ACL_RIGHT_EXEC));
+    assert_success(cpn_acl_remove_right(&acl, &key1, SD_ACL_RIGHT_EXEC));
+    assert_false(cpn_acl_is_allowed(&acl, &key1, SD_ACL_RIGHT_EXEC));
 }
 
 static void removing_entry_does_not_remove_other_rights()
 {
-    assert_success(sd_acl_add_right(&acl, &key1, SD_ACL_RIGHT_EXEC));
-    assert_success(sd_acl_add_right(&acl, &key1, SD_ACL_RIGHT_TERMINATE));
-    assert_success(sd_acl_remove_right(&acl, &key1, SD_ACL_RIGHT_EXEC));
-    assert_true(sd_acl_is_allowed(&acl, &key1, SD_ACL_RIGHT_TERMINATE));
+    assert_success(cpn_acl_add_right(&acl, &key1, SD_ACL_RIGHT_EXEC));
+    assert_success(cpn_acl_add_right(&acl, &key1, SD_ACL_RIGHT_TERMINATE));
+    assert_success(cpn_acl_remove_right(&acl, &key1, SD_ACL_RIGHT_EXEC));
+    assert_true(cpn_acl_is_allowed(&acl, &key1, SD_ACL_RIGHT_TERMINATE));
 }
 
 static void removing_entry_does_not_remove_other_keys()
 {
-    assert_success(sd_acl_add_right(&acl, &key1, SD_ACL_RIGHT_EXEC));
-    assert_success(sd_acl_add_right(&acl, &key2, SD_ACL_RIGHT_EXEC));
-    assert_success(sd_acl_remove_right(&acl, &key1, SD_ACL_RIGHT_EXEC));
-    assert_true(sd_acl_is_allowed(&acl, &key2, SD_ACL_RIGHT_EXEC));
+    assert_success(cpn_acl_add_right(&acl, &key1, SD_ACL_RIGHT_EXEC));
+    assert_success(cpn_acl_add_right(&acl, &key2, SD_ACL_RIGHT_EXEC));
+    assert_success(cpn_acl_remove_right(&acl, &key1, SD_ACL_RIGHT_EXEC));
+    assert_true(cpn_acl_is_allowed(&acl, &key2, SD_ACL_RIGHT_EXEC));
 }
 
 static void empty_acl_allows_nothing()
 {
-    assert_success(sd_acl_is_allowed(&acl, &key1, SD_ACL_RIGHT_TERMINATE));
+    assert_success(cpn_acl_is_allowed(&acl, &key1, SD_ACL_RIGHT_TERMINATE));
 }
 
 int acl_test_run_suite(void)

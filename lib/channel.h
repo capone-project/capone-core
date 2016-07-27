@@ -70,7 +70,7 @@
 #include "lib/keys.h"
 
 /** @brief Network communication type */
-enum sd_channel_type {
+enum cpn_channel_type {
     /** Use UDP as underlying network protocol */
     SD_CHANNEL_TYPE_UDP,
     /** Use TCP as underlying network protocol */
@@ -78,7 +78,7 @@ enum sd_channel_type {
 };
 
 /** @brief Encryption type */
-enum sd_channel_crypto {
+enum cpn_channel_crypto {
     /** No encryption is used */
     SD_CHANNEL_CRYPTO_NONE,
     /** Encrypt the channel with a symmetric key */
@@ -86,7 +86,7 @@ enum sd_channel_crypto {
 };
 
 /** @brief Wether to generate the client- or server-side nonce */
-enum sd_channel_nonce {
+enum cpn_channel_nonce {
     /** Use a client-side nonce starting at <code>0</code> */
     SD_CHANNEL_NONCE_CLIENT,
     /** Use a server-side nonce starting at <code>1</code> */
@@ -98,17 +98,17 @@ enum sd_channel_nonce {
  * A channel bundles together all data required to communicate
  * with a remote peer.
  */
-struct sd_channel {
+struct cpn_channel {
     int fd;
     struct sockaddr_storage addr;
     size_t addrlen;
 
     size_t blocklen;
 
-    enum sd_channel_type type;
-    enum sd_channel_crypto crypto;
+    enum cpn_channel_type type;
+    enum cpn_channel_crypto crypto;
 
-    struct sd_symmetric_key key;
+    struct cpn_symmetric_key key;
     uint8_t remote_nonce[crypto_box_NONCEBYTES];
     uint8_t local_nonce[crypto_box_NONCEBYTES];
 };
@@ -130,8 +130,8 @@ struct sd_channel {
  *            for the channel.
  * @return <code>0</code> on success, <code>-1</code> otherwise
  */
-int sd_channel_init_from_host(struct sd_channel *c,
-        const char *host, const char *port, enum sd_channel_type type);
+int cpn_channel_init_from_host(struct cpn_channel *c,
+        const char *host, const char *port, enum cpn_channel_type type);
 
 /** @brief Initialize a channel from a file descriptor
  *
@@ -153,9 +153,9 @@ int sd_channel_init_from_host(struct sd_channel *c,
  *            file descriptor is using.
  * @return <code>0</code> on success, <code>-1</code> otherwise
  */
-int sd_channel_init_from_fd(struct sd_channel *c,
+int cpn_channel_init_from_fd(struct cpn_channel *c,
         int fd, const struct sockaddr_storage *addr, size_t addrlen,
-        enum sd_channel_type type);
+        enum cpn_channel_type type);
 
 /** @brief Set block length used to split messages
  *
@@ -174,7 +174,7 @@ int sd_channel_init_from_fd(struct sd_channel *c,
  * @param[in] len Length of a single block
  * @return <code>0</code> on success, <code>t1</code> otherwise
  */
-int sd_channel_set_blocklen(struct sd_channel *c, size_t len);
+int cpn_channel_set_blocklen(struct cpn_channel *c, size_t len);
 
 /** @brief Close the file descriptor of the channel
  *
@@ -184,7 +184,7 @@ int sd_channel_set_blocklen(struct sd_channel *c, size_t len);
  * @param[in] c Channel whose file descriptor should be closed.
  * @return <code>0</code> on success, <code>-1</code> otherwise
  */
-int sd_channel_close(struct sd_channel *c);
+int cpn_channel_close(struct cpn_channel *c);
 
 /** @brief Check if a channel is closed
  *
@@ -195,7 +195,7 @@ int sd_channel_close(struct sd_channel *c);
  * @return <code>true</code> if the chanenl is closed,
  *         <code>false</code> otherwise
  */
-bool sd_channel_is_closed(struct sd_channel *c);
+bool cpn_channel_is_closed(struct cpn_channel *c);
 
 /** @brief Disable encryption for a channel
  *
@@ -206,7 +206,7 @@ bool sd_channel_is_closed(struct sd_channel *c);
  * @param[in] c Channel to disable encryption for.
  * @return <code>0</code>
  */
-int sd_channel_disable_encryption(struct sd_channel *c);
+int cpn_channel_disable_encryption(struct cpn_channel *c);
 
 /** @brief Enable encryption for a channel
  *
@@ -226,8 +226,8 @@ int sd_channel_disable_encryption(struct sd_channel *c);
  *            nonce or the server-side nonce.
  * @return <code>0</code>
  */
-int sd_channel_enable_encryption(struct sd_channel *c,
-        const struct sd_symmetric_key *key, enum sd_channel_nonce nonce);
+int cpn_channel_enable_encryption(struct cpn_channel *c,
+        const struct cpn_symmetric_key *key, enum cpn_channel_nonce nonce);
 
 /** @brief Connect a channel
  *
@@ -238,7 +238,7 @@ int sd_channel_enable_encryption(struct sd_channel *c,
  * @param[out] c Channel to connect
  * @return <code>0</code> on success, <code>-1</code> otherwise
  */
-int sd_channel_connect(struct sd_channel *c);
+int cpn_channel_connect(struct cpn_channel *c);
 
 /** @brief Write data to the channel
  *
@@ -251,7 +251,7 @@ int sd_channel_connect(struct sd_channel *c);
  * @param[in] len Length of data to send.
  * @return <code>0</code> on success, <code>-1</code> otherwise
  */
-int sd_channel_write_data(struct sd_channel *c, uint8_t *buf, uint32_t len);
+int cpn_channel_write_data(struct cpn_channel *c, uint8_t *buf, uint32_t len);
 
 /** @brief Receive data from the chanenl
  *
@@ -270,7 +270,7 @@ int sd_channel_write_data(struct sd_channel *c, uint8_t *buf, uint32_t len);
  * @return Length of the received data or <code>-1</code> on
  *         error
  */
-ssize_t sd_channel_receive_data(struct sd_channel *c, uint8_t *buf, size_t maxlen);
+ssize_t cpn_channel_receive_data(struct cpn_channel *c, uint8_t *buf, size_t maxlen);
 
 /** @brief Write a protocol buffer to the channel
  *
@@ -282,9 +282,9 @@ ssize_t sd_channel_receive_data(struct sd_channel *c, uint8_t *buf, size_t maxle
  * @param[in] msg Protobuf message to serialize and write.
  * @return <code>0</code> on success, <code>-1</code> otherwise
  *
- * \see sd_channel_write_data
+ * \see cpn_channel_write_data
  */
-int sd_channel_write_protobuf(struct sd_channel *c, const ProtobufCMessage *msg);
+int cpn_channel_write_protobuf(struct cpn_channel *c, const ProtobufCMessage *msg);
 
 /** @brief Receive a protocol buffer from the channel
  *
@@ -302,9 +302,9 @@ int sd_channel_write_protobuf(struct sd_channel *c, const ProtobufCMessage *msg)
  *             deserialized protobuf message.
  * @return <code>0</code> on success, <code>-1</code> otherwise
  *
- * \see sd_channel_receive_data
+ * \see cpn_channel_receive_data
  */
-int sd_channel_receive_protobuf(struct sd_channel *c, const ProtobufCMessageDescriptor *descr, ProtobufCMessage **msg);
+int cpn_channel_receive_protobuf(struct cpn_channel *c, const ProtobufCMessageDescriptor *descr, ProtobufCMessage **msg);
 
 /** @brief Relay data between a channel and file descriptors
  *
@@ -328,7 +328,7 @@ int sd_channel_receive_protobuf(struct sd_channel *c, const ProtobufCMessageDesc
  *            receiving data from the channel.
  * @return <code>0</code> on success, <code>-1</code> otherwise
  */
-int sd_channel_relay(struct sd_channel *c, int nfds, ...);
+int cpn_channel_relay(struct cpn_channel *c, int nfds, ...);
 
 #endif
 

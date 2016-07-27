@@ -35,14 +35,14 @@
 
 #define LISTEN_PORT 6668
 
-static struct sd_sign_key_pair local_keys;
+static struct cpn_sign_key_pair local_keys;
 
 static struct known_keys {
-    struct sd_sign_key_public key;
+    struct cpn_sign_key_public key;
     struct known_keys *next;
 } *known_keys;
 
-static int send_discover(struct sd_channel *channel)
+static int send_discover(struct cpn_channel *channel)
 {
     DiscoverMessage msg = DISCOVER_MESSAGE__INIT;
     struct known_keys *it;
@@ -59,15 +59,15 @@ static int send_discover(struct sd_channel *channel)
         msg.known_keys = calloc(keys, sizeof(ProtobufCBinaryData));
 
         for (i = 0, it = known_keys; i < keys; i++, it = it->next) {
-            msg.known_keys[i].len = sizeof(struct sd_sign_key_public);
-            msg.known_keys[i].data = malloc(sizeof(struct sd_sign_key_public));
-            memcpy(msg.known_keys[i].data, &it->key.data, sizeof(struct sd_sign_key_public));
+            msg.known_keys[i].len = sizeof(struct cpn_sign_key_public);
+            msg.known_keys[i].data = malloc(sizeof(struct cpn_sign_key_public));
+            memcpy(msg.known_keys[i].data, &it->key.data, sizeof(struct cpn_sign_key_public));
         }
     } else {
         msg.known_keys = NULL;
     }
 
-    err = sd_channel_write_protobuf(channel, &msg.base);
+    err = cpn_channel_write_protobuf(channel, &msg.base);
 
     for (i = 0; i < keys; i++) {
         free(msg.known_keys[i].data);
@@ -75,18 +75,18 @@ static int send_discover(struct sd_channel *channel)
     free(msg.known_keys);
 
     if (err)
-        sd_log(LOG_LEVEL_ERROR, "Unable to send discover: %s", strerror(errno));
+        cpn_log(LOG_LEVEL_ERROR, "Unable to send discover: %s", strerror(errno));
 
     return err;
 }
 
 static void *probe(void *payload)
 {
-    struct sd_channel channel;
+    struct cpn_channel channel;
 
     UNUSED(payload);
 
-    if (sd_channel_init_from_host(&channel, "224.0.0.1", "6667", SD_CHANNEL_TYPE_UDP) < 0) {
+    if (cpn_channel_init_from_host(&channel, "224.0.0.1", "6667", SD_CHANNEL_TYPE_UDP) < 0) {
         puts("Unable to initialize channel");
         goto out;
     }
@@ -97,33 +97,33 @@ static void *probe(void *payload)
             goto out;
         }
 
-        sd_log(LOG_LEVEL_DEBUG, "Sent probe message");
+        cpn_log(LOG_LEVEL_DEBUG, "Sent probe message");
 
         sleep(5);
     }
 
 out:
-    sd_channel_close(&channel);
+    cpn_channel_close(&channel);
 
     return NULL;
 }
 
-static int handle_announce(struct sd_channel *channel)
+static int handle_announce(struct cpn_channel *channel)
 {
     struct known_keys *it;
-    struct sd_sign_key_hex remote_key;
+    struct cpn_sign_key_hex remote_key;
     AnnounceMessage *announce = NULL;
     unsigned i = 0;
     int err = -1;
 
-    if (sd_channel_receive_protobuf(channel,
+    if (cpn_channel_receive_protobuf(channel,
                 (ProtobufCMessageDescriptor *) &announce_message__descriptor,
                 (ProtobufCMessage **) &announce) < 0) {
         puts("Unable to receive protobuf");
         goto out;
     }
 
-    if (sd_sign_key_hex_from_bin(&remote_key,
+    if (cpn_sign_key_hex_from_bin(&remote_key,
                 announce->sign_key.data, announce->sign_key.len) < 0)
     {
         puts("Unable to retrieve remote sign key");
@@ -132,9 +132,9 @@ static int handle_announce(struct sd_channel *channel)
 
     for (it = known_keys; it; it = it->next) {
         if (!memcmp(it->key.data, announce->sign_key.data,
-                    sizeof(struct sd_sign_key_public)))
+                    sizeof(struct cpn_sign_key_public)))
         {
-            sd_log(LOG_LEVEL_DEBUG, "Ignoring known key %s", remote_key.data);
+            cpn_log(LOG_LEVEL_DEBUG, "Ignoring known key %s", remote_key.data);
             err = 0;
             goto out;
         }
@@ -142,7 +142,7 @@ static int handle_announce(struct sd_channel *channel)
 
     it = malloc(sizeof(struct known_keys));
     it->next = known_keys;
-    memcpy(&it->key, announce->sign_key.data, sizeof(struct sd_sign_key_public));
+    memcpy(&it->key, announce->sign_key.data, sizeof(struct cpn_sign_key_public));
     known_keys = it;
 
     printf("%s - %s (v%s)\n", announce->name, remote_key.data, announce->version);
@@ -164,25 +164,25 @@ out:
 
 static void undirected_discovery()
 {
-    struct sd_server server;
-    struct sd_channel channel;
-    struct sd_thread t;
+    struct cpn_server server;
+    struct cpn_channel channel;
+    struct cpn_thread t;
 
     channel.fd = -1;
 
-    sd_spawn(&t, probe, NULL);
+    cpn_spawn(&t, probe, NULL);
 
-    if (sd_server_init(&server, NULL, "6668", SD_CHANNEL_TYPE_UDP) < 0) {
+    if (cpn_server_init(&server, NULL, "6668", SD_CHANNEL_TYPE_UDP) < 0) {
         puts("Unable to init listening channel");
         goto out;
     }
 
-    if (sd_server_enable_broadcast(&server) < 0) {
+    if (cpn_server_enable_broadcast(&server) < 0) {
         puts("Unable to enable broadcasting");
         goto out;
     }
 
-    if (sd_server_accept(&server, &channel) < 0) {
+    if (cpn_server_accept(&server, &channel) < 0) {
         puts("Unable to accept connection");
         goto out;
     }
@@ -195,25 +195,25 @@ static void undirected_discovery()
     }
 
 out:
-    sd_kill(&t);
+    cpn_kill(&t);
 }
 
-static void directed_discovery(const struct sd_sign_key_public *remote_key,
+static void directed_discovery(const struct cpn_sign_key_public *remote_key,
         const char *host, const char *port)
 {
-    struct sd_channel channel;
+    struct cpn_channel channel;
 
-    if (sd_channel_init_from_host(&channel, host, port, SD_CHANNEL_TYPE_TCP) < 0) {
+    if (cpn_channel_init_from_host(&channel, host, port, SD_CHANNEL_TYPE_TCP) < 0) {
         puts("Unable to initiate channel");
         goto out;
     }
 
-    if (sd_channel_connect(&channel) < 0) {
+    if (cpn_channel_connect(&channel) < 0) {
         puts("Unable to connect");
         goto out;
     }
 
-    if (sd_proto_initiate_encryption(&channel, &local_keys, remote_key) < 0) {
+    if (cpn_proto_initiate_encryption(&channel, &local_keys, remote_key) < 0) {
         puts("Unable to initiate encryption");
         goto out;
     }
@@ -229,7 +229,7 @@ static void directed_discovery(const struct sd_sign_key_public *remote_key,
     }
 
 out:
-    sd_channel_close(&channel);
+    cpn_channel_close(&channel);
 }
 
 int main(int argc, char *argv[])
@@ -252,7 +252,7 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    if (sd_sign_key_pair_from_config_file(&local_keys, argv[1]) < 0) {
+    if (cpn_sign_key_pair_from_config_file(&local_keys, argv[1]) < 0) {
         puts("Could not parse config");
         return -1;
     }
@@ -260,9 +260,9 @@ int main(int argc, char *argv[])
     if (argc == 2) {
         undirected_discovery();
     } else if (argc == 5) {
-        struct sd_sign_key_public remote_key;
+        struct cpn_sign_key_public remote_key;
 
-        if (sd_sign_key_public_from_hex(&remote_key, argv[2]) < 0) {
+        if (cpn_sign_key_public_from_hex(&remote_key, argv[2]) < 0) {
             return -1;
         }
 
