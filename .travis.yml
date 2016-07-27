@@ -31,7 +31,7 @@ install:
 
 script:
     - ./scripts/build.sh
-    - ./source/sd/build/sd-test --verbose
-    - ./source/sd/build/sd-bench-throughput --encrypted 256 512
-    - ./source/sd/build/sd-bench-throughput --plain 256 512
-    - ./source/sd/build/sd-bench-latency 512
+    - ./build/sd-test --verbose
+    - ./build/sd-bench-throughput --encrypted 256 512
+    - ./build/sd-bench-throughput --plain 256 512
+    - ./build/sd-bench-latency 512

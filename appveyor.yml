@@ -9,10 +9,10 @@ cache:
 
 install:
     - C:\msys64\usr\bin\pacman.exe -Sy --noconfirm cmake
-    - C:\msys64\usr\bin\sh.exe --login /c/projects/sd/scripts/deps.sh
+    - C:\msys64\usr\bin\sh.exe --login /c/projects/capone-core/scripts/deps.sh
 
 build_script:
-    - C:\msys64\usr\bin\sh.exe --login /c/projects/sd/scripts/build.sh
+    - C:\msys64\usr\bin\sh.exe --login /c/projects/capone-core/scripts/build.sh
 
 test_script:
-    - C:\msys64\usr\bin\sh.exe --login -c 'PATH="${PATH}:${HOME}/local/bin" /c/projects/sd/source/sd/build/sd-test.exe --verbose'
+    - C:\msys64\usr\bin\sh.exe --login -c 'PATH="${PATH}:${HOME}/local/bin" /c/projects/capone-core/build/sd-test.exe --verbose'
