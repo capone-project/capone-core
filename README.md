@@ -1,4 +1,4 @@
-# SD
+# Capone
 
 [![Travis](https://travis-ci.org/capone-project/capone-core.svg?branch=master)](https://travis-ci.org/capone-project/capone-core)
 [![AppVeyor](https://ci.appveyor.com/api/projects/status/7v7vpe7xnxojxhh0/branch/master?svg=true)](https://ci.appveyor.com/project/capone-project/capone-core/branch/master)
