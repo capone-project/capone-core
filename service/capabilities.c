@@ -209,7 +209,7 @@ static int relay_capability_request(struct cpn_channel *channel,
 
     if ((ret = cpn_proto_initiate_connection(&service_channel,
                     request->service_address, request->service_port,
-                    &local_keys, &service_key, SD_CONNECTION_TYPE_REQUEST)) < 0) {
+                    &local_keys, &service_key, CPN_CONNECTION_TYPE_REQUEST)) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to initiate connection type to remote service");
         goto out;
     }
@@ -327,7 +327,7 @@ static int invoke_request(struct cpn_channel *channel)
 {
     Capability *capability;
     struct cpn_sign_key_hex identity_hex, service_hex;
-    char cap_hex[SD_CAP_SECRET_LEN * 2 + 1];
+    char cap_hex[CPN_CAP_SECRET_LEN * 2 + 1];
 
     if (cpn_channel_receive_protobuf(channel, &capability__descriptor,
                 (ProtobufCMessage **) &capability) < 0)

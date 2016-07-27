@@ -27,8 +27,8 @@
  * @{
  */
 
-#ifndef SD_LIB_COMMON_H
-#define SD_LIB_COMMON_H
+#ifndef CPN_LIB_COMMON_H
+#define CPN_LIB_COMMON_H
 
 #include <inttypes.h>
 #include <pthread.h>

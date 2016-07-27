@@ -48,7 +48,7 @@ static void *client(void *payload)
         goto out;
     }
 
-    if (cpn_channel_init_from_host(&channel, "127.0.0.1", PORT, SD_CHANNEL_TYPE_TCP) < 0) {
+    if (cpn_channel_init_from_host(&channel, "127.0.0.1", PORT, CPN_CHANNEL_TYPE_TCP) < 0) {
         puts("Unable to init connection");
         goto out;
     }
@@ -58,7 +58,7 @@ static void *client(void *payload)
     }
 
     if (encrypt) {
-        cpn_channel_enable_encryption(&channel, &key, SD_CHANNEL_NONCE_CLIENT);
+        cpn_channel_enable_encryption(&channel, &key, CPN_CHANNEL_NONCE_CLIENT);
     }
 
     cpn_channel_set_blocklen(&channel, args->blocklen);
@@ -132,7 +132,7 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    if (cpn_server_init(&server, NULL, PORT, SD_CHANNEL_TYPE_TCP) < 0) {
+    if (cpn_server_init(&server, NULL, PORT, CPN_CHANNEL_TYPE_TCP) < 0) {
         puts("Unable to init server");
         return -1;
     }
@@ -153,7 +153,7 @@ int main(int argc, char *argv[])
     }
 
     if (encrypt) {
-        cpn_channel_enable_encryption(&channel, &key, SD_CHANNEL_NONCE_SERVER);
+        cpn_channel_enable_encryption(&channel, &key, CPN_CHANNEL_NONCE_SERVER);
     }
 
     cpn_channel_set_blocklen(&channel, args.blocklen);

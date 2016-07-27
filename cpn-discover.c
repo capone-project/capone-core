@@ -86,7 +86,7 @@ static void *probe(void *payload)
 
     UNUSED(payload);
 
-    if (cpn_channel_init_from_host(&channel, "224.0.0.1", "6667", SD_CHANNEL_TYPE_UDP) < 0) {
+    if (cpn_channel_init_from_host(&channel, "224.0.0.1", "6667", CPN_CHANNEL_TYPE_UDP) < 0) {
         puts("Unable to initialize channel");
         goto out;
     }
@@ -172,7 +172,7 @@ static void undirected_discovery()
 
     cpn_spawn(&t, probe, NULL);
 
-    if (cpn_server_init(&server, NULL, "6668", SD_CHANNEL_TYPE_UDP) < 0) {
+    if (cpn_server_init(&server, NULL, "6668", CPN_CHANNEL_TYPE_UDP) < 0) {
         puts("Unable to init listening channel");
         goto out;
     }
@@ -203,7 +203,7 @@ static void directed_discovery(const struct cpn_sign_key_public *remote_key,
 {
     struct cpn_channel channel;
 
-    if (cpn_channel_init_from_host(&channel, host, port, SD_CHANNEL_TYPE_TCP) < 0) {
+    if (cpn_channel_init_from_host(&channel, host, port, CPN_CHANNEL_TYPE_TCP) < 0) {
         puts("Unable to initiate channel");
         goto out;
     }

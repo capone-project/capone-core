@@ -55,7 +55,7 @@ static int invoke(struct cpn_channel *channel, int argc, char **argv)
     UNUSED(argc);
     UNUSED(argv);
 
-    if (cpn_channel_init_from_host(&synergy_channel, "127.0.0.1", "34589", SD_CHANNEL_TYPE_TCP) < 0) {
+    if (cpn_channel_init_from_host(&synergy_channel, "127.0.0.1", "34589", CPN_CHANNEL_TYPE_TCP) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not initialize local synergy channel");
         return -1;
     }
@@ -115,7 +115,7 @@ static int handle(struct cpn_channel *channel,
     UNUSED(session);
     UNUSED(invoker);
 
-    if (cpn_server_init(&server, "127.0.0.1", NULL, SD_CHANNEL_TYPE_TCP) < 0) {
+    if (cpn_server_init(&server, "127.0.0.1", NULL, CPN_CHANNEL_TYPE_TCP) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not initialize synergy relay socket");
         return -1;
     }

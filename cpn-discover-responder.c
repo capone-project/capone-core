@@ -93,7 +93,7 @@ static void handle_udp(struct cpn_channel *channel)
     }
     snprintf(port, sizeof(port), "%u", msg->port);
 
-    if (cpn_channel_init_from_host(&client_channel, host, port, SD_CHANNEL_TYPE_UDP) < 0) {
+    if (cpn_channel_init_from_host(&client_channel, host, port, CPN_CHANNEL_TYPE_UDP) < 0) {
         cpn_log(LOG_LEVEL_ERROR,"Could not initialize client channel");
         goto out;
     }
@@ -142,12 +142,12 @@ static void handle_connections()
     fd_set fds;
     int nfds;
 
-    if (cpn_server_init(&udp_server, NULL, LISTEN_PORT, SD_CHANNEL_TYPE_UDP) < 0) {
+    if (cpn_server_init(&udp_server, NULL, LISTEN_PORT, CPN_CHANNEL_TYPE_UDP) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to init listening channel");
         return;
     }
 
-    if (cpn_server_init(&tcp_server, NULL, LISTEN_PORT, SD_CHANNEL_TYPE_TCP) < 0) {
+    if (cpn_server_init(&tcp_server, NULL, LISTEN_PORT, CPN_CHANNEL_TYPE_TCP) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to init listening channel");
         return;
     }

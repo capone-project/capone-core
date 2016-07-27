@@ -39,8 +39,8 @@
  * @{
  */
 
-#ifndef SD_LIB_KEYS_H
-#define SD_LIB_KEYS_H
+#ifndef CPN_LIB_KEYS_H
+#define CPN_LIB_KEYS_H
 
 #include <sodium.h>
 

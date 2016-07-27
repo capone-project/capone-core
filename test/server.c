@@ -25,7 +25,7 @@ static enum cpn_channel_type type;
 
 static int setup()
 {
-    type = SD_CHANNEL_TYPE_TCP;
+    type = CPN_CHANNEL_TYPE_TCP;
     return 0;
 }
 
@@ -66,7 +66,7 @@ static void connect_to_localhost_succeeds()
     uint8_t data[] = "test";
 
     assert_success(cpn_server_init(&server, "127.0.0.1", "8080", type));
-    if (type == SD_CHANNEL_TYPE_TCP)
+    if (type == CPN_CHANNEL_TYPE_TCP)
         assert_success(cpn_server_listen(&server));
 
     assert_success(cpn_channel_init_from_host(&channel, "127.0.0.1", "8080", type));

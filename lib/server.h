@@ -30,8 +30,8 @@
  * @{
  */
 
-#ifndef SD_LIB_SERVER_H
-#define SD_LIB_SERVER_H
+#ifndef CPN_LIB_SERVER_H
+#define CPN_LIB_SERVER_H
 
 #include "lib/channel.h"
 

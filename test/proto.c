@@ -75,8 +75,8 @@ static int setup()
     memset(&remote, 0, sizeof(remote));
 
     stub_sockets(&local, &remote);
-    local.type = remote.type = SD_CHANNEL_TYPE_TCP;
-    local.crypto = remote.crypto = SD_CHANNEL_CRYPTO_NONE;
+    local.type = remote.type = CPN_CHANNEL_TYPE_TCP;
+    local.crypto = remote.crypto = CPN_CHANNEL_CRYPTO_NONE;
 
     return 0;
 }
@@ -165,14 +165,14 @@ static void connection_initiation_succeeds()
     struct initiate_connection_args args;
     struct cpn_sign_key_public key;
     enum cpn_connection_type types[] = {
-        SD_CONNECTION_TYPE_CONNECT,
-        SD_CONNECTION_TYPE_QUERY,
-        SD_CONNECTION_TYPE_REQUEST
+        CPN_CONNECTION_TYPE_CONNECT,
+        CPN_CONNECTION_TYPE_QUERY,
+        CPN_CONNECTION_TYPE_REQUEST
     };
     enum cpn_connection_type type;
     size_t i;
 
-    assert_success(cpn_server_init(&s, "127.0.0.1", "31248", SD_CHANNEL_TYPE_TCP));
+    assert_success(cpn_server_init(&s, "127.0.0.1", "31248", CPN_CHANNEL_TYPE_TCP));
     assert_success(cpn_server_listen(&s));
 
     for (i = 0; i < ARRAY_SIZE(types); i++) {
@@ -203,7 +203,7 @@ static void encryption_initiation_succeeds()
                 &local_keys, &remote_keys.pk));
     cpn_join(&t, NULL);
 
-    assert(local.crypto == SD_CHANNEL_CRYPTO_SYMMETRIC);
+    assert(local.crypto == CPN_CHANNEL_CRYPTO_SYMMETRIC);
     assert_memory_equal(&local.key, &remote.key, sizeof(local.key));
     assert_memory_equal(local.local_nonce, remote.remote_nonce, sizeof(local.local_nonce));
     assert_memory_equal(local.remote_nonce, remote.local_nonce, sizeof(local.local_nonce));
@@ -355,7 +355,7 @@ static void service_connects()
 
     assert_success(cpn_sessions_add(&sessionid, params, ARRAY_SIZE(params)));
     assert_success(cpn_caps_add(sessionid));
-    assert_success(cpn_caps_create_reference(&cap, sessionid, SD_CAP_RIGHT_EXEC, &local_keys.pk));
+    assert_success(cpn_caps_create_reference(&cap, sessionid, CPN_CAP_RIGHT_EXEC, &local_keys.pk));
 
     assert_success(cpn_proto_initiate_encryption(&local, &local_keys,
                 &remote_keys.pk));
@@ -396,7 +396,7 @@ static void termination_kills_session()
 
     assert_success(cpn_sessions_add(&sessionid, NULL, 0));
     assert_success(cpn_caps_add(sessionid));
-    assert_success(cpn_caps_create_reference(&cap, sessionid, SD_CAP_RIGHT_TERM, &local_keys.pk));
+    assert_success(cpn_caps_create_reference(&cap, sessionid, CPN_CAP_RIGHT_TERM, &local_keys.pk));
 
     cpn_spawn(&t, handle_termination, &args);
     assert_success(cpn_proto_initiate_termination(&local, &cap));

@@ -29,8 +29,8 @@
  * @{
  */
 
-#ifndef SD_LIB_ACL_H
-#define SD_LIB_ACL_H
+#ifndef CPN_LIB_ACL_H
+#define CPN_LIB_ACL_H
 
 #include <stdbool.h>
 
@@ -42,9 +42,9 @@
 enum cpn_acl_right {
     /** Allow the identity to execute the action the ACL is
      * associated with */
-    SD_ACL_RIGHT_EXEC,
+    CPN_ACL_RIGHT_EXEC,
     /** Allow the identity to revoke access to the object */
-    SD_ACL_RIGHT_TERMINATE
+    CPN_ACL_RIGHT_TERMINATE
 };
 
 /** An entry in the access control list */
@@ -63,7 +63,7 @@ struct cpn_acl {
 };
 
 /** Initialize an access control list */
-#define SD_ACL_INIT { NULL }
+#define CPN_ACL_INIT { NULL }
 
 /** @brief Initialize an ACL
  *

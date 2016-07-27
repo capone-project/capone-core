@@ -25,7 +25,7 @@
 
 struct caps {
     uint32_t objectid;
-    uint8_t secret[SD_CAP_SECRET_LEN];
+    uint8_t secret[CPN_CAP_SECRET_LEN];
     struct caps *next;
 };
 
@@ -38,18 +38,18 @@ static int hash(uint8_t *out,
         const struct cpn_sign_key_public *key)
 {
     crypto_generichash_state state;
-    uint8_t hash[SD_CAP_SECRET_LEN];
+    uint8_t hash[CPN_CAP_SECRET_LEN];
 
     crypto_generichash_init(&state, NULL, 0, sizeof(secret));
 
     crypto_generichash_update(&state, key->data, sizeof(key->data));
     crypto_generichash_update(&state, (unsigned char *) &objectid, sizeof(objectid));
     crypto_generichash_update(&state, (unsigned char *) &rights, sizeof(rights));
-    crypto_generichash_update(&state, (unsigned char *) secret, SD_CAP_SECRET_LEN);
+    crypto_generichash_update(&state, (unsigned char *) secret, CPN_CAP_SECRET_LEN);
 
     crypto_generichash_final(&state, hash, sizeof(hash));
 
-    memcpy(out, hash, SD_CAP_SECRET_LEN);
+    memcpy(out, hash, CPN_CAP_SECRET_LEN);
 
     return 0;
 }
@@ -57,7 +57,7 @@ static int hash(uint8_t *out,
 int cpn_cap_parse(struct cpn_cap *out, const char *id, const char *secret, enum cpn_cap_rights rights)
 {
     uint32_t objectid;
-    uint8_t hash[SD_CAP_SECRET_LEN];
+    uint8_t hash[CPN_CAP_SECRET_LEN];
     int err = -1;
 
     if (parse_uint32t(&objectid, id) < 0) {
@@ -65,7 +65,7 @@ int cpn_cap_parse(struct cpn_cap *out, const char *id, const char *secret, enum 
         goto out;
     }
 
-    if (strlen(secret) != SD_CAP_SECRET_LEN * 2) {
+    if (strlen(secret) != CPN_CAP_SECRET_LEN * 2) {
         cpn_log(LOG_LEVEL_ERROR, "Invalid secret length");
         goto out;
     }
@@ -79,7 +79,7 @@ int cpn_cap_parse(struct cpn_cap *out, const char *id, const char *secret, enum 
 
     out->objectid = objectid;
     out->rights = rights;
-    memcpy(out->secret, hash, SD_CAP_SECRET_LEN);
+    memcpy(out->secret, hash, CPN_CAP_SECRET_LEN);
 
     err = 0;
 
@@ -89,12 +89,12 @@ out:
 
 int cpn_cap_from_protobuf(struct cpn_cap *out, const CapabilityMessage *msg)
 {
-    if (msg->secret.len != SD_CAP_SECRET_LEN)
+    if (msg->secret.len != CPN_CAP_SECRET_LEN)
         return -1;
 
     out->objectid = msg->objectid;
     out->rights = msg->rights;
-    memcpy(out->secret, msg->secret.data, SD_CAP_SECRET_LEN);
+    memcpy(out->secret, msg->secret.data, CPN_CAP_SECRET_LEN);
 
     return 0;
 }
@@ -104,9 +104,9 @@ int cpn_cap_to_protobuf(CapabilityMessage *out, const struct cpn_cap *cap)
     capability_message__init(out);
     out->objectid = cap->objectid;
     out->rights = cap->rights;
-    out->secret.data = malloc(SD_CAP_SECRET_LEN);
-    out->secret.len = SD_CAP_SECRET_LEN;
-    memcpy(out->secret.data, cap->secret, SD_CAP_SECRET_LEN);
+    out->secret.data = malloc(CPN_CAP_SECRET_LEN);
+    out->secret.len = CPN_CAP_SECRET_LEN;
+    memcpy(out->secret.data, cap->secret, CPN_CAP_SECRET_LEN);
 
     return 0;
 }
@@ -122,7 +122,7 @@ int cpn_caps_add(uint32_t objectid)
 
     cap = malloc(sizeof(struct caps));
     cap->objectid = objectid;
-    randombytes_buf(cap->secret, SD_CAP_SECRET_LEN);
+    randombytes_buf(cap->secret, CPN_CAP_SECRET_LEN);
     cap->next = clist;
 
     clist = cap;
@@ -188,7 +188,7 @@ int cpn_caps_create_reference(struct cpn_cap *out, uint32_t objectid, uint32_t r
 int cpn_caps_verify(const struct cpn_cap *ref, const struct cpn_sign_key_public *key, uint32_t rights)
 {
     struct caps *e;
-    uint8_t secret[SD_CAP_SECRET_LEN];
+    uint8_t secret[CPN_CAP_SECRET_LEN];
 
     if (rights & ~ref->rights)
         return -1;
@@ -200,7 +200,7 @@ int cpn_caps_verify(const struct cpn_cap *ref, const struct cpn_sign_key_public 
         /* Secret must the root secret */
         if (hash(secret, ref->objectid, ref->rights, e->secret, key) < 0)
             continue;
-        if (memcmp(secret, ref->secret, SD_CAP_SECRET_LEN))
+        if (memcmp(secret, ref->secret, CPN_CAP_SECRET_LEN))
             continue;
 
         return 0;

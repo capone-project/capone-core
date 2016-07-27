@@ -24,24 +24,24 @@
  * @{
  */
 
-#ifndef SD_LIB_CAPS_H
-#define SD_LIB_CAPS_H
+#ifndef CPN_LIB_CAPS_H
+#define CPN_LIB_CAPS_H
 
 #include <stdbool.h>
 #include "lib/keys.h"
 #include "proto/connect.pb-c.h"
 
-#define SD_CAP_SECRET_LEN 32
+#define CPN_CAP_SECRET_LEN 32
 
 enum cpn_cap_rights {
-    SD_CAP_RIGHT_EXEC = 1 << 0,
-    SD_CAP_RIGHT_TERM = 1 << 1
+    CPN_CAP_RIGHT_EXEC = 1 << 0,
+    CPN_CAP_RIGHT_TERM = 1 << 1
 };
 
 struct cpn_cap {
     uint32_t objectid;
     uint32_t rights;
-    uint8_t secret[SD_CAP_SECRET_LEN];
+    uint8_t secret[CPN_CAP_SECRET_LEN];
 };
 
 /** @brief Parse a capability from strings */

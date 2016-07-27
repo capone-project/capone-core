@@ -52,7 +52,7 @@ static void *client(void *payload)
     time = 0;
 
     for (i = 0; i < REPEATS; i++) {
-        if (cpn_channel_init_from_host(&channel, "127.0.0.1", PORT, SD_CHANNEL_TYPE_TCP) < 0) {
+        if (cpn_channel_init_from_host(&channel, "127.0.0.1", PORT, CPN_CHANNEL_TYPE_TCP) < 0) {
             puts("Unable to init connection");
             return NULL;
         }
@@ -119,7 +119,7 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    if (cpn_server_init(&server, NULL, PORT, SD_CHANNEL_TYPE_TCP) < 0) {
+    if (cpn_server_init(&server, NULL, PORT, CPN_CHANNEL_TYPE_TCP) < 0) {
         puts("Unable to init server");
         return -1;
     }

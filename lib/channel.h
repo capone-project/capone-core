@@ -57,8 +57,8 @@
  * @{
  */
 
-#ifndef SD_LIB_CHANNEL_H
-#define SD_LIB_CHANNEL_H
+#ifndef CPN_LIB_CHANNEL_H
+#define CPN_LIB_CHANNEL_H
 
 #include <sys/socket.h>
 #include <stdbool.h>
@@ -72,25 +72,25 @@
 /** @brief Network communication type */
 enum cpn_channel_type {
     /** Use UDP as underlying network protocol */
-    SD_CHANNEL_TYPE_UDP,
+    CPN_CHANNEL_TYPE_UDP,
     /** Use TCP as underlying network protocol */
-    SD_CHANNEL_TYPE_TCP
+    CPN_CHANNEL_TYPE_TCP
 };
 
 /** @brief Encryption type */
 enum cpn_channel_crypto {
     /** No encryption is used */
-    SD_CHANNEL_CRYPTO_NONE,
+    CPN_CHANNEL_CRYPTO_NONE,
     /** Encrypt the channel with a symmetric key */
-    SD_CHANNEL_CRYPTO_SYMMETRIC
+    CPN_CHANNEL_CRYPTO_SYMMETRIC
 };
 
 /** @brief Wether to generate the client- or server-side nonce */
 enum cpn_channel_nonce {
     /** Use a client-side nonce starting at <code>0</code> */
-    SD_CHANNEL_NONCE_CLIENT,
+    CPN_CHANNEL_NONCE_CLIENT,
     /** Use a server-side nonce starting at <code>1</code> */
-    SD_CHANNEL_NONCE_SERVER
+    CPN_CHANNEL_NONCE_SERVER
 };
 
 /** @brief A channel representing a connection to a remote peer

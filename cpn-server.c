@@ -35,8 +35,8 @@ struct handle_connection_args {
     struct cpn_channel channel;
 };
 
-static struct cpn_acl request_acl = SD_ACL_INIT;
-static struct cpn_acl query_acl = SD_ACL_INIT;
+static struct cpn_acl request_acl = CPN_ACL_INIT;
+static struct cpn_acl query_acl = CPN_ACL_INIT;
 
 static struct cpn_sign_key_pair local_keys;
 static struct cpn_service service;
@@ -64,7 +64,7 @@ static int read_acl(struct cpn_acl *acl, const char *file)
             goto out_err;
         }
 
-        if (cpn_acl_add_right(acl, &pk, SD_ACL_RIGHT_EXEC) < 0) {
+        if (cpn_acl_add_right(acl, &pk, CPN_ACL_RIGHT_EXEC) < 0) {
             cpn_log(LOG_LEVEL_ERROR, "Could not add right to ACL");
             goto out_err;
         }
@@ -134,10 +134,10 @@ static void *handle_connection(void *payload)
     }
 
     switch (type) {
-        case SD_CONNECTION_TYPE_QUERY:
+        case CPN_CONNECTION_TYPE_QUERY:
             cpn_log(LOG_LEVEL_DEBUG, "Received query");
 
-            if (!cpn_acl_is_allowed(&query_acl, &remote_key, SD_ACL_RIGHT_EXEC)) {
+            if (!cpn_acl_is_allowed(&query_acl, &remote_key, CPN_ACL_RIGHT_EXEC)) {
                 cpn_log(LOG_LEVEL_ERROR, "Received unauthorized query");
                 goto out;
             }
@@ -148,10 +148,10 @@ static void *handle_connection(void *payload)
             }
 
             goto out;
-        case SD_CONNECTION_TYPE_REQUEST:
+        case CPN_CONNECTION_TYPE_REQUEST:
             cpn_log(LOG_LEVEL_DEBUG, "Received request");
 
-            if (!cpn_acl_is_allowed(&request_acl, &remote_key, SD_ACL_RIGHT_EXEC)) {
+            if (!cpn_acl_is_allowed(&request_acl, &remote_key, CPN_ACL_RIGHT_EXEC)) {
                 cpn_log(LOG_LEVEL_ERROR, "Received unauthorized query");
                 goto out;
             }
@@ -162,7 +162,7 @@ static void *handle_connection(void *payload)
             }
 
             goto out;
-        case SD_CONNECTION_TYPE_CONNECT:
+        case CPN_CONNECTION_TYPE_CONNECT:
             cpn_log(LOG_LEVEL_DEBUG, "Received connect");
 
             if (cpn_proto_handle_session(&args->channel, &remote_key, &service, args->cfg) < 0)
@@ -171,7 +171,7 @@ static void *handle_connection(void *payload)
             }
 
             goto out;
-        case SD_CONNECTION_TYPE_TERMINATE:
+        case CPN_CONNECTION_TYPE_TERMINATE:
             cpn_log(LOG_LEVEL_DEBUG, "Received termination request");
 
             if (cpn_proto_handle_termination(&args->channel, &remote_key) < 0) {
@@ -222,10 +222,10 @@ static int setup(struct cpn_cfg *cfg, int argc, char *argv[])
         read_acl(&query_acl, argv[4]);
     } else if (argc == 4) {
         read_acl(&request_acl, argv[3]);
-        cpn_acl_add_wildcard(&query_acl, SD_ACL_RIGHT_EXEC);
+        cpn_acl_add_wildcard(&query_acl, CPN_ACL_RIGHT_EXEC);
     } else {
-        cpn_acl_add_wildcard(&request_acl, SD_ACL_RIGHT_EXEC);
-        cpn_acl_add_wildcard(&query_acl, SD_ACL_RIGHT_EXEC);
+        cpn_acl_add_wildcard(&request_acl, CPN_ACL_RIGHT_EXEC);
+        cpn_acl_add_wildcard(&query_acl, CPN_ACL_RIGHT_EXEC);
     }
 
     if (setup_signals() < 0) {
@@ -276,7 +276,7 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    if (cpn_server_init(&server, NULL, service.port, SD_CHANNEL_TYPE_TCP) < 0) {
+    if (cpn_server_init(&server, NULL, service.port, CPN_CHANNEL_TYPE_TCP) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not set up server");
         err = -1;
         goto out;

@@ -31,8 +31,8 @@
  * @{
  */
 
-#ifndef SD_LIB_SERVICE_H
-#define SD_LIB_SERVICE_H
+#ifndef CPN_LIB_SERVICE_H
+#define CPN_LIB_SERVICE_H
 
 #include "lib/cfg.h"
 #include "lib/keys.h"

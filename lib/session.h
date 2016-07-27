@@ -56,8 +56,8 @@
  * @{
  */
 
-#ifndef SD_SESSION_H
-#define SD_SESSION_H
+#ifndef CPN_SESSION_H
+#define CPN_SESSION_H
 
 #include <inttypes.h>
 

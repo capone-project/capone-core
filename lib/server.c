@@ -37,11 +37,11 @@ static int get_server_socket(struct sockaddr_storage *addr, const char *host,
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_UNSPEC;
     switch (type) {
-        case SD_CHANNEL_TYPE_TCP:
+        case CPN_CHANNEL_TYPE_TCP:
             hints.ai_socktype = SOCK_STREAM;
             hints.ai_protocol = IPPROTO_TCP;
             break;
-        case SD_CHANNEL_TYPE_UDP:
+        case CPN_CHANNEL_TYPE_UDP:
             hints.ai_socktype = SOCK_DGRAM;
             hints.ai_protocol = IPPROTO_UDP;
             break;
@@ -164,7 +164,7 @@ int cpn_server_accept(struct cpn_server *s, struct cpn_channel *out)
     addrsize = sizeof(addr);
 
     switch (s->type) {
-        case SD_CHANNEL_TYPE_TCP:
+        case CPN_CHANNEL_TYPE_TCP:
             while (1) {
                 fd = accept(s->fd, (struct sockaddr*) &addr, &addrsize);
 
@@ -179,7 +179,7 @@ int cpn_server_accept(struct cpn_server *s, struct cpn_channel *out)
                 break;
             }
             break;
-        case SD_CHANNEL_TYPE_UDP:
+        case CPN_CHANNEL_TYPE_UDP:
             if (recvfrom(s->fd, NULL, 0, MSG_PEEK,
                         (struct sockaddr *)&addr, &addrsize) < 0) {
                 cpn_log(LOG_LEVEL_ERROR, "Could not peek message");

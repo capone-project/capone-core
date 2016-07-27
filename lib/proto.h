@@ -37,8 +37,8 @@
  * @{
  */
 
-#ifndef SD_LIB_PROTO_H
-#define SD_LIB_PROTO_H
+#ifndef CPN_LIB_PROTO_H
+#define CPN_LIB_PROTO_H
 
 #include "lib/caps.h"
 #include "lib/channel.h"
@@ -52,13 +52,13 @@
  */
 enum cpn_connection_type {
     /** @brief Query a service */
-    SD_CONNECTION_TYPE_QUERY,
+    CPN_CONNECTION_TYPE_QUERY,
     /** @brief Connect to an established session */
-    SD_CONNECTION_TYPE_CONNECT,
+    CPN_CONNECTION_TYPE_CONNECT,
     /** @brief Request a new session */
-    SD_CONNECTION_TYPE_REQUEST,
+    CPN_CONNECTION_TYPE_REQUEST,
     /** @brief Terminate an established session */
-    SD_CONNECTION_TYPE_TERMINATE
+    CPN_CONNECTION_TYPE_TERMINATE
 };
 
 /** @brief Results of a service query

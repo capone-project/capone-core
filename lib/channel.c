@@ -54,11 +54,11 @@ int getsock(struct sockaddr_storage *addr, size_t *addrlen,
     hints.ai_family = AF_UNSPEC;
     hints.ai_flags = AI_ADDRCONFIG;
     switch (type) {
-        case SD_CHANNEL_TYPE_TCP:
+        case CPN_CHANNEL_TYPE_TCP:
             hints.ai_socktype = SOCK_STREAM;
             hints.ai_protocol = IPPROTO_TCP;
             break;
-        case SD_CHANNEL_TYPE_UDP:
+        case CPN_CHANNEL_TYPE_UDP:
             hints.ai_socktype = SOCK_DGRAM;
             hints.ai_protocol = IPPROTO_UDP;
             break;
@@ -126,7 +126,7 @@ int cpn_channel_init_from_fd(struct cpn_channel *c,
 
     memset(c, 0, sizeof(struct cpn_channel));
 
-    env = getenv("SD_BLOCKLEN");
+    env = getenv("CPN_BLOCKLEN");
     if (env == NULL || parse_uint32t(&blocklen, env) < 0) {
         c->blocklen = DEFAULT_BLOCKLEN;
     } else {
@@ -136,7 +136,7 @@ int cpn_channel_init_from_fd(struct cpn_channel *c,
     c->fd = fd;
     c->type = type;
 
-    c->crypto = SD_CHANNEL_CRYPTO_NONE;
+    c->crypto = CPN_CHANNEL_CRYPTO_NONE;
     memcpy(&c->addr, addr, sizeof(c->addr));
     c->addrlen = addrlen;
 
@@ -160,7 +160,7 @@ int cpn_channel_disable_encryption(struct cpn_channel *c)
 {
     memset(&c->key, 0, sizeof(c->key));
 
-    c->crypto = SD_CHANNEL_CRYPTO_NONE;
+    c->crypto = CPN_CHANNEL_CRYPTO_NONE;
 
     return 0;
 }
@@ -174,15 +174,15 @@ int cpn_channel_enable_encryption(struct cpn_channel *c,
     memset(c->remote_nonce, 0, sizeof(c->remote_nonce));
 
     switch (nonce) {
-        case SD_CHANNEL_NONCE_CLIENT:
+        case CPN_CHANNEL_NONCE_CLIENT:
             sodium_increment(c->remote_nonce, sizeof(c->remote_nonce));
             break;
-        case SD_CHANNEL_NONCE_SERVER:
+        case CPN_CHANNEL_NONCE_SERVER:
             sodium_increment(c->local_nonce, sizeof(c->local_nonce));
             break;
     }
 
-    c->crypto = SD_CHANNEL_CRYPTO_SYMMETRIC;
+    c->crypto = CPN_CHANNEL_CRYPTO_SYMMETRIC;
 
     return 0;
 }
@@ -240,10 +240,10 @@ static int write_data(struct cpn_channel *c, uint8_t *data, uint32_t datalen)
 
     while (written != datalen) {
         switch (c->type) {
-            case SD_CHANNEL_TYPE_TCP:
+            case CPN_CHANNEL_TYPE_TCP:
                 ret = send(c->fd, data + written, datalen - written, 0);
                 break;
-            case SD_CHANNEL_TYPE_UDP:
+            case CPN_CHANNEL_TYPE_UDP:
                 ret = sendto(c->fd, data + written, datalen - written, 0,
                         (struct sockaddr *) &c->addr, sizeof(c->addr));
                 break;
@@ -276,7 +276,7 @@ int cpn_channel_write_data(struct cpn_channel *c, uint8_t *data, uint32_t datale
 
     while (offset || written != datalen) {
         uint32_t len;
-        if (c->crypto == SD_CHANNEL_CRYPTO_SYMMETRIC) {
+        if (c->crypto == CPN_CHANNEL_CRYPTO_SYMMETRIC) {
             len = MIN(datalen - written, c->blocklen - offset - crypto_secretbox_MACBYTES);
         } else {
             len = MIN(datalen - written, c->blocklen - offset);
@@ -285,7 +285,7 @@ int cpn_channel_write_data(struct cpn_channel *c, uint8_t *data, uint32_t datale
         memset(block + offset, 0, c->blocklen - offset);
         memcpy(block + offset, data + written, len);
 
-        if (c->crypto == SD_CHANNEL_CRYPTO_SYMMETRIC) {
+        if (c->crypto == CPN_CHANNEL_CRYPTO_SYMMETRIC) {
             if (crypto_secretbox_easy(block, block, c->blocklen - crypto_secretbox_MACBYTES,
                         c->local_nonce, c->key.data) < 0) {
                 cpn_log(LOG_LEVEL_ERROR, "Unable to encrypt message");
@@ -365,7 +365,7 @@ ssize_t cpn_channel_receive_data(struct cpn_channel *c, uint8_t *out, size_t max
             return -1;
         }
 
-        if (c->crypto == SD_CHANNEL_CRYPTO_SYMMETRIC) {
+        if (c->crypto == CPN_CHANNEL_CRYPTO_SYMMETRIC) {
             if (crypto_secretbox_open_easy(block, block, c->blocklen,
                         c->remote_nonce, c->key.data) < 0)
             {
@@ -385,7 +385,7 @@ ssize_t cpn_channel_receive_data(struct cpn_channel *c, uint8_t *out, size_t max
             }
         }
 
-        if (c->crypto == SD_CHANNEL_CRYPTO_SYMMETRIC) {
+        if (c->crypto == CPN_CHANNEL_CRYPTO_SYMMETRIC) {
             blocklen = MIN(pkglen - received, c->blocklen - offset - crypto_secretbox_MACBYTES);
         } else {
             blocklen = MIN(pkglen - received, c->blocklen - offset);

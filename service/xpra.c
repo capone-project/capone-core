@@ -53,7 +53,7 @@ static int invoke(struct cpn_channel *channel, int argc, char **argv)
 
     port = argv[1];
 
-    if (cpn_channel_init_from_host(&xpra_channel, "127.0.0.1", port, SD_CHANNEL_TYPE_TCP) < 0) {
+    if (cpn_channel_init_from_host(&xpra_channel, "127.0.0.1", port, CPN_CHANNEL_TYPE_TCP) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not initialize local xpra channel");
         return -1;
     }
@@ -105,7 +105,7 @@ static int handle(struct cpn_channel *channel,
     UNUSED(invoker);
     UNUSED(session);
 
-    if (cpn_server_init(&server, "127.0.0.1", NULL, SD_CHANNEL_TYPE_TCP) < 0) {
+    if (cpn_server_init(&server, "127.0.0.1", NULL, CPN_CHANNEL_TYPE_TCP) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not initialize xpra relay socket");
         return -1;
     }

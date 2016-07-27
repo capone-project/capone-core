@@ -66,7 +66,7 @@ static int cmd_query(int argc, char *argv[])
     }
 
     if (cpn_proto_initiate_connection(&channel, host, port,
-                &local_keys, &remote_key, SD_CONNECTION_TYPE_QUERY) < 0) {
+                &local_keys, &remote_key, CPN_CONNECTION_TYPE_QUERY) < 0) {
         puts("Could not establish connection");
         return -1;
     }
@@ -105,7 +105,7 @@ static int cmd_query(int argc, char *argv[])
 
 static int cmd_request(int argc, char *argv[])
 {
-    char invoker_hex[SD_CAP_SECRET_LEN * 2 + 1], requester_hex[SD_CAP_SECRET_LEN * 2 + 1];
+    char invoker_hex[CPN_CAP_SECRET_LEN * 2 + 1], requester_hex[CPN_CAP_SECRET_LEN * 2 + 1];
     const char *config, *invoker, *key, *host, *port;
     struct cpn_cap requester_cap, invoker_cap;
     struct cpn_sign_key_public invoker_key;
@@ -146,7 +146,7 @@ static int cmd_request(int argc, char *argv[])
     }
 
     if (cpn_proto_initiate_connection(&channel, host, port,
-                &local_keys, &remote_key, SD_CONNECTION_TYPE_REQUEST) < 0) {
+                &local_keys, &remote_key, CPN_CONNECTION_TYPE_REQUEST) < 0) {
         puts("Could not establish connection");
         goto out_err;
     }
@@ -159,9 +159,9 @@ static int cmd_request(int argc, char *argv[])
     }
 
     sodium_bin2hex(invoker_hex, sizeof(invoker_hex),
-            invoker_cap.secret, SD_CAP_SECRET_LEN);
+            invoker_cap.secret, CPN_CAP_SECRET_LEN);
     sodium_bin2hex(requester_hex, sizeof(requester_hex),
-            requester_cap.secret, SD_CAP_SECRET_LEN);
+            requester_cap.secret, CPN_CAP_SECRET_LEN);
 
     printf("sessionid:          %"PRIu32"\n"
            "invoker-secret:     %s\n"
@@ -213,13 +213,13 @@ static int cmd_connect(int argc, char *argv[])
         return -1;
     }
 
-    if (cpn_cap_parse(&cap, session, secret, SD_CAP_RIGHT_EXEC | SD_CAP_RIGHT_TERM) < 0) {
+    if (cpn_cap_parse(&cap, session, secret, CPN_CAP_RIGHT_EXEC | CPN_CAP_RIGHT_TERM) < 0) {
         puts("Invalid capability");
         return -1;
     }
 
     if (cpn_proto_initiate_connection(&channel, host, port,
-                &local_keys, &remote_key, SD_CONNECTION_TYPE_CONNECT) < 0) {
+                &local_keys, &remote_key, CPN_CONNECTION_TYPE_CONNECT) < 0) {
         puts("Could not start connection");
         return -1;
     }
@@ -267,13 +267,13 @@ static int cmd_terminate(int argc, char *argv[])
         return -1;
     }
 
-    if (cpn_cap_parse(&cap, session, capability, SD_CAP_RIGHT_TERM) < 0) {
+    if (cpn_cap_parse(&cap, session, capability, CPN_CAP_RIGHT_TERM) < 0) {
         puts("Invalid capability\n");
         return -1;
     }
 
     if (cpn_proto_initiate_connection(&channel, host, port,
-                &local_keys, &remote_key, SD_CONNECTION_TYPE_TERMINATE) < 0) {
+                &local_keys, &remote_key, CPN_CONNECTION_TYPE_TERMINATE) < 0) {
         puts("Could not start connection");
         return -1;
     }

@@ -48,8 +48,8 @@
  * @{
  */
 
-#ifndef SD_LIB_CFG_H
-#define SD_LIB_CFG_H
+#ifndef CPN_LIB_CFG_H
+#define CPN_LIB_CFG_H
 
 #include <stdint.h>
 #include <stddef.h>

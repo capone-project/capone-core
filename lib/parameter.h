@@ -28,8 +28,8 @@
  * @{
  */
 
-#ifndef SD_LIB_PARAMETER_H
-#define SD_LIB_PARAMETER_H
+#ifndef CPN_LIB_PARAMETER_H
+#define CPN_LIB_PARAMETER_H
 
 #include <unistd.h>
 

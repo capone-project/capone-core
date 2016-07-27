@@ -47,10 +47,10 @@ void stub_sockets(struct cpn_channel *local, struct cpn_channel *remote)
     socklen_t laddrlen = sizeof(laddr), raddrlen = sizeof(raddr);
 
     switch (local->type) {
-        case SD_CHANNEL_TYPE_TCP:
+        case CPN_CHANNEL_TYPE_TCP:
             assert_success(socketpair(AF_UNIX, SOCK_STREAM, 0, sockets));
             break;
-        case SD_CHANNEL_TYPE_UDP:
+        case CPN_CHANNEL_TYPE_UDP:
             assert_success(socketpair(AF_UNIX, SOCK_DGRAM, 0, sockets));
             break;
     }
@@ -70,7 +70,7 @@ void stub_sockets(struct cpn_channel *local, struct cpn_channel *remote)
 
 static int setup()
 {
-    channel.type = remote.type = type = SD_CHANNEL_TYPE_TCP;
+    channel.type = remote.type = type = CPN_CHANNEL_TYPE_TCP;
     return 0;
 }
 

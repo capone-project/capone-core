@@ -104,7 +104,7 @@ static int handle(struct cpn_channel *channel,
         goto out;
     }
 
-    if (cpn_cap_parse(&cap, sessionid_string, secret_string, SD_CAP_RIGHT_EXEC | SD_CAP_RIGHT_TERM) < 0) {
+    if (cpn_cap_parse(&cap, sessionid_string, secret_string, CPN_CAP_RIGHT_EXEC | CPN_CAP_RIGHT_TERM) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Invalid capability");
         goto out;
     }
@@ -115,7 +115,7 @@ static int handle(struct cpn_channel *channel,
     }
 
     if (cpn_proto_initiate_connection(&remote_channel, service_address, service_port,
-                &local_keys, &remote_key, SD_CONNECTION_TYPE_CONNECT) < 0) {
+                &local_keys, &remote_key, CPN_CONNECTION_TYPE_CONNECT) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not start invoke connection");
         goto out;
     }

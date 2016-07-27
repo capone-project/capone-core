@@ -40,7 +40,7 @@ int cpn_proto_initiate_connection(struct cpn_channel *channel,
 {
     ConnectionInitiationMessage conntype = CONNECTION_INITIATION_MESSAGE__INIT;
 
-    if (cpn_channel_init_from_host(channel, host, port, SD_CHANNEL_TYPE_TCP) < 0) {
+    if (cpn_channel_init_from_host(channel, host, port, CPN_CHANNEL_TYPE_TCP) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not initialize channel");
         return -1;
     }
@@ -56,16 +56,16 @@ int cpn_proto_initiate_connection(struct cpn_channel *channel,
     }
 
     switch (type) {
-        case SD_CONNECTION_TYPE_CONNECT:
+        case CPN_CONNECTION_TYPE_CONNECT:
             conntype.type = CONNECTION_INITIATION_MESSAGE__TYPE__CONNECT;
             break;
-        case SD_CONNECTION_TYPE_REQUEST:
+        case CPN_CONNECTION_TYPE_REQUEST:
             conntype.type = CONNECTION_INITIATION_MESSAGE__TYPE__REQUEST;
             break;
-        case SD_CONNECTION_TYPE_QUERY:
+        case CPN_CONNECTION_TYPE_QUERY:
             conntype.type = CONNECTION_INITIATION_MESSAGE__TYPE__QUERY;
             break;
-        case SD_CONNECTION_TYPE_TERMINATE:
+        case CPN_CONNECTION_TYPE_TERMINATE:
             conntype.type = CONNECTION_INITIATION_MESSAGE__TYPE__TERMINATE;
             break;
         default:
@@ -96,16 +96,16 @@ int cpn_proto_receive_connection_type(enum cpn_connection_type *out,
 
     switch (initiation->type) {
         case CONNECTION_INITIATION_MESSAGE__TYPE__QUERY:
-            *out = SD_CONNECTION_TYPE_QUERY;
+            *out = CPN_CONNECTION_TYPE_QUERY;
             break;
         case CONNECTION_INITIATION_MESSAGE__TYPE__REQUEST:
-            *out = SD_CONNECTION_TYPE_REQUEST;
+            *out = CPN_CONNECTION_TYPE_REQUEST;
             break;
         case CONNECTION_INITIATION_MESSAGE__TYPE__CONNECT:
-            *out = SD_CONNECTION_TYPE_CONNECT;
+            *out = CPN_CONNECTION_TYPE_CONNECT;
             break;
         case CONNECTION_INITIATION_MESSAGE__TYPE__TERMINATE:
-            *out = SD_CONNECTION_TYPE_TERMINATE;
+            *out = CPN_CONNECTION_TYPE_TERMINATE;
             break;
         case _CONNECTION_INITIATION_MESSAGE__TYPE_IS_INT_SIZE:
         default:
@@ -188,7 +188,7 @@ int cpn_proto_handle_session(struct cpn_channel *channel,
         goto out_notify;
     }
 
-    if (cpn_caps_verify(&cap, remote_key, SD_CAP_RIGHT_EXEC) < 0) {
+    if (cpn_caps_verify(&cap, remote_key, CPN_CAP_RIGHT_EXEC) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not authorize session initiation");
         err = -1;
         goto out_notify;
@@ -438,11 +438,11 @@ int cpn_proto_answer_request(struct cpn_channel *channel,
         goto out;
     }
 
-    if (create_cap(&session_message.invoker_cap, sessionid, SD_CAP_RIGHT_EXEC | SD_CAP_RIGHT_TERM, &identity_key) < 0) {
+    if (create_cap(&session_message.invoker_cap, sessionid, CPN_CAP_RIGHT_EXEC | CPN_CAP_RIGHT_TERM, &identity_key) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to add invoker capability");
         goto out;
     }
-    if (create_cap(&session_message.requester_cap, sessionid, SD_CAP_RIGHT_TERM, remote_key) < 0) {
+    if (create_cap(&session_message.requester_cap, sessionid, CPN_CAP_RIGHT_TERM, remote_key) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to add invoker capability");
         goto out;
     }
@@ -517,7 +517,7 @@ int cpn_proto_handle_termination(struct cpn_channel *channel,
         goto out;
     }
 
-    if (cpn_caps_verify(&cap, remote_key, SD_CAP_RIGHT_TERM) < 0) {
+    if (cpn_caps_verify(&cap, remote_key, CPN_CAP_RIGHT_TERM) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Received unauthorized request");
         goto out;
     }

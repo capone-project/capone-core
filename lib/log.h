@@ -32,8 +32,8 @@
  * @{
  */
 
-#ifndef SD_LIB_LOG_H
-#define SD_LIB_LOG_H
+#ifndef CPN_LIB_LOG_H
+#define CPN_LIB_LOG_H
 
 /** @brief Logging level
  *

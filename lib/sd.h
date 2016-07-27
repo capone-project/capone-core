@@ -20,8 +20,8 @@
  * @{
  */
 
-#ifndef SD_LIB_SD_H
-#define SD_LIB_SD_H
+#ifndef CPN_LIB_SD_H
+#define CPN_LIB_SD_H
 
 #include "cfg.h"
 #include "channel.h"
