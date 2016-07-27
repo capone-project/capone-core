@@ -1,8 +1,8 @@
 # SD
 
-[![Travis](https://travis-ci.org/pks-t/sd.svg?branch=master)](https://travis-ci.org/pks-t/sd)
-[![AppVeyor](https://ci.appveyor.com/api/projects/status/7v7vpe7xnxojxhh0/branch/master?svg=true)](https://ci.appveyor.com/project/pks-t/sd/branch/master)
-[![Coverity](https://scan.coverity.com/projects/8634/badge.svg)](https://scan.coverity.com/projects/pks-t-sd)
+[![Travis](https://travis-ci.org/capone-project/capone-core.svg?branch=master)](https://travis-ci.org/capone-project/capone-core)
+[![AppVeyor](https://ci.appveyor.com/api/projects/status/7v7vpe7xnxojxhh0/branch/master?svg=true)](https://ci.appveyor.com/project/capone-project/capone-core/branch/master)
+[![Coverity](https://scan.coverity.com/projects/8634/badge.svg)](https://scan.coverity.com/projects/capone-project-capone-core)
 
 A fully authenticated and encrypted generic service framework.
 
@@ -16,4 +16,4 @@ A fully authenticated and encrypted generic service framework.
 
 ## API documentation
 
-[Doxygen](https://pks-t.github.io/sd/doxygen)
+[Doxygen](https://capone-project.github.io/capone-core/doxygen)
