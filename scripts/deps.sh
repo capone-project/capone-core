@@ -54,6 +54,7 @@ fi
 
 # install libsodium-1.0.8
 (
+    cd /tmp
     wget https://github.com/jedisct1/libsodium/releases/download/1.0.8/libsodium-1.0.8.tar.gz
     tar -xvf libsodium-1.0.8.tar.gz
     cd libsodium-1.0.8
