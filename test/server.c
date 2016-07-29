@@ -83,10 +83,10 @@ static void getting_address_succeeds()
 {
     char host[20], port[10];
 
-    assert_success(cpn_server_init(&server, "localhost", "12345", type));
+    assert_success(cpn_server_init(&server, "127.0.0.1", "12345", type));
     assert_success(cpn_server_get_address(&server, host, sizeof(host), port, sizeof(port)));
 
-    assert_string_equal(host, "localhost");
+    assert_string_equal(host, "127.0.0.1");
     assert_string_equal(port, "12345");
 }
 

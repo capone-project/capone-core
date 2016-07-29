@@ -16,6 +16,3 @@ PREFIX="${HOME}/local"
 export PATH="${PATH}:${PREFIX}/bin:${PWD}/build"
 
 build/test/cpn-test --verbose
-build/test/cpn-bench-throughput --encrypted 256 512
-build/test/cpn-bench-throughput --plain 256 512
-build/test/cpn-bench-latency 512
