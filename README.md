@@ -1,8 +1,8 @@
 # Capone
 
-[![Travis](https://travis-ci.org/capone-project/capone-core.svg?branch=master)](https://travis-ci.org/capone-project/capone-core)
-[![AppVeyor](https://ci.appveyor.com/api/projects/status/7v7vpe7xnxojxhh0/branch/master?svg=true)](https://ci.appveyor.com/project/capone-project/capone-core/branch/master)
-[![Coverity](https://scan.coverity.com/projects/8634/badge.svg)](https://scan.coverity.com/projects/capone-project-capone-core)
+[![Travis](https://travis-ci.org/capone-project/capone-core.svg)](https://travis-ci.org/capone-project/capone-core)
+[![AppVeyor](https://ci.appveyor.com/api/projects/status/feco301rukj2nhb7?svg=true)](https://ci.appveyor.com/project/pks-t/capone-core/branch/master)
+[![Coverity](https://scan.coverity.com/projects/9691/badge.svg)](https://scan.coverity.com/projects/capone-project-capone-core)
 
 A fully authenticated and encrypted generic service framework.
 
