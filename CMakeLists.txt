@@ -43,8 +43,7 @@ PROTOBUF_GENERATE_C(PROTO_SOURCES PROTO_HEADERS
     include/capone/proto/capabilities.proto
     include/capone/proto/connect.proto
     include/capone/proto/discovery.proto
-    include/capone/proto/encryption.proto
-    include/capone/proto/test.proto)
+    include/capone/proto/encryption.proto)
 
 ADD_LIBRARY(cpn SHARED
     lib/acl.c
