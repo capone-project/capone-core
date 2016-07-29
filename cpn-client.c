@@ -300,6 +300,11 @@ int main(int argc, char *argv[])
         return 0;
     }
 
+    if (cpn_service_register_builtins() < 0) {
+        puts("Could not initialize services");
+        return -1;
+    }
+
     if (sodium_init() < 0) {
         puts("Could not init libsodium");
         return -1;

@@ -127,6 +127,33 @@ struct cpn_service {
     invoke_fn invoke;
 };
 
+/** @brief Register a service with the system
+ *
+ * Registering services enables to be able to read them from
+ * configuration files and subsequently using them to handle
+ * service functionality.
+ *
+ * @param[in] service Service which shall be registered
+ * @return <code>0</code> on success, <code>-1</code> if a
+ *         service with the same type has already been registered
+ */
+int cpn_service_register(struct cpn_service *service);
+
+/** @brief Register all built-in services
+ *
+ * Register all services that are built into the server's
+ * sources. This currently includes the following list:
+ *
+ * - Capability
+ * - Invoke
+ * - Shell
+ * - Synergy
+ * - Xpra
+ *
+ * @return <code>0</code> on success, <code>-1</code> otherwise
+ */
+int cpn_service_register_builtins(void);
+
 /** @brief Initialize service for a given service type
  *
  * Service plugins are registered with a given service type. This
