@@ -2,6 +2,15 @@ language: c
 
 sudo: false
 
+addons:
+    coverity_scan:
+        project:
+            name: capone-project/capone-core
+        notification_email: coverity@pks.im
+        build_command_prepend: ./scripts/deps.sh
+        build_command: ./scripts/build.sh
+        branch_pattern: coverity
+
 cache:
     directories:
         - $HOME/local
@@ -27,8 +36,10 @@ matrix:
         - env: CFLAGS='-fsanitize=address -fsanitize=undefined'
 
 install:
+    - test ${TRAVIS_BRANCH} != coverity -o ${TRAVIS_JOB_NUMBER##*.} = 1 || exit 0
     - ./scripts/deps.sh
 
 script:
+    - test ${TRAVIS_BRANCH} != coverity -o ${TRAVIS_JOB_NUMBER##*.} = 1 || exit 0
     - ./scripts/build.sh
     - ./scripts/test.sh
