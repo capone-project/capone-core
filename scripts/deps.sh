@@ -4,6 +4,8 @@ set -x
 set -e
 
 PREFIX="${HOME}/local"
+
+export PATH="${PATH}:${PREFIX}/bin"
 export PKG_CONFIG_PATH="${PKG_CONFIG_PATH}:${PREFIX}/lib/pkgconfig"
 
 if test -d "${PREFIX}" -a -n "$(ls -A ${PREFIX}/)"

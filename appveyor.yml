@@ -15,4 +15,4 @@ build_script:
     - C:\msys64\usr\bin\sh.exe --login /c/projects/capone-core/scripts/build.sh
 
 test_script:
-    - C:\msys64\usr\bin\sh.exe --login -c 'PATH="${PATH}:${HOME}/local/bin" /c/projects/capone-core/build/sd-test.exe --verbose'
+    - C:\msys64\usr\bin\sh.exe --login /c/projects/capone-core/scripts/test.sh
