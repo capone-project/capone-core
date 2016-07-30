@@ -207,6 +207,11 @@ static int setup(struct cpn_cfg *cfg, int argc, char *argv[])
         return -1;
     }
 
+    if (cpn_service_register_builtins() < 0) {
+        puts("Could not initialize services");
+        return -1;
+    }
+
     servicename = argv[2];
 
     memset(cfg, 0, sizeof(*cfg));

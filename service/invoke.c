@@ -138,6 +138,7 @@ out:
 int cpn_invoke_init_service(struct cpn_service *service)
 {
     service->category = "Invoke";
+    service->type = "invoke";
     service->version = version;
     service->handle = handle;
     service->invoke = invoke;

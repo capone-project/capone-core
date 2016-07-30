@@ -63,6 +63,7 @@ static int handle(struct cpn_channel *channel,
 int cpn_test_init_service(struct cpn_service *service)
 {
     service->category = "Test";
+    service->category = "test";
     service->version = version;
     service->handle = handle;
     service->invoke = invoke;

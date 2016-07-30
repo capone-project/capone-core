@@ -156,6 +156,7 @@ static int handle(struct cpn_channel *channel,
 int cpn_xpra_init_service(struct cpn_service *service)
 {
     service->category = "Display";
+    service->type = "xpra";
     service->version = version;
     service->handle = handle;
     service->invoke = invoke;

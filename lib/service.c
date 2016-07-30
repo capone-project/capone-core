@@ -19,6 +19,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#include <pthread.h>
 
 #include "capone/common.h"
 #include "capone/log.h"
@@ -28,32 +29,88 @@
 #include "service/exec.h"
 #include "service/invoke.h"
 #include "service/synergy.h"
-#include "service/test.h"
 #include "service/xpra.h"
 
-static int fill_service(struct cpn_service *service, const char *type)
+struct services {
+    struct cpn_service service;
+    struct services *next;
+};
+
+static struct services *services;
+static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+
+static int find_service(struct cpn_service *service, const char *type)
 {
-    if (!strcmp(type, "capabilities"))
-        return cpn_capabilities_init_service(service);
-    if (!strcmp(type, "exec"))
-        return cpn_exec_init_service(service);
-    if (!strcmp(type, "invoke"))
-        return cpn_invoke_init_service(service);
-    if (!strcmp(type, "synergy"))
-        return cpn_synergy_init_service(service);
-    if (!strcmp(type, "xpra"))
-        return cpn_xpra_init_service(service);
-    if (!strcmp(type, "test"))
-        return cpn_test_init_service(service);
+    struct services *it;
+
+    for (it = services; it; it = it->next) {
+        if (!strcmp(it->service.type, type)) {
+            service->category = it->service.category;
+            service->handle = it->service.handle;
+            service->invoke = it->service.invoke;
+            service->parameters = it->service.parameters;
+            service->type = it->service.type;
+            service->version = it->service.version;
+            return 0;
+        }
+    }
 
     return -1;
+}
+
+int cpn_service_register(struct cpn_service *service)
+{
+    struct services *c;
+    int err = 0;
+
+    pthread_mutex_lock(&mutex);
+
+    for (c = services; c; c = c->next) {
+        if (!strcmp(c->service.type, service->type)) {
+            err = -1;
+            goto out;
+        }
+    }
+
+    c = malloc(sizeof(struct services));
+    memcpy(&c->service, service, sizeof(struct cpn_service));
+    c->next = services;
+    services = c;
+
+out:
+    pthread_mutex_unlock(&mutex);
+    return err;
+}
+
+int cpn_service_register_builtins(void)
+{
+    int (*initializers[])(struct cpn_service *) = {
+        cpn_capabilities_init_service,
+        cpn_exec_init_service,
+        cpn_invoke_init_service,
+        cpn_synergy_init_service,
+        cpn_xpra_init_service,
+    };
+    struct cpn_service service;
+    unsigned i;
+
+    for (i = 0; i < ARRAY_SIZE(initializers); i++) {
+        if (initializers[i](&service) < 0) {
+            cpn_log(LOG_LEVEL_ERROR, "Unable to initialize service");
+            continue;
+        }
+
+        cpn_service_register(&service);
+    }
+
+    return 0;
 }
 
 int cpn_service_from_type(struct cpn_service *out, const char *type)
 {
     memset(out, 0, sizeof(struct cpn_service));
 
-    return fill_service(out, type);
+    return find_service(out, type);
 }
 
 int cpn_services_from_config_file(struct cpn_service **out, const char *file)
@@ -180,7 +237,7 @@ int cpn_service_from_section(struct cpn_service *out, const struct cpn_cfg_secti
         goto out_err;
     }
 
-    if (fill_service(&service, service.type) < 0) {
+    if (find_service(&service, service.type) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unknown service type '%s'", service.type);
         goto out_err;
     }
@@ -198,7 +255,6 @@ out_err:
 void cpn_service_free(struct cpn_service *service)
 {
     free(service->name);
-    free(service->type);
     free(service->port);
     free(service->location);
 

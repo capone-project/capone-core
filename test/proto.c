@@ -426,6 +426,7 @@ int proto_test_run_suite(void)
         "type=test\n"
         "location=Dunno\n"
         "port=1234\n";
+    struct cpn_service service;
 
     const struct CMUnitTest tests[] = {
         test(connection_initiation_succeeds),
@@ -445,6 +446,9 @@ int proto_test_run_suite(void)
         test(termination_kills_session),
         test(terminating_nonexistent_does_nothing)
     };
+
+    assert_success(cpn_test_init_service(&service));
+    assert_success(cpn_service_register(&service));
 
     assert_success(cpn_sessions_init());
 

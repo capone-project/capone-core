@@ -171,6 +171,7 @@ out:
 int cpn_exec_init_service(struct cpn_service *service)
 {
     service->category = "Shell";
+    service->type = "exec";
     service->version = version;
     service->handle = handle;
     service->invoke = invoke;

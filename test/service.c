@@ -126,5 +126,7 @@ int service_test_run_suite(void)
         test(test_services_from_config),
     };
 
+    cpn_service_register_builtins();
+
     return execute_test_suite("service", tests, setup, teardown);
 }

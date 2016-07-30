@@ -169,6 +169,7 @@ static int handle(struct cpn_channel *channel,
 int cpn_synergy_init_service(struct cpn_service *service)
 {
     service->category = "Input";
+    service->type = "synergy";
     service->version = version;
     service->handle = handle;
     service->invoke = invoke;

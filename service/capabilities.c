@@ -558,6 +558,7 @@ int cpn_capabilities_init_service(struct cpn_service *service)
     memset(&registrants, 0, sizeof(registrants));
 
     service->category = "Capabilities";
+    service->type = "capabilities";
     service->version = version;
     service->handle = handle;
     service->invoke = invoke;
