@@ -14,6 +14,7 @@ ADD_EXECUTABLE(cpn-test cpn-test.c
     server.c
     service.c
     session.c
+    test-service.c
     ${TEST_PROTO_SOURCES})
 TARGET_LINK_LIBRARIES(cpn-test cpn cmocka)
 

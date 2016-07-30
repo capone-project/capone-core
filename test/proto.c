@@ -24,9 +24,8 @@
 #include "capone/service.h"
 #include "capone/session.h"
 
-#include "service/test.h"
-
 #include "test.h"
+#include "test-service.h"
 
 extern void stub_sockets(struct cpn_channel *local, struct cpn_channel *remote);
 

@@ -64,7 +64,6 @@ ADD_LIBRARY(cpn SHARED
     service/exec.c
     service/invoke.c
     service/synergy.c
-    service/test.c
     service/xpra.c
     ${PROTO_SOURCES})
 TARGET_LINK_LIBRARIES(cpn
