@@ -29,7 +29,6 @@
 #include "service/exec.h"
 #include "service/invoke.h"
 #include "service/synergy.h"
-#include "service/test.h"
 #include "service/xpra.h"
 
 struct services {
@@ -91,7 +90,6 @@ int cpn_service_register_builtins(void)
         cpn_invoke_init_service,
         cpn_synergy_init_service,
         cpn_xpra_init_service,
-        cpn_test_init_service
     };
     struct cpn_service service;
     unsigned i;
