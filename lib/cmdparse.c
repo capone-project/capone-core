@@ -36,6 +36,13 @@ int cpn_cmdparse_parse(struct cpn_cmdparse_opt *opts, int argc, const char *argv
         }
 
         switch (opt->type) {
+            case CPN_CMDPARSE_TYPE_ACTION:
+                if (cpn_cmdparse_parse(opt->value.action_opts, argc - i - 1, argv + i + 1) < 0) {
+                    cpn_log(LOG_LEVEL_ERROR, "Cannot parse action %s", argv[i]);
+                    return -1;
+                }
+                i = argc;
+                break;
             case CPN_CMDPARSE_TYPE_STRING:
                 if (++i >= argc) {
                     cpn_log(LOG_LEVEL_ERROR, "No value for option %s", argv[i - 1]);

@@ -21,10 +21,12 @@
 #include <stdbool.h>
 
 enum cpn_cmdparse_type {
+    CPN_CMDPARSE_TYPE_ACTION,
     CPN_CMDPARSE_TYPE_STRING,
     CPN_CMDPARSE_TYPE_END
 };
 
+#define CPN_CMDPARSE_OPT_ACTION(action, opts, optional) { 0, (action), CPN_CMDPARSE_TYPE_ACTION, {(opts)}, (optional), false }
 #define CPN_CMDPARSE_OPT_STRING(s, l, optional) { (s), (l), CPN_CMDPARSE_TYPE_STRING, {NULL}, (optional), false }
 #define CPN_CMDPARSE_OPT_END                    { 0, NULL, CPN_CMDPARSE_TYPE_END, {NULL}, false, false }
 
@@ -33,6 +35,7 @@ struct cpn_cmdparse_opt {
     const char *long_name;
     enum cpn_cmdparse_type type;
     union {
+        struct cpn_cmdparse_opt *action_opts;
         const char *string;
     } value;
     bool optional;

@@ -129,6 +129,84 @@ static void parsing_short_arg_succeeds()
     assert_string_equal(opts[0].value.string, "value");
 }
 
+static void parsing_action_succeeds()
+{
+    static struct cpn_cmdparse_opt action_opts[] = {
+        CPN_CMDPARSE_OPT_END
+    };
+    struct cpn_cmdparse_opt opts[] = {
+        CPN_CMDPARSE_OPT_ACTION("action", action_opts, false),
+        CPN_CMDPARSE_OPT_END
+    };
+    const char *args[] = {
+        "action"
+    };
+
+    assert_success(cpn_cmdparse_parse(opts, ARRAY_SIZE(args), args));
+    assert_true(opts[0].set);
+}
+
+static void parsing_action_with_additional_args_succeeds()
+{
+    static struct cpn_cmdparse_opt action_opts[] = {
+        CPN_CMDPARSE_OPT_STRING(0, "--test", false),
+        CPN_CMDPARSE_OPT_END
+    };
+    struct cpn_cmdparse_opt opts[] = {
+        CPN_CMDPARSE_OPT_ACTION("action", action_opts, false),
+        CPN_CMDPARSE_OPT_END
+    };
+    const char *args[] = {
+        "action",
+        "--test", "value"
+    };
+
+    assert_success(cpn_cmdparse_parse(opts, ARRAY_SIZE(args), args));
+    assert_true(opts[0].set);
+    assert_string_equal(action_opts[0].value.string, "value");
+}
+
+static void parsing_action_with_duplicated_args_succeeds()
+{
+    static struct cpn_cmdparse_opt action_opts[] = {
+        CPN_CMDPARSE_OPT_STRING(0, "--test", false),
+        CPN_CMDPARSE_OPT_END
+    };
+    struct cpn_cmdparse_opt opts[] = {
+        CPN_CMDPARSE_OPT_STRING(0, "--test", false),
+        CPN_CMDPARSE_OPT_ACTION("action", action_opts, false),
+        CPN_CMDPARSE_OPT_END
+    };
+    const char *args[] = {
+        "--test", "general-value",
+        "action",
+        "--test", "action-value"
+    };
+
+    assert_success(cpn_cmdparse_parse(opts, ARRAY_SIZE(args), args));
+    assert_string_equal(opts[0].value.string, "general-value");
+    assert_true(opts[1].set);
+    assert_string_equal(action_opts[0].value.string, "action-value");
+}
+
+static void parsing_action_with_general_arg_fails()
+{
+    static struct cpn_cmdparse_opt action_opts[] = {
+        CPN_CMDPARSE_OPT_END
+    };
+    struct cpn_cmdparse_opt opts[] = {
+        CPN_CMDPARSE_OPT_ACTION("action", action_opts, false),
+        CPN_CMDPARSE_OPT_STRING(0, "--test", false),
+        CPN_CMDPARSE_OPT_END
+    };
+    const char *args[] = {
+        "action",
+        "--test", "action-value"
+    };
+
+    assert_failure(cpn_cmdparse_parse(opts, ARRAY_SIZE(args), args));
+}
+
 int cmdparse_test_run_suite(void)
 {
     const struct CMUnitTest tests[] = {
@@ -139,7 +217,11 @@ int cmdparse_test_run_suite(void)
         test(parsing_opt_without_argument_fails),
         test(parsing_with_unset_optional_arg_succeeds),
         test(parsing_multiple_args_succeeds),
-        test(parsing_short_arg_succeeds)
+        test(parsing_short_arg_succeeds),
+        test(parsing_action_succeeds),
+        test(parsing_action_with_additional_args_succeeds),
+        test(parsing_action_with_duplicated_args_succeeds),
+        test(parsing_action_with_general_arg_fails)
     };
 
     return execute_test_suite("cmdparse", tests, setup, teardown);
