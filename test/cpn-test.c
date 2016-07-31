@@ -20,7 +20,7 @@
 #include "capone/common.h"
 #include "capone/log.h"
 
-#include "test/test.h"
+#include "test.h"
 
 extern int acl_test_run_suite(void);
 extern int caps_test_run_suite(void);
