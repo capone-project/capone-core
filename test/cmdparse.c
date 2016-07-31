@@ -274,6 +274,58 @@ static void parsing_int_with_garbage_fails()
     assert_failure(cpn_cmdparse_parse(opts, ARRAY_SIZE(args), args));
 }
 
+static void parsing_sigkey_succeeds()
+{
+    struct cpn_cmdparse_opt opts[] = {
+        CPN_CMDPARSE_OPT_SIGKEY(0, "--key", false),
+        CPN_CMDPARSE_OPT_END
+    };
+    const char *args[] = {
+        "--key", "5178f420aaf894d36fd28a8e72681b377db14fc9e47a7eb51afe1a2905a45e55"
+    };
+
+    assert_success(cpn_cmdparse_parse(opts, ARRAY_SIZE(args), args));
+}
+
+static void parsing_sigkey_with_wrong_length_fails()
+{
+    struct cpn_cmdparse_opt opts[] = {
+        CPN_CMDPARSE_OPT_SIGKEY(0, "--key", false),
+        CPN_CMDPARSE_OPT_END
+    };
+    const char *args[] = {
+        "--key", "5178f420aaf894d36fd28a8e72681b377db14fc9e47a7eb51afe"
+    };
+
+    assert_failure(cpn_cmdparse_parse(opts, ARRAY_SIZE(args), args));
+}
+
+static void parsing_sigkey_with_non_hex_fails()
+{
+    struct cpn_cmdparse_opt opts[] = {
+        CPN_CMDPARSE_OPT_SIGKEY(0, "--key", false),
+        CPN_CMDPARSE_OPT_END
+    };
+    const char *args[] = {
+        "--key", "zzzzz420aaf894d36fd28a8e72681b377db14fc9e47a7eb51afe1a2905a45e55"
+    };
+
+    assert_failure(cpn_cmdparse_parse(opts, ARRAY_SIZE(args), args));
+}
+
+static void parsing_sigkey_without_argument_fails()
+{
+    struct cpn_cmdparse_opt opts[] = {
+        CPN_CMDPARSE_OPT_SIGKEY(0, "--key", false),
+        CPN_CMDPARSE_OPT_END
+    };
+    const char *args[] = {
+        "--key"
+    };
+
+    assert_failure(cpn_cmdparse_parse(opts, ARRAY_SIZE(args), args));
+}
+
 int cmdparse_test_run_suite(void)
 {
     const struct CMUnitTest tests[] = {
@@ -296,7 +348,12 @@ int cmdparse_test_run_suite(void)
         test(parsing_zero_succeeds),
         test(parsing_uint32_without_argument_fails),
         test(parsing_negative_fails),
-        test(parsing_int_with_garbage_fails)
+        test(parsing_int_with_garbage_fails),
+
+        test(parsing_sigkey_succeeds),
+        test(parsing_sigkey_with_wrong_length_fails),
+        test(parsing_sigkey_with_non_hex_fails),
+        test(parsing_sigkey_without_argument_fails)
     };
 
     return execute_test_suite("cmdparse", tests, setup, teardown);

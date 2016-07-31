@@ -43,6 +43,21 @@ int cpn_cmdparse_parse(struct cpn_cmdparse_opt *opts, int argc, const char *argv
                 }
                 i = argc;
                 break;
+            case CPN_CMDPARSE_TYPE_SIGKEY:
+                {
+                    struct cpn_sign_key_public key;
+                    if (++i >= argc) {
+                        cpn_log(LOG_LEVEL_ERROR, "No key for option %s", argv[i - 1]);
+                        return -1;
+                    }
+
+                    if (cpn_sign_key_public_from_hex(&key, argv[i]) < 0) {
+                        cpn_log(LOG_LEVEL_ERROR, "Invalid key %s for option %s",
+                                argv[i], argv[i - 1]);
+                        return -1;
+                    }
+                }
+                break;
             case CPN_CMDPARSE_TYPE_STRING:
                 if (++i >= argc) {
                     cpn_log(LOG_LEVEL_ERROR, "No value for option %s", argv[i - 1]);
