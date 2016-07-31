@@ -51,6 +51,7 @@ ADD_LIBRARY(cpn SHARED
     lib/caps.c
     lib/cfg.c
     lib/channel.c
+    lib/cmdparse.c
     lib/common.c
     lib/keys.c
     lib/log.c

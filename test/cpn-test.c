@@ -26,6 +26,7 @@ extern int acl_test_run_suite(void);
 extern int caps_test_run_suite(void);
 extern int cfg_test_run_suite(void);
 extern int channel_test_run_suite(void);
+extern int cmdparse_test_run_suite(void);
 extern int common_test_run_suite(void);
 extern int keys_test_run_suite(void);
 extern int proto_test_run_suite(void);
@@ -39,6 +40,7 @@ static int (*suite_fns[])(void) = {
     caps_test_run_suite,
     cfg_test_run_suite,
     channel_test_run_suite,
+    cmdparse_test_run_suite,
     common_test_run_suite,
     keys_test_run_suite,
     server_test_run_suite,
