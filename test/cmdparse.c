@@ -207,21 +207,96 @@ static void parsing_action_with_general_arg_fails()
     assert_failure(cpn_cmdparse_parse(opts, ARRAY_SIZE(args), args));
 }
 
+static void parsing_uint32_succeeds()
+{
+    struct cpn_cmdparse_opt opts[] = {
+        CPN_CMDPARSE_OPT_UINT32(0, "--uint32", false),
+        CPN_CMDPARSE_OPT_END
+    };
+    const char *args[] = {
+        "--uint32", "12345"
+    };
+
+    assert_success(cpn_cmdparse_parse(opts, ARRAY_SIZE(args), args));
+    assert_int_equal(opts[0].value.uint32, 12345);
+}
+
+static void parsing_zero_succeeds()
+{
+    struct cpn_cmdparse_opt opts[] = {
+        CPN_CMDPARSE_OPT_UINT32(0, "--uint32", false),
+        CPN_CMDPARSE_OPT_END
+    };
+    const char *args[] = {
+        "--uint32", "0"
+    };
+
+    assert_success(cpn_cmdparse_parse(opts, ARRAY_SIZE(args), args));
+    assert_int_equal(opts[0].value.uint32, 0);
+}
+
+static void parsing_uint32_without_argument_fails()
+{
+    struct cpn_cmdparse_opt opts[] = {
+        CPN_CMDPARSE_OPT_UINT32(0, "--uint32", false),
+        CPN_CMDPARSE_OPT_END
+    };
+    const char *args[] = {
+        "--uint32"
+    };
+
+    assert_failure(cpn_cmdparse_parse(opts, ARRAY_SIZE(args), args));
+}
+
+static void parsing_negative_fails()
+{
+    struct cpn_cmdparse_opt opts[] = {
+        CPN_CMDPARSE_OPT_UINT32(0, "--uint32", false),
+        CPN_CMDPARSE_OPT_END
+    };
+    const char *args[] = {
+        "--uint32", "-1"
+    };
+
+    assert_failure(cpn_cmdparse_parse(opts, ARRAY_SIZE(args), args));
+}
+
+static void parsing_int_with_garbage_fails()
+{
+    struct cpn_cmdparse_opt opts[] = {
+        CPN_CMDPARSE_OPT_UINT32(0, "--uint32", false),
+        CPN_CMDPARSE_OPT_END
+    };
+    const char *args[] = {
+        "--uint32", "12345garbage"
+    };
+
+    assert_failure(cpn_cmdparse_parse(opts, ARRAY_SIZE(args), args));
+}
+
 int cmdparse_test_run_suite(void)
 {
     const struct CMUnitTest tests[] = {
         test(parsing_nothing_succeeds),
         test(parsing_with_no_opts_fails),
         test(parsing_opt_without_arg_fails),
+
         test(parsing_opt_with_arg_succeeds),
         test(parsing_opt_without_argument_fails),
         test(parsing_with_unset_optional_arg_succeeds),
         test(parsing_multiple_args_succeeds),
         test(parsing_short_arg_succeeds),
+
         test(parsing_action_succeeds),
         test(parsing_action_with_additional_args_succeeds),
         test(parsing_action_with_duplicated_args_succeeds),
-        test(parsing_action_with_general_arg_fails)
+        test(parsing_action_with_general_arg_fails),
+
+        test(parsing_uint32_succeeds),
+        test(parsing_zero_succeeds),
+        test(parsing_uint32_without_argument_fails),
+        test(parsing_negative_fails),
+        test(parsing_int_with_garbage_fails)
     };
 
     return execute_test_suite("cmdparse", tests, setup, teardown);

@@ -50,6 +50,24 @@ int cpn_cmdparse_parse(struct cpn_cmdparse_opt *opts, int argc, const char *argv
                 }
                 opt->value.string = argv[i];
                 break;
+            case CPN_CMDPARSE_TYPE_UINT32:
+                {
+                    uint32_t value;
+
+                    if (++i >= argc) {
+                        cpn_log(LOG_LEVEL_ERROR, "No value for option %s", argv[i - 1]);
+                        return -1;
+                    }
+
+                    if (parse_uint32t(&value, argv[i]) < 0) {
+                        cpn_log(LOG_LEVEL_ERROR, "Invalid value %s for option %s",
+                                argv[i], argv[i - 1]);
+                        return -1;
+                    }
+
+                    opt->value.uint32 = value;
+                }
+                break;
             case CPN_CMDPARSE_TYPE_END:
                 cpn_log(LOG_LEVEL_ERROR, "Unknown option %s", argv[i]);
                 return -1;
