@@ -60,11 +60,11 @@ ADD_LIBRARY(cpn SHARED
     lib/server.c
     lib/session.c
     lib/service.c
-    service/capabilities.c
-    service/exec.c
-    service/invoke.c
-    service/synergy.c
-    service/xpra.c
+    lib/services/capabilities.c
+    lib/services/exec.c
+    lib/services/invoke.c
+    lib/services/synergy.c
+    lib/services/xpra.c
     ${PROTO_SOURCES})
 TARGET_LINK_LIBRARIES(cpn
     ${SODIUM_LIBRARIES}

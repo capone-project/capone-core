@@ -25,11 +25,11 @@
 #include "capone/log.h"
 #include "capone/service.h"
 
-#include "service/capabilities.h"
-#include "service/exec.h"
-#include "service/invoke.h"
-#include "service/synergy.h"
-#include "service/xpra.h"
+#include "capone/services/capabilities.h"
+#include "capone/services/exec.h"
+#include "capone/services/invoke.h"
+#include "capone/services/synergy.h"
+#include "capone/services/xpra.h"
 
 struct services {
     struct cpn_service service;

@@ -19,12 +19,12 @@
 #include <string.h>
 #include <signal.h>
 
-#include "synergy.h"
-
 #include "capone/common.h"
 #include "capone/log.h"
 #include "capone/server.h"
 #include "capone/service.h"
+
+#include "capone/services/synergy.h"
 
 static const char *version(void)
 {
