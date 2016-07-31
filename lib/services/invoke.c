@@ -15,13 +15,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "invoke.h"
-
 #include "capone/channel.h"
 #include "capone/common.h"
 #include "capone/log.h"
 #include "capone/proto.h"
 #include "capone/service.h"
+
+#include "capone/services/invoke.h"
 
 static const char *version(void)
 {

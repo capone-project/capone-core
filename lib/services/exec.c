@@ -18,12 +18,12 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "exec.h"
-
 #include "capone/common.h"
 #include "capone/channel.h"
 #include "capone/log.h"
 #include "capone/service.h"
+
+#include "capone/services/exec.h"
 
 static const char *version(void)
 {

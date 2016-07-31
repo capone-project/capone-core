@@ -19,12 +19,12 @@
 #include <string.h>
 #include <signal.h>
 
-#include "xpra.h"
-
 #include "capone/common.h"
 #include "capone/log.h"
 #include "capone/server.h"
 #include "capone/service.h"
+
+#include "capone/services/xpra.h"
 
 static const char *version(void)
 {

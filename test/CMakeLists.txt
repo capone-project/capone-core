@@ -1,4 +1,4 @@
-INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR})
+PROTOBUF_GENERATE_C(TEST_PROTO_SOURCES TEST_PROTO_HEADERS test.proto)
 
 ADD_EXECUTABLE(cpn-test cpn-test.c
     acl.c
@@ -11,7 +11,9 @@ ADD_EXECUTABLE(cpn-test cpn-test.c
     proto.c
     server.c
     service.c
-    session.c)
+    session.c
+    test-service.c
+    ${TEST_PROTO_SOURCES})
 TARGET_LINK_LIBRARIES(cpn-test cpn cmocka)
 
 ADD_EXECUTABLE(cpn-bench-throughput cpn-bench-throughput.c)
