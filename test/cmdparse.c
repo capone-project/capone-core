@@ -326,6 +326,59 @@ static void parsing_sigkey_without_argument_fails()
     assert_failure(cpn_cmdparse_parse(opts, ARRAY_SIZE(args), args));
 }
 
+static void parsing_counter_without_increments_succeeds()
+{
+    struct cpn_cmdparse_opt opts[] = {
+        CPN_CMDPARSE_OPT_COUNTER('i', "--increment"),
+        CPN_CMDPARSE_OPT_END
+    };
+
+    assert_success(cpn_cmdparse_parse(opts, 0, NULL));
+    assert_int_equal(opts[0].value.counter, 0);
+}
+
+static void parsing_counter_with_single_increment_succeeds()
+{
+    struct cpn_cmdparse_opt opts[] = {
+        CPN_CMDPARSE_OPT_COUNTER('i', "--increment"),
+        CPN_CMDPARSE_OPT_END
+    };
+    const char *args[] = {
+        "-i"
+    };
+
+    assert_success(cpn_cmdparse_parse(opts, ARRAY_SIZE(args), args));
+    assert_int_equal(opts[0].value.counter, 1);
+}
+
+static void parsing_counter_with_multiple_increments_succeeds()
+{
+    struct cpn_cmdparse_opt opts[] = {
+        CPN_CMDPARSE_OPT_COUNTER('i', "--increment"),
+        CPN_CMDPARSE_OPT_END
+    };
+    const char *args[] = {
+        "-i", "-i", "-i"
+    };
+
+    assert_success(cpn_cmdparse_parse(opts, ARRAY_SIZE(args), args));
+    assert_int_equal(opts[0].value.counter, 3);
+}
+
+static void parsing_counter_with_mixed_increments_succeeds()
+{
+    struct cpn_cmdparse_opt opts[] = {
+        CPN_CMDPARSE_OPT_COUNTER('i', "--increment"),
+        CPN_CMDPARSE_OPT_END
+    };
+    const char *args[] = {
+        "-i", "--increment", "-i", "--increment"
+    };
+
+    assert_success(cpn_cmdparse_parse(opts, ARRAY_SIZE(args), args));
+    assert_int_equal(opts[0].value.counter, 4);
+}
+
 int cmdparse_test_run_suite(void)
 {
     const struct CMUnitTest tests[] = {
@@ -353,7 +406,12 @@ int cmdparse_test_run_suite(void)
         test(parsing_sigkey_succeeds),
         test(parsing_sigkey_with_wrong_length_fails),
         test(parsing_sigkey_with_non_hex_fails),
-        test(parsing_sigkey_without_argument_fails)
+        test(parsing_sigkey_without_argument_fails),
+
+        test(parsing_counter_without_increments_succeeds),
+        test(parsing_counter_with_single_increment_succeeds),
+        test(parsing_counter_with_multiple_increments_succeeds),
+        test(parsing_counter_with_mixed_increments_succeeds)
     };
 
     return execute_test_suite("cmdparse", tests, setup, teardown);

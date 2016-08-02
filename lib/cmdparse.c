@@ -43,6 +43,9 @@ int cpn_cmdparse_parse(struct cpn_cmdparse_opt *opts, int argc, const char *argv
                 }
                 i = argc;
                 break;
+            case CPN_CMDPARSE_TYPE_COUNTER:
+                opt->value.counter++;
+                break;
             case CPN_CMDPARSE_TYPE_SIGKEY:
                 {
                     struct cpn_sign_key_public key;
