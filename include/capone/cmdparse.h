@@ -28,6 +28,7 @@ enum cpn_cmdparse_type {
     CPN_CMDPARSE_TYPE_COUNTER,
     CPN_CMDPARSE_TYPE_SIGKEY,
     CPN_CMDPARSE_TYPE_STRING,
+    CPN_CMDPARSE_TYPE_STRINGLIST,
     CPN_CMDPARSE_TYPE_UINT32,
     CPN_CMDPARSE_TYPE_END
 };
@@ -36,8 +37,14 @@ enum cpn_cmdparse_type {
 #define CPN_CMDPARSE_OPT_COUNTER(s, l) { (s), (l), CPN_CMDPARSE_TYPE_COUNTER, {NULL}, true, false }
 #define CPN_CMDPARSE_OPT_SIGKEY(s, l, optional) { (s), (l), CPN_CMDPARSE_TYPE_SIGKEY, {NULL}, (optional), false }
 #define CPN_CMDPARSE_OPT_STRING(s, l, optional) { (s), (l), CPN_CMDPARSE_TYPE_STRING, {NULL}, (optional), false }
+#define CPN_CMDPARSE_OPT_STRINGLIST(s, l, optional) { (s), (l), CPN_CMDPARSE_TYPE_STRINGLIST, {NULL}, (optional), false }
 #define CPN_CMDPARSE_OPT_UINT32(s, l, optional) { (s), (l), CPN_CMDPARSE_TYPE_UINT32, {NULL}, (optional), false }
 #define CPN_CMDPARSE_OPT_END                    { 0, NULL, CPN_CMDPARSE_TYPE_END, {NULL}, false, false }
+
+struct cpn_cmdparse_stringlist {
+    const char **argv;
+    int argc;
+};
 
 struct cpn_cmdparse_opt {
     char short_name;
@@ -48,6 +55,7 @@ struct cpn_cmdparse_opt {
         uint32_t counter;
         struct cpn_sign_key_public sigkey;
         const char *string;
+        struct cpn_cmdparse_stringlist stringlist;
         uint32_t uint32;
     } value;
     bool optional;

@@ -68,6 +68,15 @@ int cpn_cmdparse_parse(struct cpn_cmdparse_opt *opts, int argc, const char *argv
                 }
                 opt->value.string = argv[i];
                 break;
+            case CPN_CMDPARSE_TYPE_STRINGLIST:
+                if (++i >= argc) {
+                    cpn_log(LOG_LEVEL_ERROR, "No string list for option %s", argv[i - 1]);
+                    return -1;
+                }
+                opt->value.stringlist.argc = argc - i;
+                opt->value.stringlist.argv = argv + i;
+                i = argc;
+                break;
             case CPN_CMDPARSE_TYPE_UINT32:
                 {
                     uint32_t value;

@@ -379,6 +379,51 @@ static void parsing_counter_with_mixed_increments_succeeds()
     assert_int_equal(opts[0].value.counter, 4);
 }
 
+static void parsing_stringlist_with_single_argument_succeeds()
+{
+    struct cpn_cmdparse_opt opts[] = {
+        CPN_CMDPARSE_OPT_STRINGLIST(0, "--list", false),
+        CPN_CMDPARSE_OPT_END
+    };
+    const char *args[] = {
+        "--list", "value"
+    };
+
+    assert_success(cpn_cmdparse_parse(opts, ARRAY_SIZE(args), args));
+    assert_int_equal(opts[0].value.stringlist.argc, 1);
+    assert_string_equal(opts[0].value.stringlist.argv[0], "value");
+}
+
+static void parsing_stringlist_with_multiple_arguments_succeeds()
+{
+    struct cpn_cmdparse_opt opts[] = {
+        CPN_CMDPARSE_OPT_STRINGLIST(0, "--list", false),
+        CPN_CMDPARSE_OPT_END
+    };
+    const char *args[] = {
+        "--list", "value", "other-value", "third-value"
+    };
+
+    assert_success(cpn_cmdparse_parse(opts, ARRAY_SIZE(args), args));
+    assert_int_equal(opts[0].value.stringlist.argc, 3);
+    assert_string_equal(opts[0].value.stringlist.argv[0], "value");
+    assert_string_equal(opts[0].value.stringlist.argv[1], "other-value");
+    assert_string_equal(opts[0].value.stringlist.argv[2], "third-value");
+}
+
+static void parsing_stringlist_without_arguments_fails()
+{
+    struct cpn_cmdparse_opt opts[] = {
+        CPN_CMDPARSE_OPT_STRINGLIST(0, "--list", false),
+        CPN_CMDPARSE_OPT_END
+    };
+    const char *args[] = {
+        "--list"
+    };
+
+    assert_failure(cpn_cmdparse_parse(opts, ARRAY_SIZE(args), args));
+}
+
 int cmdparse_test_run_suite(void)
 {
     const struct CMUnitTest tests[] = {
@@ -411,7 +456,11 @@ int cmdparse_test_run_suite(void)
         test(parsing_counter_without_increments_succeeds),
         test(parsing_counter_with_single_increment_succeeds),
         test(parsing_counter_with_multiple_increments_succeeds),
-        test(parsing_counter_with_mixed_increments_succeeds)
+        test(parsing_counter_with_mixed_increments_succeeds),
+
+        test(parsing_stringlist_with_single_argument_succeeds),
+        test(parsing_stringlist_with_multiple_arguments_succeeds),
+        test(parsing_stringlist_without_arguments_fails)
     };
 
     return execute_test_suite("cmdparse", tests, setup, teardown);
