@@ -28,6 +28,7 @@
 #include <sys/wait.h>
 #include <netdb.h>
 
+#include "capone/cmdparse.h"
 #include "capone/common.h"
 #include "capone/log.h"
 #include "capone/proto.h"
@@ -186,33 +187,28 @@ static void handle_connections()
     }
 }
 
-int main(int argc, char *argv[])
+int main(int argc, const char *argv[])
 {
+    struct cpn_cmdparse_opt opts[] = {
+        CPN_CMDPARSE_OPT_STRING('c', "--config",
+                "Path to configuration file", "CFGFILE", false),
+        CPN_CMDPARSE_OPT_END,
+    };
     AnnounceMessage__Service **service_messages;
     struct cpn_service *services;
     struct cpn_cfg cfg;
     char *name;
     int i, numservices;
 
-    if (argc == 2 && !strcmp(argv[1], "--version")) {
-        puts("cpn-discover-responder " VERSION "\n"
-             "Copyright (C) 2016 Patrick Steinhardt\n"
-             "License GPLv3: GNU GPL version 3 <http://gnu.org/licenses/gpl.html>.\n"
-             "This is free software; you are free to change and redistribute it.\n"
-             "There is NO WARRANTY, to the extent permitted by the law.");
-        return 0;
-    }
-
-    if (argc != 2) {
-        printf("USAGE: %s <SERVER_CONFIG>\n", argv[0]);
-        return 0;
+    if (cpn_cmdparse_parse_cmd(opts, argc, argv) < 0) {
+        return -1;
     }
 
     if (sodium_init() < 0) {
         return -1;
     }
 
-    if (cpn_cfg_parse(&cfg, argv[1]) < 0) {
+    if (cpn_cfg_parse(&cfg, opts[0].value.string) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to read configuration");
         return -1;
     }
