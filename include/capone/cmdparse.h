@@ -76,13 +76,20 @@ enum cpn_cmdparse_type {
     CPN_CMDPARSE_TYPE_END
 };
 
-#define CPN_CMDPARSE_OPT_ACTION(action, opts, optional) { 0, (action), CPN_CMDPARSE_TYPE_ACTION, {(opts)}, (optional), false }
-#define CPN_CMDPARSE_OPT_COUNTER(s, l) { (s), (l), CPN_CMDPARSE_TYPE_COUNTER, {NULL}, true, false }
-#define CPN_CMDPARSE_OPT_SIGKEY(s, l, optional) { (s), (l), CPN_CMDPARSE_TYPE_SIGKEY, {NULL}, (optional), false }
-#define CPN_CMDPARSE_OPT_STRING(s, l, optional) { (s), (l), CPN_CMDPARSE_TYPE_STRING, {NULL}, (optional), false }
-#define CPN_CMDPARSE_OPT_STRINGLIST(s, l, optional) { (s), (l), CPN_CMDPARSE_TYPE_STRINGLIST, {NULL}, (optional), false }
-#define CPN_CMDPARSE_OPT_UINT32(s, l, optional) { (s), (l), CPN_CMDPARSE_TYPE_UINT32, {NULL}, (optional), false }
-#define CPN_CMDPARSE_OPT_END                    { 0, NULL, CPN_CMDPARSE_TYPE_END, {NULL}, false, false }
+#define CPN_CMDPARSE_OPT_ACTION(action, desc, opts) \
+    { 0, (action), (desc), NULL, CPN_CMDPARSE_TYPE_ACTION, {(opts)}, true, false }
+#define CPN_CMDPARSE_OPT_COUNTER(s, l, desc) \
+    { (s), (l), (desc), NULL, CPN_CMDPARSE_TYPE_COUNTER, {NULL}, true, false }
+#define CPN_CMDPARSE_OPT_SIGKEY(s, l, desc, arg, optional) \
+    { (s), (l), (desc), (arg), CPN_CMDPARSE_TYPE_SIGKEY, {NULL}, (optional), false }
+#define CPN_CMDPARSE_OPT_STRING(s, l, desc, arg, optional) \
+    { (s), (l), (desc), (arg), CPN_CMDPARSE_TYPE_STRING, {NULL}, (optional), false }
+#define CPN_CMDPARSE_OPT_STRINGLIST(s, l, desc, arg, optional) \
+    { (s), (l), (desc), (arg), CPN_CMDPARSE_TYPE_STRINGLIST, {NULL}, (optional), false }
+#define CPN_CMDPARSE_OPT_UINT32(s, l, desc, arg, optional) \
+    { (s), (l), (desc), (arg), CPN_CMDPARSE_TYPE_UINT32, {NULL}, (optional), false }
+#define CPN_CMDPARSE_OPT_END                    \
+    { 0, NULL, NULL, NULL, CPN_CMDPARSE_TYPE_END, {NULL}, false, false }
 
 /** @brief A simple list of arguments
  *
@@ -114,6 +121,8 @@ struct cpn_cmdparse_stringlist {
 struct cpn_cmdparse_opt {
     char short_name;
     const char *long_name;
+    const char *description;
+    const char *argname;
     enum cpn_cmdparse_type type;
     union {
         struct cpn_cmdparse_opt *action_opts;
