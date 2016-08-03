@@ -150,6 +150,20 @@ struct cpn_cmdparse_opt {
  */
 int cpn_cmdparse_parse(struct cpn_cmdparse_opt *opts, int argc, const char *argv[]);
 
+/** @brief Print usage to the terminal
+ *
+ * Using the specified options, print usage information to the
+ * command line.
+ *
+ * @param[in] opts Options specifying the format of command line
+ *            arguments.
+ * @param[in] executable Name of the executable to use when
+ *            printing usage information.
+ * @param[in] error Whether to print to <code>stderr</code>
+ *            instead to <code>stdout</code>
+ */
+void cpn_cmdparse_usage(const struct cpn_cmdparse_opt *opts, const char *executable, bool error);
+
 #endif
 
 /** @} */

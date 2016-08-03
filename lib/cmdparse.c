@@ -127,3 +127,110 @@ int cpn_cmdparse_parse(struct cpn_cmdparse_opt *opts, int argc, const char *argv
 
     return 0;
 }
+
+static void print_arguments(const struct cpn_cmdparse_opt *opts, FILE *out, int indent)
+{
+    const struct cpn_cmdparse_opt *it;
+    int i;
+
+    for (it = opts; it && it->type != CPN_CMDPARSE_TYPE_END; it++) {
+        if (it->type == CPN_CMDPARSE_TYPE_ACTION)
+            continue;
+
+        for (i = indent; i; i--)
+            fputc('\t', out);
+
+        if (it->short_name && it->long_name)
+            fprintf(out, "-%c, %s", it->short_name, it->long_name);
+        else if (it->short_name)
+            fputc(it->short_name, out);
+        else
+            fputs(it->long_name, out);
+
+        switch (it->type) {
+            case CPN_CMDPARSE_TYPE_SIGKEY:
+                fputs(" <SIGNATURE_KEY>", out);
+                break;
+            case CPN_CMDPARSE_TYPE_STRING:
+                fputs(" <VALUE>", out);
+                break;
+            case CPN_CMDPARSE_TYPE_STRINGLIST:
+                fputs(" <VALUE> [<VALUE>]+", out);
+                break;
+            case CPN_CMDPARSE_TYPE_UINT32:
+                fputs(" <UNSIGNED_INTEGER>", out);
+                break;
+            default:
+                break;
+        }
+
+        fputc('\n', out);
+    }
+}
+
+static void print_header(const struct cpn_cmdparse_opt *opts, const char *name, FILE *out)
+{
+    const struct cpn_cmdparse_opt *it;
+    bool has_actions = 0, has_opts = 0;
+
+    fputs(name, out);
+
+    for (it = opts; it && it->type != CPN_CMDPARSE_TYPE_END; it++) {
+        switch (it->type) {
+            case CPN_CMDPARSE_TYPE_ACTION:
+                has_actions = 1;
+                continue;
+            default:
+                has_opts = 1;
+                break;
+        }
+    }
+
+    if (has_opts)
+        fputs(" [<OPTS>]", out);
+
+    if (has_actions) {
+        bool first_action = true;
+
+        fputs(" (", out);
+        for (it = opts; it && it->type != CPN_CMDPARSE_TYPE_END; it++) {
+            if (it->type == CPN_CMDPARSE_TYPE_ACTION) {
+                fprintf(out, "%s%s", first_action ? "" : "|", it->long_name);
+                first_action = false;
+            }
+        }
+        fputs(")", out);
+    }
+
+    fputc('\n', out);
+}
+
+static void print_actions(const struct cpn_cmdparse_opt *opts, FILE *out, int indent)
+{
+    const struct cpn_cmdparse_opt *it;
+    int i;
+
+    for (it = opts; it && it->type != CPN_CMDPARSE_TYPE_END; it++) {
+        if (it->type != CPN_CMDPARSE_TYPE_ACTION)
+            continue;
+
+        for (i = indent; i; i--)
+            fputc('\t', out);
+        print_header(it->value.action_opts, it->long_name, out);
+        print_arguments(it->value.action_opts, out, indent + 1);
+        fputc('\n', out);
+        print_actions(it->value.action_opts, out, indent + 1);
+    }
+}
+
+void cpn_cmdparse_usage(const struct cpn_cmdparse_opt *opts,
+        const char *executable, bool error)
+{
+    FILE *out = error ? stderr : stdout;
+
+    fputs("USAGE: ", out);
+    print_header(opts, executable, out);
+    print_arguments(opts, out, 1);
+    fputc('\n', out);
+    print_actions(opts, out, 1);
+}
