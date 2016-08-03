@@ -149,26 +149,33 @@ static void print_arguments(const struct cpn_cmdparse_opt *opts, FILE *out, int 
 
         switch (it->type) {
             case CPN_CMDPARSE_TYPE_SIGKEY:
-                fputs(" <SIGNATURE_KEY>", out);
+                fprintf(out, " <%s>", it->argname ? it->argname : "KEY");
                 break;
             case CPN_CMDPARSE_TYPE_STRING:
-                fputs(" <VALUE>", out);
+                fprintf(out, " <%s>", it->argname ? it->argname : "VALUE");
                 break;
             case CPN_CMDPARSE_TYPE_STRINGLIST:
-                fputs(" <VALUE> [<VALUE>]+", out);
+                fprintf(out, " [<%s>]+", it->argname ? it->argname : "VALUE");
                 break;
             case CPN_CMDPARSE_TYPE_UINT32:
-                fputs(" <UNSIGNED_INTEGER>", out);
+                fprintf(out, " <%s>", it->argname ? it->argname : "UNSIGNED_INT");
                 break;
             default:
                 break;
+        }
+
+        if (it->description) {
+            fputc('\n', out);
+            for (i = indent; i; i--)
+                fputc('\t', out);
+            fprintf(out, "\t%s", it->description);
         }
 
         fputc('\n', out);
     }
 }
 
-static void print_header(const struct cpn_cmdparse_opt *opts, const char *name, FILE *out)
+static void print_header(const struct cpn_cmdparse_opt *opts, const char *name, const char *description, FILE *out)
 {
     const struct cpn_cmdparse_opt *it;
     bool has_actions = 0, has_opts = 0;
@@ -202,6 +209,10 @@ static void print_header(const struct cpn_cmdparse_opt *opts, const char *name, 
         fputs(")", out);
     }
 
+    if (description) {
+        fprintf(out, ": %s", description);
+    }
+
     fputc('\n', out);
 }
 
@@ -216,7 +227,7 @@ static void print_actions(const struct cpn_cmdparse_opt *opts, FILE *out, int in
 
         for (i = indent; i; i--)
             fputc('\t', out);
-        print_header(it->value.action_opts, it->long_name, out);
+        print_header(it->value.action_opts, it->long_name, it->description, out);
         print_arguments(it->value.action_opts, out, indent + 1);
         fputc('\n', out);
         print_actions(it->value.action_opts, out, indent + 1);
@@ -229,7 +240,7 @@ void cpn_cmdparse_usage(const struct cpn_cmdparse_opt *opts,
     FILE *out = error ? stderr : stdout;
 
     fputs("USAGE: ", out);
-    print_header(opts, executable, out);
+    print_header(opts, executable, NULL, out);
     print_arguments(opts, out, 1);
     fputc('\n', out);
     print_actions(opts, out, 1);
