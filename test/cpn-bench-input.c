@@ -27,6 +27,7 @@
 #include <X11/extensions/XTest.h>
 
 #include "capone/bench.h"
+#include "capone/cmdparse.h"
 #include "capone/common.h"
 #include "capone/channel.h"
 #include "capone/server.h"
@@ -137,24 +138,27 @@ void *process_events(void *ptr)
     return NULL;
 }
 
-int main(int argc, char *argv[])
+int main(int argc, const char *argv[])
 {
+    struct cpn_cmdparse_opt opts[] = {
+        CPN_CMDPARSE_OPT_STRING('f', "--from-display", NULL, NULL, false),
+        CPN_CMDPARSE_OPT_STRING('t', "--to-display", NULL, NULL, false),
+        CPN_CMDPARSE_OPT_END
+    };
     struct payload payload;
     struct cpn_thread t;
     Display *dpy;
     int i, retval = 0;
 
-    if (argc != 3) {
-        printf("USAGE: %s <DISPLAY1> <DISPLAY2>\n", argv[0]);
+    if (cpn_cmdparse_parse_cmd(opts, argc, argv) <  0)
         return -1;
-    }
 
-    payload.dpy1 = argv[1];
-    payload.dpy2 = argv[2];
+    payload.dpy1 = opts[0].value.string;
+    payload.dpy2 = opts[1].value.string;
 
     cpn_spawn(&t, process_events, &payload);
 
-    if ((dpy = XOpenDisplay(argv[1])) == NULL) {
+    if ((dpy = XOpenDisplay(payload.dpy1)) == NULL) {
         retval = -1;
         goto out;
     }
