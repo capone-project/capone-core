@@ -24,6 +24,7 @@
 #include <sodium.h>
 
 #include "capone/acl.h"
+#include "capone/cmdparse.h"
 #include "capone/common.h"
 #include "capone/log.h"
 #include "capone/proto.h"
@@ -190,20 +191,24 @@ out:
     return NULL;
 }
 
-static int setup(struct cpn_cfg *cfg, int argc, char *argv[])
+static int setup(struct cpn_cfg *cfg, int argc, const char *argv[])
 {
-    const char *servicename;
+    struct cpn_cmdparse_opt opts[] = {
+        CPN_CMDPARSE_OPT_STRING('c', "--config",
+                "Path to configuration file", "CFGFILE", false),
+        CPN_CMDPARSE_OPT_STRING('s', "--service",
+                "Name of the service to host", "SERVICE", false),
+        CPN_CMDPARSE_OPT_STRING(0, "--request-acl",
+                "Path to file containing access control list for requests",
+                "FILE", false),
+        CPN_CMDPARSE_OPT_STRING(0, "--query-acl",
+                "Path to file containing access control list for queries",
+                "FILE", false),
+        CPN_CMDPARSE_OPT_END
+    };
     int err;
 
-    if (argc == 2 && !strcmp(argv[1], "--version")) {
-        puts("cpn-server " VERSION "\n"
-             "Copyright (C) 2016 Patrick Steinhardt\n"
-             "License GPLv3: GNU GPL version 3 <http://gnu.org/licenses/gpl.html>.\n"
-             "This is free software; you are free to change and redistribute it.\n"
-             "There is NO WARRANTY, to the extent permitted by the law.");
-        return 0;
-    } else if (argc < 3 || argc > 5) {
-        printf("USAGE: %s <CONFIG> <SERVICENAME> [<REQUEST_ACL> [<QUERY_ACL>]]\n", argv[0]);
+    if (cpn_cmdparse_parse_cmd(opts, argc, argv) < 0) {
         return -1;
     }
 
@@ -212,24 +217,23 @@ static int setup(struct cpn_cfg *cfg, int argc, char *argv[])
         return -1;
     }
 
-    servicename = argv[2];
-
     memset(cfg, 0, sizeof(*cfg));
 
-    if (cpn_cfg_parse(cfg, argv[1]) < 0) {
+    if (cpn_cfg_parse(cfg, opts[0].value.string) < 0) {
         puts("Could not parse config");
         err = -1;
         goto out;
     }
 
-    if (argc == 5) {
-        read_acl(&request_acl, argv[3]);
-        read_acl(&query_acl, argv[4]);
-    } else if (argc == 4) {
-        read_acl(&request_acl, argv[3]);
-        cpn_acl_add_wildcard(&query_acl, CPN_ACL_RIGHT_EXEC);
+    if (opts[2].set) {
+        read_acl(&request_acl, opts[2].value.string);
     } else {
         cpn_acl_add_wildcard(&request_acl, CPN_ACL_RIGHT_EXEC);
+    }
+
+    if (opts[3].set) {
+        read_acl(&query_acl, opts[3].value.string);
+    } else {
         cpn_acl_add_wildcard(&query_acl, CPN_ACL_RIGHT_EXEC);
     }
 
@@ -251,7 +255,7 @@ static int setup(struct cpn_cfg *cfg, int argc, char *argv[])
         goto out;
     }
 
-    if (cpn_service_from_config(&service, servicename, cfg) < 0) {
+    if (cpn_service_from_config(&service, opts[1].value.string, cfg) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not parse services");
         err = -1;
         goto out;
@@ -271,7 +275,7 @@ out:
     return err;
 }
 
-int main(int argc, char *argv[])
+int main(int argc, const char *argv[])
 {
     struct cpn_server server;
     struct cpn_cfg cfg;
