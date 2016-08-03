@@ -41,9 +41,10 @@ static int parameters(const struct cpn_parameter **out)
     return ARRAY_SIZE(params);
 }
 
-static int invoke(struct cpn_channel *channel, int argc, char **argv)
+static int invoke(struct cpn_channel *channel, int argc, const char **argv)
 {
-    char buf[1], *port;
+    char buf[1];
+    const char *port;
     struct cpn_channel xpra_channel;
 
     if (argc != 2 || strcmp(argv[0], "port")) {

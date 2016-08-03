@@ -13,7 +13,7 @@ do
 
     for pkglen in 64 128 256 512 1024 1500 2048 4096
     do
-        RESULT=$(./build/cpn-bench-latency ${pkglen})
+        RESULT=$(./build/cpn-bench-latency -l ${pkglen})
         CONNECT=$(echo "${RESULT}" | head -n1 | awk '{print $3 / 1000000}')
         AWAIT=$(echo "${RESULT}" | tail -n1 | awk '{print $3 / 1000000}')
 

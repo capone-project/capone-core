@@ -20,6 +20,7 @@
 
 #include "capone/bench.h"
 #include "capone/channel.h"
+#include "capone/cmdparse.h"
 #include "capone/common.h"
 #include "capone/keys.h"
 #include "capone/server.h"
@@ -80,13 +81,14 @@ out:
     return NULL;
 }
 
-static void usage(const char *executable)
+int main(int argc, const char *argv[])
 {
-    printf("USAGE: %s <--encrypted|--plain> <DATALEN> <BLOCKLEN>\n", executable);
-}
-
-int main(int argc, char *argv[])
-{
+    struct cpn_cmdparse_opt opts[] = {
+        CPN_CMDPARSE_OPT_COUNTER('e', "--encrypt", "Benchmark sending encrypted text"),
+        CPN_CMDPARSE_OPT_UINT32('d', "--data-length", "Length of data to send", "LENGTH", false),
+        CPN_CMDPARSE_OPT_UINT32('b', "--block-length", "Length of blocks to split by", "LENGTH", false),
+        CPN_CMDPARSE_OPT_END
+    };
     struct client_args args;
     struct cpn_thread t;
     struct cpn_server server;
@@ -95,32 +97,12 @@ int main(int argc, char *argv[])
     uint64_t start, end;
     uint32_t i;
 
-    if (argc != 4) {
-        usage(argv[0]);
+    if (cpn_cmdparse_parse_cmd(opts, argc, argv) < 0)
         return -1;
-    }
 
-    if (!strcmp(argv[1] , "--plain")) {
-        encrypt = 0;
-    } else if (!strcmp(argv[1], "--encrypted")) {
-        encrypt = 1;
-        cpn_symmetric_key_generate(&key);
-    } else {
-        usage(argv[0]);
-        return -1;
-    }
-
-    if (parse_uint32t(&args.datalen, argv[2]) < 0) {
-        puts("Invalid data length");
-        usage(argv[0]);
-        return -1;
-    }
-
-    if (parse_uint32t(&args.blocklen, argv[3]) < 0) {
-        puts("Invalid block length");
-        usage(argv[0]);
-        return -1;
-    }
+    encrypt = opts[0].value.counter;
+    args.datalen = opts[1].value.uint32;
+    args.blocklen = opts[2].value.uint32;
 
     data = malloc(args.datalen);
 

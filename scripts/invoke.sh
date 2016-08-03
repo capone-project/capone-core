@@ -30,12 +30,14 @@ SERVICE_SESSION=$(./cpn-client request \
 SERVICE_ID="$(echo "$SERVICE_SESSION" | awk 'NR == 1 { print $2 }')"
 SERVICE_SECRET="$(echo "$SERVICE_SESSION" | awk 'NR == 2 { print $2 }')"
 
-INVOKE_SESSION=$(./cpn-client request \
-    ${CLIENT_CFG} \
-    ${CLIENT_KEY} \
-    ${INVOKER_KEY} \
-    ${INVOKER_ADDR} \
-    ${INVOKER_PORT} \
+INVOKE_SESSION=$(./cpn-client \
+    --config ${CLIENT_CFG} \
+    --remote-key ${INVOKER_KEY} \
+    --remote-host ${INVOKER_ADDR} \
+    --remote-port ${INVOKER_PORT} \
+    request \
+    --invoker-key ${CLIENT_KEY} \
+    --parameters \
     service-identity=${SERVICE_KEY} \
     service-address=${SERVICE_ADDR} \
     service-port=${SERVICE_PORT} \
@@ -45,11 +47,12 @@ INVOKE_SESSION=$(./cpn-client request \
 INVOKE_ID="$(echo "$INVOKE_SESSION" | awk 'NR == 1 { print $2 }')"
 INVOKE_SECRET="$(echo "$INVOKE_SESSION" | awk 'NR == 2 { print $2 }')"
 
-./cpn-client connect \
-    ${CLIENT_CFG} \
-    ${INVOKER_KEY} \
-    ${INVOKER_ADDR} \
-    ${INVOKER_PORT} \
-    invoke \
-    ${INVOKE_ID} \
-    ${INVOKE_SECRET}
+./cpn-client \
+    --config ${CLIENT_CFG} \
+    --remote-key ${INVOKER_KEY} \
+    --remote-host ${INVOKER_ADDR} \
+    --remote-port ${INVOKER_PORT} \
+    connect \
+    --sevice-type invoke \
+    --session-id ${INVOKE_ID} \
+    --session-cap ${INVOKE_SECRET}

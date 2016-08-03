@@ -25,6 +25,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
+#include "capone/cmdparse.h"
 #include "capone/common.h"
 #include "capone/cfg.h"
 #include "capone/log.h"
@@ -232,41 +233,38 @@ out:
     cpn_channel_close(&channel);
 }
 
-int main(int argc, char *argv[])
+int main(int argc, const char *argv[])
 {
-    if (argc == 2 && !strcmp(argv[1], "--version")) {
-        puts("cpn-discover " VERSION "\n"
-             "Copyright (C) 2016 Patrick Steinhardt\n"
-             "License GPLv3: GNU GPL version 3 <http://gnu.org/licenses/gpl.html>.\n"
-             "This is free software; you are free to change and redistribute it.\n"
-             "There is NO WARRANTY, to the extent permitted by the law.");
-        return 0;
-    }
+    static struct cpn_cmdparse_opt directed_opts[] = {
+        CPN_CMDPARSE_OPT_SIGKEY(0, "--remote-key",
+                "Public signature key of the host to query", "KEY", false),
+        CPN_CMDPARSE_OPT_STRING(0, "--remote-host",
+                "Network address of the host to query", "ADDRESS", false),
+        CPN_CMDPARSE_OPT_STRING(0, "--remote-port",
+                "Port of the host to query", "PORT", false),
+        CPN_CMDPARSE_OPT_END
+    };
+    struct cpn_cmdparse_opt opts[] = {
+        CPN_CMDPARSE_OPT_STRING('c', "--config", "Configuration file", "FILE", false),
+        CPN_CMDPARSE_OPT_ACTION("broadcast", NULL, NULL),
+        CPN_CMDPARSE_OPT_ACTION("direct", NULL, directed_opts),
+        CPN_CMDPARSE_OPT_END
+    };
 
-    if (argc != 2 && argc != 5) {
-        printf("USAGE: %s <CONFIG> [<KEY> <HOST> <PORT>]\n", argv[0]);
+    if (cpn_cmdparse_parse_cmd(opts, argc, argv) < 0)
         return -1;
-    }
 
-    if (sodium_init() < 0) {
+    if (sodium_init() < 0)
         return -1;
-    }
 
-    if (cpn_sign_key_pair_from_config_file(&local_keys, argv[1]) < 0) {
-        puts("Could not parse config");
-        return -1;
-    }
-
-    if (argc == 2) {
+    if (opts[1].set) {
         undirected_discovery();
-    } else if (argc == 5) {
-        struct cpn_sign_key_public remote_key;
-
-        if (cpn_sign_key_public_from_hex(&remote_key, argv[2]) < 0) {
-            return -1;
-        }
-
-        directed_discovery(&remote_key, argv[3], argv[4]);
+    } else if (opts[2].set) {
+        directed_discovery(&directed_opts[0].value.sigkey,
+                directed_opts[1].value.string,
+                directed_opts[1].value.string);
+    } else {
+        puts("No action specified");
     }
 
     return 0;

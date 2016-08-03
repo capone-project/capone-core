@@ -77,7 +77,7 @@ size_t cpn_parameters_dup(struct cpn_parameter **out,
  * @return Number of parameters parsed or <code>-1</code> on
  *         error
  */
-ssize_t cpn_parameters_parse(struct cpn_parameter **out, int argc, char **argv);
+ssize_t cpn_parameters_parse(struct cpn_parameter **out, int argc, const char **argv);
 
 /** @brief Filter parameters by their keys
  *

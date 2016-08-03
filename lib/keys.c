@@ -21,6 +21,46 @@
 #include "capone/log.h"
 #include "capone/keys.h"
 
+#define HEXCHARS "1234567890abcdefABCDEF"
+
+static int verify_hex(const char *hex)
+{
+    const char *c;
+    int ret = 0;
+
+    for (c = hex; *c != '\0'; c++) {
+        if (memchr(HEXCHARS, *c, strlen(HEXCHARS)) == NULL)
+            ret |= 1;
+        else
+            ret |= 0;
+    }
+
+    return -ret;
+}
+
+static int cpn_sign_key_secret_from_hex(struct cpn_sign_key_secret *out, const char *hex)
+{
+    int hexlen;
+
+    if (out == NULL || hex == NULL) {
+        cpn_log(LOG_LEVEL_ERROR, "Got no secret keys to decipher");
+        return -1;
+    }
+
+    if (verify_hex(hex) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Got secret key with invalid characters");
+        return -1;
+    }
+
+    hexlen = strlen(hex);
+    if (hexlen != crypto_sign_SECRETKEYBYTES * 2) {
+        cpn_log(LOG_LEVEL_ERROR, "Hex length does not match required secret sign key length");
+        return -1;
+    }
+
+    return sodium_hex2bin(out->data, sizeof(out->data), hex, hexlen, NULL, NULL, NULL);
+}
+
 int cpn_sign_key_pair_generate(struct cpn_sign_key_pair *out)
 {
     return crypto_sign_ed25519_keypair(out->pk.data, out->sk.data);
@@ -28,43 +68,25 @@ int cpn_sign_key_pair_generate(struct cpn_sign_key_pair *out)
 
 int cpn_sign_key_pair_from_config(struct cpn_sign_key_pair *out, const struct cpn_cfg *cfg)
 {
-    uint8_t sign_pk[crypto_sign_PUBLICKEYBYTES],
-            sign_sk[crypto_sign_SECRETKEYBYTES];
+    struct cpn_sign_key_public pk;
+    struct cpn_sign_key_secret sk;
     char *value;
 
     value = cpn_cfg_get_str_value(cfg, "core", "public_key");
-    if (value == NULL) {
-        cpn_log(LOG_LEVEL_ERROR, "Could not retrieve public key from config");
-        goto out_err;
-    }
-    if (strlen(value) != crypto_sign_PUBLICKEYBYTES * 2) {
-        cpn_log(LOG_LEVEL_ERROR, "Invalid public key length");
-        goto out_err;
-    }
-    if (sodium_hex2bin(sign_pk, sizeof(sign_pk), value, strlen(value), NULL, NULL, NULL) < 0) {
-        cpn_log(LOG_LEVEL_ERROR, "Could not decode public key");
+    if (cpn_sign_key_public_from_hex(&pk, value) < 0) {
         goto out_err;
     }
     free(value);
 
     value = cpn_cfg_get_str_value(cfg, "core", "secret_key");
-    if (value == NULL) {
-        cpn_log(LOG_LEVEL_ERROR, "Could not retrieve secret key from config");
-        goto out_err;
-    }
-    if (strlen(value) != crypto_sign_SECRETKEYBYTES * 2) {
-        cpn_log(LOG_LEVEL_ERROR, "Invalid secret key length");
-        goto out_err;
-    }
-    if (sodium_hex2bin(sign_sk, sizeof(sign_sk), value, strlen(value), NULL, NULL, NULL)) {
-        cpn_log(LOG_LEVEL_ERROR, "Could not decode public key");
+    if (cpn_sign_key_secret_from_hex(&sk, value) < 0) {
         goto out_err;
     }
     free(value);
     value = NULL;
 
-    memcpy(out->pk.data, sign_pk, sizeof(sign_pk));
-    memcpy(out->sk.data, sign_sk, sizeof(sign_sk));
+    memcpy(&out->pk, &pk, sizeof(pk));
+    memcpy(&out->sk, &sk, sizeof(sk));
 
     return 0;
 
@@ -100,6 +122,16 @@ out:
 int cpn_sign_key_public_from_hex(struct cpn_sign_key_public *out, const char *hex)
 {
     int hexlen;
+
+    if (out == NULL || hex == NULL) {
+        cpn_log(LOG_LEVEL_ERROR, "Got no keys to decipher");
+        return -1;
+    }
+
+    if (verify_hex(hex) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Got public key with invalid characters");
+        return -1;
+    }
 
     hexlen = strlen(hex);
     if (hexlen != crypto_sign_PUBLICKEYBYTES * 2) {

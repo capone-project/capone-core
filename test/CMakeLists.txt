@@ -5,6 +5,7 @@ ADD_EXECUTABLE(cpn-test cpn-test.c
     caps.c
     cfg.c
     channel.c
+    cmdparse.c
     common.c
     keys.c
     parameter.c
