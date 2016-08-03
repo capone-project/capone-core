@@ -44,7 +44,7 @@ static int parameters(const struct cpn_parameter **out)
     return ARRAY_SIZE(params);
 }
 
-static int invoke(struct cpn_channel *channel, int argc, char **argv)
+static int invoke(struct cpn_channel *channel, int argc, const char **argv)
 {
     UNUSED(argc);
     UNUSED(argv);
@@ -125,7 +125,7 @@ static int handle(struct cpn_channel *channel,
         goto out;
     }
 
-    if (service.invoke(&remote_channel, nparams, (char **) service_params) < 0) {
+    if (service.invoke(&remote_channel, nparams, service_params) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not invoke service");
         goto out;
     }

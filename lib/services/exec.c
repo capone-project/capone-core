@@ -43,7 +43,7 @@ static int parameters(const struct cpn_parameter **out)
     return ARRAY_SIZE(params);
 }
 
-static int invoke(struct cpn_channel *channel, int argc, char **argv)
+static int invoke(struct cpn_channel *channel, int argc, const char **argv)
 {
     UNUSED(argc);
     UNUSED(argv);

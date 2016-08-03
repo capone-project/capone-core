@@ -49,7 +49,7 @@ struct cpn_channel;
  * @param[in] argv Array of arguments specified by the client
  * @return <code>0</code> on success, <code>-1</code> otherwise
  */
-typedef int (*invoke_fn)(struct cpn_channel *channel, int argc, char **argv);
+typedef int (*invoke_fn)(struct cpn_channel *channel, int argc, const char **argv);
 
 /** @brief Function executed when a service is started by a client
  *

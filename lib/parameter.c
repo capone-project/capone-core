@@ -43,7 +43,7 @@ size_t cpn_parameters_dup(struct cpn_parameter **out,
     return nparams;
 }
 
-ssize_t cpn_parameters_parse(struct cpn_parameter **out, int argc, char **argv)
+ssize_t cpn_parameters_parse(struct cpn_parameter **out, int argc, const char **argv)
 {
     struct cpn_parameter *params;
     int i;

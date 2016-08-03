@@ -37,7 +37,7 @@ static int parameters(const struct cpn_parameter **out)
     return 0;
 }
 
-static int invoke(struct cpn_channel *channel, int argc, char **argv)
+static int invoke(struct cpn_channel *channel, int argc, const char **argv)
 {
     struct cpn_channel synergy_channel;
     char *args[] = {

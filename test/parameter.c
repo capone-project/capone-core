@@ -59,7 +59,7 @@ static void test_duplicating_parameters()
 
 static void test_parsing_parameter()
 {
-    char *args[] = {
+    const char *args[] = {
         "key=value"
     };
 
@@ -71,7 +71,7 @@ static void test_parsing_parameter()
 
 static void test_parsing_parameters()
 {
-    char *args[] = {
+    const char *args[] = {
         "key1=value1", "key2=value2"
     };
 
@@ -85,7 +85,7 @@ static void test_parsing_parameters()
 
 static void test_parsing_parameter_with_multiple_equals()
 {
-    char *args[] = {
+    const char *args[] = {
         "key=param=value"
     };
 
@@ -97,7 +97,7 @@ static void test_parsing_parameter_with_multiple_equals()
 
 static void test_parsing_parameter_with_no_value()
 {
-    char *args[] = {
+    const char *args[] = {
         "key"
     };
 
@@ -109,7 +109,7 @@ static void test_parsing_parameter_with_no_value()
 
 static void test_parsing_parameter_with_empty_value()
 {
-    char *args[] = {
+    const char *args[] = {
         "key="
     };
 

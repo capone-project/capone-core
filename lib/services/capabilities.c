@@ -249,7 +249,7 @@ out:
     return ret;
 }
 
-static int invoke_register(struct cpn_channel *channel, int argc, char **argv)
+static int invoke_register(struct cpn_channel *channel, int argc, const char **argv)
 {
     CapabilityRequest *request;
     struct cpn_sign_key_hex requester, invoker, service;
@@ -365,7 +365,7 @@ static int invoke_request(struct cpn_channel *channel)
     return 0;
 }
 
-static int invoke(struct cpn_channel *channel, int argc, char **argv)
+static int invoke(struct cpn_channel *channel, int argc, const char **argv)
 {
     if (argc < 1) {
         puts("USAGE: capabilities (register|request)");
