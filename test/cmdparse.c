@@ -56,6 +56,33 @@ static void parsing_opt_without_arg_fails()
     assert_failure(cpn_cmdparse_parse(opts, ARRAY_SIZE(args), args));
 }
 
+static void parsing_with_invalid_option_fails()
+{
+    struct cpn_cmdparse_opt opts[] = {
+        CPN_CMDPARSE_OPT_STRING(0, "--option", NULL, NULL, false),
+        CPN_CMDPARSE_OPT_END
+    };
+    const char *args[] = {
+        "--misspelled"
+    };
+
+    assert_failure(cpn_cmdparse_parse(opts, ARRAY_SIZE(args), args));
+}
+
+static void parsing_with_null_opts_succeeds_without_args()
+{
+    assert_success(cpn_cmdparse_parse(NULL, 0, NULL));
+}
+
+static void parsing_with_null_opts_fails_with_args()
+{
+    const char *args[] = {
+        "--misspelled"
+    };
+
+    assert_failure(cpn_cmdparse_parse(NULL, ARRAY_SIZE(args), args));
+}
+
 static void parsing_opt_with_arg_succeeds()
 {
     struct cpn_cmdparse_opt opts[] = {
@@ -430,6 +457,9 @@ int cmdparse_test_run_suite(void)
         test(parsing_nothing_succeeds),
         test(parsing_with_no_opts_fails),
         test(parsing_opt_without_arg_fails),
+        test(parsing_with_invalid_option_fails),
+        test(parsing_with_null_opts_succeeds_without_args),
+        test(parsing_with_null_opts_fails_with_args),
 
         test(parsing_opt_with_arg_succeeds),
         test(parsing_opt_without_argument_fails),

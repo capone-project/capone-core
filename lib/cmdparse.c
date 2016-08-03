@@ -103,12 +103,17 @@ int cpn_cmdparse_parse(struct cpn_cmdparse_opt *opts, int argc, const char *argv
     struct cpn_cmdparse_opt *opt;
 
     for (i = 0; i < argc; i++) {
-        for (opt = opts; opt->type != CPN_CMDPARSE_TYPE_END; opt++) {
+        for (opt = opts; opt && opt->type != CPN_CMDPARSE_TYPE_END; opt++) {
             if (opt->short_name && argv[i][0] == '-' && argv[i][1] == opt->short_name && argv[i][2] == '\0') {
                 break;
             } else if (opt->long_name && !strcmp(argv[i], opt->long_name)) {
                 break;
             }
+        }
+
+        if (!opt) {
+            cpn_log(LOG_LEVEL_ERROR, "Unknown option %s", argv[0]);
+            return -1;
         }
 
         if ((processed = parse_option(opt, argc - i, argv + i)) < 0)
@@ -118,7 +123,7 @@ int cpn_cmdparse_parse(struct cpn_cmdparse_opt *opts, int argc, const char *argv
         i += processed;
     }
 
-    for (opt = opts; opt->type != CPN_CMDPARSE_TYPE_END; opt++) {
+    for (opt = opts; opt && opt->type != CPN_CMDPARSE_TYPE_END; opt++) {
         if (!opt->set && !opt->optional) {
             cpn_log(LOG_LEVEL_ERROR, "Required argument %s not set", opt->long_name);
             return -1;
