@@ -166,22 +166,22 @@ static void print_arguments(const struct cpn_cmdparse_opt *opts, FILE *out, int 
         if (it->short_name && it->long_name)
             fprintf(out, "-%c, %s", it->short_name, it->long_name);
         else if (it->short_name)
-            fputc(it->short_name, out);
+            fprintf(out, "-%c", it->short_name);
         else
             fputs(it->long_name, out);
 
         switch (it->type) {
             case CPN_CMDPARSE_TYPE_SIGKEY:
-                fprintf(out, " <%s>", it->argname ? it->argname : "KEY");
+                fprintf(out, " %s", it->argname ? it->argname : "KEY");
                 break;
             case CPN_CMDPARSE_TYPE_STRING:
-                fprintf(out, " <%s>", it->argname ? it->argname : "VALUE");
+                fprintf(out, " %s", it->argname ? it->argname : "VALUE");
                 break;
             case CPN_CMDPARSE_TYPE_STRINGLIST:
-                fprintf(out, " [<%s>]+", it->argname ? it->argname : "VALUE");
+                fprintf(out, " [%s...]", it->argname ? it->argname : "VALUE");
                 break;
             case CPN_CMDPARSE_TYPE_UINT32:
-                fprintf(out, " <%s>", it->argname ? it->argname : "UNSIGNED_INT");
+                fprintf(out, " %s", it->argname ? it->argname : "UNSIGNED_INT");
                 break;
             default:
                 break;
@@ -217,7 +217,7 @@ static void print_header(const struct cpn_cmdparse_opt *opts, const char *name, 
     }
 
     if (has_opts)
-        fputs(" [<OPTS>]", out);
+        fputs(" [OPTIONS...]", out);
 
     if (has_actions) {
         bool first_action = true;
