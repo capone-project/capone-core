@@ -20,6 +20,7 @@
 
 #include "capone/bench.h"
 #include "capone/channel.h"
+#include "capone/cmdparse.h"
 #include "capone/common.h"
 #include "capone/keys.h"
 #include "capone/proto.h"
@@ -86,8 +87,12 @@ static void *client(void *payload)
     return NULL;
 }
 
-int main(int argc, char *argv[])
+int main(int argc, const char *argv[])
 {
+    struct cpn_cmdparse_opt opts[] = {
+        CPN_CMDPARSE_OPT_UINT32('l', "--block-length", NULL, NULL, false),
+        CPN_CMDPARSE_OPT_END
+    };
     struct cpn_thread t;
     struct client_args args;
     struct cpn_server server;
@@ -95,15 +100,10 @@ int main(int argc, char *argv[])
     uint64_t start, end, time;
     int i;
 
-    if (argc != 2) {
-        printf("USAGE: %s <BLOCKLEN>\n", argv[0]);
+    if (cpn_cmdparse_parse_cmd(opts, argc, argv) < 0)
         return -1;
-    }
 
-    if (parse_uint32t(&blocklen, argv[1]) < 0) {
-        printf("Could not parse block length %s\n", argv[1]);
-        return -1;
-    }
+    blocklen = opts[0].value.uint32;
 
     if (cpn_bench_set_affinity(3) < 0) {
         puts("Unable to set sched affinity");
