@@ -21,9 +21,85 @@
 #include "capone/cmdparse.h"
 #include "capone/log.h"
 
+static int parse_option(struct cpn_cmdparse_opt *opt, int argc, const char *argv[])
+{
+    switch (opt->type) {
+        case CPN_CMDPARSE_TYPE_ACTION:
+            if (cpn_cmdparse_parse(opt->value.action_opts, argc - 1, argv + 1) < 0) {
+                cpn_log(LOG_LEVEL_ERROR, "Cannot parse action %s", argv[0]);
+                return -1;
+            }
+
+            return argc;
+        case CPN_CMDPARSE_TYPE_COUNTER:
+            opt->value.counter++;
+            return 0;
+        case CPN_CMDPARSE_TYPE_SIGKEY:
+            {
+                struct cpn_sign_key_public key;
+
+                if (argc < 2) {
+                    cpn_log(LOG_LEVEL_ERROR, "No key for option %s", argv[0]);
+                    return -1;
+                }
+
+                if (cpn_sign_key_public_from_hex(&key, argv[1]) < 0) {
+                    cpn_log(LOG_LEVEL_ERROR, "Invalid key %s for option %s",
+                            argv[1], argv[0]);
+                    return -1;
+                }
+            }
+
+            return 1;
+        case CPN_CMDPARSE_TYPE_STRING:
+            if (argc < 2) {
+                cpn_log(LOG_LEVEL_ERROR, "No value for option %s", argv[0]);
+                return -1;
+            }
+
+            opt->value.string = argv[1];
+
+            return 1;
+        case CPN_CMDPARSE_TYPE_STRINGLIST:
+            if (argc < 2) {
+                cpn_log(LOG_LEVEL_ERROR, "No string list for option %s", argv[0]);
+                return -1;
+            }
+
+            opt->value.stringlist.argc = argc - 1;
+            opt->value.stringlist.argv = argv + 1;
+
+            return argc;
+        case CPN_CMDPARSE_TYPE_UINT32:
+            {
+                uint32_t value;
+
+                if (argc < 2) {
+                    cpn_log(LOG_LEVEL_ERROR, "No value for option %s", argv[0]);
+                    return -1;
+                }
+
+                if (parse_uint32t(&value, argv[1]) < 0) {
+                    cpn_log(LOG_LEVEL_ERROR, "Invalid value %s for option %s",
+                            argv[1], argv[0]);
+                    return -1;
+                }
+
+                opt->value.uint32 = value;
+            }
+
+            return 1;
+        case CPN_CMDPARSE_TYPE_END:
+            cpn_log(LOG_LEVEL_ERROR, "Unknown option %s", argv[0]);
+            return -1;
+    }
+
+    return -1;
+}
+
 int cpn_cmdparse_parse(struct cpn_cmdparse_opt *opts, int argc, const char *argv[])
 {
-    int i;
+    int i, processed;
     struct cpn_cmdparse_opt *opt;
 
     for (i = 0; i < argc; i++) {
@@ -35,72 +111,11 @@ int cpn_cmdparse_parse(struct cpn_cmdparse_opt *opts, int argc, const char *argv
             }
         }
 
-        switch (opt->type) {
-            case CPN_CMDPARSE_TYPE_ACTION:
-                if (cpn_cmdparse_parse(opt->value.action_opts, argc - i - 1, argv + i + 1) < 0) {
-                    cpn_log(LOG_LEVEL_ERROR, "Cannot parse action %s", argv[i]);
-                    return -1;
-                }
-                i = argc;
-                break;
-            case CPN_CMDPARSE_TYPE_COUNTER:
-                opt->value.counter++;
-                break;
-            case CPN_CMDPARSE_TYPE_SIGKEY:
-                {
-                    struct cpn_sign_key_public key;
-                    if (++i >= argc) {
-                        cpn_log(LOG_LEVEL_ERROR, "No key for option %s", argv[i - 1]);
-                        return -1;
-                    }
-
-                    if (cpn_sign_key_public_from_hex(&key, argv[i]) < 0) {
-                        cpn_log(LOG_LEVEL_ERROR, "Invalid key %s for option %s",
-                                argv[i], argv[i - 1]);
-                        return -1;
-                    }
-                }
-                break;
-            case CPN_CMDPARSE_TYPE_STRING:
-                if (++i >= argc) {
-                    cpn_log(LOG_LEVEL_ERROR, "No value for option %s", argv[i - 1]);
-                    return -1;
-                }
-                opt->value.string = argv[i];
-                break;
-            case CPN_CMDPARSE_TYPE_STRINGLIST:
-                if (++i >= argc) {
-                    cpn_log(LOG_LEVEL_ERROR, "No string list for option %s", argv[i - 1]);
-                    return -1;
-                }
-                opt->value.stringlist.argc = argc - i;
-                opt->value.stringlist.argv = argv + i;
-                i = argc;
-                break;
-            case CPN_CMDPARSE_TYPE_UINT32:
-                {
-                    uint32_t value;
-
-                    if (++i >= argc) {
-                        cpn_log(LOG_LEVEL_ERROR, "No value for option %s", argv[i - 1]);
-                        return -1;
-                    }
-
-                    if (parse_uint32t(&value, argv[i]) < 0) {
-                        cpn_log(LOG_LEVEL_ERROR, "Invalid value %s for option %s",
-                                argv[i], argv[i - 1]);
-                        return -1;
-                    }
-
-                    opt->value.uint32 = value;
-                }
-                break;
-            case CPN_CMDPARSE_TYPE_END:
-                cpn_log(LOG_LEVEL_ERROR, "Unknown option %s", argv[i]);
-                return -1;
-        }
-
+        if ((processed = parse_option(opt, argc - i, argv + i)) < 0)
+            return -1;
         opt->set = true;
+
+        i += processed;
     }
 
     for (opt = opts; opt->type != CPN_CMDPARSE_TYPE_END; opt++) {
