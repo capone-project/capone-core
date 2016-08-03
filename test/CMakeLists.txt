@@ -8,6 +8,7 @@ ADD_EXECUTABLE(cpn-test cpn-test.c
     cmdparse.c
     common.c
     keys.c
+    list.c
     parameter.c
     proto.c
     server.c
