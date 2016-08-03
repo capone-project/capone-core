@@ -21,51 +21,64 @@
 #include <sodium.h>
 #include <inttypes.h>
 
+#include "capone/cmdparse.h"
 #include "capone/common.h"
 #include "capone/channel.h"
 #include "capone/proto.h"
 #include "capone/service.h"
 
+static struct cpn_cmdparse_opt request_opts[] = {
+    CPN_CMDPARSE_OPT_SIGKEY(0, "--invoker-key",
+            "For whom to request the capability", "KEY", false),
+    CPN_CMDPARSE_OPT_STRINGLIST(0, "--parameters", NULL, "PARAMETER", false),
+    CPN_CMDPARSE_OPT_END
+};
+
+static struct cpn_cmdparse_opt connect_opts[] = {
+    CPN_CMDPARSE_OPT_STRING('c', "--service-type",
+            "Type of service which is to be invoked", "TYPE", false),
+    CPN_CMDPARSE_OPT_STRING(0, "--session-id", NULL, "ID", false),
+    CPN_CMDPARSE_OPT_STRING('c', "--session-cap", NULL, "CAP", false),
+    CPN_CMDPARSE_OPT_STRINGLIST(0, "--parameters", NULL, "PARAMETER", false),
+    CPN_CMDPARSE_OPT_END
+};
+
+static struct cpn_cmdparse_opt terminate_opts[] = {
+    CPN_CMDPARSE_OPT_STRING(0, "--session-id", NULL, "ID", false),
+    CPN_CMDPARSE_OPT_STRING('c', "--session-cap", NULL, "CAP", false),
+    CPN_CMDPARSE_OPT_END
+};
+
+static struct cpn_cmdparse_opt opts[] = {
+    CPN_CMDPARSE_OPT_STRING('c', "--config",
+            "Path to configuration file", "CFGFILE", false),
+    CPN_CMDPARSE_OPT_SIGKEY(0, "--remote-key",
+            "Public signature key of the host to query", "KEY", false),
+    CPN_CMDPARSE_OPT_STRING(0, "--remote-host",
+            "Network address of the host to query", "ADDRESS", false),
+    CPN_CMDPARSE_OPT_STRING(0, "--remote-port",
+            "Port of the host to query", "PORT", false),
+    CPN_CMDPARSE_OPT_ACTION("query", NULL, NULL),
+    CPN_CMDPARSE_OPT_ACTION("request", NULL, request_opts),
+    CPN_CMDPARSE_OPT_ACTION("connect", NULL, connect_opts),
+    CPN_CMDPARSE_OPT_ACTION("terminate", NULL, terminate_opts),
+    CPN_CMDPARSE_OPT_END
+};
+
 static struct cpn_sign_key_pair local_keys;
+
 static struct cpn_sign_key_public remote_key;
+static const char *remote_host;
+static const char *remote_port;
 
-static void usage(const char *prog)
+static int cmd_query(void)
 {
-    printf("USAGE: %s (query|request|connect|terminate)\n"
-            "\tquery <CONFIG> <SERVICE_KEY> <HOST> <PORT>\n"
-            "\trequest <CONFIG> <INVOKER_KEY> <SERVICE_KEY> <HOST> <PORT> [<PARAMETER>...]\n"
-            "\tconnect <CONFIG> <SERVICE_KEY> <HOST> <PORT> <SERVICE> <SESSIONID> <SECRET>\n"
-            "\tterminate <CONFIG> <SERVICE_KEY> <HOST> <PORT> <SESSIONID> <CAPABILITY>\n",
-            prog);
-    exit(-1);
-}
-
-static int cmd_query(int argc, char *argv[])
-{
+    struct cpn_sign_key_hex hex;
     struct cpn_query_results results;
     struct cpn_channel channel;
-    char *config, *key, *host, *port;
     size_t i;
 
-    if (argc != 6)
-        usage(argv[0]);
-
-    config = argv[2];
-    key = argv[3];
-    host = argv[4];
-    port = argv[5];
-
-    if (cpn_sign_key_pair_from_config_file(&local_keys, config) < 0) {
-        puts("Could not parse sign keys");
-        return -1;
-    }
-
-    if (cpn_sign_key_public_from_hex(&remote_key, key) < 0) {
-        puts("Could not parse remote public key");
-        return -1;
-    }
-
-    if (cpn_proto_initiate_connection(&channel, host, port,
+    if (cpn_proto_initiate_connection(&channel, remote_host, remote_port,
                 &local_keys, &remote_key, CPN_CONNECTION_TYPE_QUERY) < 0) {
         puts("Could not establish connection");
         return -1;
@@ -76,6 +89,8 @@ static int cmd_query(int argc, char *argv[])
         return -1;
     }
 
+    cpn_sign_key_hex_from_key(&hex, &remote_key);
+
     printf("%s\n"
             "\tname:     %s\n"
             "\tcategory: %s\n"
@@ -83,7 +98,7 @@ static int cmd_query(int argc, char *argv[])
             "\tversion:  %s\n"
             "\tlocation: %s\n"
             "\tport:     %s\n",
-            key,
+            hex.data,
             results.name,
             results.category,
             results.type,
@@ -103,56 +118,30 @@ static int cmd_query(int argc, char *argv[])
     return 0;
 }
 
-static int cmd_request(int argc, char *argv[])
+static int cmd_request(const struct cpn_sign_key_public *invoker_key,
+        const struct cpn_cmdparse_stringlist *parameters)
 {
     char invoker_hex[CPN_CAP_SECRET_LEN * 2 + 1], requester_hex[CPN_CAP_SECRET_LEN * 2 + 1];
-    const char *config, *invoker, *key, *host, *port;
     struct cpn_cap requester_cap, invoker_cap;
-    struct cpn_sign_key_public invoker_key;
     struct cpn_parameter *params = NULL;
     struct cpn_channel channel;
     ssize_t nparams;
 
     memset(&channel, 0, sizeof(channel));
 
-    if (argc < 7) {
-        usage(argv[0]);
-    }
-
-    config = argv[2];
-    invoker = argv[3];
-    key = argv[4];
-    host = argv[5];
-    port = argv[6];
-
-    if ((nparams = cpn_parameters_parse(&params, argc - 7, argv + 7)) < 0) {
+    if ((nparams = cpn_parameters_parse(&params, parameters->argc, parameters->argv)) < 0) {
         puts("Could not parse parameters");
         goto out_err;
     }
 
-    if (cpn_sign_key_pair_from_config_file(&local_keys, config) < 0) {
-        puts("Could not parse config");
-        goto out_err;
-    }
-
-    if (cpn_sign_key_public_from_hex(&invoker_key, invoker) < 0) {
-        puts("Could not parse remote public key");
-        goto out_err;
-    }
-
-    if (cpn_sign_key_public_from_hex(&remote_key, key) < 0) {
-        puts("Could not parse remote public key");
-        goto out_err;
-    }
-
-    if (cpn_proto_initiate_connection(&channel, host, port,
+    if (cpn_proto_initiate_connection(&channel, remote_host, remote_port,
                 &local_keys, &remote_key, CPN_CONNECTION_TYPE_REQUEST) < 0) {
         puts("Could not establish connection");
         goto out_err;
     }
 
     if (cpn_proto_send_request(&invoker_cap, &requester_cap,
-                &channel, &invoker_key, params, nparams) < 0)
+                &channel, invoker_key, params, nparams) < 0)
     {
         puts("Unable to request session");
         goto out_err;
@@ -179,46 +168,25 @@ out_err:
     return -1;
 }
 
-static int cmd_connect(int argc, char *argv[])
+static int cmd_connect(const char *service_type, const char *session,
+        const char *capability,
+        const struct cpn_cmdparse_stringlist *parameters)
 {
-    const char *config, *key, *host, *port, *service_type, *session, *secret;
-    struct cpn_sign_key_public remote_key;
     struct cpn_service service;
     struct cpn_channel channel;
     struct cpn_cap cap;
-
-    if (argc < 9)
-        usage(argv[0]);
-
-    config = argv[2];
-    key = argv[3];
-    host = argv[4];
-    port = argv[5];
-    service_type = argv[6];
-    session = argv[7];
-    secret = argv[8];
-
-    if (cpn_sign_key_pair_from_config_file(&local_keys, config) < 0) {
-        puts("Could not parse config");
-        return -1;
-    }
-
-    if (cpn_sign_key_public_from_hex(&remote_key, key) < 0) {
-        puts("Could not parse remote public key");
-        return -1;
-    }
 
     if (cpn_service_from_type(&service, service_type) < 0) {
         printf("Invalid service %s\n", service_type);
         return -1;
     }
 
-    if (cpn_cap_parse(&cap, session, secret, CPN_CAP_RIGHT_EXEC | CPN_CAP_RIGHT_TERM) < 0) {
+    if (cpn_cap_parse(&cap, session, capability, CPN_CAP_RIGHT_EXEC | CPN_CAP_RIGHT_TERM) < 0) {
         puts("Invalid capability");
         return -1;
     }
 
-    if (cpn_proto_initiate_connection(&channel, host, port,
+    if (cpn_proto_initiate_connection(&channel, remote_host, remote_port,
                 &local_keys, &remote_key, CPN_CONNECTION_TYPE_CONNECT) < 0) {
         puts("Could not start connection");
         return -1;
@@ -229,7 +197,7 @@ static int cmd_connect(int argc, char *argv[])
         return -1;
     }
 
-    if (service.invoke(&channel, argc - 9, argv + 9) < 0) {
+    if (service.invoke(&channel, parameters->argc, parameters->argv) < 0) {
         puts("Could not invoke service");
         return -1;
     }
@@ -239,40 +207,17 @@ static int cmd_connect(int argc, char *argv[])
     return 0;
 }
 
-static int cmd_terminate(int argc, char *argv[])
+static int cmd_terminate(const char *session, const char *capability)
 {
-    struct cpn_sign_key_public remote_key;
-    struct cpn_sign_key_pair local_keys;
     struct cpn_channel channel;
     struct cpn_cap cap;
-    const char *config, *key, *host, *port, *session, *capability;
-
-    if (argc != 8)
-        usage(argv[0]);
-
-    config = argv[2];
-    key = argv[3];
-    host = argv[4];
-    port = argv[5];
-    session = argv[6];
-    capability = argv[7];
-
-    if (cpn_sign_key_pair_from_config_file(&local_keys, config) < 0) {
-        puts("Could not parse config");
-        return -1;
-    }
-
-    if (cpn_sign_key_public_from_hex(&remote_key, key) < 0) {
-        puts("Could not parse remote public key");
-        return -1;
-    }
 
     if (cpn_cap_parse(&cap, session, capability, CPN_CAP_RIGHT_TERM) < 0) {
         puts("Invalid capability\n");
         return -1;
     }
 
-    if (cpn_proto_initiate_connection(&channel, host, port,
+    if (cpn_proto_initiate_connection(&channel, remote_host, remote_port,
                 &local_keys, &remote_key, CPN_CONNECTION_TYPE_TERMINATE) < 0) {
         puts("Could not start connection");
         return -1;
@@ -286,19 +231,20 @@ static int cmd_terminate(int argc, char *argv[])
     return 0;
 }
 
-int main(int argc, char *argv[])
+int main(int argc, const char *argv[])
 {
-    if (argc < 2)
-        usage(argv[0]);
-
-    if (argc == 2 && !strcmp(argv[1], "--version")) {
-        puts("cpn-connect " VERSION "\n"
-             "Copyright (C) 2016 Patrick Steinhardt\n"
-             "License GPLv3: GNU GPL version 3 <http://gnu.org/licenses/gpl.html>.\n"
-             "This is free software; you are free to change and redistribute it.\n"
-             "There is NO WARRANTY, to the extent permitted by the law.");
-        return 0;
+    if (cpn_cmdparse_parse_cmd(opts, argc, argv) < 0) {
+        return -1;
     }
+
+    if (cpn_sign_key_pair_from_config_file(&local_keys, opts[0].value.string) < 0) {
+        puts("Could not parse config");
+        return -1;
+    }
+
+    memcpy(&remote_key, &opts[1].value.sigkey, sizeof(struct cpn_sign_key_public));
+    remote_host = opts[2].value.string;
+    remote_port = opts[3].value.string;
 
     if (cpn_service_register_builtins() < 0) {
         puts("Could not initialize services");
@@ -310,16 +256,19 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    if (!strcmp(argv[1], "query"))
-        return cmd_query(argc, argv);
-    if (!strcmp(argv[1], "request"))
-        return cmd_request(argc, argv);
-    else if (!strcmp(argv[1], "connect"))
-        return cmd_connect(argc, argv);
-    else if (!strcmp(argv[1], "terminate"))
-        return cmd_terminate(argc, argv);
-
-    usage(argv[0]);
+    if (opts[4].set)
+        return cmd_query();
+    else if (opts[5].set)
+        return cmd_request(&request_opts[0].value.sigkey,
+                &request_opts[1].value.stringlist);
+    else if (opts[6].set)
+        return cmd_connect(connect_opts[0].value.string,
+               connect_opts[1].value.string,
+               connect_opts[2].value.string,
+               &connect_opts[3].value.stringlist);
+    else if (opts[7].set)
+        return cmd_terminate(terminate_opts[0].value.string,
+                terminate_opts[1].value.string);
 
     return 0;
 }
