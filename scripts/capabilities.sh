@@ -24,12 +24,14 @@ SERVICE_PARAMS="service-parameters=command=ls
                 service-parameters=arg=-l
                 service-parameters=arg=/"
 
-CAP_SESSION="$(./cpn-client request \
-    ${CLIENT_CFG} \
-    ${CLIENT_KEY} \
-    ${CAP_KEY} \
-    ${CAP_ADDR} \
-    ${CAP_PORT} \
+CAP_SESSION="$(./cpn-client \
+    --config ${CLIENT_CFG} \
+    --remote-key ${CAP_KEY} \
+    --remote-host ${CAP_ADDR} \
+    --remote-port ${CAP_PORT} \
+    request \
+    --invoker-key ${CLIENT_KEY} \
+    --parameters \
     mode=request \
     invoker=${CLIENT_KEY} \
     requested-identity=${CONTROLLER_KEY} \
@@ -40,23 +42,25 @@ CAP_SESSION="$(./cpn-client request \
 CAP_ID="$(echo "$CAP_SESSION" | awk 'NR == 1 { print $2 }')"
 CAP_SECRET="$(echo "$CAP_SESSION" | awk 'NR == 2 { print $2 }')"
 
-SERVICE_SESSION="$(./cpn-client connect \
-    ${CLIENT_CFG} \
-    ${CAP_KEY} \
-    ${CAP_ADDR} \
-    ${CAP_PORT} \
-    capabilities \
-    ${CAP_ID} \
-    ${CAP_SECRET} \
-    request)"
+SERVICE_SESSION="$(./cpn-client \
+    --config ${CLIENT_CFG} \
+    --remote-key ${CAP_KEY} \
+    --remote-host ${CAP_ADDR} \
+    --remote-port ${CAP_PORT} \
+    connect \
+    --service-type capabilities \
+    --session-id ${CAP_ID} \
+    --session-cap ${CAP_SECRET} \
+    --parameters request)"
 SERVICE_ID="$(echo "$SERVICE_SESSION" | awk 'NR == 3 { print $2 }')"
 SERVICE_SECRET="$(echo "$SERVICE_SESSION" | awk 'NR == 4 { print $2 }')"
 
-./cpn-connect connect \
-    ${CLIENT_CFG} \
-    ${SERVICE_KEY} \
-    ${SERVICE_ADDR} \
-    ${SERVICE_PORT} \
-    ${SERVICE_TYPE} \
-    ${SERVICE_ID} \
-    ${SERVICE_SECRET}
+./cpn-connect \
+    --config ${CLIENT_CFG} \
+    --remote-key ${SERVICE_KEY} \
+    --remote-host ${SERVICE_ADDR} \
+    --remote-port ${SERVICE_PORT} \
+    connect \
+    --service-type ${SERVICE_TYPE} \
+    --session-id ${SERVICE_ID} \
+    --session-secret ${SERVICE_SECRET}
