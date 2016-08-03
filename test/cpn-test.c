@@ -17,6 +17,7 @@
 
 #include <string.h>
 
+#include "capone/cmdparse.h"
 #include "capone/common.h"
 #include "capone/log.h"
 
@@ -35,6 +36,11 @@ extern int service_test_run_suite(void);
 extern int session_test_run_suite(void);
 extern int parameter_test_run_suite(void);
 
+static struct cpn_cmdparse_opt opts[] = {
+    CPN_CMDPARSE_OPT_COUNTER('v', "--verbose", NULL),
+    CPN_CMDPARSE_OPT_END
+};
+
 static int (*suite_fns[])(void) = {
     acl_test_run_suite,
     caps_test_run_suite,
@@ -50,19 +56,19 @@ static int (*suite_fns[])(void) = {
     parameter_test_run_suite
 };
 
-int main(int argc, char *argv[])
+int main(int argc, const char *argv[])
 {
     size_t i, failed, failed_tests = 0, failed_suites = 0;
 
-    if (argc != 1 && (argc == 2 && strcmp(argv[1], "--verbose"))) {
-        printf("USAGE: %s [--verbose]", argv[0]);
+    if (cpn_cmdparse_parse_cmd(opts, argc, argv) < 0)
         return -1;
-    }
 
-    if (argc == 2 && !strcmp(argv[1], "--verbose"))
-        cpn_log_set_level(LOG_LEVEL_VERBOSE);
-    else
+    if (opts[0].value.counter == 0)
         cpn_log_set_level(LOG_LEVEL_NONE);
+    else if (opts[0].value.counter == 1)
+        cpn_log_set_level(LOG_LEVEL_VERBOSE);
+    else if (opts[0].value.counter >= 2)
+        cpn_log_set_level(LOG_LEVEL_TRACE);
 
     for (i = 0; i < ARRAY_SIZE(suite_fns); i++) {
         failed = suite_fns[i]();
