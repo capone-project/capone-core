@@ -159,6 +159,25 @@ struct cpn_cmdparse_opt {
  */
 int cpn_cmdparse_parse(struct cpn_cmdparse_opt *opts, int argc, const char *argv[]);
 
+/** @brief Parse command line including executable name
+ *
+ * In contrast to `cpn_cmdparse_parse`, this function expects the
+ * arguments to contain the current executable name as a first
+ * argument. Furthermore, it will also print out usage as well as
+ * version information if requested by the user and return an
+ * error if so.
+ *
+ * @param[in] opts Options specifying the format of command line
+ *            arguments. This will also contain parsed values
+ *            after successful execution.
+ * @param[in] argc Number of arguments contained in the `argv`
+ *            array.
+ * @param[in] argv Command line arguments.
+ *
+ * @return <code>0</code> on success, <code>-1</code> otherwise
+ */
+int cpn_cmdparse_parse_cmd(struct cpn_cmdparse_opt *opts, int argc, const char *argv[]);
+
 /** @brief Print usage to the terminal
  *
  * Using the specified options, print usage information to the
@@ -172,6 +191,9 @@ int cpn_cmdparse_parse(struct cpn_cmdparse_opt *opts, int argc, const char *argv
  *            instead to <code>stdout</code>
  */
 void cpn_cmdparse_usage(const struct cpn_cmdparse_opt *opts, const char *executable, bool error);
+
+/** @brief Print version information */
+void cpn_cmdparse_version(const char *executable);
 
 #endif
 

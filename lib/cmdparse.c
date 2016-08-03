@@ -128,6 +128,24 @@ int cpn_cmdparse_parse(struct cpn_cmdparse_opt *opts, int argc, const char *argv
     return 0;
 }
 
+int cpn_cmdparse_parse_cmd(struct cpn_cmdparse_opt *opts, int argc, const char *argv[])
+{
+    const char *executable = argv[0];
+    int i;
+
+    for (i = 1; i < argc; i++) {
+        if (!strcmp(argv[i], "--version")) {
+            cpn_cmdparse_version(executable);
+            return -1;
+        } else if (!strcmp(argv[i], "--help")) {
+            cpn_cmdparse_usage(opts, executable, false);
+            return -1;
+        }
+    }
+
+    return cpn_cmdparse_parse(opts, argc - 1, argv + 1);
+}
+
 static void print_arguments(const struct cpn_cmdparse_opt *opts, FILE *out, int indent)
 {
     const struct cpn_cmdparse_opt *it;
@@ -244,4 +262,14 @@ void cpn_cmdparse_usage(const struct cpn_cmdparse_opt *opts,
     print_arguments(opts, out, 1);
     fputc('\n', out);
     print_actions(opts, out, 1);
+}
+
+void cpn_cmdparse_version(const char *executable)
+{
+    printf("%s %s\n"
+            "Copyright (C) 2016 Patrick Steinhardt\n"
+            "License GPLv3: GNU GPL version 3 <http://gnu.org/licenses/gpl.html>.\n"
+            "This is free software; you are free to change and redistribute it.\n"
+            "There is NO WARRANTY, to the extent permitted by the law.\n",
+            executable, VERSION);
 }
