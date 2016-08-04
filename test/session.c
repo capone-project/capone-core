@@ -24,8 +24,7 @@
 
 #include "test.h"
 
-#define MAX_SESSIONS 1024
-
+static struct cpn_session *session;
 static uint32_t id;
 
 static int setup()
@@ -35,20 +34,21 @@ static int setup()
 
 static int teardown()
 {
+    session = NULL;
     assert_success(cpn_sessions_clear());
     return 0;
 }
 
 static void add_sessions_adds_session()
 {
-    struct cpn_session session;
-
     assert_success(cpn_sessions_add(&id, NULL, 0));
     assert_success(cpn_sessions_remove(&session, id));
 
-    assert_int_equal(session.sessionid, id);
-    assert_int_equal(session.nparameters, 0);
-    assert_null(session.parameters);
+    assert_int_equal(session->sessionid, id);
+    assert_int_equal(session->nparameters, 0);
+    assert_null(session->parameters);
+
+    cpn_session_free(session);
 }
 
 static void add_session_with_params_succeeds()
@@ -56,27 +56,15 @@ static void add_session_with_params_succeeds()
     struct cpn_parameter params[] = {
         { "data", "block" }
     };
-    struct cpn_session session;
 
     assert_success(cpn_sessions_add(&id, params, ARRAY_SIZE(params)));
     assert_success(cpn_sessions_remove(&session, id));
 
-    assert_int_equal(session.nparameters, 1);
-    assert_string_equal(session.parameters[0].key, params[0].key);
-    assert_string_equal(session.parameters[0].value, params[0].value);
+    assert_int_equal(session->nparameters, 1);
+    assert_string_equal(session->parameters[0].key, params[0].key);
+    assert_string_equal(session->parameters[0].value, params[0].value);
 
-    cpn_session_free(&session);
-}
-
-static void adding_too_many_sessions_fails()
-{
-    size_t i;
-
-    for (i = 0; i < MAX_SESSIONS; i++) {
-        assert_success(cpn_sessions_add(&id, NULL, 0));
-    }
-
-    assert_failure(cpn_sessions_add(&id, NULL, 0));
+    cpn_session_free(session);
 }
 
 static void *add_session(void *ptr)
@@ -88,9 +76,8 @@ static void *add_session(void *ptr)
 
 static void adding_session_from_multiple_threads_succeeds()
 {
-    struct cpn_thread threads[MAX_SESSIONS];
+    struct cpn_thread threads[100];
     uint32_t ids[ARRAY_SIZE(threads)];
-    struct cpn_session session;
     size_t i;
 
     for (i = 0; i < ARRAY_SIZE(threads); i++) {
@@ -103,84 +90,62 @@ static void adding_session_from_multiple_threads_succeeds()
 
     for (i = 0; i < ARRAY_SIZE(threads); i++) {
         assert_success(cpn_sessions_remove(&session, ids[i]));
-        assert_int_equal(session.sessionid, ids[i]);
+        assert_int_equal(session->sessionid, ids[i]);
+        cpn_session_free(session);
     }
 }
 
 static void adding_session_with_different_invoker_succeeds()
 {
-    struct cpn_session out;
-
     assert_success(cpn_sessions_add(&id, NULL, 0));
-    assert_success(cpn_sessions_remove(&out, id));
+    assert_success(cpn_sessions_remove(&session, id));
 
-    assert_int_equal(out.sessionid, id);
+    assert_int_equal(session->sessionid, id);
+    cpn_session_free(session);
 }
 
 static void removing_session_twice_fails()
 {
-    struct cpn_session session;
-
     assert_success(cpn_sessions_add(&id, NULL, 0));
 
     assert_success(cpn_sessions_remove(&session, id));
+    cpn_session_free(session);
     assert_failure(cpn_sessions_remove(&session, id));
 }
 
 static void remove_session_fails_without_sessions()
 {
-    struct cpn_session session;
-
     assert_failure(cpn_sessions_remove(&session, 0));
+    cpn_session_free(session);
 }
 
 static void remove_session_fails_for_empty_session()
 {
-    struct cpn_session session;
     struct cpn_sign_key_public key;
 
     memset(&key, 0, sizeof(key));
 
     assert_failure(cpn_sessions_remove(&session, 0));
-}
-
-static void remove_session_frees_space()
-{
-    size_t i;
-    struct cpn_session session;
-
-    for (i = 0; i < MAX_SESSIONS; i++) {
-        assert_success(cpn_sessions_add(&id, NULL, 0));
-    }
-
-    assert_failure(cpn_sessions_add(&id, NULL, 0));
-    assert_success(cpn_sessions_remove(&session, id));
-    assert_success(cpn_sessions_add(&id, NULL, 0));
+    cpn_session_free(session);
 }
 
 static void finding_invalid_session_fails()
 {
-    struct cpn_session out;
-
-    assert_failure(cpn_sessions_find(&out, 0));
+    assert_failure(cpn_sessions_find(&session, 0));
 }
 
 static void finding_session_with_invalid_id_fails()
 {
-    struct cpn_session out;
-
     assert_success(cpn_sessions_add(&id, NULL, 0));
-    assert_failure(cpn_sessions_find(&out, id + 1));
+    assert_failure(cpn_sessions_find(&session, id + 1));
 }
 
 static void finding_existing_session_succeeds()
 {
-    struct cpn_session out;
-
     assert_success(cpn_sessions_add(&id, NULL, 0));
-    assert_success(cpn_sessions_find(&out, id));
+    assert_success(cpn_sessions_find(&session, id));
 
-    assert_int_equal(out.sessionid, id);
+    assert_int_equal(session->sessionid, id);
 }
 
 static void finding_session_without_out_param_succeeds()
@@ -191,20 +156,18 @@ static void finding_session_without_out_param_succeeds()
 
 static void finding_intermediate_session_returns_correct_index()
 {
-    struct cpn_session out;
     uint32_t id1, id2, id3;
 
     assert_success(cpn_sessions_add(&id1, NULL, 0));
     assert_success(cpn_sessions_add(&id2, NULL, 0));
     assert_success(cpn_sessions_add(&id3, NULL, 0));
 
-    assert_success(cpn_sessions_find(&out, id2));
-    assert_int_equal(out.sessionid, id2);
+    assert_success(cpn_sessions_find(&session, id2));
+    assert_int_equal(session->sessionid, id2);
 }
 
 static void finding_session_with_multiple_sessions_succeeds()
 {
-    struct cpn_session out;
     uint32_t ids[8];
     uint32_t i;
 
@@ -218,40 +181,37 @@ static void finding_session_with_multiple_sessions_succeeds()
     assert_success(cpn_sessions_add(&ids[7], NULL, 0));
 
     for (i = 0; i < 8; i++) {
-        assert_success(cpn_sessions_find(&out, ids[i]));
-        assert_int_equal(out.sessionid, ids[i]);
+        assert_success(cpn_sessions_find(&session, ids[i]));
+        assert_int_equal(session->sessionid, ids[i]);
     }
 }
 
 static void free_session_succeeds_without_params()
 {
-    struct cpn_session session = { 0, NULL, 0 };
-
-    cpn_session_free(&session);
+    session = calloc(1, sizeof(struct cpn_session));
+    cpn_session_free(session);
 }
 
 static void free_session_succeeds_with_params()
 {
-    struct cpn_session session;
+    session = calloc(1, sizeof(struct cpn_session));
+    session->nparameters = 1;
+    session->parameters = malloc(sizeof(struct cpn_parameter));
+    session->parameters[0].key = strdup("data");
+    session->parameters[0].value = strdup("block");
 
-    session.nparameters = 1;
-    session.parameters = malloc(sizeof(struct cpn_parameter));
-    session.parameters[0].key = strdup("data");
-    session.parameters[0].value = strdup("block");
-
-    cpn_session_free(&session);
+    cpn_session_free(session);
 }
 
 static void free_session_succeeds_with_key_only_parameter()
 {
-    struct cpn_session session;
+    session = calloc(1, sizeof(struct cpn_session));
+    session->nparameters = 1;
+    session->parameters = malloc(sizeof(struct cpn_parameter));
+    session->parameters[0].key = strdup("data");
+    session->parameters[0].value = NULL;
 
-    session.nparameters = 1;
-    session.parameters = malloc(sizeof(struct cpn_parameter));
-    session.parameters[0].key = strdup("data");
-    session.parameters[0].value = NULL;
-
-    cpn_session_free(&session);
+    cpn_session_free(session);
 }
 
 int session_test_run_suite(void)
@@ -259,14 +219,12 @@ int session_test_run_suite(void)
     const struct CMUnitTest tests[] = {
         test(add_sessions_adds_session),
         test(add_session_with_params_succeeds),
-        test(adding_too_many_sessions_fails),
         test(adding_session_from_multiple_threads_succeeds),
         test(adding_session_with_different_invoker_succeeds),
 
         test(removing_session_twice_fails),
         test(remove_session_fails_without_sessions),
         test(remove_session_fails_for_empty_session),
-        test(remove_session_frees_space),
 
         test(finding_invalid_session_fails),
         test(finding_session_with_invalid_id_fails),
