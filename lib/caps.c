@@ -20,15 +20,15 @@
 
 #include "capone/caps.h"
 #include "capone/common.h"
+#include "capone/list.h"
 #include "capone/log.h"
 
 struct caps {
     uint32_t objectid;
     uint8_t secret[CPN_CAP_SECRET_LEN];
-    struct caps *next;
 };
 
-static struct caps *clist;
+static struct cpn_list clist;
 
 static int hash(uint8_t *out,
         uint32_t objectid,
@@ -113,8 +113,9 @@ int cpn_cap_to_protobuf(CapabilityMessage *out, const struct cpn_cap *cap)
 int cpn_caps_add(uint32_t objectid)
 {
     struct caps *e, *cap;
+    struct cpn_list_entry *it;
 
-    for (e = clist; e; e = e->next) {
+    cpn_list_foreach(&clist, it, e) {
         if (e->objectid == objectid)
             return -1;
     }
@@ -122,42 +123,35 @@ int cpn_caps_add(uint32_t objectid)
     cap = malloc(sizeof(struct caps));
     cap->objectid = objectid;
     randombytes_buf(cap->secret, CPN_CAP_SECRET_LEN);
-    cap->next = clist;
-
-    clist = cap;
+    cpn_list_append(&clist, cap);
 
     return 0;
 }
 
 void cpn_caps_clear(void)
 {
-    struct caps *e, *next;
+    struct cpn_list_entry *it;
 
-    for (e = clist; e; e = next) {
-        next = e->next;
-        free(e);
-    }
-
-    clist = NULL;
+    cpn_list_foreach_entry(&clist, it)
+        free(it->data);
+    cpn_list_clear(&clist);
 }
 
 int cpn_caps_delete(uint32_t objectid)
 {
-    struct caps *it, *prev, *next;
+    struct cpn_list_entry *it, *next;
+    struct caps *c;
     int ret = -1;
 
-    for (prev = NULL, it = clist; it; prev = it, it = next) {
+    for (it = clist.head; it; it = next) {
         next = it->next;
+        c = (struct caps *) it->data;
 
-        if (it->objectid != objectid)
+        if (c->objectid != objectid)
             continue;
 
-        if (prev)
-            prev->next = it->next;
-        else
-            clist = it->next;
-
-        free(it);
+        cpn_list_remove(&clist, it);
+        free(c);
 
         ret = 0;
     }
@@ -167,9 +161,10 @@ int cpn_caps_delete(uint32_t objectid)
 
 int cpn_caps_create_reference(struct cpn_cap *out, uint32_t objectid, uint32_t rights, const struct cpn_sign_key_public *key)
 {
+    struct cpn_list_entry *it;
     struct caps *e;
 
-    for (e = clist; e; e = e->next) {
+    cpn_list_foreach(&clist, it, e) {
         if (e->objectid == objectid)
             break;
     }
@@ -186,13 +181,14 @@ int cpn_caps_create_reference(struct cpn_cap *out, uint32_t objectid, uint32_t r
 
 int cpn_caps_verify(const struct cpn_cap *ref, const struct cpn_sign_key_public *key, uint32_t rights)
 {
+    struct cpn_list_entry *it;
     struct caps *e;
     uint8_t secret[CPN_CAP_SECRET_LEN];
 
     if (rights & ~ref->rights)
         return -1;
 
-    for (e = clist; e; e = e->next) {
+    cpn_list_foreach(&clist, it, e) {
         /* Object ID must match */
         if (ref->objectid != e->objectid)
             continue;
