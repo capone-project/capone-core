@@ -112,7 +112,7 @@ int cpn_sessions_add(uint32_t *out,
  * @param[in] identity Session invoker to search for.
  * @return <code>0</code> on success, <code>-1</code> otherwise
  */
-int cpn_sessions_remove(struct cpn_session *out, uint32_t sessionid);
+int cpn_sessions_remove(struct cpn_session **out, uint32_t sessionid);
 
 /** @brief Find a session by identifier
  *
@@ -124,7 +124,7 @@ int cpn_sessions_remove(struct cpn_session *out, uint32_t sessionid);
  * @return <code>0</code> if the session has been found,
  *         <code>-1</code> otherwise
  */
-int cpn_sessions_find(struct cpn_session *out, uint32_t sessionid);
+int cpn_sessions_find(struct cpn_session **out, uint32_t sessionid);
 
 /** @brief Remove all established sessions
  *

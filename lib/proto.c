@@ -167,11 +167,9 @@ int cpn_proto_handle_session(struct cpn_channel *channel,
 {
     SessionInitiationMessage *initiation = NULL;
     SessionResult msg = SESSION_RESULT__INIT;
-    struct cpn_session session;
+    struct cpn_session *session = NULL;
     struct cpn_cap cap;
     int err;
-
-    memset(&session, 0, sizeof(session));
 
     if ((err = cpn_channel_receive_protobuf(channel,
                 &session_initiation_message__descriptor,
@@ -208,7 +206,7 @@ out_notify:
     if (err)
         goto out;
 
-    if ((err = service->handle(channel, remote_key, &session, cfg)) < 0) {
+    if ((err = service->handle(channel, remote_key, session, cfg)) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Service could not handle connection");
         goto out;
     }
@@ -216,7 +214,7 @@ out_notify:
 out:
     if (initiation) {
         session_initiation_message__free_unpacked(initiation, NULL);
-        cpn_session_free(&session);
+        cpn_session_free(session);
     }
 
     return 0;
@@ -494,7 +492,7 @@ int cpn_proto_handle_termination(struct cpn_channel *channel,
         const struct cpn_sign_key_public *remote_key)
 {
     SessionTerminationMessage *msg = NULL;
-    struct cpn_session session;
+    struct cpn_session *session;
     struct cpn_cap cap;
     int err = -1;
 

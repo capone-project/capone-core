@@ -30,22 +30,24 @@
 #include "capone/parameter.h"
 #include "capone/proto.h"
 #include "capone/service.h"
+#include "capone/list.h"
 #include "capone/log.h"
 
 #include "capone/proto/capabilities.pb-c.h"
 
-static struct registrant {
+struct registrant {
     struct cpn_sign_key_public identity;
     struct cpn_channel channel;
-    struct registrant *next;
-} *registrants;
+};
 
-static struct client {
+struct client {
     struct cpn_channel channel;
-    struct client *next;
     struct registrant *waitsfor;
     uint32_t requestid;
-} *clients;
+};
+
+struct cpn_list registrants;
+struct cpn_list clients;
 
 static uint32_t requestid;
 static pthread_mutex_t registrants_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -76,42 +78,35 @@ static int parameters(const struct cpn_parameter **out)
 static void relay_capability_for_registrant(struct registrant *r)
 {
     Capability *cap = NULL;
-    struct client *c = NULL, *cprev;
-    struct registrant *rprev;
+    struct client *c = NULL;
+    struct cpn_list_entry *it, *next;
 
     if (cpn_channel_receive_protobuf(&r->channel,
                 &capability__descriptor, (ProtobufCMessage **) &cap) < 0)
     {
         /* Kill erroneous registrants */
         pthread_mutex_lock(&registrants_mutex);
-        for (rprev = registrants; rprev && rprev->next != r; rprev = rprev->next);
-        if (rprev)
-            rprev->next = r->next;
-        else
-            registrants = r->next;
+        cpn_list_foreach_entry(&registrants, it) {
+            if (it->data == r) {
+                cpn_list_remove(&registrants, it);
+                break;
+            }
+        }
         free(r);
         pthread_mutex_unlock(&registrants_mutex);
 
         /* Kill clients waiting for registrant */
         pthread_mutex_lock(&clients_mutex);
-        c = clients;
-        cprev = NULL;
-        while (c) {
-            if (c->waitsfor == r) {
-                cpn_channel_close(&c->channel);
-                c = c->next;
+        for (it = registrants.head; it; it = next) {
+            next = it->next;
+            c = (struct client *) it->data;
 
-                if (cprev) {
-                    free(cprev->next);
-                    cprev->next = c;
-                } else {
-                    free(clients);
-                    clients = c;
-                }
-            } else {
-                cprev = c;
-                c = c->next;
-            }
+            if (c->waitsfor != r)
+                continue;
+
+            cpn_channel_close(&c->channel);
+            cpn_list_remove(&registrants, it);
+            free(c);
         }
         pthread_mutex_unlock(&clients_mutex);
 
@@ -120,15 +115,14 @@ static void relay_capability_for_registrant(struct registrant *r)
     }
 
     pthread_mutex_lock(&clients_mutex);
-    for (cprev = NULL, c = clients; c && c->requestid != cap->requestid; cprev = c, c = c->next);
-    if (c) {
-        if (cprev)
-            cprev->next = c->next;
-        else
-            clients = NULL;
+    cpn_list_foreach(&clients, it, c) {
+        if (c->requestid == cap->requestid) {
+            cpn_list_remove(&clients, it);
+            break;
+        }
     }
     pthread_mutex_unlock(&clients_mutex);
-    if (!c)
+    if (!it)
         goto out;
 
     if (cpn_channel_write_protobuf(&c->channel, &cap->base) < 0) {
@@ -144,6 +138,7 @@ out:
 
 static void *relay_capabilities()
 {
+    struct cpn_list_entry *it;
     struct registrant *r;
     fd_set fds;
     int maxfd;
@@ -152,11 +147,11 @@ static void *relay_capabilities()
         FD_ZERO(&fds);
         maxfd = -1;
 
-        if (clients == NULL)
+        if (clients.head == NULL)
             break;
 
         pthread_mutex_lock(&registrants_mutex);
-        for (r = registrants; r; r = r->next) {
+        cpn_list_foreach(&registrants, it, r) {
             FD_SET(r->channel.fd, &fds);
             maxfd = MAX(maxfd, r->channel.fd);
         }
@@ -165,9 +160,10 @@ static void *relay_capabilities()
         if (select(maxfd + 1, &fds, NULL, NULL, NULL) == -1)
             continue;
 
-        for (r = registrants; r; r = r->next)
+        cpn_list_foreach(&registrants, it, r) {
             if (FD_ISSET(r->channel.fd, &fds))
-                relay_capability_for_registrant(r);
+                relay_capability_for_registrant((struct registrant *) it->data);
+        }
     }
 
     return NULL;
@@ -386,21 +382,16 @@ static int handle_register(struct cpn_channel *channel,
         const struct cpn_sign_key_public *invoker)
 {
     struct cpn_sign_key_hex hex;
-    struct registrant *c;
+    struct registrant *registrant;
     int n = 0;
 
-    pthread_mutex_lock(&registrants_mutex);
-    if (registrants == NULL) {
-        c = registrants = malloc(sizeof(struct registrant));
-    } else {
-        for (c = registrants; c->next; c = c->next, n++);
-        c->next = malloc(sizeof(struct registrant));
-        c = c->next;
-    }
+    registrant = malloc(sizeof(struct registrant));
 
-    memcpy(&c->channel, channel, sizeof(struct cpn_channel));
-    memcpy(&c->identity, invoker, sizeof(struct cpn_sign_key_public));
-    c->next = NULL;
+    pthread_mutex_lock(&registrants_mutex);
+    cpn_list_append(&registrants, registrant);
+
+    memcpy(&registrant->channel, channel, sizeof(struct cpn_channel));
+    memcpy(&registrant->identity, invoker, sizeof(struct cpn_sign_key_public));
 
     pthread_mutex_unlock(&registrants_mutex);
 
@@ -419,6 +410,7 @@ static int handle_request(struct cpn_channel *channel,
 {
     CapabilityRequest request = CAPABILITY_REQUEST__INIT;
 
+    struct cpn_list_entry *it;
     const char *invoker_identity_hex, *service_identity_hex,
           *requested_identity_hex, *address, *port;
     struct cpn_sign_key_public invoker_identity, service_identity,
@@ -470,12 +462,13 @@ static int handle_request(struct cpn_channel *channel,
             session->parameters, session->nparameters);
 
     pthread_mutex_lock(&registrants_mutex);
-    for (reg = registrants; reg; reg = reg->next)
+    cpn_list_foreach(&registrants, it, reg) {
         if (!memcmp(reg->identity.data, requested_identity.data, sizeof(requested_identity.data)))
             break;
+    }
     pthread_mutex_unlock(&registrants_mutex);
 
-    if (reg == NULL) {
+    if (it == NULL) {
         cpn_log(LOG_LEVEL_ERROR, "Identity specified in capability request is not registered");
         err = -1;
         goto out;
@@ -500,20 +493,15 @@ static int handle_request(struct cpn_channel *channel,
         goto out;
     }
 
-    pthread_mutex_lock(&clients_mutex);
-    if (clients == NULL) {
-        client = clients = malloc(sizeof(struct client));
-        cpn_spawn(NULL, relay_capabilities, NULL);
-    } else {
-        for (client = clients; client->next; client = client->next);
-        client->next = malloc(sizeof(struct client));
-        client = client->next;
-    }
-
-    memcpy(&client->channel, channel, sizeof(struct cpn_channel));
-    client->next = NULL;
+    client = malloc(sizeof(struct client));
     client->requestid = request.requestid;
     client->waitsfor = reg;
+    memcpy(&client->channel, channel, sizeof(struct cpn_channel));
+
+    pthread_mutex_lock(&clients_mutex);
+    if (clients.head == NULL)
+        cpn_spawn(NULL, relay_capabilities, NULL);
+    cpn_list_append(&clients, client);
     pthread_mutex_unlock(&clients_mutex);
 
     channel->fd = -1;

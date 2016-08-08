@@ -28,6 +28,7 @@
 #include "capone/cmdparse.h"
 #include "capone/common.h"
 #include "capone/cfg.h"
+#include "capone/list.h"
 #include "capone/log.h"
 #include "capone/proto.h"
 #include "capone/server.h"
@@ -38,31 +39,31 @@
 
 static struct cpn_sign_key_pair local_keys;
 
-static struct known_keys {
-    struct cpn_sign_key_public key;
-    struct known_keys *next;
-} *known_keys;
+static struct cpn_list known_keys;
 
 static int send_discover(struct cpn_channel *channel)
 {
     DiscoverMessage msg = DISCOVER_MESSAGE__INIT;
-    struct known_keys *it;
+    struct cpn_sign_key_public *key;
+    struct cpn_list_entry *it;
     size_t i, keys;
     int err;
 
     msg.version = VERSION;
     msg.port = LISTEN_PORT;
 
-    for (keys = 0, it = known_keys; it && keys < 50; it = it->next, keys++);
+    keys = cpn_list_count(&known_keys);
 
     msg.n_known_keys = keys;
     if (keys > 0) {
         msg.known_keys = calloc(keys, sizeof(ProtobufCBinaryData));
 
-        for (i = 0, it = known_keys; i < keys; i++, it = it->next) {
+        i = 0;
+        cpn_list_foreach(&known_keys, it, key) {
+            i++;
             msg.known_keys[i].len = sizeof(struct cpn_sign_key_public);
             msg.known_keys[i].data = malloc(sizeof(struct cpn_sign_key_public));
-            memcpy(msg.known_keys[i].data, &it->key.data, sizeof(struct cpn_sign_key_public));
+            memcpy(msg.known_keys[i].data, &key->data, sizeof(struct cpn_sign_key_public));
         }
     } else {
         msg.known_keys = NULL;
@@ -111,7 +112,8 @@ out:
 
 static int handle_announce(struct cpn_channel *channel)
 {
-    struct known_keys *it;
+    struct cpn_list_entry *it;
+    struct cpn_sign_key_public *key;
     struct cpn_sign_key_hex remote_key;
     AnnounceMessage *announce = NULL;
     unsigned i = 0;
@@ -131,8 +133,8 @@ static int handle_announce(struct cpn_channel *channel)
         goto out;
     }
 
-    for (it = known_keys; it; it = it->next) {
-        if (!memcmp(it->key.data, announce->sign_key.data,
+    cpn_list_foreach(&known_keys, it, key) {
+        if (!memcmp(key->data, announce->sign_key.data,
                     sizeof(struct cpn_sign_key_public)))
         {
             cpn_log(LOG_LEVEL_DEBUG, "Ignoring known key %s", remote_key.data);
@@ -141,10 +143,9 @@ static int handle_announce(struct cpn_channel *channel)
         }
     }
 
-    it = malloc(sizeof(struct known_keys));
-    it->next = known_keys;
-    memcpy(&it->key, announce->sign_key.data, sizeof(struct cpn_sign_key_public));
-    known_keys = it;
+    key = malloc(sizeof(struct cpn_sign_key_public));
+    memcpy(key, announce->sign_key.data, sizeof(struct cpn_sign_key_public));
+    cpn_list_append(&known_keys, key);
 
     printf("%s - %s (v%s)\n", announce->name, remote_key.data, announce->version);
 

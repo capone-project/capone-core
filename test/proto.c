@@ -277,7 +277,7 @@ static void request_constructs_session()
         { &remote, &remote_keys }, &service, &local_keys.pk, NULL, 0
     };
     struct cpn_cap invoker, requester;
-    struct cpn_session added;
+    struct cpn_session *added;
     struct cpn_thread t;
 
     cpn_spawn(&t, await_request, &args);
@@ -287,9 +287,9 @@ static void request_constructs_session()
     cpn_join(&t, NULL);
 
     assert_success(cpn_sessions_remove(&added, invoker.objectid));
-    assert_int_equal(invoker.objectid, added.sessionid);
+    assert_int_equal(invoker.objectid, added->sessionid);
 
-    cpn_session_free(&added);
+    cpn_session_free(added);
 }
 
 static void request_without_params_succeeds()
@@ -298,7 +298,7 @@ static void request_without_params_succeeds()
         { &remote, &remote_keys }, &service, &local_keys.pk, NULL, 0
     };
     struct cpn_cap invoker, requester;
-    struct cpn_session added;
+    struct cpn_session *added;
     struct cpn_thread t;
 
     cpn_spawn(&t, await_request, &args);
@@ -307,10 +307,10 @@ static void request_without_params_succeeds()
     cpn_join(&t, NULL);
 
     assert_success(cpn_sessions_remove(&added, invoker.objectid));
-    assert_int_equal(invoker.objectid, added.sessionid);
-    assert_int_equal(added.nparameters, 0);
+    assert_int_equal(invoker.objectid, added->sessionid);
+    assert_int_equal(added->nparameters, 0);
 
-    cpn_session_free(&added);
+    cpn_session_free(added);
 }
 
 static void whitlisted_request_constructs_session()
@@ -321,7 +321,7 @@ static void whitlisted_request_constructs_session()
     struct await_request_args args = {
         { &remote, &remote_keys }, &service, &local_keys.pk, &local_keys.pk, 1
     };
-    struct cpn_session added;
+    struct cpn_session *added;
     struct cpn_thread t;
     struct cpn_cap invoker, requester;
 
@@ -332,9 +332,9 @@ static void whitlisted_request_constructs_session()
     cpn_join(&t, NULL);
 
     assert_success(cpn_sessions_remove(&added, invoker.objectid));
-    assert_int_equal(invoker.objectid, added.sessionid);
+    assert_int_equal(invoker.objectid, added->sessionid);
 
-    cpn_session_free(&added);
+    cpn_session_free(added);
 }
 
 static void service_connects()

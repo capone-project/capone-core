@@ -54,6 +54,7 @@ ADD_LIBRARY(cpn SHARED
     lib/cmdparse.c
     lib/common.c
     lib/keys.c
+    lib/list.c
     lib/log.c
     lib/parameter.c
     lib/proto.c

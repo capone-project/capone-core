@@ -20,14 +20,12 @@
 
 #include <pthread.h>
 
+#include "capone/list.h"
 #include "capone/log.h"
 #include "capone/service.h"
 #include "capone/session.h"
 
-#define MAX_SESSIONS 1024
-
-static struct cpn_session sessions[MAX_SESSIONS];
-static char used[MAX_SESSIONS];
+static struct cpn_list sessions;
 static uint32_t sessionid = 0;
 
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -41,51 +39,41 @@ int cpn_sessions_add(uint32_t *out,
         const struct cpn_parameter *params,
         size_t nparams)
 {
-    uint32_t id;
-    size_t i;
+    struct cpn_session *session;
+
+    session = malloc(sizeof(struct cpn_session));
+    session->nparameters =
+        cpn_parameters_dup(&session->parameters, params, nparams);
 
     pthread_mutex_lock(&mutex);
-    for (i = 0; i < MAX_SESSIONS; i++) {
-        if (!used[i]) {
-            used[i] = 1;
-            break;
-        }
-    }
-
-    id = sessionid++;
+    *out = session->sessionid = sessionid++;
+    cpn_list_append(&sessions, session);
     pthread_mutex_unlock(&mutex);
 
-    if (i == MAX_SESSIONS) {
-        cpn_log(LOG_LEVEL_ERROR, "No session space left");
-        return -1;
-    }
-
-    sessions[i].sessionid = id;
-    *out = id;
-
-    sessions[i].nparameters = cpn_parameters_dup(&sessions[i].parameters,
-            params, nparams);
-
-    cpn_log(LOG_LEVEL_DEBUG, "Created session %"PRIu32, sessionid);
+    cpn_log(LOG_LEVEL_DEBUG, "Created session %"PRIu32, *out);
 
     return 0;
 }
 
-int cpn_sessions_remove(struct cpn_session *out, uint32_t sessionid)
+int cpn_sessions_remove(struct cpn_session **out, uint32_t sessionid)
 {
-    ssize_t i;
+    struct cpn_list_entry *it;
+    struct cpn_session *s;
 
     pthread_mutex_lock(&mutex);
-
-    i = cpn_sessions_find(out, sessionid);
-    if (i >= 0) {
-        memset(&sessions[i], 0, sizeof(struct cpn_session));
-        used[i] = 0;
+    cpn_list_foreach(&sessions, it, s) {
+        if (s->sessionid == sessionid) {
+            cpn_list_remove(&sessions, it);
+            if (out)
+                *out = s;
+            else
+                cpn_session_free(s);
+            break;
+        }
     }
-
     pthread_mutex_unlock(&mutex);
 
-    if (i < 0) {
+    if (it == NULL) {
         cpn_log(LOG_LEVEL_ERROR, "Session not found");
         return -1;
     }
@@ -93,20 +81,15 @@ int cpn_sessions_remove(struct cpn_session *out, uint32_t sessionid)
     return 0;
 }
 
-int cpn_sessions_find(struct cpn_session *out, uint32_t sessionid)
+int cpn_sessions_find(struct cpn_session **out, uint32_t sessionid)
 {
-    size_t i;
+    struct cpn_list_entry *it;
+    struct cpn_session *s;
 
-    for (i = 0; i < MAX_SESSIONS; i++) {
-        struct cpn_session *s;
-
-        if (!used[i])
-            continue;
-
-        s = &sessions[i];
+    cpn_list_foreach(&sessions, it, s) {
         if (s->sessionid == sessionid) {
             if (out)
-                memcpy(out, s, sizeof(struct cpn_session));
+                *out = s;
 
             return 0;
         }
@@ -117,18 +100,15 @@ int cpn_sessions_find(struct cpn_session *out, uint32_t sessionid)
 
 int cpn_sessions_clear(void)
 {
-    size_t i;
+    struct cpn_list_entry *it;
+    struct cpn_session *s;
+
     pthread_mutex_lock(&mutex);
 
-    for (i = 0; i < MAX_SESSIONS; i++) {
-        if (!used[i])
-            continue;
+    cpn_list_foreach(&sessions, it, s)
+        cpn_session_free(s);
+    cpn_list_clear(&sessions);
 
-        cpn_session_free(&sessions[i]);
-    }
-
-    memset(used, 0, sizeof(used));
-    memset(sessions, 0, sizeof(sessions));
     pthread_mutex_unlock(&mutex);
 
     return 0;
@@ -136,5 +116,8 @@ int cpn_sessions_clear(void)
 
 void cpn_session_free(struct cpn_session *session)
 {
+    if (session == NULL)
+        return;
     cpn_parameters_free(session->parameters, session->nparameters);
+    free(session);
 }
