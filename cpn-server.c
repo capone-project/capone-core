@@ -249,12 +249,6 @@ static int setup(struct cpn_cfg *cfg, int argc, const char *argv[])
         goto out;
     }
 
-    if (cpn_sessions_init() < 0) {
-        cpn_log(LOG_LEVEL_ERROR, "Could not initialize sessions");
-        err = -1;
-        goto out;
-    }
-
     if (cpn_service_from_config(&service, opts[1].value.string, cfg) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not parse services");
         err = -1;

@@ -449,8 +449,6 @@ int proto_test_run_suite(void)
     assert_success(cpn_test_init_service(&test_service));
     assert_success(cpn_service_register(&test_service));
 
-    assert_success(cpn_sessions_init());
-
     assert_success(cpn_cfg_parse_string(&config, service_cfg, strlen(service_cfg)));
     assert_success(cpn_service_from_config(&service, "Foo", &config));
 
