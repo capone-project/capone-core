@@ -38,13 +38,33 @@ which act as a proof of concept. These services include:
 
 Other services will follow.
 
-## Requirements
+## Building
 
-- GCC or Clang
+The project is implemented in C, using CMake as its build system.
+It currently builds on both Linux and macOS with GCC and Clang as
+well as on Windows using MSYS. To build the core components,
+following dependencies are required:
+
 - protobuf v2.5.0 or greater
 - protobuf-c v1.0.2 or greater
 - libsodium v1.0.8 or greater
 - cmocka (optional, for tests only)
+- libx11, libxi, libxtst (optional, for a single benchmark only)
+
+Building the project is simple, then:
+
+```
+$ git clone https://github.com/capone-project/capone-core.git
+$ cd capone-core
+$ mkdir build
+$ cd build
+$ cmake ..
+$ make
+```
+
+This will build the capone library as well as core executables.
+If the optional dependencies required for tests and benchmarks
+are present, these will be built, as well.
 
 ## API documentation
 
