@@ -12,7 +12,6 @@ SET(CMAKE_MODULE_PATH
     ${PROJECT_SOURCE_DIR}/cmake/)
 
 FIND_PACKAGE(PkgConfig REQUIRED)
-FIND_PACKAGE(cmocka REQUIRED)
 FIND_PACKAGE(ProtobufC REQUIRED)
 FIND_PACKAGE(Threads REQUIRED)
 
@@ -29,7 +28,6 @@ INCLUDE_DIRECTORIES("${PROJECT_SOURCE_DIR}/include"
     "${PROJECT_BINARY_DIR}/include")
 INCLUDE_DIRECTORIES(SYSTEM
     ${PROTOBUFC_INCLUDE_DIRS}
-    ${CMOCKA_INCLUDE_DIR}
     ${SODIUM_INCLUDE_DIRS})
 LINK_DIRECTORIES(${SODIUM_LIBRARY_DIRS})
 
@@ -45,7 +43,7 @@ PROTOBUF_GENERATE_C(PROTO_SOURCES PROTO_HEADERS
     include/capone/proto/discovery.proto
     include/capone/proto/encryption.proto)
 
-ADD_LIBRARY(cpn SHARED
+ADD_LIBRARY(capone SHARED
     lib/acl.c
     lib/bench.c
     lib/caps.c
@@ -68,24 +66,24 @@ ADD_LIBRARY(cpn SHARED
     lib/services/synergy.c
     lib/services/xpra.c
     ${PROTO_SOURCES})
-TARGET_LINK_LIBRARIES(cpn
+TARGET_LINK_LIBRARIES(capone
     ${SODIUM_LIBRARIES}
     ${PROTOBUFC_LIBRARIES}
     ${CMAKE_THREAD_LIBS_INIT})
 
 ADD_EXECUTABLE(cpn-client cpn-client.c)
-TARGET_LINK_LIBRARIES(cpn-client cpn)
+TARGET_LINK_LIBRARIES(cpn-client capone)
 
 ADD_EXECUTABLE(cpn-discover cpn-discover.c)
-TARGET_LINK_LIBRARIES(cpn-discover cpn)
+TARGET_LINK_LIBRARIES(cpn-discover capone)
 
 ADD_EXECUTABLE(cpn-discover-responder cpn-discover-responder.c)
-TARGET_LINK_LIBRARIES(cpn-discover-responder cpn)
+TARGET_LINK_LIBRARIES(cpn-discover-responder capone)
 
 ADD_EXECUTABLE(cpn-genkey cpn-genkey.c)
-TARGET_LINK_LIBRARIES(cpn-genkey cpn)
+TARGET_LINK_LIBRARIES(cpn-genkey capone)
 
 ADD_EXECUTABLE(cpn-server cpn-server.c)
-TARGET_LINK_LIBRARIES(cpn-server cpn)
+TARGET_LINK_LIBRARIES(cpn-server capone)
 
 ADD_SUBDIRECTORY(test)
