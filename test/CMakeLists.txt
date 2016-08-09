@@ -1,22 +1,34 @@
 PROTOBUF_GENERATE_C(TEST_PROTO_SOURCES TEST_PROTO_HEADERS test.proto)
 
-ADD_EXECUTABLE(cpn-test cpn-test.c
-    acl.c
-    caps.c
-    cfg.c
-    channel.c
-    cmdparse.c
-    common.c
-    keys.c
-    list.c
-    parameter.c
-    proto.c
-    server.c
-    service.c
-    session.c
-    test-service.c
-    ${TEST_PROTO_SOURCES})
-TARGET_LINK_LIBRARIES(cpn-test capone cmocka)
+FIND_PACKAGE(CMOCKA)
+
+IF(CMOCKA_FOUND)
+    MESSAGE(STATUS "Found cmocka: TRUE")
+    MESSAGE(STATUS "  Building tests")
+
+    INCLUDE_DIRECTORIES(SYSTEM ${CMOCKA_INCLUDE_DIR})
+
+    ADD_EXECUTABLE(cpn-test cpn-test.c
+        acl.c
+        caps.c
+        cfg.c
+        channel.c
+        cmdparse.c
+        common.c
+        keys.c
+        list.c
+        parameter.c
+        proto.c
+        server.c
+        service.c
+        session.c
+        test-service.c
+        ${TEST_PROTO_SOURCES})
+    TARGET_LINK_LIBRARIES(cpn-test capone cmocka)
+ELSE()
+    MESSAGE(STATUS "Found cmocka: FALSE")
+    MESSAGE(STATUS "  Not building tests")
+ENDIF(CMOCKA_FOUND)
 
 ADD_EXECUTABLE(cpn-bench-throughput cpn-bench-throughput.c)
 TARGET_LINK_LIBRARIES(cpn-bench-throughput capone)
