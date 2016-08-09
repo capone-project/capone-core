@@ -50,6 +50,7 @@ ADD_LIBRARY(capone SHARED
     lib/channel.c
     lib/cmdparse.c
     lib/common.c
+    lib/global.c
     lib/keys.c
     lib/list.c
     lib/log.c
