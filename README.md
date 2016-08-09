@@ -25,6 +25,19 @@ The project is licensed under the GPLv3 license. See the LICENSE
 file or https://www.gnu.org/licenses/gpl-3.0.en.html for more
 information.
 
+## Services
+
+Currently, there is a small number of core services implented
+which act as a proof of concept. These services include:
+
+- a service to pass on capabilities
+- a service to request capabilities from other users
+- a service to forward input devices based on Synergy
+- a service to forward displays based on Xpra
+- a service to execute arbitrary commands
+
+Other services will follow.
+
 ## Requirements
 
 - GCC or Clang
