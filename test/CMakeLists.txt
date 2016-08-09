@@ -16,15 +16,15 @@ ADD_EXECUTABLE(cpn-test cpn-test.c
     session.c
     test-service.c
     ${TEST_PROTO_SOURCES})
-TARGET_LINK_LIBRARIES(cpn-test cpn cmocka)
+TARGET_LINK_LIBRARIES(cpn-test capone cmocka)
 
 ADD_EXECUTABLE(cpn-bench-throughput cpn-bench-throughput.c)
-TARGET_LINK_LIBRARIES(cpn-bench-throughput cpn)
+TARGET_LINK_LIBRARIES(cpn-bench-throughput capone)
 
 ADD_EXECUTABLE(cpn-bench-latency cpn-bench-latency.c)
-TARGET_LINK_LIBRARIES(cpn-bench-latency cpn)
+TARGET_LINK_LIBRARIES(cpn-bench-latency capone)
 
 IF(X11_FOUND)
     ADD_EXECUTABLE(cpn-bench-input cpn-bench-input.c)
-    TARGET_LINK_LIBRARIES(cpn-bench-input cpn ${X11_LIBRARIES})
+    TARGET_LINK_LIBRARIES(cpn-bench-input capone ${X11_LIBRARIES})
 ENDIF(X11_FOUND)
