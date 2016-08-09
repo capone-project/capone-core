@@ -36,6 +36,8 @@ TARGET_LINK_LIBRARIES(cpn-bench-throughput capone)
 ADD_EXECUTABLE(cpn-bench-latency cpn-bench-latency.c)
 TARGET_LINK_LIBRARIES(cpn-bench-latency capone)
 
+PKG_CHECK_MODULES(X11 x11 xtst xi)
+
 IF(X11_FOUND)
     ADD_EXECUTABLE(cpn-bench-input cpn-bench-input.c)
     TARGET_LINK_LIBRARIES(cpn-bench-input capone ${X11_LIBRARIES})
