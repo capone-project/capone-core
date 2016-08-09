@@ -24,6 +24,7 @@
 #include "capone/cmdparse.h"
 #include "capone/common.h"
 #include "capone/channel.h"
+#include "capone/global.h"
 #include "capone/proto.h"
 #include "capone/service.h"
 
@@ -233,6 +234,9 @@ static int cmd_terminate(const char *session, const char *capability)
 
 int main(int argc, const char *argv[])
 {
+    if (cpn_global_init() < 0)
+        return -1;
+
     if (cpn_cmdparse_parse_cmd(opts, argc, argv) < 0) {
         return -1;
     }
@@ -245,16 +249,6 @@ int main(int argc, const char *argv[])
     memcpy(&remote_key, &opts[1].value.sigkey, sizeof(struct cpn_sign_key_public));
     remote_host = opts[2].value.string;
     remote_port = opts[3].value.string;
-
-    if (cpn_service_register_builtins() < 0) {
-        puts("Could not initialize services");
-        return -1;
-    }
-
-    if (sodium_init() < 0) {
-        puts("Could not init libsodium");
-        return -1;
-    }
 
     if (opts[4].set)
         return cmd_query();

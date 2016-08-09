@@ -21,8 +21,6 @@
 #include <unistd.h>
 #include <stdlib.h>
 
-#include <sodium.h>
-
 #include <sys/select.h>
 #include <sys/socket.h>
 #include <sys/wait.h>
@@ -30,6 +28,7 @@
 
 #include "capone/cmdparse.h"
 #include "capone/common.h"
+#include "capone/global.h"
 #include "capone/log.h"
 #include "capone/proto.h"
 #include "capone/server.h"
@@ -200,11 +199,10 @@ int main(int argc, const char *argv[])
     char *name;
     int i, numservices;
 
-    if (cpn_cmdparse_parse_cmd(opts, argc, argv) < 0) {
+    if (cpn_global_init() < 0)
         return -1;
-    }
 
-    if (sodium_init() < 0) {
+    if (cpn_cmdparse_parse_cmd(opts, argc, argv) < 0) {
         return -1;
     }
 
