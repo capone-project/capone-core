@@ -141,7 +141,7 @@ struct cpn_service {
  * @return <code>0</code> on success, <code>-1</code> if a
  *         service with the same type has already been registered
  */
-int cpn_service_plugin_register(struct cpn_service_plugin *service);
+int cpn_service_plugin_register(const struct cpn_service_plugin *service);
 
 /** @brief Register all built-in services
  *

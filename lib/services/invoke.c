@@ -130,14 +130,18 @@ out:
     return 0;
 }
 
-int cpn_invoke_init_service(struct cpn_service_plugin *plugin)
+int cpn_invoke_init_service(const struct cpn_service_plugin **out)
 {
-    plugin->category = "Invoke";
-    plugin->type = "invoke";
-    plugin->version = "0.0.1";
-    plugin->handle = handle;
-    plugin->invoke = invoke;
-    plugin->parameters = parameters;
+    static struct cpn_service_plugin plugin = {
+        "Invoke",
+        "invoke",
+        "0.0.1",
+        parameters,
+        handle,
+        invoke
+    };
+
+    *out = &plugin;
 
     return 0;
 }

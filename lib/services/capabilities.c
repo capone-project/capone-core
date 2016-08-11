@@ -537,16 +537,18 @@ static int handle(struct cpn_channel *channel,
     return 0;
 }
 
-int cpn_capabilities_init_service(struct cpn_service_plugin *service)
+int cpn_capabilities_init_service(const struct cpn_service_plugin **service)
 {
-    memset(&registrants, 0, sizeof(registrants));
+    static struct cpn_service_plugin plugin = {
+        "Capabilities",
+        "capabilities",
+        "0.0.1",
+        parameters,
+        handle,
+        invoke
+    };
 
-    service->category = "Capabilities";
-    service->type = "capabilities";
-    service->version = "0.0.1";
-    service->handle = handle;
-    service->invoke = invoke;
-    service->parameters = parameters;
+    *service = &plugin;
 
     return 0;
 }

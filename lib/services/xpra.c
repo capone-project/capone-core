@@ -149,14 +149,18 @@ static int handle(struct cpn_channel *channel,
     return 0;
 }
 
-int cpn_xpra_init_service(struct cpn_service_plugin *plugin)
+int cpn_xpra_init_service(const struct cpn_service_plugin **out)
 {
-    plugin->category = "Display";
-    plugin->type = "xpra";
-    plugin->version = "0.0.1";
-    plugin->handle = handle;
-    plugin->invoke = invoke;
-    plugin->parameters = parameters;
+    static struct cpn_service_plugin plugin = {
+        "Display",
+        "xpra",
+        "0.0.1",
+        parameters,
+        handle,
+        invoke
+    };
+
+    *out = &plugin;
 
     return 0;
 }

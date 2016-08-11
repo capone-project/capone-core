@@ -161,14 +161,18 @@ static int handle(struct cpn_channel *channel,
     return 0;
 }
 
-int cpn_synergy_init_service(struct cpn_service_plugin *plugin)
+int cpn_synergy_init_service(const struct cpn_service_plugin **out)
 {
-    plugin->category = "Input";
-    plugin->type = "synergy";
-    plugin->version = "0.0.1";
-    plugin->handle = handle;
-    plugin->invoke = invoke;
-    plugin->parameters = parameters;
+    static struct cpn_service_plugin plugin = {
+        "Input",
+        "synergy",
+        "0.0.1",
+        parameters,
+        handle,
+        invoke
+    };
+
+    *out = &plugin;
 
     return 0;
 }

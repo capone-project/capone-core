@@ -47,4 +47,4 @@
 
 struct cpn_service_plugin;
 
-int cpn_capabilities_init_service(struct cpn_service_plugin *plugin);
+int cpn_capabilities_init_service(const struct cpn_service_plugin **plugin);

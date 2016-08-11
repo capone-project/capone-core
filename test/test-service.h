@@ -27,6 +27,6 @@
 
 struct cpn_service_plugin;
 
-int cpn_test_init_service(struct cpn_service_plugin *plugin);
+int cpn_test_init_service(const struct cpn_service_plugin **plugin);
 
 uint8_t *cpn_test_service_get_data(void);

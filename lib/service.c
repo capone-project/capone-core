@@ -35,7 +35,7 @@
 static struct cpn_list plugins;
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
-int cpn_service_plugin_register(struct cpn_service_plugin *plugin)
+int cpn_service_plugin_register(const struct cpn_service_plugin *plugin)
 {
     struct cpn_list_entry *it;
     struct cpn_service_plugin *p;
@@ -61,14 +61,14 @@ out:
 
 int cpn_service_plugin_register_builtins(void)
 {
-    int (*initializers[])(struct cpn_service_plugin *) = {
+    int (*initializers[])(const struct cpn_service_plugin **) = {
         cpn_capabilities_init_service,
         cpn_exec_init_service,
         cpn_invoke_init_service,
         cpn_synergy_init_service,
         cpn_xpra_init_service,
     };
-    struct cpn_service_plugin plugin;
+    const struct cpn_service_plugin *plugin;
     unsigned i;
 
     for (i = 0; i < ARRAY_SIZE(initializers); i++) {
@@ -77,7 +77,7 @@ int cpn_service_plugin_register_builtins(void)
             continue;
         }
 
-        cpn_service_plugin_register(&plugin);
+        cpn_service_plugin_register(plugin);
     }
 
     return 0;

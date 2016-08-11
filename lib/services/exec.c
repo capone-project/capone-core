@@ -163,14 +163,18 @@ out:
     return error;
 }
 
-int cpn_exec_init_service(struct cpn_service_plugin *plugin)
+int cpn_exec_init_service(const struct cpn_service_plugin **out)
 {
-    plugin->category = "Shell";
-    plugin->type = "exec";
-    plugin->version = "0.0.1";
-    plugin->handle = handle;
-    plugin->invoke = invoke;
-    plugin->parameters = parameters;
+    static struct cpn_service_plugin plugin = {
+        "Shell",
+        "exec",
+        "0.0.1",
+        parameters,
+        handle,
+        invoke
+    };
+
+    *out = &plugin;
 
     return 0;
 }
