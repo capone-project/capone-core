@@ -245,8 +245,6 @@ static void query_succeeds()
     assert_string_equal(results.location, "Dunno");
     assert_string_equal(results.port, "1234");
     assert_string_equal(results.version, "0.0.1");
-    assert_int_equal(results.nparams, 1);
-    assert_string_equal(results.params[0].key, "test");
 
     cpn_query_results_free(&results);
 }

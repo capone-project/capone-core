@@ -92,10 +92,6 @@ struct cpn_query_results {
      * \see cpn_service::port
      */
     char *port;
-    /** @brief Parameters that may be set */
-    struct cpn_parameter *params;
-    /** @brief Number of parameters */
-    size_t nparams;
 };
 
 /** @brief Initiate a new connection to a service

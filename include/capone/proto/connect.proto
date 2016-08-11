@@ -23,7 +23,6 @@ message ServiceDescription {
     required string version = 4;
     required string location = 5;
     required string port = 6;
-    repeated Parameter parameters = 7;
 }
 
 message CapabilityMessage {

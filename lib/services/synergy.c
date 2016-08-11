@@ -26,12 +26,6 @@
 
 #include "capone/services/synergy.h"
 
-static int parameters(const struct cpn_parameter **out)
-{
-    *out = NULL;
-    return 0;
-}
-
 static int invoke(struct cpn_channel *channel, int argc, const char **argv)
 {
     struct cpn_channel synergy_channel;
@@ -167,7 +161,6 @@ int cpn_synergy_init_service(const struct cpn_service_plugin **out)
         "Input",
         "synergy",
         "0.0.1",
-        parameters,
         handle,
         invoke
     };

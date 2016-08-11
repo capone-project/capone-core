@@ -54,23 +54,6 @@ static uint32_t requestid;
 static pthread_mutex_t registrants_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t clients_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-static int parameters(const struct cpn_parameter **out)
-{
-    static const struct cpn_parameter params[] = {
-        { "mode", "register" },
-        { "mode", "request" },
-        { "invoker", NULL },
-        { "requested-identity", NULL },
-        { "service-identity", NULL },
-        { "service-address", NULL },
-        { "service-port", NULL },
-        { "service-parameters", NULL },
-    };
-
-    *out = params;
-    return ARRAY_SIZE(params);
-}
-
 static void relay_capability_for_registrant(struct registrant *r)
 {
     Capability *cap = NULL;
@@ -543,7 +526,6 @@ int cpn_capabilities_init_service(const struct cpn_service_plugin **service)
         "Capabilities",
         "capabilities",
         "0.0.1",
-        parameters,
         handle,
         invoke
     };

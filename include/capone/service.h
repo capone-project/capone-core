@@ -66,13 +66,6 @@ typedef int (*handle_fn)(struct cpn_channel *channel,
         const struct cpn_session *session,
         const struct cpn_cfg *cfg);
 
-/** @brief Function retrieving available parameters for a service
- *
- * @param[out] out Statically allocated parameters available for the service
- * @return Number of parameters
- */
-typedef int (*parameters_fn)(const struct cpn_parameter **out);
-
 
 struct cpn_service_plugin {
     /** @brief Category of the sevice
@@ -95,8 +88,6 @@ struct cpn_service_plugin {
     /** @brief Version of the plugin */
     const char *version;
 
-    /** \see parameters_fn */
-    parameters_fn parameters;
     /** \see handle_fn */
     handle_fn handle;
     /** \see invoke_fn */

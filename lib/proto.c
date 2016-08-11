@@ -296,9 +296,6 @@ int cpn_proto_send_query(struct cpn_query_results *out,
     results.port = msg->port;
     msg->port = NULL;
 
-    convert_params(&results.params, msg->parameters, msg->n_parameters);
-    results.nparams = msg->n_parameters;
-
     service_description__free_unpacked(msg, NULL);
 
     memcpy(out, &results, sizeof(*out));
@@ -310,9 +307,6 @@ int cpn_proto_answer_query(struct cpn_channel *channel,
         const struct cpn_service *service)
 {
     ServiceDescription results = SERVICE_DESCRIPTION__INIT;
-    Parameter **parameters;
-    const struct cpn_parameter *params;
-    int i, n, err;
 
     results.name = service->name;
     results.location = service->location;
@@ -321,32 +315,12 @@ int cpn_proto_answer_query(struct cpn_channel *channel,
     results.type = (char *) service->plugin->type;
     results.version = (char *) service->plugin->version;
 
-    n = service->plugin->parameters(&params);
-    parameters = malloc(sizeof(Parameter *) * n);
-    for (i = 0; i < n; i++) {
-        Parameter *parameter = malloc(sizeof(Parameter));
-        parameter__init(parameter);
-
-        parameter->key = (char *) params[i].key;
-        parameter->value = (char *) params[i].value;
-
-        parameters[i] = parameter;
-    }
-    results.parameters = parameters;
-    results.n_parameters = n;
-
-    if ((err = cpn_channel_write_protobuf(channel, (ProtobufCMessage *) &results)) < 0) {
+    if (cpn_channel_write_protobuf(channel, (ProtobufCMessage *) &results) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not send query results");
-        goto out;
+        return -1;
     }
 
-out:
-    for (i = 0; i < n; i++) {
-        free(parameters[i]);
-    }
-    free(parameters);
-
-    return err;
+    return 0;
 }
 
 void cpn_query_results_free(struct cpn_query_results *results)
@@ -366,10 +340,6 @@ void cpn_query_results_free(struct cpn_query_results *results)
     results->location = NULL;
     free(results->port);
     results->port = NULL;
-
-    cpn_parameters_free(results->params, results->nparams);
-    results->params = NULL;
-    results->nparams = 0;
 }
 
 static int create_cap(CapabilityMessage **out, uint32_t objectid, uint32_t rights, const struct cpn_sign_key_public *key)

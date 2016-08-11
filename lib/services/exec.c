@@ -25,19 +25,6 @@
 
 #include "capone/services/exec.h"
 
-static int parameters(const struct cpn_parameter **out)
-{
-    static const struct cpn_parameter params[] = {
-        { "command", NULL },
-        { "arg", NULL },
-        { "env", NULL },
-    };
-
-    *out = params;
-
-    return ARRAY_SIZE(params);
-}
-
 static int invoke(struct cpn_channel *channel, int argc, const char **argv)
 {
     UNUSED(argc);
@@ -169,7 +156,6 @@ int cpn_exec_init_service(const struct cpn_service_plugin **out)
         "Shell",
         "exec",
         "0.0.1",
-        parameters,
         handle,
         invoke
     };

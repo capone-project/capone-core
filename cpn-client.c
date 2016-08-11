@@ -77,7 +77,6 @@ static int cmd_query(void)
     struct cpn_sign_key_hex hex;
     struct cpn_query_results results;
     struct cpn_channel channel;
-    size_t i;
 
     if (cpn_proto_initiate_connection(&channel, remote_host, remote_port,
                 &local_keys, &remote_key, CPN_CONNECTION_TYPE_QUERY) < 0) {
@@ -107,13 +106,6 @@ static int cmd_query(void)
             results.location,
             results.port);
 
-    for (i = 0; i < results.nparams; i++) {
-        struct cpn_parameter *param = &results.params[i];
-
-        printf("\tparam:    %s=%s\n", param->key, param->value);
-    }
-
-    cpn_query_results_free(&results);
     cpn_channel_close(&channel);
 
     return 0;

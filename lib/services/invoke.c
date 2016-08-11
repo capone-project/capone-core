@@ -23,22 +23,6 @@
 
 #include "capone/services/invoke.h"
 
-static int parameters(const struct cpn_parameter **out)
-{
-    static const struct cpn_parameter params[] = {
-        { "service-identity", NULL },
-        { "service-address", NULL },
-        { "service-port", NULL },
-        { "service-type", NULL },
-        { "service-args", NULL },
-        { "sessionid", NULL },
-    };
-
-    *out = params;
-
-    return ARRAY_SIZE(params);
-}
-
 static int invoke(struct cpn_channel *channel, int argc, const char **argv)
 {
     UNUSED(argc);
@@ -136,7 +120,6 @@ int cpn_invoke_init_service(const struct cpn_service_plugin **out)
         "Invoke",
         "invoke",
         "0.0.1",
-        parameters,
         handle,
         invoke
     };

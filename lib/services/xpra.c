@@ -26,16 +26,6 @@
 
 #include "capone/services/xpra.h"
 
-static int parameters(const struct cpn_parameter **out)
-{
-    static const struct cpn_parameter params[] = {
-        { "port", NULL },
-    };
-
-    *out = params;
-    return ARRAY_SIZE(params);
-}
-
 static int invoke(struct cpn_channel *channel, int argc, const char **argv)
 {
     char buf[1];
@@ -155,7 +145,6 @@ int cpn_xpra_init_service(const struct cpn_service_plugin **out)
         "Display",
         "xpra",
         "0.0.1",
-        parameters,
         handle,
         invoke
     };

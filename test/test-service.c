@@ -26,16 +26,6 @@
 
 static uint8_t buf[1024];
 
-static int parameters(const struct cpn_parameter **out)
-{
-    static const struct cpn_parameter params[] = {
-        { "test", NULL },
-    };
-
-    *out = params;
-    return ARRAY_SIZE(params);
-}
-
 static int invoke(struct cpn_channel *channel, int argc, const char **argv)
 {
     UNUSED(argc);
@@ -62,7 +52,6 @@ int cpn_test_init_service(const struct cpn_service_plugin **out)
         "Test",
         "test",
         "0.0.1",
-        parameters,
         handle,
         invoke
     };
