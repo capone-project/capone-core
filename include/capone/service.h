@@ -73,12 +73,6 @@ typedef int (*handle_fn)(struct cpn_channel *channel,
  */
 typedef int (*parameters_fn)(const struct cpn_parameter **out);
 
-/** @brief Function retrieving the service's version
- *
- * @return Statically allocated version
- */
-typedef const char *(*version_fn)(void);
-
 
 struct cpn_service_plugin {
     /** @brief Category of the sevice
@@ -89,17 +83,18 @@ struct cpn_service_plugin {
      *  - Display
      *  - Shell
      */
-    char *category;
+    const char *category;
 
     /** @brief Type of the service
      *
      * This is the specific type of a service. E.g. one type of a
      * service of category "Display" may be "xpra".
      */
-    char *type;
+    const char *type;
 
-    /** \see version_fn */
-    version_fn version;
+    /** @brief Version of the plugin */
+    const char *version;
+
     /** \see parameters_fn */
     parameters_fn parameters;
     /** \see handle_fn */

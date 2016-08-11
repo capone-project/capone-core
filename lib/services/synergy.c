@@ -26,11 +26,6 @@
 
 #include "capone/services/synergy.h"
 
-static const char *version(void)
-{
-    return "0.0.1";
-}
-
 static int parameters(const struct cpn_parameter **out)
 {
     *out = NULL;
@@ -170,7 +165,7 @@ int cpn_synergy_init_service(struct cpn_service_plugin *plugin)
 {
     plugin->category = "Input";
     plugin->type = "synergy";
-    plugin->version = version;
+    plugin->version = "0.0.1";
     plugin->handle = handle;
     plugin->invoke = invoke;
     plugin->parameters = parameters;

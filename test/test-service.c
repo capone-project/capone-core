@@ -22,13 +22,9 @@
 #include "capone/service.h"
 
 #include "test.h"
+#include "test-service.h"
 
 static uint8_t buf[1024];
-
-static const char *version(void)
-{
-    return "0.0.1";
-}
 
 static int parameters(const struct cpn_parameter **out)
 {
@@ -64,7 +60,7 @@ int cpn_test_init_service(struct cpn_service_plugin *plugin)
 {
     plugin->category = "Test";
     plugin->type = "test";
-    plugin->version = version;
+    plugin->version = "0.0.1";
     plugin->handle = handle;
     plugin->invoke = invoke;
     plugin->parameters = parameters;

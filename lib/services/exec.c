@@ -25,11 +25,6 @@
 
 #include "capone/services/exec.h"
 
-static const char *version(void)
-{
-    return "0.0.1";
-}
-
 static int parameters(const struct cpn_parameter **out)
 {
     static const struct cpn_parameter params[] = {
@@ -172,7 +167,7 @@ int cpn_exec_init_service(struct cpn_service_plugin *plugin)
 {
     plugin->category = "Shell";
     plugin->type = "exec";
-    plugin->version = version;
+    plugin->version = "0.0.1";
     plugin->handle = handle;
     plugin->invoke = invoke;
     plugin->parameters = parameters;

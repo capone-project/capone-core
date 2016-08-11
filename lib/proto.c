@@ -317,9 +317,9 @@ int cpn_proto_answer_query(struct cpn_channel *channel,
     results.name = service->name;
     results.location = service->location;
     results.port = service->port;
-    results.category = service->plugin->category;
-    results.type = service->plugin->type;
-    results.version = (char *) service->plugin->version();
+    results.category = (char *) service->plugin->category;
+    results.type = (char *) service->plugin->type;
+    results.version = (char *) service->plugin->version;
 
     n = service->plugin->parameters(&params);
     parameters = malloc(sizeof(Parameter *) * n);

@@ -239,7 +239,7 @@ int main(int argc, const char *argv[])
 
         service_message->name = services[i].name;
         service_message->port = services[i].port;
-        service_message->category = services[i].plugin->category;
+        service_message->category = (char *) services[i].plugin->category;
 
         service_messages[i] = service_message;
     }

@@ -54,11 +54,6 @@ static uint32_t requestid;
 static pthread_mutex_t registrants_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t clients_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-static const char *version(void)
-{
-    return "0.0.1";
-}
-
 static int parameters(const struct cpn_parameter **out)
 {
     static const struct cpn_parameter params[] = {
@@ -548,7 +543,7 @@ int cpn_capabilities_init_service(struct cpn_service_plugin *service)
 
     service->category = "Capabilities";
     service->type = "capabilities";
-    service->version = version;
+    service->version = "0.0.1";
     service->handle = handle;
     service->invoke = invoke;
     service->parameters = parameters;
