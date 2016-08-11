@@ -21,6 +21,7 @@
 
 #include "capone/common.h"
 #include "capone/log.h"
+#include "capone/opts.h"
 #include "capone/server.h"
 #include "capone/service.h"
 
@@ -28,18 +29,19 @@
 
 static int invoke(struct cpn_channel *channel, int argc, const char **argv)
 {
-    char buf[1];
-    const char *port;
+    struct cpn_opt opts[] = {
+        CPN_OPTS_OPT_STRING(0, "--port", NULL, NULL, false),
+        CPN_OPTS_OPT_END
+    };
     struct cpn_channel xpra_channel;
+    char buf[1];
 
-    if (argc != 2 || strcmp(argv[0], "port")) {
-        puts("Usage: xpra port <PORT>");
+    if (cpn_opts_parse(opts, argc, argv) < 0)
         return -1;
-    }
 
-    port = argv[1];
-
-    if (cpn_channel_init_from_host(&xpra_channel, "127.0.0.1", port, CPN_CHANNEL_TYPE_TCP) < 0) {
+    if (cpn_channel_init_from_host(&xpra_channel, "127.0.0.1",
+                opts[0].value.string, CPN_CHANNEL_TYPE_TCP) < 0)
+    {
         cpn_log(LOG_LEVEL_ERROR, "Could not initialize local xpra channel");
         return -1;
     }

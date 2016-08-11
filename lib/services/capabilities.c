@@ -32,6 +32,7 @@
 #include "capone/service.h"
 #include "capone/list.h"
 #include "capone/log.h"
+#include "capone/opts.h"
 
 #include "capone/proto/capabilities.pb-c.h"
 #include "capone/services/capabilities.h"
@@ -224,19 +225,14 @@ out:
     return ret;
 }
 
-static int invoke_register(struct cpn_channel *channel, int argc, const char **argv)
+static int invoke_register(struct cpn_channel *channel, struct cpn_opt *opts)
 {
     CapabilityRequest *request;
     struct cpn_sign_key_hex requester, invoker, service;
     struct cpn_cfg cfg;
     size_t i;
 
-    if (argc != 1) {
-        puts("USAGE: register <CONFIG>");
-        return -1;
-    }
-
-    if (cpn_cfg_parse(&cfg, argv[0]) < 0) {
+    if (cpn_cfg_parse(&cfg, opts[0].value.string) < 0) {
         puts("Could not find config");
         return -1;
     }
@@ -342,14 +338,28 @@ static int invoke_request(struct cpn_channel *channel)
 
 static int invoke(struct cpn_channel *channel, int argc, const char **argv)
 {
-    if (argc < 1) {
-        puts("USAGE: capabilities (register|request)");
-        return -1;
-    }
+    struct cpn_opt register_opts[] = {
+        CPN_OPTS_OPT_STRING(0, "--config", NULL, NULL, false),
+        CPN_OPTS_OPT_END
+    };
+    struct cpn_opt request_opts[] = {
+        CPN_OPTS_OPT_END
+    };
+    struct cpn_opt opts[] = {
+        CPN_OPTS_OPT_ACTION("register", NULL, NULL),
+        CPN_OPTS_OPT_ACTION("request", NULL, NULL),
+        CPN_OPTS_OPT_END
+    };
 
-    if (!strcmp(argv[0], "register"))
-        return invoke_register(channel, argc - 1, argv + 1);
-    else if (!strcmp(argv[0], "request"))
+    opts[0].value.action_opts = register_opts;
+    opts[0].value.action_opts = request_opts;
+
+    if (cpn_opts_parse(opts, argc, argv) < 0)
+        return -1;
+
+    if (opts[0].set)
+        return invoke_register(channel, request_opts);
+    else if (opts[1].set)
         return invoke_request(channel);
     else {
         cpn_log(LOG_LEVEL_ERROR, "Unknown parameter '%s'", argv[0]);
