@@ -21,11 +21,10 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
-#include <sodium.h>
-
 #include "capone/acl.h"
 #include "capone/cmdparse.h"
 #include "capone/common.h"
+#include "capone/global.h"
 #include "capone/log.h"
 #include "capone/proto.h"
 #include "capone/server.h"
@@ -208,12 +207,10 @@ static int setup(struct cpn_cfg *cfg, int argc, const char *argv[])
     };
     int err;
 
-    if (cpn_cmdparse_parse_cmd(opts, argc, argv) < 0) {
+    if (cpn_global_init() < 0)
         return -1;
-    }
 
-    if (cpn_service_register_builtins() < 0) {
-        puts("Could not initialize services");
+    if (cpn_cmdparse_parse_cmd(opts, argc, argv) < 0) {
         return -1;
     }
 
@@ -243,17 +240,6 @@ static int setup(struct cpn_cfg *cfg, int argc, const char *argv[])
         goto out;
     }
 
-    if (sodium_init() < 0) {
-        cpn_log(LOG_LEVEL_ERROR, "Could not init libsodium");
-        err = -1;
-        goto out;
-    }
-
-    if (cpn_sessions_init() < 0) {
-        cpn_log(LOG_LEVEL_ERROR, "Could not initialize sessions");
-        err = -1;
-        goto out;
-    }
 
     if (cpn_service_from_config(&service, opts[1].value.string, cfg) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not parse services");

@@ -30,11 +30,6 @@ static uint32_t sessionid = 0;
 
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
-int cpn_sessions_init(void)
-{
-    return 0;
-}
-
 int cpn_sessions_add(uint32_t *out,
         const struct cpn_parameter *params,
         size_t nparams)

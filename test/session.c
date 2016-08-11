@@ -238,7 +238,5 @@ int session_test_run_suite(void)
         test(free_session_succeeds_with_key_only_parameter)
     };
 
-    assert_success(cpn_sessions_init());
-
     return execute_test_suite("proto", tests, setup, teardown);
 }

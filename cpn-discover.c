@@ -28,6 +28,7 @@
 #include "capone/cmdparse.h"
 #include "capone/common.h"
 #include "capone/cfg.h"
+#include "capone/global.h"
 #include "capone/list.h"
 #include "capone/log.h"
 #include "capone/proto.h"
@@ -252,10 +253,10 @@ int main(int argc, const char *argv[])
         CPN_CMDPARSE_OPT_END
     };
 
-    if (cpn_cmdparse_parse_cmd(opts, argc, argv) < 0)
+    if (cpn_global_init() < 0)
         return -1;
 
-    if (sodium_init() < 0)
+    if (cpn_cmdparse_parse_cmd(opts, argc, argv) < 0)
         return -1;
 
     if (opts[1].set) {
