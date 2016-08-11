@@ -22,6 +22,7 @@
 #include <pthread.h>
 
 #include "capone/common.h"
+#include "capone/list.h"
 #include "capone/log.h"
 #include "capone/service.h"
 
@@ -31,26 +32,22 @@
 #include "capone/services/synergy.h"
 #include "capone/services/xpra.h"
 
-struct services {
-    struct cpn_service service;
-    struct services *next;
-};
-
-static struct services *services;
+static struct cpn_list plugins;
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static int find_service(struct cpn_service *service, const char *type)
 {
-    struct services *it;
+    struct cpn_list_entry *it;
+    struct cpn_service *s;
 
-    for (it = services; it; it = it->next) {
-        if (!strcmp(it->service.type, type)) {
-            service->category = it->service.category;
-            service->handle = it->service.handle;
-            service->invoke = it->service.invoke;
-            service->parameters = it->service.parameters;
-            service->type = it->service.type;
-            service->version = it->service.version;
+    cpn_list_foreach(&plugins, it, s) {
+        if (!strcmp(s->type, type)) {
+            service->category = s->category;
+            service->handle = s->handle;
+            service->invoke = s->invoke;
+            service->parameters = s->parameters;
+            service->type = s->type;
+            service->version = s->version;
             return 0;
         }
     }
@@ -60,22 +57,22 @@ static int find_service(struct cpn_service *service, const char *type)
 
 int cpn_service_register(struct cpn_service *service)
 {
-    struct services *c;
+    struct cpn_list_entry *it;
+    struct cpn_service *s;
     int err = 0;
 
     pthread_mutex_lock(&mutex);
 
-    for (c = services; c; c = c->next) {
-        if (!strcmp(c->service.type, service->type)) {
+    cpn_list_foreach(&plugins, it, s) {
+        if (!strcmp(s->type, service->type)) {
             err = -1;
             goto out;
         }
     }
 
-    c = malloc(sizeof(struct services));
-    memcpy(&c->service, service, sizeof(struct cpn_service));
-    c->next = services;
-    services = c;
+    s = malloc(sizeof(struct cpn_service));
+    memcpy(s, service, sizeof(struct cpn_service));
+    cpn_list_append(&plugins, s);
 
 out:
     pthread_mutex_unlock(&mutex);
