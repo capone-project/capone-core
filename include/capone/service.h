@@ -79,15 +79,8 @@ typedef int (*parameters_fn)(const struct cpn_parameter **out);
  */
 typedef const char *(*version_fn)(void);
 
-/** @brief Structure wrapping a service's functionality
- */
-struct cpn_service {
-    /** @brief Name of the service
-     *
-     * The name is chosen freely by the user specifying the
-     * server's configuration.
-     */
-    char *name;
+
+struct cpn_service_plugin {
     /** @brief Category of the sevice
      *
      * Services have certain categories which should help users
@@ -97,25 +90,13 @@ struct cpn_service {
      *  - Shell
      */
     char *category;
+
     /** @brief Type of the service
      *
      * This is the specific type of a service. E.g. one type of a
      * service of category "Display" may be "xpra".
      */
     char *type;
-    /** @brief Port of the service
-     *
-     * This may be chosen freely by the user specifying the
-     * server's configuraiton.
-     */
-    char *port;
-    /** @brief Location of the service
-     *
-     * This may be chosen freely by the user specifying the
-     * server's configuraiton. Examples are e.g. "Cellar, or
-     * "Meeting Room 14a".
-     */
-    char *location;
 
     /** \see version_fn */
     version_fn version;
@@ -125,6 +106,34 @@ struct cpn_service {
     handle_fn handle;
     /** \see invoke_fn */
     invoke_fn invoke;
+};
+
+/** @brief Structure wrapping a service's functionality
+ */
+struct cpn_service {
+    /** @brief Name of the service
+     *
+     * The name is chosen freely by the user specifying the
+     * server's configuration.
+     */
+    char *name;
+
+    /** @brief Port of the service
+     *
+     * This may be chosen freely by the user specifying the
+     * server's configuraiton.
+     */
+    char *port;
+
+    /** @brief Location of the service
+     *
+     * This may be chosen freely by the user specifying the
+     * server's configuraiton. Examples are e.g. "Cellar, or
+     * "Meeting Room 14a".
+     */
+    char *location;
+
+    const struct cpn_service_plugin *plugin;
 };
 
 /** @brief Register a service with the system
@@ -137,7 +146,7 @@ struct cpn_service {
  * @return <code>0</code> on success, <code>-1</code> if a
  *         service with the same type has already been registered
  */
-int cpn_service_register(struct cpn_service *service);
+int cpn_service_plugin_register(struct cpn_service_plugin *service);
 
 /** @brief Register all built-in services
  *
@@ -152,7 +161,7 @@ int cpn_service_register(struct cpn_service *service);
  *
  * @return <code>0</code> on success, <code>-1</code> otherwise
  */
-int cpn_service_register_builtins(void);
+int cpn_service_plugin_register_builtins(void);
 
 /** @brief Initialize service for a given service type
  *
@@ -166,7 +175,7 @@ int cpn_service_register_builtins(void);
  * @return <code>0</code> on success, <code>-1</code> on error
  *         or if the service type was not found
  */
-int cpn_service_from_type(struct cpn_service *out, const char *type);
+int cpn_service_plugin_for_type(const struct cpn_service_plugin **out, const char *type);
 
 /** @brief Initialize a service from a configuration file
  *

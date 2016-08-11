@@ -359,7 +359,7 @@ static void service_connects()
     assert_success(cpn_proto_initiate_encryption(&local, &local_keys,
                 &remote_keys.pk));
     assert_success(cpn_proto_initiate_session(&local, &cap));
-    assert_success(service.invoke(&local, 0, NULL) < 0);
+    assert_success(service.plugin->invoke(&local, 0, NULL) < 0);
 
     cpn_join(&t, NULL);
 
@@ -425,7 +425,7 @@ int proto_test_run_suite(void)
         "type=test\n"
         "location=Dunno\n"
         "port=1234\n";
-    struct cpn_service test_service;
+    struct cpn_service_plugin test_service;
 
     const struct CMUnitTest tests[] = {
         test(connection_initiation_succeeds),
@@ -447,7 +447,7 @@ int proto_test_run_suite(void)
     };
 
     assert_success(cpn_test_init_service(&test_service));
-    assert_success(cpn_service_register(&test_service));
+    assert_success(cpn_service_plugin_register(&test_service));
 
     assert_success(cpn_cfg_parse_string(&config, service_cfg, strlen(service_cfg)));
     assert_success(cpn_service_from_config(&service, "Foo", &config));

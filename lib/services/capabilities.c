@@ -34,6 +34,7 @@
 #include "capone/log.h"
 
 #include "capone/proto/capabilities.pb-c.h"
+#include "capone/services/capabilities.h"
 
 struct registrant {
     struct cpn_sign_key_public identity;
@@ -541,7 +542,7 @@ static int handle(struct cpn_channel *channel,
     return 0;
 }
 
-int cpn_capabilities_init_service(struct cpn_service *service)
+int cpn_capabilities_init_service(struct cpn_service_plugin *service)
 {
     memset(&registrants, 0, sizeof(registrants));
 

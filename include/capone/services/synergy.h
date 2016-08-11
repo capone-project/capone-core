@@ -28,6 +28,6 @@
  * client's device.
  */
 
-struct cpn_service;
+struct cpn_service_plugin;
 
-int cpn_synergy_init_service(struct cpn_service *service);
+int cpn_synergy_init_service(struct cpn_service_plugin *plugin);

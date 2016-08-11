@@ -60,14 +60,14 @@ static int handle(struct cpn_channel *channel,
             strlen(session->parameters[0].value));
 }
 
-int cpn_test_init_service(struct cpn_service *service)
+int cpn_test_init_service(struct cpn_service_plugin *plugin)
 {
-    service->category = "Test";
-    service->type = "test";
-    service->version = version;
-    service->handle = handle;
-    service->invoke = invoke;
-    service->parameters = parameters;
+    plugin->category = "Test";
+    plugin->type = "test";
+    plugin->version = version;
+    plugin->handle = handle;
+    plugin->invoke = invoke;
+    plugin->parameters = parameters;
 
     return 0;
 }

@@ -61,7 +61,7 @@ static int handle(struct cpn_channel *channel,
     const char *service_identity, *service_address, *service_type,
           *service_port, *sessionid_string, *secret_string;
     const char **service_params = NULL;
-    struct cpn_service service;
+    const struct cpn_service_plugin *plugin;
     struct cpn_sign_key_pair local_keys;
     struct cpn_sign_key_public remote_key;
     struct cpn_channel remote_channel;
@@ -109,7 +109,7 @@ static int handle(struct cpn_channel *channel,
         goto out;
     }
 
-    if (cpn_service_from_type(&service, service_type) < 0) {
+    if (cpn_service_plugin_for_type(&plugin, service_type) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unknown service type");
         goto out;
     }
@@ -125,7 +125,7 @@ static int handle(struct cpn_channel *channel,
         goto out;
     }
 
-    if (service.invoke(&remote_channel, nparams, service_params) < 0) {
+    if (plugin->invoke(&remote_channel, nparams, service_params) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not invoke service");
         goto out;
     }
@@ -135,14 +135,14 @@ out:
     return 0;
 }
 
-int cpn_invoke_init_service(struct cpn_service *service)
+int cpn_invoke_init_service(struct cpn_service_plugin *plugin)
 {
-    service->category = "Invoke";
-    service->type = "invoke";
-    service->version = version;
-    service->handle = handle;
-    service->invoke = invoke;
-    service->parameters = parameters;
+    plugin->category = "Invoke";
+    plugin->type = "invoke";
+    plugin->version = version;
+    plugin->handle = handle;
+    plugin->invoke = invoke;
+    plugin->parameters = parameters;
 
     return 0;
 }

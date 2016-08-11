@@ -25,8 +25,8 @@
  * parameters and writes their values to the client's channel.
  */
 
-struct cpn_service;
+struct cpn_service_plugin;
 
-int cpn_test_init_service(struct cpn_service *service);
+int cpn_test_init_service(struct cpn_service_plugin *plugin);
 
 uint8_t *cpn_test_service_get_data(void);

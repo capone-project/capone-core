@@ -35,79 +35,67 @@
 static struct cpn_list plugins;
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
-static int find_service(struct cpn_service *service, const char *type)
+int cpn_service_plugin_register(struct cpn_service_plugin *plugin)
 {
     struct cpn_list_entry *it;
-    struct cpn_service *s;
-
-    cpn_list_foreach(&plugins, it, s) {
-        if (!strcmp(s->type, type)) {
-            service->category = s->category;
-            service->handle = s->handle;
-            service->invoke = s->invoke;
-            service->parameters = s->parameters;
-            service->type = s->type;
-            service->version = s->version;
-            return 0;
-        }
-    }
-
-    return -1;
-}
-
-int cpn_service_register(struct cpn_service *service)
-{
-    struct cpn_list_entry *it;
-    struct cpn_service *s;
+    struct cpn_service_plugin *p;
     int err = 0;
 
     pthread_mutex_lock(&mutex);
 
-    cpn_list_foreach(&plugins, it, s) {
-        if (!strcmp(s->type, service->type)) {
+    cpn_list_foreach(&plugins, it, p) {
+        if (!strcmp(p->type, plugin->type)) {
             err = -1;
             goto out;
         }
     }
 
-    s = malloc(sizeof(struct cpn_service));
-    memcpy(s, service, sizeof(struct cpn_service));
-    cpn_list_append(&plugins, s);
+    p = malloc(sizeof(struct cpn_service_plugin));
+    memcpy(p, plugin, sizeof(struct cpn_service_plugin));
+    cpn_list_append(&plugins, p);
 
 out:
     pthread_mutex_unlock(&mutex);
     return err;
 }
 
-int cpn_service_register_builtins(void)
+int cpn_service_plugin_register_builtins(void)
 {
-    int (*initializers[])(struct cpn_service *) = {
+    int (*initializers[])(struct cpn_service_plugin *) = {
         cpn_capabilities_init_service,
         cpn_exec_init_service,
         cpn_invoke_init_service,
         cpn_synergy_init_service,
         cpn_xpra_init_service,
     };
-    struct cpn_service service;
+    struct cpn_service_plugin plugin;
     unsigned i;
 
     for (i = 0; i < ARRAY_SIZE(initializers); i++) {
-        if (initializers[i](&service) < 0) {
-            cpn_log(LOG_LEVEL_ERROR, "Unable to initialize service");
+        if (initializers[i](&plugin) < 0) {
+            cpn_log(LOG_LEVEL_ERROR, "Unable to initialize plugin");
             continue;
         }
 
-        cpn_service_register(&service);
+        cpn_service_plugin_register(&plugin);
     }
 
     return 0;
 }
 
-int cpn_service_from_type(struct cpn_service *out, const char *type)
+int cpn_service_plugin_for_type(const struct cpn_service_plugin **out, const char *type)
 {
-    memset(out, 0, sizeof(struct cpn_service));
+    struct cpn_list_entry *it;
+    struct cpn_service_plugin *s;
 
-    return find_service(out, type);
+    cpn_list_foreach(&plugins, it, s) {
+        if (!strcmp(s->type, type)) {
+            *out = s;
+            return 0;
+        }
+    }
+
+    return -1;
 }
 
 int cpn_services_from_config_file(struct cpn_service **out, const char *file)
@@ -196,17 +184,18 @@ int cpn_service_from_config(struct cpn_service *out, const char *name, const str
 int cpn_service_from_section(struct cpn_service *out, const struct cpn_cfg_section *section)
 {
     struct cpn_service service;
+    const char *type = NULL;
     unsigned i;
 
     memset(&service, 0, sizeof(service));
 
-#define MAYBE_ADD_ENTRY(field, entry, value)                                    \
-    if (!strcmp(#field, entry)) {                                               \
-        if (service.field != NULL) {                                         \
+#define MAYBE_ADD_ENTRY(name, field, entry, value)                                    \
+    if (!strcmp(name, entry)) {                                               \
+        if (field != NULL) {                                         \
             cpn_log(LOG_LEVEL_ERROR, "Service config has been specified twice"); \
             goto out_err;                                                       \
         }                                                                       \
-        service.field = strdup(value);                                          \
+        field = strdup(value);                                          \
         continue;                                                               \
     }
 
@@ -214,10 +203,10 @@ int cpn_service_from_section(struct cpn_service *out, const struct cpn_cfg_secti
         const char *entry = section->entries[i].name,
             *value = section->entries[i].value;
 
-        MAYBE_ADD_ENTRY(name, entry, value);
-        MAYBE_ADD_ENTRY(type, entry, value);
-        MAYBE_ADD_ENTRY(port, entry, value);
-        MAYBE_ADD_ENTRY(location, entry, value);
+        MAYBE_ADD_ENTRY("type", type, entry, value);
+        MAYBE_ADD_ENTRY("name", service.name, entry, value);
+        MAYBE_ADD_ENTRY("port", service.port, entry, value);
+        MAYBE_ADD_ENTRY("location", service.location, entry, value);
 
         cpn_log(LOG_LEVEL_ERROR, "Unknown service config '%s'", entry);
         goto out_err;
@@ -225,8 +214,8 @@ int cpn_service_from_section(struct cpn_service *out, const struct cpn_cfg_secti
 
 #undef MAYBE_ADD_ENTRY
 
-    if (service.name == NULL ||
-            service.type == NULL ||
+    if (type == NULL ||
+            service.name == NULL ||
             service.port == NULL ||
             service.location == NULL)
     {
@@ -234,8 +223,8 @@ int cpn_service_from_section(struct cpn_service *out, const struct cpn_cfg_secti
         goto out_err;
     }
 
-    if (find_service(&service, service.type) < 0) {
-        cpn_log(LOG_LEVEL_ERROR, "Unknown service type '%s'", service.type);
+    if (cpn_service_plugin_for_type(&service.plugin, type) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Unknown service type '%s'", type);
         goto out_err;
     }
 

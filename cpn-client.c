@@ -173,12 +173,12 @@ static int cmd_connect(const char *service_type, const char *session,
         const char *capability,
         const struct cpn_opts_stringlist *parameters)
 {
-    struct cpn_service service;
+    const struct cpn_service_plugin *plugin;
     struct cpn_channel channel;
     struct cpn_cap cap;
 
-    if (cpn_service_from_type(&service, service_type) < 0) {
-        printf("Invalid service %s\n", service_type);
+    if (cpn_service_plugin_for_type(&plugin, service_type) < 0) {
+        printf("Invalid service plugin %s\n", service_type);
         return -1;
     }
 
@@ -198,7 +198,7 @@ static int cmd_connect(const char *service_type, const char *session,
         return -1;
     }
 
-    if (service.invoke(&channel, parameters->argc, parameters->argv) < 0) {
+    if (plugin->invoke(&channel, parameters->argc, parameters->argv) < 0) {
         puts("Could not invoke service");
         return -1;
     }

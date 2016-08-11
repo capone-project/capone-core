@@ -45,6 +45,6 @@
  * Now Alice can connect to the service and use the display.
  */
 
-struct cpn_service;
+struct cpn_service_plugin;
 
-int cpn_capabilities_init_service(struct cpn_service *service);
+int cpn_capabilities_init_service(struct cpn_service_plugin *plugin);

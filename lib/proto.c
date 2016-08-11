@@ -206,7 +206,7 @@ out_notify:
     if (err)
         goto out;
 
-    if ((err = service->handle(channel, remote_key, session, cfg)) < 0) {
+    if ((err = service->plugin->handle(channel, remote_key, session, cfg)) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Service could not handle connection");
         goto out;
     }
@@ -315,13 +315,13 @@ int cpn_proto_answer_query(struct cpn_channel *channel,
     int i, n, err;
 
     results.name = service->name;
-    results.category = service->category;
-    results.type = service->type;
-    results.version = (char *) service->version();
     results.location = service->location;
     results.port = service->port;
+    results.category = service->plugin->category;
+    results.type = service->plugin->type;
+    results.version = (char *) service->plugin->version();
 
-    n = service->parameters(&params);
+    n = service->plugin->parameters(&params);
     parameters = malloc(sizeof(Parameter *) * n);
     for (i = 0; i < n; i++) {
         Parameter *parameter = malloc(sizeof(Parameter));
