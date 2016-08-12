@@ -18,6 +18,7 @@
 #include "capone/channel.h"
 #include "capone/common.h"
 #include "capone/log.h"
+#include "capone/opts.h"
 #include "capone/proto.h"
 #include "capone/service.h"
 
@@ -37,39 +38,25 @@ static int handle(struct cpn_channel *channel,
         const struct cpn_session *session,
         const struct cpn_cfg *cfg)
 {
-    const char *service_identity, *service_address, *service_type,
-          *service_port, *sessionid_string, *secret_string;
-    const char **service_params = NULL;
+    struct cpn_opt opts[] = {
+        CPN_OPTS_OPT_SIGKEY(0, "--service-identity", NULL, NULL, false),
+        CPN_OPTS_OPT_STRING(0, "--service-address", NULL, NULL, false),
+        CPN_OPTS_OPT_STRING(0, "--service-port", NULL, NULL, false),
+        CPN_OPTS_OPT_STRING(0, "--service-type", NULL, NULL, false),
+        CPN_OPTS_OPT_STRINGLIST(0, "--service-parameters", NULL, NULL, false),
+        CPN_OPTS_OPT_STRING(0, "--sessionid", NULL, NULL, false),
+        CPN_OPTS_OPT_STRING(0, "--secret", NULL, NULL, false),
+        CPN_OPTS_OPT_END
+    };
     const struct cpn_service_plugin *plugin;
     struct cpn_sign_key_pair local_keys;
-    struct cpn_sign_key_public remote_key;
     struct cpn_channel remote_channel;
     struct cpn_cap cap;
-    size_t nparams;
 
     UNUSED(channel);
     UNUSED(invoker);
 
-    cpn_parameters_get_value(&service_identity,
-            "service-identity", session->parameters, session->nparameters);
-    cpn_parameters_get_value(&service_address,
-            "service-address", session->parameters, session->nparameters);
-    cpn_parameters_get_value(&service_port,
-            "service-port", session->parameters, session->nparameters);
-    cpn_parameters_get_value(&service_type,
-            "service-type", session->parameters, session->nparameters);
-    cpn_parameters_get_value(&sessionid_string,
-            "sessionid", session->parameters, session->nparameters);
-    cpn_parameters_get_value(&secret_string,
-            "secret", session->parameters, session->nparameters);
-
-    nparams = cpn_parameters_get_values(&service_params,
-            "service-args", session->parameters, session->nparameters);
-
-    if (service_identity == NULL || service_address == NULL || service_type == NULL
-            || service_port == NULL || sessionid_string == NULL || secret_string == NULL)
-    {
-        cpn_log(LOG_LEVEL_ERROR, "Not all parameters were set");
+    if (cpn_opts_parse(opts, session->argc, session->argv) < 0) {
         goto out;
     }
 
@@ -78,23 +65,21 @@ static int handle(struct cpn_channel *channel,
         goto out;
     }
 
-    if (cpn_sign_key_public_from_hex(&remote_key, service_identity) < 0) {
-        cpn_log(LOG_LEVEL_ERROR, "Could not parse remote public key");
-        goto out;
-    }
-
-    if (cpn_cap_parse(&cap, sessionid_string, secret_string, CPN_CAP_RIGHT_EXEC | CPN_CAP_RIGHT_TERM) < 0) {
+    if (cpn_cap_parse(&cap, opts[5].value.string, opts[6].value.string,
+                CPN_CAP_RIGHT_EXEC | CPN_CAP_RIGHT_TERM) < 0)
+    {
         cpn_log(LOG_LEVEL_ERROR, "Invalid capability");
         goto out;
     }
 
-    if (cpn_service_plugin_for_type(&plugin, service_type) < 0) {
+    if (cpn_service_plugin_for_type(&plugin, opts[3].value.string) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unknown service type");
         goto out;
     }
 
-    if (cpn_proto_initiate_connection(&remote_channel, service_address, service_port,
-                &local_keys, &remote_key, CPN_CONNECTION_TYPE_CONNECT) < 0) {
+    if (cpn_proto_initiate_connection(&remote_channel,
+                opts[1].value.string, opts[2].value.string,
+                &local_keys, &opts[0].value.sigkey, CPN_CONNECTION_TYPE_CONNECT) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not start invoke connection");
         goto out;
     }
@@ -104,13 +89,12 @@ static int handle(struct cpn_channel *channel,
         goto out;
     }
 
-    if (plugin->invoke(&remote_channel, nparams, service_params) < 0) {
+    if (plugin->invoke(&remote_channel, opts[4].value.stringlist.argc, opts[4].value.stringlist.argv) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not invoke service");
         goto out;
     }
 
 out:
-    free(service_params);
     return 0;
 }
 

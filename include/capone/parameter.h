@@ -33,8 +33,6 @@
 
 #include <unistd.h>
 
-#include "capone/proto/capabilities.pb-c.h"
-
 /** @brief Service parameters
  *
  * Services can have parameters to change the way they function.
@@ -130,30 +128,6 @@ int cpn_parameters_get_values(const char ***out, const char *value, const struct
  * @param[in] nparams Number of parameters to free
  */
 void cpn_parameters_free(struct cpn_parameter *params, size_t nparams);
-
-/** @brief Convert cpn parameters to proto parameters
- *
- * Convert parameters into an array of pointers to parameters as
- * required by protobuf messages. The out value needs to be freed
- * with <cpn_parameters_proto_free>.
- *
- * @param[out] out Pointer to memory to be allocated
- * @param[in] params Parameters to convert
- * @param[in] nparams Number of parameters to convert
- * @return The number of parameters
- */
-size_t cpn_parameters_to_proto(Parameter ***out, const struct cpn_parameter *params, size_t nparams);
-
-/** @brief Free array of pointers to parameters
- *
- * Free the parameter array together with the parameters and
- * their key/value pairs. Does nothing if either params in
- * <code>NULL</code> or if nparams is <code>0</code>.
- *
- * @param[in] params Pointer array to free.
- * @param[in] nparams Number of parameters.
- */
-void cpn_parameters_proto_free(Parameter **params, size_t nparams);
 
 #endif
 

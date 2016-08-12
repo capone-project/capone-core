@@ -215,8 +215,8 @@ void cpn_query_results_free(struct cpn_query_results *results);
  * @param[in] channel Channel connected to the server
  * @param[in] invoker Identity which should be able to start the
  *            session
- * @param[in] params Parameters to set for the session
- * @param[in] nparams Number of parameters
+ * @param[in] argc Number of session arguments
+ * @param[in] argv Session arguments
  * @return <code>0</code> on success, <code>-1</code> otherwise
  *
  * \see cpn_proto_answer_request
@@ -225,7 +225,7 @@ int cpn_proto_send_request(struct cpn_cap *invoker_cap,
         struct cpn_cap *requester_cap,
         struct cpn_channel *channel,
         const struct cpn_sign_key_public *invoker,
-        const struct cpn_parameter *params, size_t nparams);
+        int argc, const char **argv);
 
 /** @brief Handle a session request
  *

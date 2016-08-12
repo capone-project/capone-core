@@ -260,46 +260,6 @@ static void test_getting_multiple_values_with_multiple_args()
     free(values);
 }
 
-static void test_converting_parameters()
-{
-    Parameter **out;
-    struct cpn_parameter parameters[] = {
-        { "arg1", "val1" },
-        { "arg2", "val2" },
-        { "arg3", "val3" },
-        { "arg4", "val4" },
-    };
-    size_t i;
-
-    assert_int_equal(cpn_parameters_to_proto(&out, parameters, ARRAY_SIZE(parameters)),
-            ARRAY_SIZE(parameters));
-    for (i = 0; i < ARRAY_SIZE(parameters); i++) {
-        assert_string_equal(out[i]->key, parameters[i].key);
-        assert_string_equal(out[i]->value, parameters[i].value);
-    }
-
-    cpn_parameters_proto_free(out, ARRAY_SIZE(parameters));
-}
-
-static void test_converting_parameters_with_null_values()
-{
-    Parameter **out;
-    struct cpn_parameter parameters[] = {
-        { "arg1", NULL },
-        { "arg2", NULL },
-    };
-    size_t i;
-
-    assert_int_equal(cpn_parameters_to_proto(&out, parameters, ARRAY_SIZE(parameters)),
-            ARRAY_SIZE(parameters));
-    for (i = 0; i < ARRAY_SIZE(parameters); i++) {
-        assert_string_equal(out[i]->key, parameters[i].key);
-        assert_null(out[i]->value);
-    }
-
-    cpn_parameters_proto_free(out, ARRAY_SIZE(parameters));
-}
-
 int parameter_test_run_suite(void)
 {
     const struct CMUnitTest tests[] = {
@@ -321,10 +281,7 @@ int parameter_test_run_suite(void)
         test(test_getting_value_for_parameter_with_zero_values_fails),
         test(test_getting_single_value_for_multiple_available_fails_with_multiple_args),
         test(test_getting_multiple_values_with_one_result),
-        test(test_getting_multiple_values_with_multiple_args),
-
-        test(test_converting_parameters),
-        test(test_converting_parameters_with_null_values)
+        test(test_getting_multiple_values_with_multiple_args)
     };
 
     return execute_test_suite("parameter", tests, setup, teardown);

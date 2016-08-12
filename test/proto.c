@@ -268,8 +268,8 @@ static void whitelisted_query_succeeds()
 
 static void request_constructs_session()
 {
-    struct cpn_parameter params[] = {
-        { "port", "9999" }
+    const char *params[] = {
+        "port", "9999"
     };
     struct await_request_args args = {
         { &remote, &remote_keys }, &service, &local_keys.pk, NULL, 0
@@ -281,7 +281,7 @@ static void request_constructs_session()
     cpn_spawn(&t, await_request, &args);
     assert_success(cpn_proto_initiate_encryption(&local, &local_keys,
                 &remote_keys.pk));
-    assert_success(cpn_proto_send_request(&invoker, &requester, &local, &local_keys.pk, params, ARRAY_SIZE(params)));
+    assert_success(cpn_proto_send_request(&invoker, &requester, &local, &local_keys.pk, ARRAY_SIZE(params), params));
     cpn_join(&t, NULL);
 
     assert_success(cpn_sessions_remove(&added, invoker.objectid));
@@ -301,20 +301,20 @@ static void request_without_params_succeeds()
 
     cpn_spawn(&t, await_request, &args);
     assert_success(cpn_proto_initiate_encryption(&local, &local_keys, &remote_keys.pk));
-    assert_success(cpn_proto_send_request(&invoker, &requester, &local, &local_keys.pk, NULL, 0));
+    assert_success(cpn_proto_send_request(&invoker, &requester, &local, &local_keys.pk, 0, NULL));
     cpn_join(&t, NULL);
 
     assert_success(cpn_sessions_remove(&added, invoker.objectid));
     assert_int_equal(invoker.objectid, added->sessionid);
-    assert_int_equal(added->nparameters, 0);
+    assert_int_equal(added->argc, 0);
 
     cpn_session_free(added);
 }
 
 static void whitlisted_request_constructs_session()
 {
-    struct cpn_parameter params[] = {
-        { "port", "9999" }
+    const char *params[] = {
+        "port", "9999"
     };
     struct await_request_args args = {
         { &remote, &remote_keys }, &service, &local_keys.pk, &local_keys.pk, 1
@@ -326,7 +326,7 @@ static void whitlisted_request_constructs_session()
     cpn_spawn(&t, await_request, &args);
     assert_success(cpn_proto_initiate_encryption(&local, &local_keys,
                 &remote_keys.pk));
-    assert_success(cpn_proto_send_request(&invoker, &requester, &local, &local_keys.pk, params, ARRAY_SIZE(params)));
+    assert_success(cpn_proto_send_request(&invoker, &requester, &local, &local_keys.pk, ARRAY_SIZE(params), params));
     cpn_join(&t, NULL);
 
     assert_success(cpn_sessions_remove(&added, invoker.objectid));
@@ -337,9 +337,7 @@ static void whitlisted_request_constructs_session()
 
 static void service_connects()
 {
-    struct cpn_parameter params[] = {
-        { "data", "parameter-data" }
-    };
+    const char *params[] = { "data", "parameter-data" };
     struct handle_session_args args = {
         { &remote, &remote_keys }, &local_keys.pk, &service, &config
     };
@@ -350,7 +348,7 @@ static void service_connects()
 
     cpn_spawn(&t, handle_session, &args);
 
-    assert_success(cpn_sessions_add(&sessionid, params, ARRAY_SIZE(params)));
+    assert_success(cpn_sessions_add(&sessionid, ARRAY_SIZE(params), params));
     assert_success(cpn_caps_add(sessionid));
     assert_success(cpn_caps_create_reference(&cap, sessionid, CPN_CAP_RIGHT_EXEC, &local_keys.pk));
 
@@ -362,7 +360,7 @@ static void service_connects()
     cpn_join(&t, NULL);
 
     received = cpn_test_service_get_data();
-    assert_string_equal(params[0].value, received);
+    assert_string_equal(params[0], received);
 }
 
 static void connect_refuses_without_session()
@@ -391,7 +389,7 @@ static void termination_kills_session()
     struct cpn_cap cap;
     uint32_t sessionid;
 
-    assert_success(cpn_sessions_add(&sessionid, NULL, 0));
+    assert_success(cpn_sessions_add(&sessionid, 0, NULL));
     assert_success(cpn_caps_add(sessionid));
     assert_success(cpn_caps_create_reference(&cap, sessionid, CPN_CAP_RIGHT_TERM, &local_keys.pk));
 

@@ -27,7 +27,6 @@
 #include "capone/channel.h"
 #include "capone/common.h"
 #include "capone/keys.h"
-#include "capone/parameter.h"
 #include "capone/proto.h"
 #include "capone/service.h"
 #include "capone/list.h"
@@ -159,8 +158,6 @@ static int relay_capability_request(struct cpn_channel *channel,
     struct cpn_sign_key_pair local_keys;
     struct cpn_sign_key_public service_key, invoker_key;
     struct cpn_cap requester_cap, invoker_cap;
-    struct cpn_parameter *params = NULL;
-    size_t i;
     int ret = 0;
 
     memset(&service_channel, 0, sizeof(struct cpn_channel));
@@ -175,14 +172,6 @@ static int relay_capability_request(struct cpn_channel *channel,
     cpn_sign_key_public_from_bin(&invoker_key,
             request->invoker_identity.data, request->invoker_identity.len);
 
-    if (request->n_parameters) {
-        params = malloc(sizeof(struct cpn_parameter) * request->n_parameters);
-        for (i = 0; i < request->n_parameters; i++) {
-            params[i].key = request->parameters[i]->key;
-            params[i].value = (const char *) &request->parameters[i]->value;
-        }
-    }
-
     if ((ret = cpn_proto_initiate_connection(&service_channel,
                     request->service_address, request->service_port,
                     &local_keys, &service_key, CPN_CONNECTION_TYPE_REQUEST)) < 0) {
@@ -192,7 +181,7 @@ static int relay_capability_request(struct cpn_channel *channel,
 
     if ((ret = cpn_proto_send_request(&invoker_cap, &requester_cap,
                     &service_channel, &invoker_key,
-                    params, request->n_parameters)) < 0)
+                    request->n_parameters, (const char **) request->parameters)) < 0)
     {
         cpn_log(LOG_LEVEL_ERROR, "Unable to send request to remote service");
         goto out;
@@ -218,7 +207,6 @@ static int relay_capability_request(struct cpn_channel *channel,
 out:
     cpn_channel_close(&service_channel);
 
-    free(params);
     free(host);
     free(port);
 
@@ -260,13 +248,12 @@ static int invoke_register(struct cpn_channel *channel, struct cpn_opt *opts)
                "     invoker: %s\n"
                "     service: %s\n"
                "     address: %s\n"
-               "        port: %s\n",
+               "        port: %s\n"
+               "  parameters: ",
                requester.data, invoker.data, service.data,
                request->service_address, request->service_port);
         for (i = 0; i < request->n_parameters; i++) {
-            Parameter *param = request->parameters[i];
-
-            printf("        param: %s=%s\n", param->key, param->value);
+            printf("%s ", request->parameters[i]);
         }
 
         while (true) {
@@ -394,92 +381,43 @@ static int handle_register(struct cpn_channel *channel,
 }
 
 static int handle_request(struct cpn_channel *channel,
-        const struct cpn_sign_key_public *invoker,
-        const struct cpn_session *session)
+        const struct cpn_opt *opts)
 {
     CapabilityRequest request = CAPABILITY_REQUEST__INIT;
-
     struct cpn_list_entry *it;
-    const char *invoker_identity_hex, *service_identity_hex,
-          *requested_identity_hex, *address, *port;
-    struct cpn_sign_key_public invoker_identity, service_identity,
-                              requested_identity;
-    struct cpn_parameter *params = NULL;
     struct registrant *reg = NULL;
     struct client *client;
-    size_t nparams = 0;
     int err = 0;
-
-    if (cpn_parameters_get_value(&invoker_identity_hex, "invoker",
-                session->parameters, session->nparameters) ||
-            cpn_sign_key_public_from_hex(&invoker_identity, invoker_identity_hex))
-    {
-        cpn_log(LOG_LEVEL_ERROR, "Invalid for-identity specified in capability request");
-        err = -1;
-        goto out;
-    }
-
-    if (cpn_parameters_get_value(&requested_identity_hex, "requested-identity",
-                session->parameters, session->nparameters) ||
-            cpn_sign_key_public_from_hex(&requested_identity, requested_identity_hex))
-    {
-        cpn_log(LOG_LEVEL_ERROR, "Invalid requested identity specified in capability request");
-        err = -1;
-        goto out;
-    }
-
-    if (cpn_parameters_get_value(&service_identity_hex, "service-identity",
-                session->parameters, session->nparameters) ||
-            cpn_sign_key_public_from_hex(&service_identity, service_identity_hex))
-    {
-        cpn_log(LOG_LEVEL_ERROR, "Invalid service-identity specified in capability request");
-        err = -1;
-        goto out;
-    }
-
-    if (cpn_parameters_get_value(&address, "service-address",
-                session->parameters, session->nparameters) ||
-            cpn_parameters_get_value(&port, "service-port",
-                session->parameters, session->nparameters))
-    {
-        cpn_log(LOG_LEVEL_ERROR, "Service address not specified in capability request");
-        err = -1;
-        goto out;
-    }
-
-    nparams = cpn_parameters_filter(&params, "service-parameters",
-            session->parameters, session->nparameters);
 
     pthread_mutex_lock(&registrants_mutex);
     cpn_list_foreach(&registrants, it, reg) {
-        if (!memcmp(reg->identity.data, requested_identity.data, sizeof(requested_identity.data)))
+        if (!memcmp(reg->identity.data, opts[1].value.sigkey.data, sizeof(struct cpn_sign_key_public)))
             break;
     }
     pthread_mutex_unlock(&registrants_mutex);
 
     if (it == NULL) {
         cpn_log(LOG_LEVEL_ERROR, "Identity specified in capability request is not registered");
-        err = -1;
-        goto out;
+        return -1;
     }
 
-    request.requester_identity.data = (uint8_t *) invoker->data;
-    request.requester_identity.len = sizeof(invoker->data);
-    request.invoker_identity.data = (uint8_t *) invoker->data;
-    request.invoker_identity.len = sizeof(invoker->data);
-
-    request.service_identity.data = (uint8_t *) service_identity.data;
-    request.service_identity.len = sizeof(service_identity.data);
-    request.service_address = (char *) address;
-    request.service_port = (char *) port;
     request.requestid = requestid++;
-    request.n_parameters = cpn_parameters_to_proto(&request.parameters,
-            params, nparams);
+
+    request.invoker_identity.data = (uint8_t *) opts[0].value.sigkey.data;
+    request.invoker_identity.len = sizeof(struct cpn_sign_key_public);
+    request.requester_identity.data = (uint8_t *) opts[0].value.sigkey.data;
+    request.requester_identity.len = sizeof(struct cpn_sign_key_public);
+
+    request.service_identity.data = (uint8_t *) opts[2].value.sigkey.data;
+    request.service_identity.len = sizeof(struct cpn_sign_key_public);
+    request.service_address = (char *) opts[3].value.string;
+    request.service_port = (char *) opts[4].value.string;
+    request.n_parameters = opts[5].value.stringlist.argc;
+    request.parameters = (char **) opts[5].value.stringlist.argv;
 
     if (cpn_channel_write_protobuf(&reg->channel, &request.base) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to request capability request");
-        err = -1;
-        goto out;
+        return -1;
     }
 
     client = malloc(sizeof(struct client));
@@ -495,10 +433,6 @@ static int handle_request(struct cpn_channel *channel,
 
     channel->fd = -1;
 
-out:
-    cpn_parameters_proto_free(request.parameters, request.n_parameters);
-    cpn_parameters_free(params, nparams);
-
     return err;
 }
 
@@ -507,25 +441,32 @@ static int handle(struct cpn_channel *channel,
         const struct cpn_session *session,
         const struct cpn_cfg *cfg)
 {
-    const char *mode;
+    struct cpn_opt request_opts[] = {
+        CPN_OPTS_OPT_SIGKEY(0, "--invoker-identity", NULL, NULL, false),
+        CPN_OPTS_OPT_SIGKEY(0, "--requested-identity", NULL, NULL, false),
+        CPN_OPTS_OPT_SIGKEY(0, "--service-identity", NULL, NULL, false),
+        CPN_OPTS_OPT_STRING(0, "--service-address", NULL, NULL, false),
+        CPN_OPTS_OPT_STRING(0, "--service-port", NULL, NULL, false),
+        CPN_OPTS_OPT_STRINGLIST(0, "--service-parameters", NULL, NULL, false),
+        CPN_OPTS_OPT_END
+    };
+    struct cpn_opt opts[] = {
+        CPN_OPTS_OPT_ACTION("register", NULL, NULL),
+        CPN_OPTS_OPT_ACTION("request", NULL, NULL),
+        CPN_OPTS_OPT_END
+    };
+
+    opts[1].value.action_opts = request_opts;
 
     UNUSED(cfg);
 
-    if (cpn_parameters_get_value(&mode, "mode",
-                session->parameters, session->nparameters) < 0)
-    {
-        cpn_log(LOG_LEVEL_ERROR, "Required parameter 'mode' not set");
+    if (cpn_opts_parse(opts, session->argc, session->argv) < 0)
         return -1;
-    }
 
-    if (!strcmp(mode, "register")) {
+    if (opts[0].set)
         return handle_register(channel, invoker);
-    } else if (!strcmp(mode, "request")) {
-        return handle_request(channel, invoker, session);
-    } else {
-        cpn_log(LOG_LEVEL_ERROR, "Unable to handle connection mode '%s'", mode);
-        return -1;
-    }
+    else if (opts[1].set)
+        return handle_request(channel, request_opts);
 
     return 0;
 }

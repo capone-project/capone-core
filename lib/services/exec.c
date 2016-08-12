@@ -21,6 +21,7 @@
 #include "capone/common.h"
 #include "capone/channel.h"
 #include "capone/log.h"
+#include "capone/opts.h"
 #include "capone/service.h"
 
 #include "capone/services/exec.h"
@@ -88,21 +89,20 @@ static int handle(struct cpn_channel *channel,
         const struct cpn_session *session,
         const struct cpn_cfg *cfg)
 {
-    const char *cmd, **args = NULL, **envs = NULL;
-    int pid, nargs, nenvs;
+    struct cpn_opt opts[] = {
+        CPN_OPTS_OPT_STRING(0, "--command", NULL, NULL, false),
+        CPN_OPTS_OPT_STRINGLIST(0, "--arguments", NULL, NULL, false),
+    };
+    int pid;
     int stdout_fds[2] = { -1, -1 }, stderr_fds[2] = { -1, -1 };
     int error = 0;
 
     UNUSED(cfg);
     UNUSED(invoker);
 
-    if (cpn_parameters_get_value(&cmd, "command", session->parameters, session->nparameters) < 0) {
-        cpn_log(LOG_LEVEL_ERROR, "Missing 'command' parameter");
+    if (cpn_opts_parse(opts, session->argc, session->argv) < 0) {
         return -1;
     }
-
-    nargs = cpn_parameters_get_values(&args, "arg", session->parameters, session->nparameters);
-    nenvs = cpn_parameters_get_values(&envs, "env", session->parameters, session->nparameters);
 
     if ((error = pipe(stdout_fds)) < 0 ||
             (error = pipe(stderr_fds)) < 0)
@@ -126,7 +126,8 @@ static int handle(struct cpn_channel *channel,
         close(stderr_fds[0]);
         close(stderr_fds[1]);
 
-        exec(cmd, args, nargs, envs, nenvs);
+        exec(opts[0].value.string,
+                opts[0].value.stringlist.argv, opts[0].value.stringlist.argc, NULL, 0);
     } else {
         close(stdout_fds[1]);
         close(stderr_fds[1]);
@@ -139,9 +140,6 @@ static int handle(struct cpn_channel *channel,
     }
 
 out:
-    free(args);
-    free(envs);
-
     if (stdout_fds[0] >= 0) close(stdout_fds[0]);
     if (stdout_fds[1] >= 0) close(stdout_fds[1]);
     if (stderr_fds[0] >= 0) close(stderr_fds[0]);

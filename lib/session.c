@@ -30,15 +30,20 @@ static uint32_t sessionid = 0;
 
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
-int cpn_sessions_add(uint32_t *out,
-        const struct cpn_parameter *params,
-        size_t nparams)
+int cpn_sessions_add(uint32_t *out, int argc, const char **argv)
 {
     struct cpn_session *session;
+    int i;
 
     session = malloc(sizeof(struct cpn_session));
-    session->nparameters =
-        cpn_parameters_dup(&session->parameters, params, nparams);
+    session->argc = argc;
+    if (argc)
+        session->argv = malloc(sizeof(char *) * argc);
+    else
+        session->argv = NULL;
+
+    for (i = 0; i < argc; i++)
+        session->argv[i] = strdup(argv[i]);
 
     pthread_mutex_lock(&mutex);
     *out = session->sessionid = sessionid++;
@@ -113,6 +118,6 @@ void cpn_session_free(struct cpn_session *session)
 {
     if (session == NULL)
         return;
-    cpn_parameters_free(session->parameters, session->nparameters);
+    free(session->argv);
     free(session);
 }

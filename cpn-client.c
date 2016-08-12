@@ -116,16 +116,9 @@ static int cmd_request(const struct cpn_sign_key_public *invoker_key,
 {
     char invoker_hex[CPN_CAP_SECRET_LEN * 2 + 1], requester_hex[CPN_CAP_SECRET_LEN * 2 + 1];
     struct cpn_cap requester_cap, invoker_cap;
-    struct cpn_parameter *params = NULL;
     struct cpn_channel channel;
-    ssize_t nparams;
 
     memset(&channel, 0, sizeof(channel));
-
-    if ((nparams = cpn_parameters_parse(&params, parameters->argc, parameters->argv)) < 0) {
-        puts("Could not parse parameters");
-        goto out_err;
-    }
 
     if (cpn_proto_initiate_connection(&channel, remote_host, remote_port,
                 &local_keys, &remote_key, CPN_CONNECTION_TYPE_REQUEST) < 0) {
@@ -134,7 +127,7 @@ static int cmd_request(const struct cpn_sign_key_public *invoker_key,
     }
 
     if (cpn_proto_send_request(&invoker_cap, &requester_cap,
-                &channel, invoker_key, params, nparams) < 0)
+                &channel, invoker_key, parameters->argc, parameters->argv) < 0)
     {
         puts("Unable to request session");
         goto out_err;
@@ -157,7 +150,6 @@ static int cmd_request(const struct cpn_sign_key_public *invoker_key,
 
 out_err:
     cpn_channel_close(&channel);
-    cpn_parameters_free(params, nparams);
     return -1;
 }
 

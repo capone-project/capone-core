@@ -42,8 +42,7 @@ static int handle(struct cpn_channel *channel,
     UNUSED(invoker);
 
     return cpn_channel_write_data(channel,
-            (uint8_t *) session->parameters[0].value,
-            strlen(session->parameters[0].value));
+            (uint8_t *) session->argv[0], strlen(session->argv[0]));
 }
 
 int cpn_test_init_service(const struct cpn_service_plugin **out)

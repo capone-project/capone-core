@@ -62,17 +62,16 @@
 #include <inttypes.h>
 
 #include "capone/keys.h"
-#include "capone/parameter.h"
 
 /** @brief A session wrapping identities and parameters */
 struct cpn_session {
     /** @brief Session identifier used to distinguish sessions */
     uint32_t sessionid;
 
-    /** @brief Parameters chosen for the session */
-    struct cpn_parameter *parameters;
     /** @brief Number of parameters */
-    size_t nparameters;
+    size_t argc;
+    /** @brief Parameters chosen for the session */
+    const char **argv;
 };
 
 /** @brief Initialize sessions
@@ -94,13 +93,11 @@ int cpn_sessions_init(void);
  * identifier and invoker has already been specified.
  *
  * @param[out] out The ID of the newly created session.
- * @param[in] params Parameters for the session.
- * @param[in] nparams Number of parameters.
+ * @param[in] argc Number of arguments
+ * @param[in] argv Session arguments
  * @return <code>0</code> on success, <code>-1</code> otherwise
  */
-int cpn_sessions_add(uint32_t *out,
-        const struct cpn_parameter *params,
-        size_t nparams);
+int cpn_sessions_add(uint32_t *out, int argc, const char **argv);
 
 /** @brief Remove a session
  *
