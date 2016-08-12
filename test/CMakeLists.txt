@@ -17,7 +17,6 @@ IF(CMOCKA_FOUND)
         keys.c
         list.c
         opts.c
-        parameter.c
         proto.c
         server.c
         service.c
