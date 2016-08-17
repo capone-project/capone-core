@@ -8,7 +8,7 @@ IF(CMOCKA_FOUND)
 
     INCLUDE_DIRECTORIES(SYSTEM ${CMOCKA_INCLUDE_DIR})
 
-    ADD_LIBRARY(capone-test SHARED test.c)
+    ADD_LIBRARY(capone-test SHARED bench.c test.c)
     TARGET_LINK_LIBRARIES(capone-test capone cmocka)
 
     ADD_EXECUTABLE(cpn-test cpn-test.c

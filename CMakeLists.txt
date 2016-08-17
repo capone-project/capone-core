@@ -45,7 +45,6 @@ PROTOBUF_GENERATE_C(PROTO_SOURCES PROTO_HEADERS
 
 ADD_LIBRARY(capone SHARED
     lib/acl.c
-    lib/bench.c
     lib/caps.c
     lib/cfg.c
     lib/channel.c

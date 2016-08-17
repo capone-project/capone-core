@@ -32,8 +32,9 @@
 # include <sys/time.h>
 #endif
 
+#include "bench.h"
+
 #include "capone/common.h"
-#include "capone/bench.h"
 
 uint64_t cpn_bench_nsecs(void)
 {
