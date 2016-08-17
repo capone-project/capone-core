@@ -8,6 +8,9 @@ IF(CMOCKA_FOUND)
 
     INCLUDE_DIRECTORIES(SYSTEM ${CMOCKA_INCLUDE_DIR})
 
+    ADD_LIBRARY(capone-test SHARED test.c)
+    TARGET_LINK_LIBRARIES(capone-test capone cmocka)
+
     ADD_EXECUTABLE(cpn-test cpn-test.c
         acl.c
         caps.c
@@ -21,22 +24,21 @@ IF(CMOCKA_FOUND)
         server.c
         service.c
         session.c
-        test.c
         test-service.c
         ${TEST_PROTO_SOURCES})
-    TARGET_LINK_LIBRARIES(cpn-test capone cmocka)
+    TARGET_LINK_LIBRARIES(cpn-test capone-test)
 
     ADD_EXECUTABLE(cpn-bench-throughput cpn-bench-throughput.c)
-    TARGET_LINK_LIBRARIES(cpn-bench-throughput capone)
+    TARGET_LINK_LIBRARIES(cpn-bench-throughput capone-test)
 
     ADD_EXECUTABLE(cpn-bench-latency cpn-bench-latency.c)
-    TARGET_LINK_LIBRARIES(cpn-bench-latency capone)
+    TARGET_LINK_LIBRARIES(cpn-bench-latency capone-test)
 
     PKG_CHECK_MODULES(X11 x11 xtst xi)
 
     IF(X11_FOUND)
         ADD_EXECUTABLE(cpn-bench-input cpn-bench-input.c)
-        TARGET_LINK_LIBRARIES(cpn-bench-input capone ${X11_LIBRARIES})
+        TARGET_LINK_LIBRARIES(cpn-bench-input capone-test ${X11_LIBRARIES})
     ENDIF(X11_FOUND)
 
 ELSE()
