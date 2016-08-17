@@ -161,10 +161,10 @@ int cpn_opts_parse_cmd(struct cpn_opt *opts, int argc, const char *argv[])
 
     for (i = 1; i < argc; i++) {
         if (!strcmp(argv[i], "--version")) {
-            cpn_opts_version(executable);
+            cpn_opts_version(executable, stdout);
             return -1;
         } else if (!strcmp(argv[i], "--help")) {
-            cpn_opts_usage(opts, executable, false);
+            cpn_opts_usage(opts, executable, stderr);
             return -1;
         }
     }
@@ -279,10 +279,8 @@ static void print_actions(const struct cpn_opt *opts, FILE *out, int indent)
 }
 
 void cpn_opts_usage(const struct cpn_opt *opts,
-        const char *executable, bool error)
+        const char *executable, FILE *out)
 {
-    FILE *out = error ? stderr : stdout;
-
     fputs("USAGE: ", out);
     print_header(opts, executable, NULL, out);
     print_arguments(opts, out, 1);
@@ -290,9 +288,10 @@ void cpn_opts_usage(const struct cpn_opt *opts,
     print_actions(opts, out, 1);
 }
 
-void cpn_opts_version(const char *executable)
+void cpn_opts_version(const char *executable, FILE *out)
 {
-    printf("%s %s\n"
+    fprintf(out,
+            "%s %s\n"
             "Copyright (C) 2016 Patrick Steinhardt\n"
             "License GPLv3: GNU GPL version 3 <http://gnu.org/licenses/gpl.html>.\n"
             "This is free software; you are free to change and redistribute it.\n"

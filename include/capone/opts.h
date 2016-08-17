@@ -212,13 +212,15 @@ int cpn_opts_parse_cmd(struct cpn_opt *opts, int argc, const char *argv[]);
  *            arguments.
  * @param[in] executable Name of the executable to use when
  *            printing usage information.
- * @param[in] error Whether to print to <code>stderr</code>
- *            instead to <code>stdout</code>
+ * @param[in] out Where to print to
  */
-void cpn_opts_usage(const struct cpn_opt *opts, const char *executable, bool error);
+void cpn_opts_usage(const struct cpn_opt *opts, const char *executable, FILE *out);
 
-/** @brief Print version information */
-void cpn_opts_version(const char *executable);
+/** @brief Print version information
+ *
+ * @param[in] out Where to print output to
+ */
+void cpn_opts_version(const char *executable, FILE *out);
 
 #endif
 
