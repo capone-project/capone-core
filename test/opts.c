@@ -303,15 +303,19 @@ static void parsing_int_with_garbage_fails()
 
 static void parsing_sigkey_succeeds()
 {
+    static const char hex[] =
+        "5178f420aaf894d36fd28a8e72681b37"
+        "7db14fc9e47a7eb51afe1a2905a45e55";
+    static struct cpn_sign_key_public pk;
     struct cpn_opt opts[] = {
         CPN_OPTS_OPT_SIGKEY(0, "--key", NULL, NULL, false),
         CPN_OPTS_OPT_END
     };
-    const char *args[] = {
-        "--key", "5178f420aaf894d36fd28a8e72681b377db14fc9e47a7eb51afe1a2905a45e55"
-    };
+    const char *args[] = { "--key", hex };
 
     assert_success(cpn_opts_parse(opts, ARRAY_SIZE(args), args));
+    assert_success(cpn_sign_key_public_from_hex(&pk, hex));
+    assert_memory_equal(&pk, &opts[0].value.sigkey, sizeof(pk));
 }
 
 static void parsing_sigkey_with_wrong_length_fails()

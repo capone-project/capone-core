@@ -48,6 +48,8 @@ static int parse_option(struct cpn_opt *opt, int argc, const char *argv[])
                             argv[1], argv[0]);
                     return -1;
                 }
+
+                memcpy(&opt->value.sigkey, &key, sizeof(key));
             }
 
             return 1;
