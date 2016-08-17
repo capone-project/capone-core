@@ -234,6 +234,48 @@ static void parsing_action_with_general_arg_fails()
     assert_failure(cpn_opts_parse(opts, ARRAY_SIZE(args), args));
 }
 
+static void parsing_multiple_actions_fails()
+{
+    static struct cpn_opt action_opts[] = {
+        CPN_OPTS_OPT_END
+    };
+    static struct cpn_opt other_opts[] = {
+        CPN_OPTS_OPT_END
+    };
+    struct cpn_opt opts[] = {
+        CPN_OPTS_OPT_ACTION("action", NULL, action_opts),
+        CPN_OPTS_OPT_ACTION("other", NULL, other_opts),
+        CPN_OPTS_OPT_END
+    };
+    const char *args[] = {
+        "action", "other"
+    };
+
+    assert_failure(cpn_opts_parse(opts, ARRAY_SIZE(args), args));
+}
+
+static void parsing_multiple_actions_with_wrong_args_fails()
+{
+    static struct cpn_opt action_opts[] = {
+        CPN_OPTS_OPT_END
+    };
+    static struct cpn_opt other_opts[] = {
+        CPN_OPTS_OPT_STRING(0, "--test", NULL, NULL, false),
+        CPN_OPTS_OPT_END
+    };
+    struct cpn_opt opts[] = {
+        CPN_OPTS_OPT_ACTION("action", NULL, action_opts),
+        CPN_OPTS_OPT_ACTION("other", NULL, other_opts),
+        CPN_OPTS_OPT_END
+    };
+    const char *args[] = {
+        "action",
+        "--test", "action-value"
+    };
+
+    assert_failure(cpn_opts_parse(opts, ARRAY_SIZE(args), args));
+}
+
 static void parsing_uint32_succeeds()
 {
     struct cpn_opt opts[] = {
@@ -455,6 +497,87 @@ static void parsing_stringlist_without_arguments_fails()
     assert_failure(cpn_opts_parse(opts, ARRAY_SIZE(args), args));
 }
 
+static void getting_value_on_empty_opts_returns_nothing()
+{
+    struct cpn_opt opts[] = {
+        CPN_OPTS_OPT_END
+    };
+
+    assert_null(cpn_opts_get(opts, 'c', NULL));
+    assert_null(cpn_opts_get(opts, 'c', "--config"));
+    assert_null(cpn_opts_get(opts, 0, "--config"));
+}
+
+static void getting_single_value_succeeds()
+{
+    struct cpn_opt opts[] = {
+        CPN_OPTS_OPT_STRING('s', "--string", NULL, NULL, false),
+        CPN_OPTS_OPT_END
+    };
+
+    opts[0].set = 1;
+    opts[0].value.string = "value";
+
+    assert_string_equal(cpn_opts_get(opts, 's', NULL)->string, "value");
+    assert_string_equal(cpn_opts_get(opts, 0, "--string")->string, "value");
+}
+
+static void getting_value_with_mixed_short_and_long_fails()
+{
+    struct cpn_opt opts[] = {
+        CPN_OPTS_OPT_STRING('s', "--string", NULL, NULL, false),
+        CPN_OPTS_OPT_END
+    };
+
+    opts[0].set = 1;
+    opts[0].value.string = "value";
+
+    assert_null(cpn_opts_get(opts, 's', "--wrong-long-name"));
+    assert_null(cpn_opts_get(opts, 'f', "--string"));
+}
+
+static void getting_value_with_unset_option_fails()
+{
+    struct cpn_opt opts[] = {
+        CPN_OPTS_OPT_STRING('s', "--string", NULL, NULL, false),
+        CPN_OPTS_OPT_END
+    };
+
+    assert_null(cpn_opts_get(opts, 's', NULL));
+    assert_null(cpn_opts_get(opts, 0, "--string"));
+}
+
+static void getting_value_with_multiple_options_succeeds()
+{
+    struct cpn_opt opts[] = {
+        CPN_OPTS_OPT_STRING('s', "--string", NULL, NULL, false),
+        CPN_OPTS_OPT_STRING('o', "--other", NULL, NULL, false),
+        CPN_OPTS_OPT_END
+    };
+
+    opts[0].set = 1;
+    opts[0].value.string = "value";
+    opts[1].set = 1;
+    opts[1].value.string = "other";
+
+    assert_string_equal(cpn_opts_get(opts, 's', NULL)->string, "value");
+    assert_string_equal(cpn_opts_get(opts, 'o', NULL)->string, "other");
+}
+
+static void getting_unset_option_with_multiple_options_succeeds()
+{
+    struct cpn_opt opts[] = {
+        CPN_OPTS_OPT_STRING('s', "--string", NULL, NULL, false),
+        CPN_OPTS_OPT_STRING('o', "--other", NULL, NULL, false),
+        CPN_OPTS_OPT_END
+    };
+
+    opts[1].set = 1;
+    opts[1].value.string = "other";
+
+    assert_null(cpn_opts_get(opts, 's', NULL));
+}
+
 int cmdparse_test_run_suite(void)
 {
     const struct CMUnitTest tests[] = {
@@ -475,6 +598,8 @@ int cmdparse_test_run_suite(void)
         test(parsing_action_with_additional_args_succeeds),
         test(parsing_action_with_duplicated_args_succeeds),
         test(parsing_action_with_general_arg_fails),
+        test(parsing_multiple_actions_with_wrong_args_fails),
+        test(parsing_multiple_actions_fails),
 
         test(parsing_uint32_succeeds),
         test(parsing_zero_succeeds),
@@ -494,7 +619,14 @@ int cmdparse_test_run_suite(void)
 
         test(parsing_stringlist_with_single_argument_succeeds),
         test(parsing_stringlist_with_multiple_arguments_succeeds),
-        test(parsing_stringlist_without_arguments_fails)
+        test(parsing_stringlist_without_arguments_fails),
+
+        test(getting_value_on_empty_opts_returns_nothing),
+        test(getting_single_value_succeeds),
+        test(getting_value_with_mixed_short_and_long_fails),
+        test(getting_value_with_unset_option_fails),
+        test(getting_value_with_multiple_options_succeeds),
+        test(getting_unset_option_with_multiple_options_succeeds)
     };
 
     return execute_test_suite("cmdparse", tests, setup, teardown);

@@ -99,6 +99,25 @@ static int parse_option(struct cpn_opt *opt, int argc, const char *argv[])
     return -1;
 }
 
+const union cpn_opt_value *cpn_opts_get(const struct cpn_opt *opts,
+        char shortopt, const char *longopt)
+{
+    const struct cpn_opt *opt;
+
+    for (opt = opts; opt && opt->type != CPN_OPTS_TYPE_END; opt++) {
+        if (shortopt && shortopt != opt->short_name)
+            continue;
+        if (longopt && strcmp(longopt, opt->long_name))
+            continue;
+        if (!opt->set)
+            return NULL;
+
+        return &opt->value;
+    }
+
+    return NULL;
+}
+
 int cpn_opts_parse(struct cpn_opt *opts, int argc, const char *argv[])
 {
     int i, processed;

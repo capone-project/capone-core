@@ -102,6 +102,15 @@ struct cpn_opts_stringlist {
     int argc;
 };
 
+union cpn_opt_value {
+    struct cpn_opt *action_opts;
+    uint32_t counter;
+    struct cpn_sign_key_public sigkey;
+    const char *string;
+    struct cpn_opts_stringlist stringlist;
+    uint32_t uint32;
+} value;
+
 /** @brief Structure specifying all available options
  *
  * This structure is used to define all available parameters. To
@@ -124,17 +133,33 @@ struct cpn_opt {
     const char *description;
     const char *argname;
     enum cpn_opts_type type;
-    union {
-        struct cpn_opt *action_opts;
-        uint32_t counter;
-        struct cpn_sign_key_public sigkey;
-        const char *string;
-        struct cpn_opts_stringlist stringlist;
-        uint32_t uint32;
-    } value;
+    union cpn_opt_value value;
     bool optional;
     bool set;
 };
+
+/** @brief Get a parsed value from options
+ *
+ * Search through the options, searching for the first entry
+ * which corresponds to the requested short and/or long option
+ * and returns its parsed value. If both short and long option
+ * name are passed to this function, the option has to match
+ * both. Otherwise, the first option's value matching the set
+ * option will be returned.
+ *
+ * If the option is not found or the option was not set, `NULL`
+ * is returned.
+ *
+ * @param[in] opts Options to search through
+ * @param[in] shortopt Single-character name of the option to
+ *            search by. May be `0` if `longopt` is set.
+ * @param[in] longopt Long name of the option to search by. May
+ *            be `NULL` if `shortopt` is set.
+ * @return A pointer to the option's value or `NULL` if it is
+ *         either not found or not set.
+ */
+const union cpn_opt_value *cpn_opts_get(const struct cpn_opt *opts,
+        char shortopt, const char *longopt);
 
 /** @brief Parse command line arguments with specified options
  *
