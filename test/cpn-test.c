@@ -17,9 +17,9 @@
 
 #include <string.h>
 
-#include "capone/cmdparse.h"
 #include "capone/common.h"
 #include "capone/log.h"
+#include "capone/opts.h"
 
 #include "test.h"
 
@@ -37,9 +37,9 @@ extern int service_test_run_suite(void);
 extern int session_test_run_suite(void);
 extern int parameter_test_run_suite(void);
 
-static struct cpn_cmdparse_opt opts[] = {
-    CPN_CMDPARSE_OPT_COUNTER('v', "--verbose", NULL),
-    CPN_CMDPARSE_OPT_END
+static struct cpn_opt opts[] = {
+    CPN_OPTS_OPT_COUNTER('v', "--verbose", NULL),
+    CPN_OPTS_OPT_END
 };
 
 static int (*suite_fns[])(void) = {
@@ -62,7 +62,7 @@ int main(int argc, const char *argv[])
 {
     size_t i, failed, failed_tests = 0, failed_suites = 0;
 
-    if (cpn_cmdparse_parse_cmd(opts, argc, argv) < 0)
+    if (cpn_opts_parse_cmd(opts, argc, argv) < 0)
         return -1;
 
     if (opts[0].value.counter == 0)
@@ -88,6 +88,26 @@ int main(int argc, const char *argv[])
     }
 
     return 0;
+}
+
+void assert_file_equal(FILE *f, const char *expected)
+{
+    long size;
+    char *data;
+
+    assert_success(fseek(f, 0, SEEK_END));
+    size = ftell(f);
+    assert_success(fseek(f, 0, SEEK_SET));
+
+    data = malloc(size + 1);
+    assert_int_equal(fread(data, size, 1, f), 1);
+    data[size] = 0;
+
+    assert_success(fclose(f));
+
+    assert_string_equal(data, expected);
+
+    free(data);
 }
 
 int _execute_test_suite(const char *name, const struct CMUnitTest *tests, const size_t count,

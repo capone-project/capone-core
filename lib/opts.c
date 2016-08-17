@@ -18,23 +18,23 @@
 #include <string.h>
 
 #include "capone/common.h"
-#include "capone/cmdparse.h"
 #include "capone/log.h"
+#include "capone/opts.h"
 
-static int parse_option(struct cpn_cmdparse_opt *opt, int argc, const char *argv[])
+static int parse_option(struct cpn_opt *opt, int argc, const char *argv[])
 {
     switch (opt->type) {
-        case CPN_CMDPARSE_TYPE_ACTION:
-            if (cpn_cmdparse_parse(opt->value.action_opts, argc - 1, argv + 1) < 0) {
+        case CPN_OPTS_TYPE_ACTION:
+            if (cpn_opts_parse(opt->value.action_opts, argc - 1, argv + 1) < 0) {
                 cpn_log(LOG_LEVEL_ERROR, "Cannot parse action %s", argv[0]);
                 return -1;
             }
 
             return argc;
-        case CPN_CMDPARSE_TYPE_COUNTER:
+        case CPN_OPTS_TYPE_COUNTER:
             opt->value.counter++;
             return 0;
-        case CPN_CMDPARSE_TYPE_SIGKEY:
+        case CPN_OPTS_TYPE_SIGKEY:
             {
                 struct cpn_sign_key_public key;
 
@@ -48,10 +48,12 @@ static int parse_option(struct cpn_cmdparse_opt *opt, int argc, const char *argv
                             argv[1], argv[0]);
                     return -1;
                 }
+
+                memcpy(&opt->value.sigkey, &key, sizeof(key));
             }
 
             return 1;
-        case CPN_CMDPARSE_TYPE_STRING:
+        case CPN_OPTS_TYPE_STRING:
             if (argc < 2) {
                 cpn_log(LOG_LEVEL_ERROR, "No value for option %s", argv[0]);
                 return -1;
@@ -60,7 +62,7 @@ static int parse_option(struct cpn_cmdparse_opt *opt, int argc, const char *argv
             opt->value.string = argv[1];
 
             return 1;
-        case CPN_CMDPARSE_TYPE_STRINGLIST:
+        case CPN_OPTS_TYPE_STRINGLIST:
             if (argc < 2) {
                 cpn_log(LOG_LEVEL_ERROR, "No string list for option %s", argv[0]);
                 return -1;
@@ -70,7 +72,7 @@ static int parse_option(struct cpn_cmdparse_opt *opt, int argc, const char *argv
             opt->value.stringlist.argv = argv + 1;
 
             return argc;
-        case CPN_CMDPARSE_TYPE_UINT32:
+        case CPN_OPTS_TYPE_UINT32:
             {
                 uint32_t value;
 
@@ -89,7 +91,7 @@ static int parse_option(struct cpn_cmdparse_opt *opt, int argc, const char *argv
             }
 
             return 1;
-        case CPN_CMDPARSE_TYPE_END:
+        case CPN_OPTS_TYPE_END:
             cpn_log(LOG_LEVEL_ERROR, "Unknown option %s", argv[0]);
             return -1;
     }
@@ -97,13 +99,32 @@ static int parse_option(struct cpn_cmdparse_opt *opt, int argc, const char *argv
     return -1;
 }
 
-int cpn_cmdparse_parse(struct cpn_cmdparse_opt *opts, int argc, const char *argv[])
+const union cpn_opt_value *cpn_opts_get(const struct cpn_opt *opts,
+        char shortopt, const char *longopt)
+{
+    const struct cpn_opt *opt;
+
+    for (opt = opts; opt && opt->type != CPN_OPTS_TYPE_END; opt++) {
+        if (shortopt && shortopt != opt->short_name)
+            continue;
+        if (longopt && strcmp(longopt, opt->long_name))
+            continue;
+        if (!opt->set)
+            return NULL;
+
+        return &opt->value;
+    }
+
+    return NULL;
+}
+
+int cpn_opts_parse(struct cpn_opt *opts, int argc, const char *argv[])
 {
     int i, processed;
-    struct cpn_cmdparse_opt *opt;
+    struct cpn_opt *opt;
 
     for (i = 0; i < argc; i++) {
-        for (opt = opts; opt && opt->type != CPN_CMDPARSE_TYPE_END; opt++) {
+        for (opt = opts; opt && opt->type != CPN_OPTS_TYPE_END; opt++) {
             if (opt->short_name && argv[i][0] == '-' && argv[i][1] == opt->short_name && argv[i][2] == '\0') {
                 break;
             } else if (opt->long_name && !strcmp(argv[i], opt->long_name)) {
@@ -123,7 +144,7 @@ int cpn_cmdparse_parse(struct cpn_cmdparse_opt *opts, int argc, const char *argv
         i += processed;
     }
 
-    for (opt = opts; opt && opt->type != CPN_CMDPARSE_TYPE_END; opt++) {
+    for (opt = opts; opt && opt->type != CPN_OPTS_TYPE_END; opt++) {
         if (!opt->set && !opt->optional) {
             cpn_log(LOG_LEVEL_ERROR, "Required argument %s not set", opt->long_name);
             return -1;
@@ -133,31 +154,31 @@ int cpn_cmdparse_parse(struct cpn_cmdparse_opt *opts, int argc, const char *argv
     return 0;
 }
 
-int cpn_cmdparse_parse_cmd(struct cpn_cmdparse_opt *opts, int argc, const char *argv[])
+int cpn_opts_parse_cmd(struct cpn_opt *opts, int argc, const char *argv[])
 {
     const char *executable = argv[0];
     int i;
 
     for (i = 1; i < argc; i++) {
         if (!strcmp(argv[i], "--version")) {
-            cpn_cmdparse_version(executable);
+            cpn_opts_version(executable, stdout);
             return -1;
         } else if (!strcmp(argv[i], "--help")) {
-            cpn_cmdparse_usage(opts, executable, false);
+            cpn_opts_usage(opts, executable, stderr);
             return -1;
         }
     }
 
-    return cpn_cmdparse_parse(opts, argc - 1, argv + 1);
+    return cpn_opts_parse(opts, argc - 1, argv + 1);
 }
 
-static void print_arguments(const struct cpn_cmdparse_opt *opts, FILE *out, int indent)
+static void print_arguments(const struct cpn_opt *opts, FILE *out, int indent)
 {
-    const struct cpn_cmdparse_opt *it;
+    const struct cpn_opt *it;
     int i;
 
-    for (it = opts; it && it->type != CPN_CMDPARSE_TYPE_END; it++) {
-        if (it->type == CPN_CMDPARSE_TYPE_ACTION)
+    for (it = opts; it && it->type != CPN_OPTS_TYPE_END; it++) {
+        if (it->type == CPN_OPTS_TYPE_ACTION)
             continue;
 
         for (i = indent; i; i--)
@@ -171,17 +192,17 @@ static void print_arguments(const struct cpn_cmdparse_opt *opts, FILE *out, int 
             fputs(it->long_name, out);
 
         switch (it->type) {
-            case CPN_CMDPARSE_TYPE_SIGKEY:
-                fprintf(out, " %s", it->argname ? it->argname : "KEY");
+            case CPN_OPTS_TYPE_SIGKEY:
+                fprintf(out, " <%s>", it->argname ? it->argname : "KEY");
                 break;
-            case CPN_CMDPARSE_TYPE_STRING:
-                fprintf(out, " %s", it->argname ? it->argname : "VALUE");
+            case CPN_OPTS_TYPE_STRING:
+                fprintf(out, " <%s>", it->argname ? it->argname : "VALUE");
                 break;
-            case CPN_CMDPARSE_TYPE_STRINGLIST:
+            case CPN_OPTS_TYPE_STRINGLIST:
                 fprintf(out, " [%s...]", it->argname ? it->argname : "VALUE");
                 break;
-            case CPN_CMDPARSE_TYPE_UINT32:
-                fprintf(out, " %s", it->argname ? it->argname : "UNSIGNED_INT");
+            case CPN_OPTS_TYPE_UINT32:
+                fprintf(out, " <%s>", it->argname ? it->argname : "UNSIGNED_INT");
                 break;
             default:
                 break;
@@ -198,33 +219,39 @@ static void print_arguments(const struct cpn_cmdparse_opt *opts, FILE *out, int 
     }
 }
 
-static void print_header(const struct cpn_cmdparse_opt *opts, const char *name, const char *description, FILE *out)
+static bool has_options(const struct cpn_opt *opts)
 {
-    const struct cpn_cmdparse_opt *it;
-    bool has_actions = 0, has_opts = 0;
+    const struct cpn_opt *it;
+    for (it = opts; it && it->type != CPN_OPTS_TYPE_END; it++)
+        if (it->type != CPN_OPTS_TYPE_ACTION)
+            return true;
+    return false;
+}
+
+static bool has_actions(const struct cpn_opt *opts)
+{
+    const struct cpn_opt *it;
+    for (it = opts; it && it->type != CPN_OPTS_TYPE_END; it++)
+        if (it->type == CPN_OPTS_TYPE_ACTION)
+            return true;
+    return false;
+}
+
+static void print_header(const struct cpn_opt *opts, const char *name, const char *description, FILE *out)
+{
+    const struct cpn_opt *it;
 
     fputs(name, out);
 
-    for (it = opts; it && it->type != CPN_CMDPARSE_TYPE_END; it++) {
-        switch (it->type) {
-            case CPN_CMDPARSE_TYPE_ACTION:
-                has_actions = 1;
-                continue;
-            default:
-                has_opts = 1;
-                break;
-        }
-    }
-
-    if (has_opts)
+    if (has_options(opts))
         fputs(" [OPTIONS...]", out);
 
-    if (has_actions) {
+    if (has_actions(opts)) {
         bool first_action = true;
 
         fputs(" (", out);
-        for (it = opts; it && it->type != CPN_CMDPARSE_TYPE_END; it++) {
-            if (it->type == CPN_CMDPARSE_TYPE_ACTION) {
+        for (it = opts; it && it->type != CPN_OPTS_TYPE_END; it++) {
+            if (it->type == CPN_OPTS_TYPE_ACTION) {
                 fprintf(out, "%s%s", first_action ? "" : "|", it->long_name);
                 first_action = false;
             }
@@ -239,39 +266,42 @@ static void print_header(const struct cpn_cmdparse_opt *opts, const char *name, 
     fputc('\n', out);
 }
 
-static void print_actions(const struct cpn_cmdparse_opt *opts, FILE *out, int indent)
+static void print_actions(const struct cpn_opt *opts, FILE *out, int indent)
 {
-    const struct cpn_cmdparse_opt *it;
+    const struct cpn_opt *it;
     int i;
 
-    for (it = opts; it && it->type != CPN_CMDPARSE_TYPE_END; it++) {
-        if (it->type != CPN_CMDPARSE_TYPE_ACTION)
+    for (it = opts; it && it->type != CPN_OPTS_TYPE_END; it++) {
+        if (it->type != CPN_OPTS_TYPE_ACTION)
             continue;
 
         for (i = indent; i; i--)
             fputc('\t', out);
         print_header(it->value.action_opts, it->long_name, it->description, out);
         print_arguments(it->value.action_opts, out, indent + 1);
-        fputc('\n', out);
+        if (has_actions(it) && has_options(it))
+            fputc('\n', out);
         print_actions(it->value.action_opts, out, indent + 1);
     }
 }
 
-void cpn_cmdparse_usage(const struct cpn_cmdparse_opt *opts,
-        const char *executable, bool error)
+void cpn_opts_usage(const struct cpn_opt *opts,
+        const char *executable, FILE *out)
 {
-    FILE *out = error ? stderr : stdout;
-
     fputs("USAGE: ", out);
     print_header(opts, executable, NULL, out);
+    if (has_actions(opts) || has_options(opts))
+        fputc('\n', out);
     print_arguments(opts, out, 1);
-    fputc('\n', out);
+    if (has_actions(opts) && has_options(opts))
+        fputc('\n', out);
     print_actions(opts, out, 1);
 }
 
-void cpn_cmdparse_version(const char *executable)
+void cpn_opts_version(const char *executable, FILE *out)
 {
-    printf("%s %s\n"
+    fprintf(out,
+            "%s %s\n"
             "Copyright (C) 2016 Patrick Steinhardt\n"
             "License GPLv3: GNU GPL version 3 <http://gnu.org/licenses/gpl.html>.\n"
             "This is free software; you are free to change and redistribute it.\n"

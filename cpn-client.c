@@ -21,49 +21,49 @@
 #include <sodium.h>
 #include <inttypes.h>
 
-#include "capone/cmdparse.h"
 #include "capone/common.h"
 #include "capone/channel.h"
 #include "capone/global.h"
+#include "capone/opts.h"
 #include "capone/proto.h"
 #include "capone/service.h"
 
-static struct cpn_cmdparse_opt request_opts[] = {
-    CPN_CMDPARSE_OPT_SIGKEY(0, "--invoker-key",
+static struct cpn_opt request_opts[] = {
+    CPN_OPTS_OPT_SIGKEY(0, "--invoker-key",
             "For whom to request the capability", "KEY", false),
-    CPN_CMDPARSE_OPT_STRINGLIST(0, "--parameters", NULL, "PARAMETER", false),
-    CPN_CMDPARSE_OPT_END
+    CPN_OPTS_OPT_STRINGLIST(0, "--parameters", NULL, "PARAMETER", false),
+    CPN_OPTS_OPT_END
 };
 
-static struct cpn_cmdparse_opt connect_opts[] = {
-    CPN_CMDPARSE_OPT_STRING('c', "--service-type",
+static struct cpn_opt connect_opts[] = {
+    CPN_OPTS_OPT_STRING('c', "--service-type",
             "Type of service which is to be invoked", "TYPE", false),
-    CPN_CMDPARSE_OPT_STRING(0, "--session-id", NULL, "ID", false),
-    CPN_CMDPARSE_OPT_STRING('c', "--session-cap", NULL, "CAP", false),
-    CPN_CMDPARSE_OPT_STRINGLIST(0, "--parameters", NULL, "PARAMETER", false),
-    CPN_CMDPARSE_OPT_END
+    CPN_OPTS_OPT_STRING(0, "--session-id", NULL, "ID", false),
+    CPN_OPTS_OPT_STRING('c', "--session-cap", NULL, "CAP", false),
+    CPN_OPTS_OPT_STRINGLIST(0, "--parameters", NULL, "PARAMETER", false),
+    CPN_OPTS_OPT_END
 };
 
-static struct cpn_cmdparse_opt terminate_opts[] = {
-    CPN_CMDPARSE_OPT_STRING(0, "--session-id", NULL, "ID", false),
-    CPN_CMDPARSE_OPT_STRING('c', "--session-cap", NULL, "CAP", false),
-    CPN_CMDPARSE_OPT_END
+static struct cpn_opt terminate_opts[] = {
+    CPN_OPTS_OPT_STRING(0, "--session-id", NULL, "ID", false),
+    CPN_OPTS_OPT_STRING('c', "--session-cap", NULL, "CAP", false),
+    CPN_OPTS_OPT_END
 };
 
-static struct cpn_cmdparse_opt opts[] = {
-    CPN_CMDPARSE_OPT_STRING('c', "--config",
+static struct cpn_opt opts[] = {
+    CPN_OPTS_OPT_STRING('c', "--config",
             "Path to configuration file", "CFGFILE", false),
-    CPN_CMDPARSE_OPT_SIGKEY(0, "--remote-key",
+    CPN_OPTS_OPT_SIGKEY(0, "--remote-key",
             "Public signature key of the host to query", "KEY", false),
-    CPN_CMDPARSE_OPT_STRING(0, "--remote-host",
+    CPN_OPTS_OPT_STRING(0, "--remote-host",
             "Network address of the host to query", "ADDRESS", false),
-    CPN_CMDPARSE_OPT_STRING(0, "--remote-port",
+    CPN_OPTS_OPT_STRING(0, "--remote-port",
             "Port of the host to query", "PORT", false),
-    CPN_CMDPARSE_OPT_ACTION("query", NULL, NULL),
-    CPN_CMDPARSE_OPT_ACTION("request", NULL, request_opts),
-    CPN_CMDPARSE_OPT_ACTION("connect", NULL, connect_opts),
-    CPN_CMDPARSE_OPT_ACTION("terminate", NULL, terminate_opts),
-    CPN_CMDPARSE_OPT_END
+    CPN_OPTS_OPT_ACTION("query", NULL, NULL),
+    CPN_OPTS_OPT_ACTION("request", NULL, request_opts),
+    CPN_OPTS_OPT_ACTION("connect", NULL, connect_opts),
+    CPN_OPTS_OPT_ACTION("terminate", NULL, terminate_opts),
+    CPN_OPTS_OPT_END
 };
 
 static struct cpn_sign_key_pair local_keys;
@@ -120,7 +120,7 @@ static int cmd_query(void)
 }
 
 static int cmd_request(const struct cpn_sign_key_public *invoker_key,
-        const struct cpn_cmdparse_stringlist *parameters)
+        const struct cpn_opts_stringlist *parameters)
 {
     char invoker_hex[CPN_CAP_SECRET_LEN * 2 + 1], requester_hex[CPN_CAP_SECRET_LEN * 2 + 1];
     struct cpn_cap requester_cap, invoker_cap;
@@ -171,7 +171,7 @@ out_err:
 
 static int cmd_connect(const char *service_type, const char *session,
         const char *capability,
-        const struct cpn_cmdparse_stringlist *parameters)
+        const struct cpn_opts_stringlist *parameters)
 {
     struct cpn_service service;
     struct cpn_channel channel;
@@ -237,7 +237,7 @@ int main(int argc, const char *argv[])
     if (cpn_global_init() < 0)
         return -1;
 
-    if (cpn_cmdparse_parse_cmd(opts, argc, argv) < 0) {
+    if (cpn_opts_parse_cmd(opts, argc, argv) < 0) {
         return -1;
     }
 

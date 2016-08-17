@@ -22,10 +22,10 @@
 #include <sys/wait.h>
 
 #include "capone/acl.h"
-#include "capone/cmdparse.h"
 #include "capone/common.h"
 #include "capone/global.h"
 #include "capone/log.h"
+#include "capone/opts.h"
 #include "capone/proto.h"
 #include "capone/server.h"
 #include "capone/service.h"
@@ -192,44 +192,44 @@ out:
 
 static int setup(struct cpn_cfg *cfg, int argc, const char *argv[])
 {
-    struct cpn_cmdparse_opt opts[] = {
-        CPN_CMDPARSE_OPT_STRING('c', "--config",
+    struct cpn_opt opts[] = {
+        CPN_OPTS_OPT_STRING('c', "--config",
                 "Path to configuration file", "CFGFILE", false),
-        CPN_CMDPARSE_OPT_STRING('s', "--service",
+        CPN_OPTS_OPT_STRING('s', "--service",
                 "Name of the service to host", "SERVICE", false),
-        CPN_CMDPARSE_OPT_STRING(0, "--request-acl",
+        CPN_OPTS_OPT_STRING(0, "--request-acl",
                 "Path to file containing access control list for requests",
                 "FILE", false),
-        CPN_CMDPARSE_OPT_STRING(0, "--query-acl",
+        CPN_OPTS_OPT_STRING(0, "--query-acl",
                 "Path to file containing access control list for queries",
                 "FILE", false),
-        CPN_CMDPARSE_OPT_END
+        CPN_OPTS_OPT_END
     };
     int err;
 
     if (cpn_global_init() < 0)
         return -1;
 
-    if (cpn_cmdparse_parse_cmd(opts, argc, argv) < 0) {
+    if (cpn_opts_parse_cmd(opts, argc, argv) < 0) {
         return -1;
     }
 
     memset(cfg, 0, sizeof(*cfg));
 
-    if (cpn_cfg_parse(cfg, opts[0].value.string) < 0) {
+    if (cpn_cfg_parse(cfg, cpn_opts_get(opts, 'c', NULL)->string) < 0) {
         puts("Could not parse config");
         err = -1;
         goto out;
     }
 
-    if (opts[2].set) {
-        read_acl(&request_acl, opts[2].value.string);
+    if (cpn_opts_get(opts, 0, "--request-acl")) {
+        read_acl(&request_acl, cpn_opts_get(opts, 0, "request_acl")->string);
     } else {
         cpn_acl_add_wildcard(&request_acl, CPN_ACL_RIGHT_EXEC);
     }
 
-    if (opts[3].set) {
-        read_acl(&query_acl, opts[3].value.string);
+    if (cpn_opts_get(opts, 0, "--query-acl")) {
+        read_acl(&query_acl, cpn_opts_get(opts, 0, "--query-acl")->string);
     } else {
         cpn_acl_add_wildcard(&query_acl, CPN_ACL_RIGHT_EXEC);
     }
@@ -240,8 +240,7 @@ static int setup(struct cpn_cfg *cfg, int argc, const char *argv[])
         goto out;
     }
 
-
-    if (cpn_service_from_config(&service, opts[1].value.string, cfg) < 0) {
+    if (cpn_service_from_config(&service, cpn_opts_get(opts, 0, "--service")->string, cfg) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not parse services");
         err = -1;
         goto out;

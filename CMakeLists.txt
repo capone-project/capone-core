@@ -48,12 +48,12 @@ ADD_LIBRARY(capone SHARED
     lib/caps.c
     lib/cfg.c
     lib/channel.c
-    lib/cmdparse.c
     lib/common.c
     lib/global.c
     lib/keys.c
     lib/list.c
     lib/log.c
+    lib/opts.c
     lib/parameter.c
     lib/proto.c
     lib/proto-enc.c

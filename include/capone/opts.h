@@ -30,8 +30,8 @@
  * @{
  */
 
-#ifndef CAPONE_CMDPARSE_H
-#define CAPONE_CMDPARSE_H
+#ifndef CAPONE_OPTS_H
+#define CAPONE_OPTS_H
 
 #include <stdbool.h>
 #include <inttypes.h>
@@ -41,55 +41,55 @@
 /**
  * Type of command line arguments
  */
-enum cpn_cmdparse_type {
+enum cpn_opts_type {
     /** A sub-action, usually used to distinguish different modes
      * of operation inside a single executable. Only a single
      * sub-action can be chosen by the user. The program is able
      * to determine the chosen subaction by inspcecting for each
      * action, if it is set or not.
      */
-    CPN_CMDPARSE_TYPE_ACTION,
+    CPN_OPTS_TYPE_ACTION,
 
     /** A simple counter option. Counters do not accept
      * arguments, but may be specified multiple times, causing
      * an integer to be counted up. */
-    CPN_CMDPARSE_TYPE_COUNTER,
+    CPN_OPTS_TYPE_COUNTER,
 
     /** A public signature key is hex-format. */
-    CPN_CMDPARSE_TYPE_SIGKEY,
+    CPN_OPTS_TYPE_SIGKEY,
 
     /** A simple string argument. */
-    CPN_CMDPARSE_TYPE_STRING,
+    CPN_OPTS_TYPE_STRING,
 
     /** A list of strings. When string lists are used, the user
      * is only allowed to put them at the end of the command
      * line. The string list is initiated by the string list
      * option, leading all following arguments to be added to
      * this list. */
-    CPN_CMDPARSE_TYPE_STRINGLIST,
+    CPN_OPTS_TYPE_STRINGLIST,
 
     /** An unsigned integer. */
-    CPN_CMDPARSE_TYPE_UINT32,
+    CPN_OPTS_TYPE_UINT32,
 
-    /** Each array of `struct cpn_cmdparse_opt` must be
+    /** Each array of `struct cpn_opt` must be
      * terminated by this. */
-    CPN_CMDPARSE_TYPE_END
+    CPN_OPTS_TYPE_END
 };
 
-#define CPN_CMDPARSE_OPT_ACTION(action, desc, opts) \
-    { 0, (action), (desc), NULL, CPN_CMDPARSE_TYPE_ACTION, {(opts)}, true, false }
-#define CPN_CMDPARSE_OPT_COUNTER(s, l, desc) \
-    { (s), (l), (desc), NULL, CPN_CMDPARSE_TYPE_COUNTER, {NULL}, true, false }
-#define CPN_CMDPARSE_OPT_SIGKEY(s, l, desc, arg, optional) \
-    { (s), (l), (desc), (arg), CPN_CMDPARSE_TYPE_SIGKEY, {NULL}, (optional), false }
-#define CPN_CMDPARSE_OPT_STRING(s, l, desc, arg, optional) \
-    { (s), (l), (desc), (arg), CPN_CMDPARSE_TYPE_STRING, {NULL}, (optional), false }
-#define CPN_CMDPARSE_OPT_STRINGLIST(s, l, desc, arg, optional) \
-    { (s), (l), (desc), (arg), CPN_CMDPARSE_TYPE_STRINGLIST, {NULL}, (optional), false }
-#define CPN_CMDPARSE_OPT_UINT32(s, l, desc, arg, optional) \
-    { (s), (l), (desc), (arg), CPN_CMDPARSE_TYPE_UINT32, {NULL}, (optional), false }
-#define CPN_CMDPARSE_OPT_END                    \
-    { 0, NULL, NULL, NULL, CPN_CMDPARSE_TYPE_END, {NULL}, false, false }
+#define CPN_OPTS_OPT_ACTION(action, desc, opts) \
+    { 0, (action), (desc), NULL, CPN_OPTS_TYPE_ACTION, {(opts)}, true, false }
+#define CPN_OPTS_OPT_COUNTER(s, l, desc) \
+    { (s), (l), (desc), NULL, CPN_OPTS_TYPE_COUNTER, {NULL}, true, false }
+#define CPN_OPTS_OPT_SIGKEY(s, l, desc, arg, optional) \
+    { (s), (l), (desc), (arg), CPN_OPTS_TYPE_SIGKEY, {NULL}, (optional), false }
+#define CPN_OPTS_OPT_STRING(s, l, desc, arg, optional) \
+    { (s), (l), (desc), (arg), CPN_OPTS_TYPE_STRING, {NULL}, (optional), false }
+#define CPN_OPTS_OPT_STRINGLIST(s, l, desc, arg, optional) \
+    { (s), (l), (desc), (arg), CPN_OPTS_TYPE_STRINGLIST, {NULL}, (optional), false }
+#define CPN_OPTS_OPT_UINT32(s, l, desc, arg, optional) \
+    { (s), (l), (desc), (arg), CPN_OPTS_TYPE_UINT32, {NULL}, (optional), false }
+#define CPN_OPTS_OPT_END                    \
+    { 0, NULL, NULL, NULL, CPN_OPTS_TYPE_END, {NULL}, false, false }
 
 /** @brief A simple list of arguments
  *
@@ -97,10 +97,19 @@ enum cpn_cmdparse_type {
  * string list as well as a count of how many arguments are added
  * to the list.
  */
-struct cpn_cmdparse_stringlist {
+struct cpn_opts_stringlist {
     const char **argv;
     int argc;
 };
+
+union cpn_opt_value {
+    struct cpn_opt *action_opts;
+    uint32_t counter;
+    struct cpn_sign_key_public sigkey;
+    const char *string;
+    struct cpn_opts_stringlist stringlist;
+    uint32_t uint32;
+} value;
 
 /** @brief Structure specifying all available options
  *
@@ -112,29 +121,45 @@ struct cpn_cmdparse_stringlist {
  * the structure's value field.
  *
  * The value field is a union of all possible argument types
- * specified by the enum `cpn_cmdparse_type`. It is only valid to
+ * specified by the enum `cpn_opts_type`. It is only valid to
  * access the value corresponding to the given type.
  *
  * Note that the array of options is always required to be
- * terminated with `CPN_CMDPARSE_OPT_END`.
+ * terminated with `CPN_OPTS_OPT_END`.
  */
-struct cpn_cmdparse_opt {
+struct cpn_opt {
     char short_name;
     const char *long_name;
     const char *description;
     const char *argname;
-    enum cpn_cmdparse_type type;
-    union {
-        struct cpn_cmdparse_opt *action_opts;
-        uint32_t counter;
-        struct cpn_sign_key_public sigkey;
-        const char *string;
-        struct cpn_cmdparse_stringlist stringlist;
-        uint32_t uint32;
-    } value;
+    enum cpn_opts_type type;
+    union cpn_opt_value value;
     bool optional;
     bool set;
 };
+
+/** @brief Get a parsed value from options
+ *
+ * Search through the options, searching for the first entry
+ * which corresponds to the requested short and/or long option
+ * and returns its parsed value. If both short and long option
+ * name are passed to this function, the option has to match
+ * both. Otherwise, the first option's value matching the set
+ * option will be returned.
+ *
+ * If the option is not found or the option was not set, `NULL`
+ * is returned.
+ *
+ * @param[in] opts Options to search through
+ * @param[in] shortopt Single-character name of the option to
+ *            search by. May be `0` if `longopt` is set.
+ * @param[in] longopt Long name of the option to search by. May
+ *            be `NULL` if `shortopt` is set.
+ * @return A pointer to the option's value or `NULL` if it is
+ *         either not found or not set.
+ */
+const union cpn_opt_value *cpn_opts_get(const struct cpn_opt *opts,
+        char shortopt, const char *longopt);
 
 /** @brief Parse command line arguments with specified options
  *
@@ -157,11 +182,11 @@ struct cpn_cmdparse_opt {
  *
  * @return <code>0</code> on success, <code>-1</code> otherwise
  */
-int cpn_cmdparse_parse(struct cpn_cmdparse_opt *opts, int argc, const char *argv[]);
+int cpn_opts_parse(struct cpn_opt *opts, int argc, const char *argv[]);
 
 /** @brief Parse command line including executable name
  *
- * In contrast to `cpn_cmdparse_parse`, this function expects the
+ * In contrast to `cpn_opts_parse`, this function expects the
  * arguments to contain the current executable name as a first
  * argument. Furthermore, it will also print out usage as well as
  * version information if requested by the user and return an
@@ -176,7 +201,7 @@ int cpn_cmdparse_parse(struct cpn_cmdparse_opt *opts, int argc, const char *argv
  *
  * @return <code>0</code> on success, <code>-1</code> otherwise
  */
-int cpn_cmdparse_parse_cmd(struct cpn_cmdparse_opt *opts, int argc, const char *argv[]);
+int cpn_opts_parse_cmd(struct cpn_opt *opts, int argc, const char *argv[]);
 
 /** @brief Print usage to the terminal
  *
@@ -187,13 +212,15 @@ int cpn_cmdparse_parse_cmd(struct cpn_cmdparse_opt *opts, int argc, const char *
  *            arguments.
  * @param[in] executable Name of the executable to use when
  *            printing usage information.
- * @param[in] error Whether to print to <code>stderr</code>
- *            instead to <code>stdout</code>
+ * @param[in] out Where to print to
  */
-void cpn_cmdparse_usage(const struct cpn_cmdparse_opt *opts, const char *executable, bool error);
+void cpn_opts_usage(const struct cpn_opt *opts, const char *executable, FILE *out);
 
-/** @brief Print version information */
-void cpn_cmdparse_version(const char *executable);
+/** @brief Print version information
+ *
+ * @param[in] out Where to print output to
+ */
+void cpn_opts_version(const char *executable, FILE *out);
 
 #endif
 
