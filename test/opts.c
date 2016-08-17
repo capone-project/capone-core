@@ -588,6 +588,239 @@ static void getting_unset_option_with_multiple_options_succeeds()
     assert_null(cpn_opts_get(opts, 's', NULL));
 }
 
+static void usage_with_no_opts_succeeds()
+{
+    struct cpn_opt opts[] = {
+        CPN_OPTS_OPT_END
+    };
+    FILE *out = tmpfile();
+
+    cpn_opts_usage(opts, "test", out);
+
+    assert_file_equal(out, "USAGE: test\n");
+}
+
+static void usage_with_single_opt_succeeds()
+{
+    struct cpn_opt opts[] = {
+        CPN_OPTS_OPT_STRING('s', "--string", "This is a string", "STRING", false),
+        CPN_OPTS_OPT_END
+    };
+    FILE *out = tmpfile();
+
+    cpn_opts_usage(opts, "test", out);
+
+    assert_file_equal(out,
+            "USAGE: test [OPTIONS...]\n"
+            "\n"
+            "\t-s, --string <STRING>\n"
+            "\t\tThis is a string\n");
+}
+
+static void usage_with_multiple_opts_succeeds()
+{
+    struct cpn_opt opts[] = {
+        CPN_OPTS_OPT_STRING('s', "--string", "This is a string", "STRING", false),
+        CPN_OPTS_OPT_STRING('o', "--other", NULL, NULL, false),
+        CPN_OPTS_OPT_END
+    };
+    FILE *out = tmpfile();
+
+    cpn_opts_usage(opts, "test", out);
+
+    assert_file_equal(out,
+            "USAGE: test [OPTIONS...]\n"
+            "\n"
+            "\t-s, --string <STRING>\n"
+            "\t\tThis is a string\n"
+            "\t-o, --other <VALUE>\n");
+}
+
+static void usage_with_all_option_types_succeeds()
+{
+    struct cpn_opt opts[] = {
+        CPN_OPTS_OPT_COUNTER('c', "--counter", "Count"),
+        CPN_OPTS_OPT_SIGKEY('k', "--sigkey", "Signature key", "SIGKEY", false),
+        CPN_OPTS_OPT_STRING('s', "--string", "This is a string", "STRING", false),
+        CPN_OPTS_OPT_STRINGLIST('l', "--stringlist", "This is a list of strings", "STRINGS", false),
+        CPN_OPTS_OPT_UINT32('u', "--uint32", "Unsigned integer", "UINT32", false),
+        CPN_OPTS_OPT_END
+    };
+    FILE *out = tmpfile();
+
+    cpn_opts_usage(opts, "test", out);
+
+    assert_file_equal(out,
+            "USAGE: test [OPTIONS...]\n"
+            "\n"
+            "\t-c, --counter\n"
+            "\t\tCount\n"
+            "\t-k, --sigkey <SIGKEY>\n"
+            "\t\tSignature key\n"
+            "\t-s, --string <STRING>\n"
+            "\t\tThis is a string\n"
+            "\t-l, --stringlist [STRINGS...]\n"
+            "\t\tThis is a list of strings\n"
+            "\t-u, --uint32 <UINT32>\n"
+            "\t\tUnsigned integer\n");
+}
+
+static void usage_with_mixed_short_and_long_opts_succeeds()
+{
+    struct cpn_opt opts[] = {
+        CPN_OPTS_OPT_STRING(0, "--string", "This is a string", "STRING", false),
+        CPN_OPTS_OPT_STRING('o', NULL, NULL, NULL, false),
+        CPN_OPTS_OPT_END
+    };
+    FILE *out = tmpfile();
+
+    cpn_opts_usage(opts, "test", out);
+
+    assert_file_equal(out,
+            "USAGE: test [OPTIONS...]\n"
+            "\n"
+            "\t--string <STRING>\n"
+            "\t\tThis is a string\n"
+            "\t-o <VALUE>\n");
+}
+
+static void usage_with_single_action_without_args_succeeds()
+{
+    struct cpn_opt opts[] = {
+        CPN_OPTS_OPT_ACTION("action", "This is an action", NULL),
+        CPN_OPTS_OPT_END
+    };
+    FILE *out = tmpfile();
+
+    cpn_opts_usage(opts, "test", out);
+
+    assert_file_equal(out,
+            "USAGE: test (action)\n"
+            "\n"
+            "\taction: This is an action\n");
+}
+
+static void usage_with_single_action_with_args_succeeds()
+{
+    static struct cpn_opt action_opts[] = {
+        CPN_OPTS_OPT_STRING('s', "--string", "This is a string", "STRING", false),
+        CPN_OPTS_OPT_END
+    };
+    struct cpn_opt opts[] = {
+        CPN_OPTS_OPT_ACTION("action", "This is an action", action_opts),
+        CPN_OPTS_OPT_END
+    };
+    FILE *out = tmpfile();
+
+    cpn_opts_usage(opts, "test", out);
+
+    assert_file_equal(out,
+            "USAGE: test (action)\n"
+            "\n"
+            "\taction [OPTIONS...]: This is an action\n"
+            "\t\t-s, --string <STRING>\n"
+            "\t\t\tThis is a string\n");
+}
+
+static void usage_with_single_action_and_global_args()
+{
+    static struct cpn_opt action_opts[] = {
+        CPN_OPTS_OPT_END
+    };
+    struct cpn_opt opts[] = {
+        CPN_OPTS_OPT_STRING('s', "--string", "This is a string", "STRING", false),
+        CPN_OPTS_OPT_ACTION("action", "This is an action", action_opts),
+        CPN_OPTS_OPT_END
+    };
+    FILE *out = tmpfile();
+
+    cpn_opts_usage(opts, "test", out);
+
+    assert_file_equal(out,
+            "USAGE: test [OPTIONS...] (action)\n"
+            "\n"
+            "\t-s, --string <STRING>\n"
+            "\t\tThis is a string\n"
+            "\n"
+            "\taction: This is an action\n");
+}
+
+static void usage_with_multiple_actions_and_arguments()
+{
+    static struct cpn_opt action_opts[] = {
+        CPN_OPTS_OPT_END
+    };
+    static struct cpn_opt other_opts[] = {
+        CPN_OPTS_OPT_STRING('o', "--other", "Other description", "O", false),
+        CPN_OPTS_OPT_END
+    };
+    struct cpn_opt opts[] = {
+        CPN_OPTS_OPT_STRING('g', "--global", "This is a global string", "STRING", false),
+        CPN_OPTS_OPT_ACTION("action", "This is an action", action_opts),
+        CPN_OPTS_OPT_ACTION("other", "This is another action", other_opts),
+        CPN_OPTS_OPT_END
+    };
+    FILE *out = tmpfile();
+
+    cpn_opts_usage(opts, "test", out);
+
+    assert_file_equal(out,
+            "USAGE: test [OPTIONS...] (action|other)\n"
+            "\n"
+            "\t-g, --global <STRING>\n"
+            "\t\tThis is a global string\n"
+            "\n"
+            "\taction: This is an action\n"
+            "\tother [OPTIONS...]: This is another action\n"
+            "\t\t-o, --other <O>\n"
+            "\t\t\tOther description\n");
+}
+
+static void usage_with_subsubactions()
+{
+    static struct cpn_opt subaction_opts[] = {
+        CPN_OPTS_OPT_END
+    };
+    static struct cpn_opt action_opts[] = {
+        CPN_OPTS_OPT_STRING('o', "--other", "Other description", "O", false),
+        CPN_OPTS_OPT_ACTION("subaction", "This is a subaction", subaction_opts),
+        CPN_OPTS_OPT_END
+    };
+    struct cpn_opt opts[] = {
+        CPN_OPTS_OPT_STRING('g', "--global", "This is a global string", "STRING", false),
+        CPN_OPTS_OPT_ACTION("action", "This is an action", action_opts),
+        CPN_OPTS_OPT_END
+    };
+    FILE *out = tmpfile();
+
+    cpn_opts_usage(opts, "test", out);
+
+    assert_file_equal(out,
+            "USAGE: test [OPTIONS...] (action)\n"
+            "\n"
+            "\t-g, --global <STRING>\n"
+            "\t\tThis is a global string\n"
+            "\n"
+            "\taction [OPTIONS...] (subaction): This is an action\n"
+            "\t\t-o, --other <O>\n"
+            "\t\t\tOther description\n"
+            "\t\tsubaction: This is a subaction\n");
+}
+
+static void version_succeeds()
+{
+    FILE *out = tmpfile();
+
+    cpn_opts_version("test", out);
+
+    assert_file_equal(out,
+            "test " VERSION "\n"
+            "Copyright (C) 2016 Patrick Steinhardt\n"
+            "License GPLv3: GNU GPL version 3 <http://gnu.org/licenses/gpl.html>.\n"
+            "This is free software; you are free to change and redistribute it.\n"
+            "There is NO WARRANTY, to the extent permitted by the law.\n");
+}
+
 int cmdparse_test_run_suite(void)
 {
     const struct CMUnitTest tests[] = {
@@ -637,7 +870,20 @@ int cmdparse_test_run_suite(void)
         test(getting_value_with_mixed_short_and_long_fails),
         test(getting_value_with_unset_option_fails),
         test(getting_value_with_multiple_options_succeeds),
-        test(getting_unset_option_with_multiple_options_succeeds)
+        test(getting_unset_option_with_multiple_options_succeeds),
+
+        test(usage_with_no_opts_succeeds),
+        test(usage_with_single_opt_succeeds),
+        test(usage_with_multiple_opts_succeeds),
+        test(usage_with_all_option_types_succeeds),
+        test(usage_with_mixed_short_and_long_opts_succeeds),
+        test(usage_with_single_action_without_args_succeeds),
+        test(usage_with_single_action_with_args_succeeds),
+        test(usage_with_single_action_and_global_args),
+        test(usage_with_multiple_actions_and_arguments),
+        test(usage_with_subsubactions),
+
+        test(version_succeeds)
     };
 
     return execute_test_suite("cmdparse", tests, setup, teardown);

@@ -193,16 +193,16 @@ static void print_arguments(const struct cpn_opt *opts, FILE *out, int indent)
 
         switch (it->type) {
             case CPN_OPTS_TYPE_SIGKEY:
-                fprintf(out, " %s", it->argname ? it->argname : "KEY");
+                fprintf(out, " <%s>", it->argname ? it->argname : "KEY");
                 break;
             case CPN_OPTS_TYPE_STRING:
-                fprintf(out, " %s", it->argname ? it->argname : "VALUE");
+                fprintf(out, " <%s>", it->argname ? it->argname : "VALUE");
                 break;
             case CPN_OPTS_TYPE_STRINGLIST:
                 fprintf(out, " [%s...]", it->argname ? it->argname : "VALUE");
                 break;
             case CPN_OPTS_TYPE_UINT32:
-                fprintf(out, " %s", it->argname ? it->argname : "UNSIGNED_INT");
+                fprintf(out, " <%s>", it->argname ? it->argname : "UNSIGNED_INT");
                 break;
             default:
                 break;
@@ -219,28 +219,34 @@ static void print_arguments(const struct cpn_opt *opts, FILE *out, int indent)
     }
 }
 
+static bool has_options(const struct cpn_opt *opts)
+{
+    const struct cpn_opt *it;
+    for (it = opts; it && it->type != CPN_OPTS_TYPE_END; it++)
+        if (it->type != CPN_OPTS_TYPE_ACTION)
+            return true;
+    return false;
+}
+
+static bool has_actions(const struct cpn_opt *opts)
+{
+    const struct cpn_opt *it;
+    for (it = opts; it && it->type != CPN_OPTS_TYPE_END; it++)
+        if (it->type == CPN_OPTS_TYPE_ACTION)
+            return true;
+    return false;
+}
+
 static void print_header(const struct cpn_opt *opts, const char *name, const char *description, FILE *out)
 {
     const struct cpn_opt *it;
-    bool has_actions = 0, has_opts = 0;
 
     fputs(name, out);
 
-    for (it = opts; it && it->type != CPN_OPTS_TYPE_END; it++) {
-        switch (it->type) {
-            case CPN_OPTS_TYPE_ACTION:
-                has_actions = 1;
-                continue;
-            default:
-                has_opts = 1;
-                break;
-        }
-    }
-
-    if (has_opts)
+    if (has_options(opts))
         fputs(" [OPTIONS...]", out);
 
-    if (has_actions) {
+    if (has_actions(opts)) {
         bool first_action = true;
 
         fputs(" (", out);
@@ -273,7 +279,8 @@ static void print_actions(const struct cpn_opt *opts, FILE *out, int indent)
             fputc('\t', out);
         print_header(it->value.action_opts, it->long_name, it->description, out);
         print_arguments(it->value.action_opts, out, indent + 1);
-        fputc('\n', out);
+        if (has_actions(it) && has_options(it))
+            fputc('\n', out);
         print_actions(it->value.action_opts, out, indent + 1);
     }
 }
@@ -283,8 +290,11 @@ void cpn_opts_usage(const struct cpn_opt *opts,
 {
     fputs("USAGE: ", out);
     print_header(opts, executable, NULL, out);
+    if (has_actions(opts) || has_options(opts))
+        fputc('\n', out);
     print_arguments(opts, out, 1);
-    fputc('\n', out);
+    if (has_actions(opts) && has_options(opts))
+        fputc('\n', out);
     print_actions(opts, out, 1);
 }
 
