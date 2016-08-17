@@ -28,7 +28,7 @@ typedef int (*init_fn)(void);
 
 static init_fn init_fns[] = {
     sodium_init,
-    cpn_service_register_builtins
+    cpn_service_plugin_register_builtins
 };
 
 static struct cpn_list shutdown_fns = CPN_LIST_INIT;

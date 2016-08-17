@@ -20,15 +20,10 @@
 #include "capone/common.h"
 #include "capone/channel.h"
 #include "capone/log.h"
-#include "capone/parameter.h"
 #include "capone/session.h"
 #include "capone/proto.h"
 
 #include "capone/proto/connect.pb-c.h"
-
-static ssize_t convert_params(struct cpn_parameter **out,
-        Parameter **params,
-        size_t nparams);
 
 int cpn_proto_initiate_connection(struct cpn_channel *channel,
         const char *host,
@@ -206,7 +201,7 @@ out_notify:
     if (err)
         goto out;
 
-    if ((err = service->handle(channel, remote_key, session, cfg)) < 0) {
+    if ((err = service->plugin->handle(channel, remote_key, session, cfg)) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Service could not handle connection");
         goto out;
     }
@@ -224,17 +219,16 @@ int cpn_proto_send_request(struct cpn_cap *invoker_cap,
         struct cpn_cap *requester_cap,
         struct cpn_channel *channel,
         const struct cpn_sign_key_public *invoker,
-        const struct cpn_parameter *params, size_t nparams)
+        int argc, const char **argv)
 {
     SessionRequestMessage request = SESSION_REQUEST_MESSAGE__INIT;
     SessionMessage *session = NULL;
-    Parameter **parameters = NULL;
     int err = -1;
-    size_t i;
 
     request.invoker.data = (uint8_t *) invoker->data;
     request.invoker.len = sizeof(invoker->data);
-    request.n_parameters = cpn_parameters_to_proto(&request.parameters, params, nparams);
+    request.n_parameters = argc;
+    request.parameters = (char **) argv;
 
     if (cpn_channel_write_protobuf(channel, &request.base) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to send connection request");
@@ -260,11 +254,6 @@ int cpn_proto_send_request(struct cpn_cap *invoker_cap,
 out:
     if (session)
         session_message__free_unpacked(session, NULL);
-    for (i = 0; i < request.n_parameters; i++)
-        parameter__free_unpacked(request.parameters[i], NULL);
-    free(request.parameters);
-
-    cpn_parameters_proto_free(parameters, nparams);
 
     return err;
 }
@@ -296,9 +285,6 @@ int cpn_proto_send_query(struct cpn_query_results *out,
     results.port = msg->port;
     msg->port = NULL;
 
-    convert_params(&results.params, msg->parameters, msg->n_parameters);
-    results.nparams = msg->n_parameters;
-
     service_description__free_unpacked(msg, NULL);
 
     memcpy(out, &results, sizeof(*out));
@@ -310,43 +296,20 @@ int cpn_proto_answer_query(struct cpn_channel *channel,
         const struct cpn_service *service)
 {
     ServiceDescription results = SERVICE_DESCRIPTION__INIT;
-    Parameter **parameters;
-    const struct cpn_parameter *params;
-    int i, n, err;
 
     results.name = service->name;
-    results.category = service->category;
-    results.type = service->type;
-    results.version = (char *) service->version();
     results.location = service->location;
     results.port = service->port;
+    results.category = (char *) service->plugin->category;
+    results.type = (char *) service->plugin->type;
+    results.version = (char *) service->plugin->version;
 
-    n = service->parameters(&params);
-    parameters = malloc(sizeof(Parameter *) * n);
-    for (i = 0; i < n; i++) {
-        Parameter *parameter = malloc(sizeof(Parameter));
-        parameter__init(parameter);
-
-        parameter->key = (char *) params[i].key;
-        parameter->value = (char *) params[i].value;
-
-        parameters[i] = parameter;
-    }
-    results.parameters = parameters;
-    results.n_parameters = n;
-
-    if ((err = cpn_channel_write_protobuf(channel, (ProtobufCMessage *) &results)) < 0) {
+    if (cpn_channel_write_protobuf(channel, (ProtobufCMessage *) &results) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not send query results");
-        goto out;
+        return -1;
     }
 
-out:
-    for (i = 0; i < n; i++) {
-        free(parameters[i]);
-    }
-    free(parameters);
-
-    return err;
+    return 0;
 }
 
 void cpn_query_results_free(struct cpn_query_results *results)
@@ -366,10 +329,6 @@ void cpn_query_results_free(struct cpn_query_results *results)
     results->location = NULL;
     free(results->port);
     results->port = NULL;
-
-    cpn_parameters_free(results->params, results->nparams);
-    results->params = NULL;
-    results->nparams = 0;
 }
 
 static int create_cap(CapabilityMessage **out, uint32_t objectid, uint32_t rights, const struct cpn_sign_key_public *key)
@@ -397,8 +356,6 @@ int cpn_proto_answer_request(struct cpn_channel *channel,
     SessionRequestMessage *request = NULL;
     SessionMessage session_message = SESSION_MESSAGE__INIT;
     struct cpn_sign_key_public identity_key;
-    struct cpn_parameter *params = NULL;
-    ssize_t nparams = 0;
     uint32_t sessionid;
     int err = -1;
 
@@ -417,14 +374,7 @@ int cpn_proto_answer_request(struct cpn_channel *channel,
         goto out;
     }
 
-    if ((nparams = convert_params(&params,
-                    request->parameters, request->n_parameters)) < 0)
-    {
-        cpn_log(LOG_LEVEL_ERROR, "Unable to convert parameters");
-        goto out;
-    }
-
-    if (cpn_sessions_add(&sessionid, params, nparams) < 0)
+    if (cpn_sessions_add(&sessionid, request->n_parameters, (const char **) request->parameters) < 0)
     {
         cpn_log(LOG_LEVEL_ERROR, "Unable to add session");
         goto out;
@@ -453,8 +403,6 @@ int cpn_proto_answer_request(struct cpn_channel *channel,
     err = 0;
 
 out:
-    cpn_parameters_free(params, nparams);
-
     if (session_message.invoker_cap)
         capability_message__free_unpacked(session_message.invoker_cap, NULL);
     if (session_message.requester_cap)
@@ -531,32 +479,4 @@ out:
         session_termination_message__free_unpacked(msg, NULL);
 
     return err;
-}
-
-static ssize_t convert_params(struct cpn_parameter **out,
-        Parameter **parameters, size_t nparams)
-{
-    struct cpn_parameter *params;
-    size_t i;
-
-    *out = NULL;
-
-    if (nparams == 0)
-        return 0;
-
-    params = malloc(sizeof(struct cpn_parameter) * nparams);
-    for (i = 0; i < nparams; i++) {
-        Parameter *msgparam = parameters[i];
-
-        params[i].key = strdup(msgparam->key);
-        if (msgparam->value) {
-            params[i].value = strdup(msgparam->value);
-        } else {
-            params[i].value = NULL;
-        }
-    }
-
-    *out = params;
-
-    return nparams;
 }

@@ -22,23 +22,9 @@
 #include "capone/service.h"
 
 #include "test.h"
+#include "test-service.h"
 
 static uint8_t buf[1024];
-
-static const char *version(void)
-{
-    return "0.0.1";
-}
-
-static int parameters(const struct cpn_parameter **out)
-{
-    static const struct cpn_parameter params[] = {
-        { "test", NULL },
-    };
-
-    *out = params;
-    return ARRAY_SIZE(params);
-}
 
 static int invoke(struct cpn_channel *channel, int argc, const char **argv)
 {
@@ -56,18 +42,20 @@ static int handle(struct cpn_channel *channel,
     UNUSED(invoker);
 
     return cpn_channel_write_data(channel,
-            (uint8_t *) session->parameters[0].value,
-            strlen(session->parameters[0].value));
+            (uint8_t *) session->argv[0], strlen(session->argv[0]));
 }
 
-int cpn_test_init_service(struct cpn_service *service)
+int cpn_test_init_service(const struct cpn_service_plugin **out)
 {
-    service->category = "Test";
-    service->type = "test";
-    service->version = version;
-    service->handle = handle;
-    service->invoke = invoke;
-    service->parameters = parameters;
+    static struct cpn_service_plugin plugin = {
+        "Test",
+        "test",
+        "0.0.1",
+        handle,
+        invoke
+    };
+
+    *out = &plugin;
 
     return 0;
 }

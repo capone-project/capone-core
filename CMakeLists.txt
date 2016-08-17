@@ -54,7 +54,6 @@ ADD_LIBRARY(capone SHARED
     lib/list.c
     lib/log.c
     lib/opts.c
-    lib/parameter.c
     lib/proto.c
     lib/proto-enc.c
     lib/server.c

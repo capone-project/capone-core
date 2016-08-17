@@ -51,16 +51,15 @@ static void test_service_from_config()
 
     /* Assert values */
     assert_string_equal(service.name, "foo");
-    assert_string_equal(service.type, "exec");
-    assert_string_equal(service.category, "Shell");
     assert_string_equal(service.location, "space");
     assert_string_equal(service.port, "7777");
 
-    /* Check function pointers */
-    assert_non_null(service.handle);
-    assert_non_null(service.invoke);
-    assert_non_null(service.parameters);
-    assert_non_null(service.version);
+    /* Check plugin pointers */
+    assert_string_equal(service.plugin->type, "exec");
+    assert_string_equal(service.plugin->category, "Shell");
+    assert_non_null(service.plugin->handle);
+    assert_non_null(service.plugin->invoke);
+    assert_non_null(service.plugin->version);
 }
 
 static void test_invalid_service_from_config_fails()
@@ -126,7 +125,7 @@ int service_test_run_suite(void)
         test(test_services_from_config),
     };
 
-    cpn_service_register_builtins();
+    cpn_service_plugin_register_builtins();
 
     return execute_test_suite("service", tests, setup, teardown);
 }

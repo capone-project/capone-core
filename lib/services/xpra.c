@@ -21,40 +21,27 @@
 
 #include "capone/common.h"
 #include "capone/log.h"
+#include "capone/opts.h"
 #include "capone/server.h"
 #include "capone/service.h"
 
 #include "capone/services/xpra.h"
 
-static const char *version(void)
-{
-    return "0.0.1";
-}
-
-static int parameters(const struct cpn_parameter **out)
-{
-    static const struct cpn_parameter params[] = {
-        { "port", NULL },
-    };
-
-    *out = params;
-    return ARRAY_SIZE(params);
-}
-
 static int invoke(struct cpn_channel *channel, int argc, const char **argv)
 {
-    char buf[1];
-    const char *port;
+    struct cpn_opt opts[] = {
+        CPN_OPTS_OPT_STRING(0, "--port", NULL, NULL, false),
+        CPN_OPTS_OPT_END
+    };
     struct cpn_channel xpra_channel;
+    char buf[1];
 
-    if (argc != 2 || strcmp(argv[0], "port")) {
-        puts("Usage: xpra port <PORT>");
+    if (cpn_opts_parse(opts, argc, argv) < 0)
         return -1;
-    }
 
-    port = argv[1];
-
-    if (cpn_channel_init_from_host(&xpra_channel, "127.0.0.1", port, CPN_CHANNEL_TYPE_TCP) < 0) {
+    if (cpn_channel_init_from_host(&xpra_channel, "127.0.0.1",
+                opts[0].value.string, CPN_CHANNEL_TYPE_TCP) < 0)
+    {
         cpn_log(LOG_LEVEL_ERROR, "Could not initialize local xpra channel");
         return -1;
     }
@@ -154,14 +141,17 @@ static int handle(struct cpn_channel *channel,
     return 0;
 }
 
-int cpn_xpra_init_service(struct cpn_service *service)
+int cpn_xpra_init_service(const struct cpn_service_plugin **out)
 {
-    service->category = "Display";
-    service->type = "xpra";
-    service->version = version;
-    service->handle = handle;
-    service->invoke = invoke;
-    service->parameters = parameters;
+    static struct cpn_service_plugin plugin = {
+        "Display",
+        "xpra",
+        "0.0.1",
+        handle,
+        invoke
+    };
+
+    *out = &plugin;
 
     return 0;
 }

@@ -30,6 +30,6 @@
  * channel.
  */
 
-struct cpn_service;
+struct cpn_service_plugin;
 
-int cpn_exec_init_service(struct cpn_service *service);
+int cpn_exec_init_service(const struct cpn_service_plugin **plugin);

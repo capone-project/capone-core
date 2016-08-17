@@ -9,7 +9,7 @@ message CapabilityRequest {
 
     required string service_address = 4;
     required string service_port = 5;
-    repeated Parameter parameters = 6;
+    repeated string parameters = 6;
 
     required uint32 requestid = 7;
 }
