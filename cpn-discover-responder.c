@@ -188,10 +188,10 @@ static void handle_connections()
 
 int main(int argc, const char *argv[])
 {
-    struct cpn_cmdparse_opt opts[] = {
-        CPN_CMDPARSE_OPT_STRING('c', "--config",
+    struct cpn_opt opts[] = {
+        CPN_OPTS_OPT_STRING('c', "--config",
                 "Path to configuration file", "CFGFILE", false),
-        CPN_CMDPARSE_OPT_END,
+        CPN_OPTS_OPT_END,
     };
     AnnounceMessage__Service **service_messages;
     struct cpn_service *services;
@@ -202,7 +202,7 @@ int main(int argc, const char *argv[])
     if (cpn_global_init() < 0)
         return -1;
 
-    if (cpn_cmdparse_parse_cmd(opts, argc, argv) < 0) {
+    if (cpn_opts_parse_cmd(opts, argc, argv) < 0) {
         return -1;
     }
 

@@ -30,7 +30,7 @@ int main(int argc, const char *argv[])
     char pkhex[sizeof(keys.pk.data) * 2 + 1],
          skhex[sizeof(keys.sk.data) * 2 + 1];
 
-    if (cpn_cmdparse_parse_cmd(NULL, argc, argv) < 0)
+    if (cpn_opts_parse_cmd(NULL, argc, argv) < 0)
         return -1;
 
     if (cpn_sign_key_pair_generate(&keys) < 0) {

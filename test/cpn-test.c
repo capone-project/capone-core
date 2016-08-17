@@ -37,9 +37,9 @@ extern int service_test_run_suite(void);
 extern int session_test_run_suite(void);
 extern int parameter_test_run_suite(void);
 
-static struct cpn_cmdparse_opt opts[] = {
-    CPN_CMDPARSE_OPT_COUNTER('v', "--verbose", NULL),
-    CPN_CMDPARSE_OPT_END
+static struct cpn_opt opts[] = {
+    CPN_OPTS_OPT_COUNTER('v', "--verbose", NULL),
+    CPN_OPTS_OPT_END
 };
 
 static int (*suite_fns[])(void) = {
@@ -62,7 +62,7 @@ int main(int argc, const char *argv[])
 {
     size_t i, failed, failed_tests = 0, failed_suites = 0;
 
-    if (cpn_cmdparse_parse_cmd(opts, argc, argv) < 0)
+    if (cpn_opts_parse_cmd(opts, argc, argv) < 0)
         return -1;
 
     if (opts[0].value.counter == 0)

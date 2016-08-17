@@ -237,26 +237,26 @@ out:
 
 int main(int argc, const char *argv[])
 {
-    static struct cpn_cmdparse_opt directed_opts[] = {
-        CPN_CMDPARSE_OPT_SIGKEY(0, "--remote-key",
+    static struct cpn_opt directed_opts[] = {
+        CPN_OPTS_OPT_SIGKEY(0, "--remote-key",
                 "Public signature key of the host to query", "KEY", false),
-        CPN_CMDPARSE_OPT_STRING(0, "--remote-host",
+        CPN_OPTS_OPT_STRING(0, "--remote-host",
                 "Network address of the host to query", "ADDRESS", false),
-        CPN_CMDPARSE_OPT_STRING(0, "--remote-port",
+        CPN_OPTS_OPT_STRING(0, "--remote-port",
                 "Port of the host to query", "PORT", false),
-        CPN_CMDPARSE_OPT_END
+        CPN_OPTS_OPT_END
     };
-    struct cpn_cmdparse_opt opts[] = {
-        CPN_CMDPARSE_OPT_STRING('c', "--config", "Configuration file", "FILE", false),
-        CPN_CMDPARSE_OPT_ACTION("broadcast", NULL, NULL),
-        CPN_CMDPARSE_OPT_ACTION("direct", NULL, directed_opts),
-        CPN_CMDPARSE_OPT_END
+    struct cpn_opt opts[] = {
+        CPN_OPTS_OPT_STRING('c', "--config", "Configuration file", "FILE", false),
+        CPN_OPTS_OPT_ACTION("broadcast", NULL, NULL),
+        CPN_OPTS_OPT_ACTION("direct", NULL, directed_opts),
+        CPN_OPTS_OPT_END
     };
 
     if (cpn_global_init() < 0)
         return -1;
 
-    if (cpn_cmdparse_parse_cmd(opts, argc, argv) < 0)
+    if (cpn_opts_parse_cmd(opts, argc, argv) < 0)
         return -1;
 
     if (opts[1].set) {

@@ -140,17 +140,17 @@ void *process_events(void *ptr)
 
 int main(int argc, const char *argv[])
 {
-    struct cpn_cmdparse_opt opts[] = {
-        CPN_CMDPARSE_OPT_STRING('f', "--from-display", NULL, NULL, false),
-        CPN_CMDPARSE_OPT_STRING('t', "--to-display", NULL, NULL, false),
-        CPN_CMDPARSE_OPT_END
+    struct cpn_opt opts[] = {
+        CPN_OPTS_OPT_STRING('f', "--from-display", NULL, NULL, false),
+        CPN_OPTS_OPT_STRING('t', "--to-display", NULL, NULL, false),
+        CPN_OPTS_OPT_END
     };
     struct payload payload;
     struct cpn_thread t;
     Display *dpy;
     int i, retval = 0;
 
-    if (cpn_cmdparse_parse_cmd(opts, argc, argv) <  0)
+    if (cpn_opts_parse_cmd(opts, argc, argv) <  0)
         return -1;
 
     payload.dpy1 = opts[0].value.string;

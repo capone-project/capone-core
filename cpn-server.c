@@ -192,25 +192,25 @@ out:
 
 static int setup(struct cpn_cfg *cfg, int argc, const char *argv[])
 {
-    struct cpn_cmdparse_opt opts[] = {
-        CPN_CMDPARSE_OPT_STRING('c', "--config",
+    struct cpn_opt opts[] = {
+        CPN_OPTS_OPT_STRING('c', "--config",
                 "Path to configuration file", "CFGFILE", false),
-        CPN_CMDPARSE_OPT_STRING('s', "--service",
+        CPN_OPTS_OPT_STRING('s', "--service",
                 "Name of the service to host", "SERVICE", false),
-        CPN_CMDPARSE_OPT_STRING(0, "--request-acl",
+        CPN_OPTS_OPT_STRING(0, "--request-acl",
                 "Path to file containing access control list for requests",
                 "FILE", false),
-        CPN_CMDPARSE_OPT_STRING(0, "--query-acl",
+        CPN_OPTS_OPT_STRING(0, "--query-acl",
                 "Path to file containing access control list for queries",
                 "FILE", false),
-        CPN_CMDPARSE_OPT_END
+        CPN_OPTS_OPT_END
     };
     int err;
 
     if (cpn_global_init() < 0)
         return -1;
 
-    if (cpn_cmdparse_parse_cmd(opts, argc, argv) < 0) {
+    if (cpn_opts_parse_cmd(opts, argc, argv) < 0) {
         return -1;
     }
 

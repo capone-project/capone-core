@@ -32,46 +32,46 @@ static int teardown()
 
 static void parsing_nothing_succeeds()
 {
-    struct cpn_cmdparse_opt opts[] = { CPN_CMDPARSE_OPT_END };
-    assert_success(cpn_cmdparse_parse(opts, 0, NULL));
+    struct cpn_opt opts[] = { CPN_OPTS_OPT_END };
+    assert_success(cpn_opts_parse(opts, 0, NULL));
 }
 
 static void parsing_with_no_opts_fails()
 {
-    struct cpn_cmdparse_opt opts[] = { CPN_CMDPARSE_OPT_END };
+    struct cpn_opt opts[] = { CPN_OPTS_OPT_END };
     const char *args[] = {
         "--test", "value"
     };
 
-    assert_failure(cpn_cmdparse_parse(opts, ARRAY_SIZE(args), args));
+    assert_failure(cpn_opts_parse(opts, ARRAY_SIZE(args), args));
 }
 
 static void parsing_opt_without_arg_fails()
 {
-    struct cpn_cmdparse_opt opts[] = { CPN_CMDPARSE_OPT_END };
+    struct cpn_opt opts[] = { CPN_OPTS_OPT_END };
     const char *args[] = {
         "--test"
     };
 
-    assert_failure(cpn_cmdparse_parse(opts, ARRAY_SIZE(args), args));
+    assert_failure(cpn_opts_parse(opts, ARRAY_SIZE(args), args));
 }
 
 static void parsing_with_invalid_option_fails()
 {
-    struct cpn_cmdparse_opt opts[] = {
-        CPN_CMDPARSE_OPT_STRING(0, "--option", NULL, NULL, false),
-        CPN_CMDPARSE_OPT_END
+    struct cpn_opt opts[] = {
+        CPN_OPTS_OPT_STRING(0, "--option", NULL, NULL, false),
+        CPN_OPTS_OPT_END
     };
     const char *args[] = {
         "--misspelled"
     };
 
-    assert_failure(cpn_cmdparse_parse(opts, ARRAY_SIZE(args), args));
+    assert_failure(cpn_opts_parse(opts, ARRAY_SIZE(args), args));
 }
 
 static void parsing_with_null_opts_succeeds_without_args()
 {
-    assert_success(cpn_cmdparse_parse(NULL, 0, NULL));
+    assert_success(cpn_opts_parse(NULL, 0, NULL));
 }
 
 static void parsing_with_null_opts_fails_with_args()
@@ -80,129 +80,129 @@ static void parsing_with_null_opts_fails_with_args()
         "--misspelled"
     };
 
-    assert_failure(cpn_cmdparse_parse(NULL, ARRAY_SIZE(args), args));
+    assert_failure(cpn_opts_parse(NULL, ARRAY_SIZE(args), args));
 }
 
 static void parsing_opt_with_arg_succeeds()
 {
-    struct cpn_cmdparse_opt opts[] = {
-        CPN_CMDPARSE_OPT_STRING(0, "--test", NULL, NULL, false),
-        CPN_CMDPARSE_OPT_END
+    struct cpn_opt opts[] = {
+        CPN_OPTS_OPT_STRING(0, "--test", NULL, NULL, false),
+        CPN_OPTS_OPT_END
     };
     const char *args[] = {
         "--test", "value"
     };
 
-    assert_success(cpn_cmdparse_parse(opts, ARRAY_SIZE(args), args));
+    assert_success(cpn_opts_parse(opts, ARRAY_SIZE(args), args));
     assert_string_equal(opts[0].value.string, "value");
 }
 
 static void parsing_opt_without_argument_fails()
 {
-    struct cpn_cmdparse_opt opts[] = {
-        CPN_CMDPARSE_OPT_STRING(0, "--test", NULL, NULL, false),
-        CPN_CMDPARSE_OPT_END
+    struct cpn_opt opts[] = {
+        CPN_OPTS_OPT_STRING(0, "--test", NULL, NULL, false),
+        CPN_OPTS_OPT_END
     };
     const char *args[] = {
         "--test"
     };
 
-    assert_failure(cpn_cmdparse_parse(opts, ARRAY_SIZE(args), args));
+    assert_failure(cpn_opts_parse(opts, ARRAY_SIZE(args), args));
 }
 
 static void parsing_with_unset_optional_arg_succeeds()
 {
-    struct cpn_cmdparse_opt opts[] = {
-        CPN_CMDPARSE_OPT_STRING(0, "--test", NULL, NULL, false),
-        CPN_CMDPARSE_OPT_STRING(0, "--other", NULL, NULL, true),
-        CPN_CMDPARSE_OPT_END
+    struct cpn_opt opts[] = {
+        CPN_OPTS_OPT_STRING(0, "--test", NULL, NULL, false),
+        CPN_OPTS_OPT_STRING(0, "--other", NULL, NULL, true),
+        CPN_OPTS_OPT_END
     };
     const char *args[] = {
         "--test", "value"
     };
 
-    assert_success(cpn_cmdparse_parse(opts, ARRAY_SIZE(args), args));
+    assert_success(cpn_opts_parse(opts, ARRAY_SIZE(args), args));
     assert_string_equal(opts[0].value.string, "value");
 }
 
 static void parsing_multiple_args_succeeds()
 {
-    struct cpn_cmdparse_opt opts[] = {
-        CPN_CMDPARSE_OPT_STRING(0, "--test", NULL, NULL, false),
-        CPN_CMDPARSE_OPT_STRING(0, "--other", NULL, NULL, false),
-        CPN_CMDPARSE_OPT_END
+    struct cpn_opt opts[] = {
+        CPN_OPTS_OPT_STRING(0, "--test", NULL, NULL, false),
+        CPN_OPTS_OPT_STRING(0, "--other", NULL, NULL, false),
+        CPN_OPTS_OPT_END
     };
     const char *args[] = {
         "--test", "value",
         "--other", "other-value"
     };
 
-    assert_success(cpn_cmdparse_parse(opts, ARRAY_SIZE(args), args));
+    assert_success(cpn_opts_parse(opts, ARRAY_SIZE(args), args));
     assert_string_equal(opts[0].value.string, "value");
     assert_string_equal(opts[1].value.string, "other-value");
 }
 
 static void parsing_short_arg_succeeds()
 {
-    struct cpn_cmdparse_opt opts[] = {
-        CPN_CMDPARSE_OPT_STRING('t', NULL, NULL, NULL, false),
-        CPN_CMDPARSE_OPT_END
+    struct cpn_opt opts[] = {
+        CPN_OPTS_OPT_STRING('t', NULL, NULL, NULL, false),
+        CPN_OPTS_OPT_END
     };
     const char *args[] = {
         "-t", "value",
     };
 
-    assert_success(cpn_cmdparse_parse(opts, ARRAY_SIZE(args), args));
+    assert_success(cpn_opts_parse(opts, ARRAY_SIZE(args), args));
     assert_string_equal(opts[0].value.string, "value");
 }
 
 static void parsing_action_succeeds()
 {
-    static struct cpn_cmdparse_opt action_opts[] = {
-        CPN_CMDPARSE_OPT_END
+    static struct cpn_opt action_opts[] = {
+        CPN_OPTS_OPT_END
     };
-    struct cpn_cmdparse_opt opts[] = {
-        CPN_CMDPARSE_OPT_ACTION("action", NULL, action_opts),
-        CPN_CMDPARSE_OPT_END
+    struct cpn_opt opts[] = {
+        CPN_OPTS_OPT_ACTION("action", NULL, action_opts),
+        CPN_OPTS_OPT_END
     };
     const char *args[] = {
         "action"
     };
 
-    assert_success(cpn_cmdparse_parse(opts, ARRAY_SIZE(args), args));
+    assert_success(cpn_opts_parse(opts, ARRAY_SIZE(args), args));
     assert_true(opts[0].set);
 }
 
 static void parsing_action_with_additional_args_succeeds()
 {
-    static struct cpn_cmdparse_opt action_opts[] = {
-        CPN_CMDPARSE_OPT_STRING(0, "--test", NULL, NULL, false),
-        CPN_CMDPARSE_OPT_END
+    static struct cpn_opt action_opts[] = {
+        CPN_OPTS_OPT_STRING(0, "--test", NULL, NULL, false),
+        CPN_OPTS_OPT_END
     };
-    struct cpn_cmdparse_opt opts[] = {
-        CPN_CMDPARSE_OPT_ACTION("action", NULL, action_opts),
-        CPN_CMDPARSE_OPT_END
+    struct cpn_opt opts[] = {
+        CPN_OPTS_OPT_ACTION("action", NULL, action_opts),
+        CPN_OPTS_OPT_END
     };
     const char *args[] = {
         "action",
         "--test", "value"
     };
 
-    assert_success(cpn_cmdparse_parse(opts, ARRAY_SIZE(args), args));
+    assert_success(cpn_opts_parse(opts, ARRAY_SIZE(args), args));
     assert_true(opts[0].set);
     assert_string_equal(action_opts[0].value.string, "value");
 }
 
 static void parsing_action_with_duplicated_args_succeeds()
 {
-    static struct cpn_cmdparse_opt action_opts[] = {
-        CPN_CMDPARSE_OPT_STRING(0, "--test", NULL, NULL, false),
-        CPN_CMDPARSE_OPT_END
+    static struct cpn_opt action_opts[] = {
+        CPN_OPTS_OPT_STRING(0, "--test", NULL, NULL, false),
+        CPN_OPTS_OPT_END
     };
-    struct cpn_cmdparse_opt opts[] = {
-        CPN_CMDPARSE_OPT_STRING(0, "--test", NULL, NULL, false),
-        CPN_CMDPARSE_OPT_ACTION("action", NULL, action_opts),
-        CPN_CMDPARSE_OPT_END
+    struct cpn_opt opts[] = {
+        CPN_OPTS_OPT_STRING(0, "--test", NULL, NULL, false),
+        CPN_OPTS_OPT_ACTION("action", NULL, action_opts),
+        CPN_OPTS_OPT_END
     };
     const char *args[] = {
         "--test", "general-value",
@@ -210,7 +210,7 @@ static void parsing_action_with_duplicated_args_succeeds()
         "--test", "action-value"
     };
 
-    assert_success(cpn_cmdparse_parse(opts, ARRAY_SIZE(args), args));
+    assert_success(cpn_opts_parse(opts, ARRAY_SIZE(args), args));
     assert_string_equal(opts[0].value.string, "general-value");
     assert_true(opts[1].set);
     assert_string_equal(action_opts[0].value.string, "action-value");
@@ -218,220 +218,220 @@ static void parsing_action_with_duplicated_args_succeeds()
 
 static void parsing_action_with_general_arg_fails()
 {
-    static struct cpn_cmdparse_opt action_opts[] = {
-        CPN_CMDPARSE_OPT_END
+    static struct cpn_opt action_opts[] = {
+        CPN_OPTS_OPT_END
     };
-    struct cpn_cmdparse_opt opts[] = {
-        CPN_CMDPARSE_OPT_ACTION("action", NULL, action_opts),
-        CPN_CMDPARSE_OPT_STRING(0, "--test", NULL, NULL, false),
-        CPN_CMDPARSE_OPT_END
+    struct cpn_opt opts[] = {
+        CPN_OPTS_OPT_ACTION("action", NULL, action_opts),
+        CPN_OPTS_OPT_STRING(0, "--test", NULL, NULL, false),
+        CPN_OPTS_OPT_END
     };
     const char *args[] = {
         "action",
         "--test", "action-value"
     };
 
-    assert_failure(cpn_cmdparse_parse(opts, ARRAY_SIZE(args), args));
+    assert_failure(cpn_opts_parse(opts, ARRAY_SIZE(args), args));
 }
 
 static void parsing_uint32_succeeds()
 {
-    struct cpn_cmdparse_opt opts[] = {
-        CPN_CMDPARSE_OPT_UINT32(0, "--uint32", NULL, NULL, false),
-        CPN_CMDPARSE_OPT_END
+    struct cpn_opt opts[] = {
+        CPN_OPTS_OPT_UINT32(0, "--uint32", NULL, NULL, false),
+        CPN_OPTS_OPT_END
     };
     const char *args[] = {
         "--uint32", "12345"
     };
 
-    assert_success(cpn_cmdparse_parse(opts, ARRAY_SIZE(args), args));
+    assert_success(cpn_opts_parse(opts, ARRAY_SIZE(args), args));
     assert_int_equal(opts[0].value.uint32, 12345);
 }
 
 static void parsing_zero_succeeds()
 {
-    struct cpn_cmdparse_opt opts[] = {
-        CPN_CMDPARSE_OPT_UINT32(0, "--uint32", NULL, NULL, false),
-        CPN_CMDPARSE_OPT_END
+    struct cpn_opt opts[] = {
+        CPN_OPTS_OPT_UINT32(0, "--uint32", NULL, NULL, false),
+        CPN_OPTS_OPT_END
     };
     const char *args[] = {
         "--uint32", "0"
     };
 
-    assert_success(cpn_cmdparse_parse(opts, ARRAY_SIZE(args), args));
+    assert_success(cpn_opts_parse(opts, ARRAY_SIZE(args), args));
     assert_int_equal(opts[0].value.uint32, 0);
 }
 
 static void parsing_uint32_without_argument_fails()
 {
-    struct cpn_cmdparse_opt opts[] = {
-        CPN_CMDPARSE_OPT_UINT32(0, "--uint32", NULL, NULL, false),
-        CPN_CMDPARSE_OPT_END
+    struct cpn_opt opts[] = {
+        CPN_OPTS_OPT_UINT32(0, "--uint32", NULL, NULL, false),
+        CPN_OPTS_OPT_END
     };
     const char *args[] = {
         "--uint32"
     };
 
-    assert_failure(cpn_cmdparse_parse(opts, ARRAY_SIZE(args), args));
+    assert_failure(cpn_opts_parse(opts, ARRAY_SIZE(args), args));
 }
 
 static void parsing_negative_fails()
 {
-    struct cpn_cmdparse_opt opts[] = {
-        CPN_CMDPARSE_OPT_UINT32(0, "--uint32", NULL, NULL, false),
-        CPN_CMDPARSE_OPT_END
+    struct cpn_opt opts[] = {
+        CPN_OPTS_OPT_UINT32(0, "--uint32", NULL, NULL, false),
+        CPN_OPTS_OPT_END
     };
     const char *args[] = {
         "--uint32", "-1"
     };
 
-    assert_failure(cpn_cmdparse_parse(opts, ARRAY_SIZE(args), args));
+    assert_failure(cpn_opts_parse(opts, ARRAY_SIZE(args), args));
 }
 
 static void parsing_int_with_garbage_fails()
 {
-    struct cpn_cmdparse_opt opts[] = {
-        CPN_CMDPARSE_OPT_UINT32(0, "--uint32", NULL, NULL, false),
-        CPN_CMDPARSE_OPT_END
+    struct cpn_opt opts[] = {
+        CPN_OPTS_OPT_UINT32(0, "--uint32", NULL, NULL, false),
+        CPN_OPTS_OPT_END
     };
     const char *args[] = {
         "--uint32", "12345garbage"
     };
 
-    assert_failure(cpn_cmdparse_parse(opts, ARRAY_SIZE(args), args));
+    assert_failure(cpn_opts_parse(opts, ARRAY_SIZE(args), args));
 }
 
 static void parsing_sigkey_succeeds()
 {
-    struct cpn_cmdparse_opt opts[] = {
-        CPN_CMDPARSE_OPT_SIGKEY(0, "--key", NULL, NULL, false),
-        CPN_CMDPARSE_OPT_END
+    struct cpn_opt opts[] = {
+        CPN_OPTS_OPT_SIGKEY(0, "--key", NULL, NULL, false),
+        CPN_OPTS_OPT_END
     };
     const char *args[] = {
         "--key", "5178f420aaf894d36fd28a8e72681b377db14fc9e47a7eb51afe1a2905a45e55"
     };
 
-    assert_success(cpn_cmdparse_parse(opts, ARRAY_SIZE(args), args));
+    assert_success(cpn_opts_parse(opts, ARRAY_SIZE(args), args));
 }
 
 static void parsing_sigkey_with_wrong_length_fails()
 {
-    struct cpn_cmdparse_opt opts[] = {
-        CPN_CMDPARSE_OPT_SIGKEY(0, "--key", NULL, NULL, false),
-        CPN_CMDPARSE_OPT_END
+    struct cpn_opt opts[] = {
+        CPN_OPTS_OPT_SIGKEY(0, "--key", NULL, NULL, false),
+        CPN_OPTS_OPT_END
     };
     const char *args[] = {
         "--key", "5178f420aaf894d36fd28a8e72681b377db14fc9e47a7eb51afe"
     };
 
-    assert_failure(cpn_cmdparse_parse(opts, ARRAY_SIZE(args), args));
+    assert_failure(cpn_opts_parse(opts, ARRAY_SIZE(args), args));
 }
 
 static void parsing_sigkey_with_non_hex_fails()
 {
-    struct cpn_cmdparse_opt opts[] = {
-        CPN_CMDPARSE_OPT_SIGKEY(0, "--key", NULL, NULL, false),
-        CPN_CMDPARSE_OPT_END
+    struct cpn_opt opts[] = {
+        CPN_OPTS_OPT_SIGKEY(0, "--key", NULL, NULL, false),
+        CPN_OPTS_OPT_END
     };
     const char *args[] = {
         "--key", "zzzzz420aaf894d36fd28a8e72681b377db14fc9e47a7eb51afe1a2905a45e55"
     };
 
-    assert_failure(cpn_cmdparse_parse(opts, ARRAY_SIZE(args), args));
+    assert_failure(cpn_opts_parse(opts, ARRAY_SIZE(args), args));
 }
 
 static void parsing_sigkey_without_argument_fails()
 {
-    struct cpn_cmdparse_opt opts[] = {
-        CPN_CMDPARSE_OPT_SIGKEY(0, "--key", NULL, NULL, false),
-        CPN_CMDPARSE_OPT_END
+    struct cpn_opt opts[] = {
+        CPN_OPTS_OPT_SIGKEY(0, "--key", NULL, NULL, false),
+        CPN_OPTS_OPT_END
     };
     const char *args[] = {
         "--key"
     };
 
-    assert_failure(cpn_cmdparse_parse(opts, ARRAY_SIZE(args), args));
+    assert_failure(cpn_opts_parse(opts, ARRAY_SIZE(args), args));
 }
 
 static void parsing_counter_without_increments_succeeds()
 {
-    struct cpn_cmdparse_opt opts[] = {
-        CPN_CMDPARSE_OPT_COUNTER('i', "--increment", NULL),
-        CPN_CMDPARSE_OPT_END
+    struct cpn_opt opts[] = {
+        CPN_OPTS_OPT_COUNTER('i', "--increment", NULL),
+        CPN_OPTS_OPT_END
     };
 
-    assert_success(cpn_cmdparse_parse(opts, 0, NULL));
+    assert_success(cpn_opts_parse(opts, 0, NULL));
     assert_int_equal(opts[0].value.counter, 0);
 }
 
 static void parsing_counter_with_single_increment_succeeds()
 {
-    struct cpn_cmdparse_opt opts[] = {
-        CPN_CMDPARSE_OPT_COUNTER('i', "--increment", NULL),
-        CPN_CMDPARSE_OPT_END
+    struct cpn_opt opts[] = {
+        CPN_OPTS_OPT_COUNTER('i', "--increment", NULL),
+        CPN_OPTS_OPT_END
     };
     const char *args[] = {
         "-i"
     };
 
-    assert_success(cpn_cmdparse_parse(opts, ARRAY_SIZE(args), args));
+    assert_success(cpn_opts_parse(opts, ARRAY_SIZE(args), args));
     assert_int_equal(opts[0].value.counter, 1);
 }
 
 static void parsing_counter_with_multiple_increments_succeeds()
 {
-    struct cpn_cmdparse_opt opts[] = {
-        CPN_CMDPARSE_OPT_COUNTER('i', "--increment", NULL),
-        CPN_CMDPARSE_OPT_END
+    struct cpn_opt opts[] = {
+        CPN_OPTS_OPT_COUNTER('i', "--increment", NULL),
+        CPN_OPTS_OPT_END
     };
     const char *args[] = {
         "-i", "-i", "-i"
     };
 
-    assert_success(cpn_cmdparse_parse(opts, ARRAY_SIZE(args), args));
+    assert_success(cpn_opts_parse(opts, ARRAY_SIZE(args), args));
     assert_int_equal(opts[0].value.counter, 3);
 }
 
 static void parsing_counter_with_mixed_increments_succeeds()
 {
-    struct cpn_cmdparse_opt opts[] = {
-        CPN_CMDPARSE_OPT_COUNTER('i', "--increment", NULL),
-        CPN_CMDPARSE_OPT_END
+    struct cpn_opt opts[] = {
+        CPN_OPTS_OPT_COUNTER('i', "--increment", NULL),
+        CPN_OPTS_OPT_END
     };
     const char *args[] = {
         "-i", "--increment", "-i", "--increment"
     };
 
-    assert_success(cpn_cmdparse_parse(opts, ARRAY_SIZE(args), args));
+    assert_success(cpn_opts_parse(opts, ARRAY_SIZE(args), args));
     assert_int_equal(opts[0].value.counter, 4);
 }
 
 static void parsing_stringlist_with_single_argument_succeeds()
 {
-    struct cpn_cmdparse_opt opts[] = {
-        CPN_CMDPARSE_OPT_STRINGLIST(0, "--list", NULL, NULL, false),
-        CPN_CMDPARSE_OPT_END
+    struct cpn_opt opts[] = {
+        CPN_OPTS_OPT_STRINGLIST(0, "--list", NULL, NULL, false),
+        CPN_OPTS_OPT_END
     };
     const char *args[] = {
         "--list", "value"
     };
 
-    assert_success(cpn_cmdparse_parse(opts, ARRAY_SIZE(args), args));
+    assert_success(cpn_opts_parse(opts, ARRAY_SIZE(args), args));
     assert_int_equal(opts[0].value.stringlist.argc, 1);
     assert_string_equal(opts[0].value.stringlist.argv[0], "value");
 }
 
 static void parsing_stringlist_with_multiple_arguments_succeeds()
 {
-    struct cpn_cmdparse_opt opts[] = {
-        CPN_CMDPARSE_OPT_STRINGLIST(0, "--list", NULL, NULL, false),
-        CPN_CMDPARSE_OPT_END
+    struct cpn_opt opts[] = {
+        CPN_OPTS_OPT_STRINGLIST(0, "--list", NULL, NULL, false),
+        CPN_OPTS_OPT_END
     };
     const char *args[] = {
         "--list", "value", "other-value", "third-value"
     };
 
-    assert_success(cpn_cmdparse_parse(opts, ARRAY_SIZE(args), args));
+    assert_success(cpn_opts_parse(opts, ARRAY_SIZE(args), args));
     assert_int_equal(opts[0].value.stringlist.argc, 3);
     assert_string_equal(opts[0].value.stringlist.argv[0], "value");
     assert_string_equal(opts[0].value.stringlist.argv[1], "other-value");
@@ -440,15 +440,15 @@ static void parsing_stringlist_with_multiple_arguments_succeeds()
 
 static void parsing_stringlist_without_arguments_fails()
 {
-    struct cpn_cmdparse_opt opts[] = {
-        CPN_CMDPARSE_OPT_STRINGLIST(0, "--list", NULL, NULL, false),
-        CPN_CMDPARSE_OPT_END
+    struct cpn_opt opts[] = {
+        CPN_OPTS_OPT_STRINGLIST(0, "--list", NULL, NULL, false),
+        CPN_OPTS_OPT_END
     };
     const char *args[] = {
         "--list"
     };
 
-    assert_failure(cpn_cmdparse_parse(opts, ARRAY_SIZE(args), args));
+    assert_failure(cpn_opts_parse(opts, ARRAY_SIZE(args), args));
 }
 
 int cmdparse_test_run_suite(void)

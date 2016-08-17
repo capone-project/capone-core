@@ -89,9 +89,9 @@ static void *client(void *payload)
 
 int main(int argc, const char *argv[])
 {
-    struct cpn_cmdparse_opt opts[] = {
-        CPN_CMDPARSE_OPT_UINT32('l', "--block-length", NULL, NULL, false),
-        CPN_CMDPARSE_OPT_END
+    struct cpn_opt opts[] = {
+        CPN_OPTS_OPT_UINT32('l', "--block-length", NULL, NULL, false),
+        CPN_OPTS_OPT_END
     };
     struct cpn_thread t;
     struct client_args args;
@@ -100,7 +100,7 @@ int main(int argc, const char *argv[])
     uint64_t start, end, time;
     int i;
 
-    if (cpn_cmdparse_parse_cmd(opts, argc, argv) < 0)
+    if (cpn_opts_parse_cmd(opts, argc, argv) < 0)
         return -1;
 
     blocklen = opts[0].value.uint32;
