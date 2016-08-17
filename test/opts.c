@@ -69,6 +69,16 @@ static void parsing_with_invalid_option_fails()
     assert_failure(cpn_opts_parse(opts, ARRAY_SIZE(args), args));
 }
 
+static void parsing_with_unset_required_opt_fails()
+{
+    struct cpn_opt opts[] = {
+        CPN_OPTS_OPT_STRING(0, "--option", NULL, NULL, false),
+        CPN_OPTS_OPT_END
+    };
+
+    assert_failure(cpn_opts_parse(opts, 0, NULL));
+}
+
 static void parsing_with_null_opts_succeeds_without_args()
 {
     assert_success(cpn_opts_parse(NULL, 0, NULL));
@@ -585,6 +595,7 @@ int cmdparse_test_run_suite(void)
         test(parsing_with_no_opts_fails),
         test(parsing_opt_without_arg_fails),
         test(parsing_with_invalid_option_fails),
+        test(parsing_with_unset_required_opt_fails),
         test(parsing_with_null_opts_succeeds_without_args),
         test(parsing_with_null_opts_fails_with_args),
 
