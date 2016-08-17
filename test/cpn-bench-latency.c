@@ -20,9 +20,9 @@
 
 #include "capone/bench.h"
 #include "capone/channel.h"
-#include "capone/cmdparse.h"
 #include "capone/common.h"
 #include "capone/keys.h"
+#include "capone/opts.h"
 #include "capone/proto.h"
 #include "capone/server.h"
 

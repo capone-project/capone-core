@@ -13,10 +13,10 @@ IF(CMOCKA_FOUND)
         caps.c
         cfg.c
         channel.c
-        cmdparse.c
         common.c
         keys.c
         list.c
+        opts.c
         parameter.c
         proto.c
         server.c

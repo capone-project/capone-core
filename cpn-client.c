@@ -21,10 +21,10 @@
 #include <sodium.h>
 #include <inttypes.h>
 
-#include "capone/cmdparse.h"
 #include "capone/common.h"
 #include "capone/channel.h"
 #include "capone/global.h"
+#include "capone/opts.h"
 #include "capone/proto.h"
 #include "capone/service.h"
 

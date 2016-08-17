@@ -17,9 +17,9 @@
 
 #include <string.h>
 
-#include "capone/cmdparse.h"
 #include "capone/common.h"
 #include "capone/log.h"
+#include "capone/opts.h"
 
 #include "test.h"
 

@@ -17,8 +17,8 @@
 
 #include "test.h"
 
-#include "capone/cmdparse.h"
 #include "capone/common.h"
+#include "capone/opts.h"
 
 static int setup()
 {

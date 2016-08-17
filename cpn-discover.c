@@ -25,12 +25,12 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
-#include "capone/cmdparse.h"
-#include "capone/common.h"
 #include "capone/cfg.h"
+#include "capone/common.h"
 #include "capone/global.h"
 #include "capone/list.h"
 #include "capone/log.h"
+#include "capone/opts.h"
 #include "capone/proto.h"
 #include "capone/server.h"
 

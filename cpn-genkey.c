@@ -21,8 +21,8 @@
 #include <sodium.h>
 
 #include "capone/common.h"
-#include "capone/cmdparse.h"
 #include "capone/keys.h"
+#include "capone/opts.h"
 
 int main(int argc, const char *argv[])
 {

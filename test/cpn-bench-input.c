@@ -27,9 +27,9 @@
 #include <X11/extensions/XTest.h>
 
 #include "capone/bench.h"
-#include "capone/cmdparse.h"
-#include "capone/common.h"
 #include "capone/channel.h"
+#include "capone/common.h"
+#include "capone/opts.h"
 #include "capone/server.h"
 
 #define PORT "43269"

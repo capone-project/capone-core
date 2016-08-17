@@ -18,8 +18,8 @@
 #include <string.h>
 
 #include "capone/common.h"
-#include "capone/cmdparse.h"
 #include "capone/log.h"
+#include "capone/opts.h"
 
 static int parse_option(struct cpn_cmdparse_opt *opt, int argc, const char *argv[])
 {
