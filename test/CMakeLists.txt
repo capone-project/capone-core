@@ -21,6 +21,7 @@ IF(CMOCKA_FOUND)
         server.c
         service.c
         session.c
+        test.c
         test-service.c
         ${TEST_PROTO_SOURCES})
     TARGET_LINK_LIBRARIES(cpn-test capone cmocka)
