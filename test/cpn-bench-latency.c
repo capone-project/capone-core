@@ -18,7 +18,8 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "capone/bench.h"
+#include "bench.h"
+
 #include "capone/channel.h"
 #include "capone/common.h"
 #include "capone/keys.h"
