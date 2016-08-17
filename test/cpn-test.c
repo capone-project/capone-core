@@ -90,6 +90,26 @@ int main(int argc, const char *argv[])
     return 0;
 }
 
+void assert_file_equal(FILE *f, const char *expected)
+{
+    long size;
+    char *data;
+
+    assert_success(fseek(f, 0, SEEK_END));
+    size = ftell(f);
+    assert_success(fseek(f, 0, SEEK_SET));
+
+    data = malloc(size + 1);
+    assert_int_equal(fread(data, size, 1, f), 1);
+    data[size] = 0;
+
+    assert_success(fclose(f));
+
+    assert_string_equal(data, expected);
+
+    free(data);
+}
+
 int _execute_test_suite(const char *name, const struct CMUnitTest *tests, const size_t count,
         CMFixtureFunction setup, CMFixtureFunction teardown)
 {

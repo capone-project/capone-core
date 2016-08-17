@@ -29,6 +29,8 @@
 #define assert_success(fn) assert_int_equal((fn), 0)
 #define assert_failure(fn) assert_int_equal((fn), -1)
 
+void assert_file_equal(FILE *f, const char *expected);
+
 # define execute_test_suite(group_name, group_tests, group_setup, group_teardown) \
         _execute_test_suite(group_name, group_tests, sizeof(group_tests) / sizeof(group_tests)[0], group_setup, group_teardown)
 int _execute_test_suite(const char *name, const struct CMUnitTest *tests, const size_t count,
