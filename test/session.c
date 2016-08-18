@@ -24,6 +24,7 @@
 
 #include "test.h"
 
+static struct cpn_sign_key_public pk;
 static const struct cpn_session *session;
 
 static int setup()
@@ -42,12 +43,13 @@ static void add_sessions_adds_session()
 {
     struct cpn_session *removed;
 
-    assert_success(cpn_sessions_add(&session, 0, NULL));
+    assert_success(cpn_sessions_add(&session, 0, NULL, &pk));
     assert_success(cpn_sessions_remove(&removed, session->cap.objectid));
 
     assert_int_equal(removed->cap.objectid, session->cap.objectid);
     assert_int_equal(removed->argc, 0);
     assert_null(removed->argv);
+    assert_memory_equal(&removed->creator, &pk, sizeof(struct cpn_sign_key_public));
 
     cpn_session_free(removed);
 }
@@ -59,7 +61,7 @@ static void add_session_with_params_succeeds()
         "data", "block"
     };
 
-    assert_success(cpn_sessions_add(&session, ARRAY_SIZE(params), params));
+    assert_success(cpn_sessions_add(&session, ARRAY_SIZE(params), params, &pk));
     assert_success(cpn_sessions_remove(&removed, session->cap.objectid));
 
     assert_int_equal(removed->argc, 2);
@@ -71,7 +73,7 @@ static void add_session_with_params_succeeds()
 
 static void *add_session(void *ptr)
 {
-    assert_success(cpn_sessions_add((const struct cpn_session **) ptr, 0, NULL));
+    assert_success(cpn_sessions_add((const struct cpn_session **) ptr, 0, NULL, &pk));
 
     return NULL;
 }
@@ -102,7 +104,7 @@ static void adding_session_with_different_invoker_succeeds()
 {
     struct cpn_session *removed;
 
-    assert_success(cpn_sessions_add(&session, 0, NULL));
+    assert_success(cpn_sessions_add(&session, 0, NULL, &pk));
     assert_success(cpn_sessions_remove(&removed, session->cap.objectid));
 
     assert_int_equal(removed->cap.objectid, session->cap.objectid);
@@ -114,10 +116,10 @@ static void removing_session_twice_fails()
     struct cpn_session *removed;
     uint32_t objectid;
 
-    assert_success(cpn_sessions_add(&session, 0, NULL));
+    assert_success(cpn_sessions_add(&session, 0, NULL, &pk));
     objectid = session->cap.objectid;
 
-    assert_success(cpn_sessions_remove(&removed, objectid));
+    assert_success(cpn_sessions_remove(&removed, session->cap.objectid));
     cpn_session_free(removed);
     assert_failure(cpn_sessions_remove(&removed, objectid));
 }
@@ -145,7 +147,7 @@ static void finding_invalid_session_fails()
 
 static void finding_session_with_invalid_id_fails()
 {
-    assert_success(cpn_sessions_add(&session, 0, NULL));
+    assert_success(cpn_sessions_add(&session, 0, NULL, &pk));
     assert_failure(cpn_sessions_find(&session, session->cap.objectid + 1));
 }
 
@@ -153,7 +155,7 @@ static void finding_existing_session_succeeds()
 {
     const struct cpn_session *found;
 
-    assert_success(cpn_sessions_add(&session, 0, NULL));
+    assert_success(cpn_sessions_add(&session, 0, NULL, &pk));
     assert_success(cpn_sessions_find(&found, session->cap.objectid));
 
     assert_int_equal(found->cap.objectid, session->cap.objectid);
@@ -161,7 +163,7 @@ static void finding_existing_session_succeeds()
 
 static void finding_session_without_out_param_succeeds()
 {
-    assert_success(cpn_sessions_add(&session, 0, NULL));
+    assert_success(cpn_sessions_add(&session, 0, NULL, &pk));
     assert_success(cpn_sessions_find(NULL, session->cap.objectid));
 }
 
@@ -169,9 +171,9 @@ static void finding_intermediate_session_returns_correct_index()
 {
     const struct cpn_session *sessions[3];
 
-    assert_success(cpn_sessions_add(&sessions[0], 0, NULL));
-    assert_success(cpn_sessions_add(&sessions[1], 0, NULL));
-    assert_success(cpn_sessions_add(&sessions[2], 0, NULL));
+    assert_success(cpn_sessions_add(&sessions[0], 0, NULL, &pk));
+    assert_success(cpn_sessions_add(&sessions[1], 0, NULL, &pk));
+    assert_success(cpn_sessions_add(&sessions[2], 0, NULL, &pk));
 
     assert_success(cpn_sessions_find(&session, sessions[2]->cap.objectid));
     assert_int_equal(session, sessions[2]);
@@ -183,7 +185,7 @@ static void finding_session_with_multiple_sessions_succeeds()
     uint32_t i;
 
     for (i = 0; i < ARRAY_SIZE(sessions); i++)
-        assert_success(cpn_sessions_add(&sessions[i], 0, NULL));
+        assert_success(cpn_sessions_add(&sessions[i], 0, NULL, &pk));
 
     for (i = 0; i < ARRAY_SIZE(sessions); i++) {
         assert_success(cpn_sessions_find(&session, sessions[i]->cap.objectid));

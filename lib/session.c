@@ -29,7 +29,8 @@ static struct cpn_list sessions;
 
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
-int cpn_sessions_add(const struct cpn_session **out, int argc, const char **argv)
+int cpn_sessions_add(const struct cpn_session **out, int argc, const char **argv,
+        const struct cpn_sign_key_public *creator)
 {
     struct cpn_session *session;
     int i;
@@ -46,6 +47,8 @@ int cpn_sessions_add(const struct cpn_session **out, int argc, const char **argv
 
     if (cpn_cap_init(&session->cap) < 0)
         return -1;
+
+    memcpy(&session->creator, creator, sizeof(struct cpn_sign_key_public));
 
     pthread_mutex_lock(&mutex);
     cpn_list_append(&sessions, session);

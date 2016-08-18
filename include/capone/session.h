@@ -69,6 +69,9 @@ struct cpn_session {
     /** @brief Session capability used for access control */
     struct cpn_cap cap;
 
+    /** @brief Identity of the user who created the session */
+    struct cpn_sign_key_public creator;
+
     /** @brief Number of parameters */
     size_t argc;
     /** @brief Parameters chosen for the session */
@@ -96,9 +99,11 @@ int cpn_sessions_init(void);
  * @param[out] out The newly created session
  * @param[in] argc Number of arguments
  * @param[in] argv Session arguments
+ * @param[in] creator Creator of the session
  * @return <code>0</code> on success, <code>-1</code> otherwise
  */
-int cpn_sessions_add(const struct cpn_session **out, int argc, const char **argv);
+int cpn_sessions_add(const struct cpn_session **out, int argc, const char **argv,
+        const struct cpn_sign_key_public *creator);
 
 /** @brief Remove a session
  *

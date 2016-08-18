@@ -380,7 +380,8 @@ int cpn_proto_answer_request(struct cpn_channel *channel,
         goto out;
     }
 
-    if (cpn_sessions_add(&session, request->n_parameters, (const char **) request->parameters) < 0)
+    if (cpn_sessions_add(&session, request->n_parameters,
+                (const char **) request->parameters, remote_key) < 0)
     {
         cpn_log(LOG_LEVEL_ERROR, "Unable to add session");
         goto out;

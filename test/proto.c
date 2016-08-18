@@ -347,7 +347,7 @@ static void service_connects()
 
     cpn_spawn(&t, handle_session, &args);
 
-    assert_success(cpn_sessions_add(&session, ARRAY_SIZE(params), params));
+    assert_success(cpn_sessions_add(&session, ARRAY_SIZE(params), params, &remote_keys.pk));
     assert_success(cpn_caps_create_reference(&cap, &session->cap, CPN_CAP_RIGHT_EXEC, &local_keys.pk));
 
     assert_success(cpn_proto_initiate_encryption(&local, &local_keys,
@@ -388,7 +388,7 @@ static void termination_kills_session()
     const struct cpn_session *session;
     uint32_t sessionid;
 
-    assert_success(cpn_sessions_add(&session, 0, NULL));
+    assert_success(cpn_sessions_add(&session, 0, NULL, &remote_keys.pk));
     sessionid = session->cap.objectid;
 
     assert_success(cpn_caps_create_reference(&cap, &session->cap, CPN_CAP_RIGHT_TERM, &local_keys.pk));
