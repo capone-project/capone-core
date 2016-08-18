@@ -122,8 +122,12 @@ int cpn_sessions_clear(void)
 
 void cpn_session_free(struct cpn_session *session)
 {
+    size_t i;
+
     if (session == NULL)
         return;
+    for (i = 0; i < session->argc; i++)
+        free((char *) session->argv[i]);
     free(session->argv);
     free(session);
 }
