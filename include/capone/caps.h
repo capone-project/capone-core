@@ -54,33 +54,16 @@ int cpn_cap_from_protobuf(struct cpn_cap *out, const CapabilityMessage *msg);
 /** @brief Create Protobuf from capability */
 int cpn_cap_to_protobuf(CapabilityMessage *out, const struct cpn_cap *cap);
 
-/** @brief Add a new internal capability
+/** @brief Initialize a new internal capability
  *
- * This function adds a new global internal capabilty which
- * has as object identifier the given objectid. The internal
- * capability can later on be used to get external references,
- * which may be distributed to third parties.
+ * This function initializes a new internal capabilty. The
+ * internal capability can later on be used to get external
+ * references, which may be distributed to third parties.
  *
- * @param[in] objectid Object ID that should be saved inside t he
- *            internal capability
+ * @param[out] cap Capability to initialize.
  * @return <code>0</code> on success, <code>-1</code> otherwise
  */
-int cpn_caps_add(uint32_t objectid);
-
-/** @brief Delete internal capability
- *
- * Delete an existing internal capability with the given object
- * identifier.
- *
- * @param[in] objectid Object ID by which the capability shall
- *            be deleted.
- * @return <code>0</code> on success, <code>-1</code> if no
- *         capability was deleted
- */
-int cpn_caps_delete(uint32_t objectid);
-
-/** @brief Delete all internal capabilities */
-void cpn_caps_clear(void);
+int cpn_cap_init(struct cpn_cap *cap);
 
 /** @brief Create an external reference to an internal capability
  *
@@ -90,14 +73,14 @@ void cpn_caps_clear(void);
  * capability.
  *
  * @param[out] out Newly created capability reference
- * @param[in] objectid Object ID for which the reference shall be
- *            created
+ * @param[in] root Roto capability to create a reference for
  * @param[in] rights Rights granted with the new capability
  * @param[in] key Public signature key of the entity to whom the
  *            capability shall be granted
  * @return <code>0</code> on success, <code>-1</code> otherwise
  */
-int cpn_caps_create_reference(struct cpn_cap *out, uint32_t objectid, uint32_t rights, const struct cpn_sign_key_public *key);
+int cpn_caps_create_reference(struct cpn_cap *out, const struct cpn_cap *root,
+        uint32_t rights, const struct cpn_sign_key_public *key);
 
 /** @brief Verify that the given capability is valid
  *
@@ -111,7 +94,8 @@ int cpn_caps_create_reference(struct cpn_cap *out, uint32_t objectid, uint32_t r
  * @return <code>0</code> if the capability is valid for the
  *         given key and rights, <code>-1</code> otherwise
  */
-int cpn_caps_verify(const struct cpn_cap *ref, const struct cpn_sign_key_public *key, uint32_t rights);
+int cpn_caps_verify(const struct cpn_cap *ref, const struct cpn_cap *root,
+        const struct cpn_sign_key_public *key, uint32_t rights);
 
 #endif
 

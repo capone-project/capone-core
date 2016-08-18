@@ -85,7 +85,6 @@ static int teardown()
     cpn_channel_close(&local);
     cpn_channel_close(&remote);
     cpn_sessions_clear();
-    cpn_caps_clear();
     return 0;
 }
 
@@ -285,7 +284,7 @@ static void request_constructs_session()
     cpn_join(&t, NULL);
 
     assert_success(cpn_sessions_remove(&added, invoker.objectid));
-    assert_int_equal(invoker.objectid, added->sessionid);
+    assert_int_equal(invoker.objectid, added->cap.objectid);
 
     cpn_session_free(added);
 }
@@ -305,7 +304,7 @@ static void request_without_params_succeeds()
     cpn_join(&t, NULL);
 
     assert_success(cpn_sessions_remove(&added, invoker.objectid));
-    assert_int_equal(invoker.objectid, added->sessionid);
+    assert_int_equal(invoker.objectid, added->cap.objectid);
     assert_int_equal(added->argc, 0);
 
     cpn_session_free(added);
@@ -330,7 +329,7 @@ static void whitlisted_request_constructs_session()
     cpn_join(&t, NULL);
 
     assert_success(cpn_sessions_remove(&added, invoker.objectid));
-    assert_int_equal(invoker.objectid, added->sessionid);
+    assert_int_equal(invoker.objectid, added->cap.objectid);
 
     cpn_session_free(added);
 }
@@ -343,14 +342,13 @@ static void service_connects()
     };
     struct cpn_cap cap;
     struct cpn_thread t;
-    uint32_t sessionid;
+    const struct cpn_session *session;
     uint8_t *received;
 
     cpn_spawn(&t, handle_session, &args);
 
-    assert_success(cpn_sessions_add(&sessionid, ARRAY_SIZE(params), params));
-    assert_success(cpn_caps_add(sessionid));
-    assert_success(cpn_caps_create_reference(&cap, sessionid, CPN_CAP_RIGHT_EXEC, &local_keys.pk));
+    assert_success(cpn_sessions_add(&session, ARRAY_SIZE(params), params));
+    assert_success(cpn_caps_create_reference(&cap, &session->cap, CPN_CAP_RIGHT_EXEC, &local_keys.pk));
 
     assert_success(cpn_proto_initiate_encryption(&local, &local_keys,
                 &remote_keys.pk));
@@ -387,11 +385,13 @@ static void termination_kills_session()
     };
     struct cpn_thread t;
     struct cpn_cap cap;
+    const struct cpn_session *session;
     uint32_t sessionid;
 
-    assert_success(cpn_sessions_add(&sessionid, 0, NULL));
-    assert_success(cpn_caps_add(sessionid));
-    assert_success(cpn_caps_create_reference(&cap, sessionid, CPN_CAP_RIGHT_TERM, &local_keys.pk));
+    assert_success(cpn_sessions_add(&session, 0, NULL));
+    sessionid = session->cap.objectid;
+
+    assert_success(cpn_caps_create_reference(&cap, &session->cap, CPN_CAP_RIGHT_TERM, &local_keys.pk));
 
     cpn_spawn(&t, handle_termination, &args);
     assert_success(cpn_proto_initiate_termination(&local, &cap));

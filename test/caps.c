@@ -18,108 +18,76 @@
 #include <string.h>
 
 #include "capone/caps.h"
+#include "capone/common.h"
 
 #include "test.h"
 
+static struct cpn_cap root;
 static struct cpn_cap cap;
 static struct cpn_sign_key_public pk;
 static struct cpn_sign_key_public other_pk;
 
 static int setup()
 {
+    memset(&root, 0, sizeof(root));
     memset(&cap, 0, sizeof(cap));
     other_pk.data[0] = 1;
-    cpn_caps_clear();
     return 0;
 }
 
 static int teardown()
 {
-    cpn_caps_clear();
     return 0;
 }
 
 static void adding_capability_succeeds()
 {
-    assert_success(cpn_caps_add(1));
-}
-
-static void adding_capability_twice_fails()
-{
-    assert_success(cpn_caps_add(1));
-    assert_failure(cpn_caps_add(1));
+    assert_success(cpn_cap_init(&root));
 }
 
 static void adding_multiple_capabilities_succeeds()
 {
-    int i;
+    struct cpn_cap caps[10];
+    unsigned i;
 
-    for (i = 1; i < 10; i++)
-        assert_success(cpn_caps_add(i));
-}
-
-static void deleting_capability_succeeds()
-{
-    assert_success(cpn_caps_add(1));
-    assert_success(cpn_caps_delete(1));
-    assert_success(cpn_caps_add(1));
-}
-
-static void deleting_nonexistent_capability_fails()
-{
-    assert_failure(cpn_caps_delete(1));
-}
-
-static void deleting_different_capability_fails()
-{
-    assert_success(cpn_caps_add(1));
-    assert_failure(cpn_caps_delete(2));
-}
-
-static void clearing_capabilities_succeeds()
-{
-    assert_success(cpn_caps_add(1));
-    cpn_caps_clear();
-    assert_success(cpn_caps_add(1));
+    for (i = 0; i < ARRAY_SIZE(caps); i++)
+        assert_success(cpn_cap_init(&caps[i]));
+    for (i = 0; i < ARRAY_SIZE(caps) - 1; i++)
+        assert_int_not_equal(caps[i].objectid, caps[i + 1].objectid);
 }
 
 static void creating_ref_succeeds()
 {
-    assert_success(cpn_caps_add(1));
-    assert_success(cpn_caps_create_reference(&cap, 1, CPN_CAP_RIGHT_EXEC, &pk));
-}
-
-static void creating_ref_for_nonexistent_cap_fails()
-{
-    assert_failure(cpn_caps_create_reference(&cap, 1, CPN_CAP_RIGHT_EXEC, &pk));
+    assert_success(cpn_cap_init(&root));
+    assert_success(cpn_caps_create_reference(&cap, &root, CPN_CAP_RIGHT_EXEC, &pk));
 }
 
 static void verifying_valid_ref_succeeds()
 {
-    assert_success(cpn_caps_add(1));
-    assert_success(cpn_caps_create_reference(&cap, 1, CPN_CAP_RIGHT_EXEC, &pk));
-    assert_success(cpn_caps_verify(&cap, &pk, CPN_CAP_RIGHT_EXEC));
+    assert_success(cpn_cap_init(&root));
+    assert_success(cpn_caps_create_reference(&cap, &root, CPN_CAP_RIGHT_EXEC, &pk));
+    assert_success(cpn_caps_verify(&cap, &root, &pk, CPN_CAP_RIGHT_EXEC));
 }
 
 static void verifying_valid_ref_with_different_pk_fails()
 {
-    assert_success(cpn_caps_add(1));
-    assert_success(cpn_caps_create_reference(&cap, 1, CPN_CAP_RIGHT_EXEC, &pk));
-    assert_failure(cpn_caps_verify(&cap, &other_pk, CPN_CAP_RIGHT_EXEC));
+    assert_success(cpn_cap_init(&root));
+    assert_success(cpn_caps_create_reference(&cap, &root, CPN_CAP_RIGHT_EXEC, &pk));
+    assert_failure(cpn_caps_verify(&cap, &root, &other_pk, CPN_CAP_RIGHT_EXEC));
 }
 
 static void verifying_valid_ref_with_different_rights_fails()
 {
-    assert_success(cpn_caps_add(1));
-    assert_success(cpn_caps_create_reference(&cap, 1, CPN_CAP_RIGHT_EXEC, &pk));
-    assert_failure(cpn_caps_verify(&cap, &pk, CPN_CAP_RIGHT_TERM));
+    assert_success(cpn_cap_init(&root));
+    assert_success(cpn_caps_create_reference(&cap, &root, CPN_CAP_RIGHT_EXEC, &pk));
+    assert_failure(cpn_caps_verify(&cap, &root, &pk, CPN_CAP_RIGHT_TERM));
 }
 
 static void verifying_valid_ref_with_additional_rights_fails()
 {
-    assert_success(cpn_caps_add(1));
-    assert_success(cpn_caps_create_reference(&cap, 1, CPN_CAP_RIGHT_EXEC, &pk));
-    assert_failure(cpn_caps_verify(&cap, &pk, CPN_CAP_RIGHT_EXEC | CPN_CAP_RIGHT_TERM));
+    assert_success(cpn_cap_init(&root));
+    assert_success(cpn_caps_create_reference(&cap, &root, CPN_CAP_RIGHT_EXEC, &pk));
+    assert_failure(cpn_caps_verify(&cap, &root, &pk, CPN_CAP_RIGHT_EXEC | CPN_CAP_RIGHT_TERM));
 }
 
 static void parsing_cap_succeeds()
@@ -172,17 +140,9 @@ int caps_test_run_suite(void)
 {
     const struct CMUnitTest tests[] = {
         test(adding_capability_succeeds),
-        test(adding_capability_twice_fails),
         test(adding_multiple_capabilities_succeeds),
 
-        test(deleting_capability_succeeds),
-        test(deleting_nonexistent_capability_fails),
-        test(deleting_different_capability_fails),
-
-        test(clearing_capabilities_succeeds),
-
         test(creating_ref_succeeds),
-        test(creating_ref_for_nonexistent_cap_fails),
 
         test(verifying_valid_ref_succeeds),
         test(verifying_valid_ref_with_different_pk_fails),
