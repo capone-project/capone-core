@@ -61,12 +61,16 @@
 
 #include <inttypes.h>
 
+#include "capone/caps.h"
 #include "capone/keys.h"
 
 /** @brief A session wrapping identities and parameters */
 struct cpn_session {
-    /** @brief Session identifier used to distinguish sessions */
-    uint32_t sessionid;
+    /** @brief Session capability used for access control */
+    struct cpn_cap cap;
+
+    /** @brief Identity of the user who created the session */
+    struct cpn_sign_key_public creator;
 
     /** @brief Number of parameters */
     size_t argc;
@@ -92,12 +96,14 @@ int cpn_sessions_init(void);
  * This function may fail if a session with the same session
  * identifier and invoker has already been specified.
  *
- * @param[out] out The ID of the newly created session.
+ * @param[out] out The newly created session
  * @param[in] argc Number of arguments
  * @param[in] argv Session arguments
+ * @param[in] creator Creator of the session
  * @return <code>0</code> on success, <code>-1</code> otherwise
  */
-int cpn_sessions_add(uint32_t *out, int argc, const char **argv);
+int cpn_sessions_add(const struct cpn_session **out, int argc, const char **argv,
+        const struct cpn_sign_key_public *creator);
 
 /** @brief Remove a session
  *
@@ -121,7 +127,7 @@ int cpn_sessions_remove(struct cpn_session **out, uint32_t sessionid);
  * @return <code>0</code> if the session has been found,
  *         <code>-1</code> otherwise
  */
-int cpn_sessions_find(struct cpn_session **out, uint32_t sessionid);
+int cpn_sessions_find(const struct cpn_session **out, uint32_t sessionid);
 
 /** @brief Remove all established sessions
  *

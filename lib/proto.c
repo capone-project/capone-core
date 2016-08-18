@@ -180,7 +180,13 @@ int cpn_proto_handle_session(struct cpn_channel *channel,
         goto out_notify;
     }
 
-    if (cpn_caps_verify(&cap, remote_key, CPN_CAP_RIGHT_EXEC) < 0) {
+    if (cpn_sessions_find((const struct cpn_session **) &session, cap.objectid) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Could not find session for client");
+        err = -1;
+        goto out_notify;
+    }
+
+    if (cpn_caps_verify(&cap, &session->cap, remote_key, CPN_CAP_RIGHT_EXEC) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not authorize session initiation");
         err = -1;
         goto out_notify;
@@ -331,12 +337,12 @@ void cpn_query_results_free(struct cpn_query_results *results)
     results->port = NULL;
 }
 
-static int create_cap(CapabilityMessage **out, uint32_t objectid, uint32_t rights, const struct cpn_sign_key_public *key)
+static int create_cap(CapabilityMessage **out, const struct cpn_cap *root, uint32_t rights, const struct cpn_sign_key_public *key)
 {
     CapabilityMessage *msg;
     struct cpn_cap cap;
 
-    if (cpn_caps_create_reference(&cap, objectid, rights, key) < 0)
+    if (cpn_caps_create_reference(&cap, root, rights, key) < 0)
         return -1;
 
     msg = malloc(sizeof(CapabilityMessage));
@@ -356,7 +362,7 @@ int cpn_proto_answer_request(struct cpn_channel *channel,
     SessionRequestMessage *request = NULL;
     SessionMessage session_message = SESSION_MESSAGE__INIT;
     struct cpn_sign_key_public identity_key;
-    uint32_t sessionid;
+    const struct cpn_session *session;
     int err = -1;
 
     if (cpn_channel_receive_protobuf(channel,
@@ -374,29 +380,25 @@ int cpn_proto_answer_request(struct cpn_channel *channel,
         goto out;
     }
 
-    if (cpn_sessions_add(&sessionid, request->n_parameters, (const char **) request->parameters) < 0)
+    if (cpn_sessions_add(&session, request->n_parameters,
+                (const char **) request->parameters, remote_key) < 0)
     {
         cpn_log(LOG_LEVEL_ERROR, "Unable to add session");
         goto out;
     }
 
-    if (cpn_caps_add(sessionid) < 0) {
-        cpn_log(LOG_LEVEL_ERROR, "Unable to add internal capability");
-        goto out;
-    }
-
-    if (create_cap(&session_message.invoker_cap, sessionid, CPN_CAP_RIGHT_EXEC | CPN_CAP_RIGHT_TERM, &identity_key) < 0) {
+    if (create_cap(&session_message.invoker_cap, &session->cap, CPN_CAP_RIGHT_EXEC | CPN_CAP_RIGHT_TERM, &identity_key) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to add invoker capability");
         goto out;
     }
-    if (create_cap(&session_message.requester_cap, sessionid, CPN_CAP_RIGHT_TERM, remote_key) < 0) {
+    if (create_cap(&session_message.requester_cap, &session->cap, CPN_CAP_RIGHT_TERM, remote_key) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to add invoker capability");
         goto out;
     }
 
     if (cpn_channel_write_protobuf(channel, &session_message.base) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to send connection session");
-        cpn_caps_delete(sessionid);
+        cpn_sessions_remove(NULL, session->cap.objectid);
         goto out;
     }
 
@@ -440,7 +442,7 @@ int cpn_proto_handle_termination(struct cpn_channel *channel,
         const struct cpn_sign_key_public *remote_key)
 {
     SessionTerminationMessage *msg = NULL;
-    struct cpn_session *session;
+    const struct cpn_session *session;
     struct cpn_cap cap;
     int err = -1;
 
@@ -462,7 +464,7 @@ int cpn_proto_handle_termination(struct cpn_channel *channel,
         goto out;
     }
 
-    if (cpn_caps_verify(&cap, remote_key, CPN_CAP_RIGHT_TERM) < 0) {
+    if (cpn_caps_verify(&cap, &session->cap, remote_key, CPN_CAP_RIGHT_TERM) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Received unauthorized request");
         goto out;
     }

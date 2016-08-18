@@ -184,7 +184,7 @@ int cpn_service_from_config(struct cpn_service *out, const char *name, const str
 int cpn_service_from_section(struct cpn_service *out, const struct cpn_cfg_section *section)
 {
     struct cpn_service service;
-    const char *type = NULL;
+    char *type = NULL;
     unsigned i;
 
     memset(&service, 0, sizeof(service));
@@ -228,12 +228,14 @@ int cpn_service_from_section(struct cpn_service *out, const struct cpn_cfg_secti
         goto out_err;
     }
 
+    free(type);
     memcpy(out, &service, sizeof(service));
 
     return 0;
 
 out_err:
     cpn_service_free(&service);
+    free(type);
 
     return -1;
 }

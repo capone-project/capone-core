@@ -17,23 +17,20 @@
 
 #include <sodium.h>
 #include <string.h>
+#include <pthread.h>
 
 #include "capone/caps.h"
 #include "capone/common.h"
 #include "capone/list.h"
 #include "capone/log.h"
 
-struct caps {
-    uint32_t objectid;
-    uint8_t secret[CPN_CAP_SECRET_LEN];
-};
-
-static struct cpn_list clist;
+static uint32_t objectid = 0;
+static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static int hash(uint8_t *out,
         uint32_t objectid,
         uint32_t rights,
-        uint8_t *secret,
+        const uint8_t *secret,
         const struct cpn_sign_key_public *key)
 {
     crypto_generichash_state state;
@@ -110,96 +107,44 @@ int cpn_cap_to_protobuf(CapabilityMessage *out, const struct cpn_cap *cap)
     return 0;
 }
 
-int cpn_caps_add(uint32_t objectid)
+int cpn_cap_init(struct cpn_cap *cap)
 {
-    struct caps *e, *cap;
-    struct cpn_list_entry *it;
-
-    cpn_list_foreach(&clist, it, e) {
-        if (e->objectid == objectid)
-            return -1;
-    }
-
-    cap = malloc(sizeof(struct caps));
-    cap->objectid = objectid;
+    cap->rights = CPN_CAP_RIGHT_EXEC | CPN_CAP_RIGHT_TERM;
     randombytes_buf(cap->secret, CPN_CAP_SECRET_LEN);
-    cpn_list_append(&clist, cap);
+
+    pthread_mutex_lock(&mutex);
+    cap->objectid = objectid++;
+    pthread_mutex_unlock(&mutex);
 
     return 0;
 }
 
-void cpn_caps_clear(void)
+int cpn_caps_create_reference(struct cpn_cap *out, const struct cpn_cap *root,
+        uint32_t rights, const struct cpn_sign_key_public *key)
 {
-    struct cpn_list_entry *it;
-
-    cpn_list_foreach_entry(&clist, it)
-        free(it->data);
-    cpn_list_clear(&clist);
-}
-
-int cpn_caps_delete(uint32_t objectid)
-{
-    struct cpn_list_entry *it, *next;
-    struct caps *c;
-    int ret = -1;
-
-    for (it = clist.head; it; it = next) {
-        next = it->next;
-        c = (struct caps *) it->data;
-
-        if (c->objectid != objectid)
-            continue;
-
-        cpn_list_remove(&clist, it);
-        free(c);
-
-        ret = 0;
-    }
-
-    return ret;
-}
-
-int cpn_caps_create_reference(struct cpn_cap *out, uint32_t objectid, uint32_t rights, const struct cpn_sign_key_public *key)
-{
-    struct cpn_list_entry *it;
-    struct caps *e;
-
-    cpn_list_foreach(&clist, it, e) {
-        if (e->objectid == objectid)
-            break;
-    }
-
-    if (!e)
-        return -1;
-
-    out->objectid = objectid;
+    out->objectid = root->objectid;
     out->rights = rights;
-    hash(out->secret, objectid, rights, e->secret, key);
+    hash(out->secret, root->objectid, rights, root->secret, key);
 
     return 0;
 }
 
-int cpn_caps_verify(const struct cpn_cap *ref, const struct cpn_sign_key_public *key, uint32_t rights)
+int cpn_caps_verify(const struct cpn_cap *ref, const struct cpn_cap *root,
+        const struct cpn_sign_key_public *key, uint32_t rights)
 {
-    struct cpn_list_entry *it;
-    struct caps *e;
     uint8_t secret[CPN_CAP_SECRET_LEN];
 
     if (rights & ~ref->rights)
         return -1;
 
-    cpn_list_foreach(&clist, it, e) {
-        /* Object ID must match */
-        if (ref->objectid != e->objectid)
-            continue;
-        /* Secret must the root secret */
-        if (hash(secret, ref->objectid, ref->rights, e->secret, key) < 0)
-            continue;
-        if (memcmp(secret, ref->secret, CPN_CAP_SECRET_LEN))
-            continue;
+    /* Object ID must match */
+    if (ref->objectid != root->objectid)
+        return -1;
+    /* Secret must the root secret */
+    if (hash(secret, ref->objectid, ref->rights, root->secret, key) < 0)
+        return -1;
+    if (memcmp(secret, ref->secret, CPN_CAP_SECRET_LEN))
+        return -1;
 
-        return 0;
-    }
-
-    return -1;
+    return 0;
 }
