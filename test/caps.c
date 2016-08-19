@@ -53,7 +53,7 @@ static void adding_multiple_capabilities_succeeds()
     for (i = 0; i < ARRAY_SIZE(caps); i++)
         assert_success(cpn_cap_init(&caps[i]));
     for (i = 0; i < ARRAY_SIZE(caps) - 1; i++)
-        assert_int_not_equal(caps[i].objectid, caps[i + 1].objectid);
+        assert_memory_not_equal(&caps[i].secret, &caps[i + 1].secret, sizeof(caps[i].secret));
 }
 
 static void creating_ref_succeeds()
@@ -92,48 +92,33 @@ static void verifying_valid_ref_with_additional_rights_fails()
 
 static void parsing_cap_succeeds()
 {
-    const char id[] = "1380947";
     char secret[CPN_CAP_SECRET_LEN * 2 + 1];
 
     memset(secret, 'a', sizeof(secret) - 1);
     secret[sizeof(secret) - 1] = '\0';
 
-    assert_success(cpn_cap_parse(&cap, id, secret, CPN_CAP_RIGHT_EXEC));
-    assert_int_equal(cap.objectid, 1380947);
-}
-
-static void parsing_cap_with_invalid_id_fails()
-{
-    const char id[] = "-1";
-    char secret[CPN_CAP_SECRET_LEN * 2 + 1];
-
-    memset(secret, 'a', sizeof(secret) - 1);
-    secret[sizeof(secret) - 1] = '\0';
-
-    assert_failure(cpn_cap_parse(&cap, id, secret, CPN_CAP_RIGHT_EXEC));
+    assert_success(cpn_cap_parse(&cap, secret, CPN_CAP_RIGHT_EXEC));
 }
 
 static void parsing_cap_with_invalid_secret_length_fails()
 {
-    const char id[] = "-1";
     char secret[CPN_CAP_SECRET_LEN * 2];
 
     memset(secret, 'a', sizeof(secret) - 1);
     secret[sizeof(secret) - 1] = '\0';
 
-    assert_failure(cpn_cap_parse(&cap, id, secret, CPN_CAP_RIGHT_EXEC));
+    assert_failure(cpn_cap_parse(&cap, secret, CPN_CAP_RIGHT_EXEC));
 }
 
 static void parsing_cap_with_invalid_secret_chars_fails()
 {
-    const char id[] = "-1";
     char secret[CPN_CAP_SECRET_LEN * 2];
 
     memset(secret, 'a', sizeof(secret) - 1);
     secret[sizeof(secret) - 2] = 'x';
     secret[sizeof(secret) - 1] = '\0';
 
-    assert_failure(cpn_cap_parse(&cap, id, secret, CPN_CAP_RIGHT_EXEC));
+    assert_failure(cpn_cap_parse(&cap, secret, CPN_CAP_RIGHT_EXEC));
 }
 
 int caps_test_run_suite(void)
@@ -150,7 +135,6 @@ int caps_test_run_suite(void)
         test(verifying_valid_ref_with_additional_rights_fails),
 
         test(parsing_cap_succeeds),
-        test(parsing_cap_with_invalid_id_fails),
         test(parsing_cap_with_invalid_secret_length_fails),
         test(parsing_cap_with_invalid_secret_chars_fails)
     };

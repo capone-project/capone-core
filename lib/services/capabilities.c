@@ -158,6 +158,7 @@ static int relay_capability_request(struct cpn_channel *channel,
     struct cpn_sign_key_pair local_keys;
     struct cpn_sign_key_public service_key, invoker_key;
     struct cpn_cap requester_cap, invoker_cap;
+    uint32_t sessionid;
     int ret = 0;
 
     memset(&service_channel, 0, sizeof(struct cpn_channel));
@@ -179,7 +180,7 @@ static int relay_capability_request(struct cpn_channel *channel,
         goto out;
     }
 
-    if ((ret = cpn_proto_send_request(&invoker_cap, &requester_cap,
+    if ((ret = cpn_proto_send_request(&sessionid, &invoker_cap, &requester_cap,
                     &service_channel, &invoker_key,
                     request->n_parameters, (const char **) request->parameters)) < 0)
     {
@@ -188,6 +189,7 @@ static int relay_capability_request(struct cpn_channel *channel,
     }
 
     cap_message.requestid = request->requestid;
+    cap_message.sessionid = sessionid;
     cap_message.identity.data = invoker_key.data;
     cap_message.identity.len = sizeof(invoker_key.data);
     cap_message.service.data = service_key.data;
@@ -316,7 +318,7 @@ static int invoke_request(struct cpn_channel *channel)
            "sessionid:  %"PRIu32"\n"
            "secret:     %s\n",
            identity_hex.data, service_hex.data,
-           capability->capability->objectid, cap_hex);
+           capability->sessionid, cap_hex);
 
     capability__free_unpacked(capability, NULL);
 

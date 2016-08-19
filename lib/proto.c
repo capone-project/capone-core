@@ -113,12 +113,14 @@ int cpn_proto_receive_connection_type(enum cpn_connection_type *out,
 }
 
 int cpn_proto_initiate_session(struct cpn_channel *channel,
+        uint32_t sessionid,
         const struct cpn_cap *cap)
 {
     SessionInitiationMessage initiation = SESSION_INITIATION_MESSAGE__INIT;
     SessionResult *result = NULL;
     int ret = 0;
 
+    initiation.identifier = sessionid;
     initiation.capability = malloc(sizeof(CapabilityMessage));
     if (cpn_cap_to_protobuf(initiation.capability, cap) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not read capability");
@@ -180,7 +182,7 @@ int cpn_proto_handle_session(struct cpn_channel *channel,
         goto out_notify;
     }
 
-    if (cpn_sessions_find((const struct cpn_session **) &session, cap.objectid) < 0) {
+    if (cpn_sessions_find((const struct cpn_session **) &session, initiation->identifier) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not find session for client");
         err = -1;
         goto out_notify;
@@ -192,7 +194,7 @@ int cpn_proto_handle_session(struct cpn_channel *channel,
         goto out_notify;
     }
 
-    if ((err = cpn_sessions_remove(&session, cap.objectid)) < 0) {
+    if ((err = cpn_sessions_remove(&session, initiation->identifier)) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not find session for client");
         goto out_notify;
     }
@@ -221,7 +223,8 @@ out:
     return 0;
 }
 
-int cpn_proto_send_request(struct cpn_cap *invoker_cap,
+int cpn_proto_send_request(uint32_t *sessionid,
+        struct cpn_cap *invoker_cap,
         struct cpn_cap *requester_cap,
         struct cpn_channel *channel,
         const struct cpn_sign_key_public *invoker,
@@ -254,6 +257,8 @@ int cpn_proto_send_request(struct cpn_cap *invoker_cap,
         cpn_log(LOG_LEVEL_ERROR, "Unable to read capabilities");
         goto out;
     }
+
+    *sessionid = session->identifier;
 
     err = 0;
 
@@ -387,6 +392,8 @@ int cpn_proto_answer_request(struct cpn_channel *channel,
         goto out;
     }
 
+    session_message.identifier = session->identifier;
+
     if (create_cap(&session_message.invoker_cap, &session->cap, CPN_CAP_RIGHT_EXEC | CPN_CAP_RIGHT_TERM, &identity_key) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to add invoker capability");
         goto out;
@@ -398,7 +405,7 @@ int cpn_proto_answer_request(struct cpn_channel *channel,
 
     if (cpn_channel_write_protobuf(channel, &session_message.base) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to send connection session");
-        cpn_sessions_remove(NULL, session->cap.objectid);
+        cpn_sessions_remove(NULL, session->identifier);
         goto out;
     }
 
@@ -416,11 +423,12 @@ out:
 }
 
 int cpn_proto_initiate_termination(struct cpn_channel *channel,
-        const struct cpn_cap *cap)
+        uint32_t sessionid, const struct cpn_cap *cap)
 {
     SessionTerminationMessage msg = SESSION_TERMINATION_MESSAGE__INIT;
     int err = 0;
 
+    msg.identifier = sessionid;
     msg.capability = malloc(sizeof(CapabilityMessage));
     if ((err = cpn_cap_to_protobuf(msg.capability, cap)) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to write termination message");
@@ -455,7 +463,7 @@ int cpn_proto_handle_termination(struct cpn_channel *channel,
     }
 
     /* If session could not be found we have nothing to do */
-    if (cpn_sessions_find(&session, msg->capability->objectid) < 0) {
+    if (cpn_sessions_find(&session, msg->identifier) < 0) {
         goto out;
     }
 
@@ -469,7 +477,7 @@ int cpn_proto_handle_termination(struct cpn_channel *channel,
         goto out;
     }
 
-    if (cpn_sessions_remove(NULL, cap.objectid) < 0) {
+    if (cpn_sessions_remove(NULL, msg->identifier) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to terminate session");
         goto out;
     }

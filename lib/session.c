@@ -26,6 +26,7 @@
 #include "capone/session.h"
 
 static struct cpn_list sessions;
+static uint32_t sessionid;
 
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -51,6 +52,7 @@ int cpn_sessions_add(const struct cpn_session **out, int argc, const char **argv
     memcpy(&session->creator, creator, sizeof(struct cpn_sign_key_public));
 
     pthread_mutex_lock(&mutex);
+    session->identifier = sessionid++;
     cpn_list_append(&sessions, session);
     pthread_mutex_unlock(&mutex);
 
@@ -68,7 +70,7 @@ int cpn_sessions_remove(struct cpn_session **out, uint32_t sessionid)
 
     pthread_mutex_lock(&mutex);
     cpn_list_foreach(&sessions, it, s) {
-        if (s->cap.objectid == sessionid) {
+        if (s->identifier == sessionid) {
             cpn_list_remove(&sessions, it);
             if (out)
                 *out = s;
@@ -93,7 +95,7 @@ int cpn_sessions_find(const struct cpn_session **out, uint32_t sessionid)
     struct cpn_session *s;
 
     cpn_list_foreach(&sessions, it, s) {
-        if (s->cap.objectid == sessionid) {
+        if (s->identifier == sessionid) {
             if (out)
                 *out = s;
 

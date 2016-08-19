@@ -38,14 +38,14 @@ static struct cpn_opt request_opts[] = {
 static struct cpn_opt connect_opts[] = {
     CPN_OPTS_OPT_STRING('c', "--service-type",
             "Type of service which is to be invoked", "TYPE", false),
-    CPN_OPTS_OPT_STRING(0, "--session-id", NULL, "ID", false),
+    CPN_OPTS_OPT_UINT32(0, "--session-id", NULL, "ID", false),
     CPN_OPTS_OPT_STRING('c', "--session-cap", NULL, "CAP", false),
     CPN_OPTS_OPT_STRINGLIST(0, "--parameters", NULL, "PARAMETER", false),
     CPN_OPTS_OPT_END
 };
 
 static struct cpn_opt terminate_opts[] = {
-    CPN_OPTS_OPT_STRING(0, "--session-id", NULL, "ID", false),
+    CPN_OPTS_OPT_UINT32(0, "--session-id", NULL, "ID", false),
     CPN_OPTS_OPT_STRING('c', "--session-cap", NULL, "CAP", false),
     CPN_OPTS_OPT_END
 };
@@ -117,6 +117,7 @@ static int cmd_request(const struct cpn_sign_key_public *invoker_key,
     char invoker_hex[CPN_CAP_SECRET_LEN * 2 + 1], requester_hex[CPN_CAP_SECRET_LEN * 2 + 1];
     struct cpn_cap requester_cap, invoker_cap;
     struct cpn_channel channel;
+    uint32_t sessionid;
 
     memset(&channel, 0, sizeof(channel));
 
@@ -126,7 +127,7 @@ static int cmd_request(const struct cpn_sign_key_public *invoker_key,
         goto out_err;
     }
 
-    if (cpn_proto_send_request(&invoker_cap, &requester_cap,
+    if (cpn_proto_send_request(&sessionid, &invoker_cap, &requester_cap,
                 &channel, invoker_key, parameters->argc, parameters->argv) < 0)
     {
         puts("Unable to request session");
@@ -141,8 +142,7 @@ static int cmd_request(const struct cpn_sign_key_public *invoker_key,
     printf("sessionid:          %"PRIu32"\n"
            "invoker-secret:     %s\n"
            "requester-secret:   %s\n",
-           invoker_cap.objectid,
-           invoker_hex, requester_hex);
+           sessionid, invoker_hex, requester_hex);
 
     cpn_channel_close(&channel);
 
@@ -153,7 +153,7 @@ out_err:
     return -1;
 }
 
-static int cmd_connect(const char *service_type, const char *session,
+static int cmd_connect(const char *service_type, uint32_t sessionid,
         const char *capability,
         const struct cpn_opts_stringlist *parameters)
 {
@@ -166,7 +166,7 @@ static int cmd_connect(const char *service_type, const char *session,
         return -1;
     }
 
-    if (cpn_cap_parse(&cap, session, capability, CPN_CAP_RIGHT_EXEC | CPN_CAP_RIGHT_TERM) < 0) {
+    if (cpn_cap_parse(&cap, capability, CPN_CAP_RIGHT_EXEC | CPN_CAP_RIGHT_TERM) < 0) {
         puts("Invalid capability");
         return -1;
     }
@@ -177,7 +177,7 @@ static int cmd_connect(const char *service_type, const char *session,
         return -1;
     }
 
-    if (cpn_proto_initiate_session(&channel, &cap) < 0) {
+    if (cpn_proto_initiate_session(&channel, sessionid, &cap) < 0) {
         puts("Could not connect to session");
         return -1;
     }
@@ -192,12 +192,12 @@ static int cmd_connect(const char *service_type, const char *session,
     return 0;
 }
 
-static int cmd_terminate(const char *session, const char *capability)
+static int cmd_terminate(uint32_t sessionid, const char *capability)
 {
     struct cpn_channel channel;
     struct cpn_cap cap;
 
-    if (cpn_cap_parse(&cap, session, capability, CPN_CAP_RIGHT_TERM) < 0) {
+    if (cpn_cap_parse(&cap, capability, CPN_CAP_RIGHT_TERM) < 0) {
         puts("Invalid capability\n");
         return -1;
     }
@@ -208,7 +208,7 @@ static int cmd_terminate(const char *session, const char *capability)
         return -1;
     }
 
-    if (cpn_proto_initiate_termination(&channel, &cap) < 0) {
+    if (cpn_proto_initiate_termination(&channel, sessionid, &cap) < 0) {
         puts("Could not initiate termination");
         return -1;
     }
@@ -241,11 +241,11 @@ int main(int argc, const char *argv[])
                 &request_opts[1].value.stringlist);
     else if (opts[6].set)
         return cmd_connect(connect_opts[0].value.string,
-               connect_opts[1].value.string,
+               connect_opts[1].value.uint32,
                connect_opts[2].value.string,
                &connect_opts[3].value.stringlist);
     else if (opts[7].set)
-        return cmd_terminate(terminate_opts[0].value.string,
+        return cmd_terminate(terminate_opts[0].value.uint32,
                 terminate_opts[1].value.string);
 
     return 0;

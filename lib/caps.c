@@ -24,11 +24,7 @@
 #include "capone/list.h"
 #include "capone/log.h"
 
-static uint32_t objectid = 0;
-static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-
 static int hash(uint8_t *out,
-        uint32_t objectid,
         uint32_t rights,
         const uint8_t *secret,
         const struct cpn_sign_key_public *key)
@@ -39,7 +35,6 @@ static int hash(uint8_t *out,
     crypto_generichash_init(&state, NULL, 0, sizeof(secret));
 
     crypto_generichash_update(&state, key->data, sizeof(key->data));
-    crypto_generichash_update(&state, (unsigned char *) &objectid, sizeof(objectid));
     crypto_generichash_update(&state, (unsigned char *) &rights, sizeof(rights));
     crypto_generichash_update(&state, (unsigned char *) secret, CPN_CAP_SECRET_LEN);
 
@@ -50,16 +45,10 @@ static int hash(uint8_t *out,
     return 0;
 }
 
-int cpn_cap_parse(struct cpn_cap *out, const char *id, const char *secret, enum cpn_cap_rights rights)
+int cpn_cap_parse(struct cpn_cap *out, const char *secret, enum cpn_cap_rights rights)
 {
-    uint32_t objectid;
     uint8_t hash[CPN_CAP_SECRET_LEN];
     int err = -1;
-
-    if (parse_uint32t(&objectid, id) < 0) {
-        cpn_log(LOG_LEVEL_ERROR, "Invalid session ID");
-        goto out;
-    }
 
     if (strlen(secret) != CPN_CAP_SECRET_LEN * 2) {
         cpn_log(LOG_LEVEL_ERROR, "Invalid secret length");
@@ -73,7 +62,6 @@ int cpn_cap_parse(struct cpn_cap *out, const char *id, const char *secret, enum 
         goto out;
     }
 
-    out->objectid = objectid;
     out->rights = rights;
     memcpy(out->secret, hash, CPN_CAP_SECRET_LEN);
 
@@ -88,7 +76,6 @@ int cpn_cap_from_protobuf(struct cpn_cap *out, const CapabilityMessage *msg)
     if (msg->secret.len != CPN_CAP_SECRET_LEN)
         return -1;
 
-    out->objectid = msg->objectid;
     out->rights = msg->rights;
     memcpy(out->secret, msg->secret.data, CPN_CAP_SECRET_LEN);
 
@@ -98,7 +85,6 @@ int cpn_cap_from_protobuf(struct cpn_cap *out, const CapabilityMessage *msg)
 int cpn_cap_to_protobuf(CapabilityMessage *out, const struct cpn_cap *cap)
 {
     capability_message__init(out);
-    out->objectid = cap->objectid;
     out->rights = cap->rights;
     out->secret.data = malloc(CPN_CAP_SECRET_LEN);
     out->secret.len = CPN_CAP_SECRET_LEN;
@@ -112,19 +98,14 @@ int cpn_cap_init(struct cpn_cap *cap)
     cap->rights = CPN_CAP_RIGHT_EXEC | CPN_CAP_RIGHT_TERM;
     randombytes_buf(cap->secret, CPN_CAP_SECRET_LEN);
 
-    pthread_mutex_lock(&mutex);
-    cap->objectid = objectid++;
-    pthread_mutex_unlock(&mutex);
-
     return 0;
 }
 
 int cpn_caps_create_reference(struct cpn_cap *out, const struct cpn_cap *root,
         uint32_t rights, const struct cpn_sign_key_public *key)
 {
-    out->objectid = root->objectid;
     out->rights = rights;
-    hash(out->secret, root->objectid, rights, root->secret, key);
+    hash(out->secret, rights, root->secret, key);
 
     return 0;
 }
@@ -137,11 +118,8 @@ int cpn_caps_verify(const struct cpn_cap *ref, const struct cpn_cap *root,
     if (rights & ~ref->rights)
         return -1;
 
-    /* Object ID must match */
-    if (ref->objectid != root->objectid)
-        return -1;
-    /* Secret must the root secret */
-    if (hash(secret, ref->objectid, ref->rights, root->secret, key) < 0)
+    /* Secret must match the root secret */
+    if (hash(secret, ref->rights, root->secret, key) < 0)
         return -1;
     if (memcmp(secret, ref->secret, CPN_CAP_SECRET_LEN))
         return -1;
