@@ -40,13 +40,12 @@ enum cpn_cap_rights {
 };
 
 struct cpn_cap {
-    uint32_t objectid;
     uint32_t rights;
     uint8_t secret[CPN_CAP_SECRET_LEN];
 };
 
 /** @brief Parse a capability from strings */
-int cpn_cap_parse(struct cpn_cap *out, const char *id, const char *secret, enum cpn_cap_rights rights);
+int cpn_cap_parse(struct cpn_cap *out, const char *secret, enum cpn_cap_rights rights);
 
 /** @brief Create capability from Protobuf */
 int cpn_cap_from_protobuf(struct cpn_cap *out, const CapabilityMessage *msg);

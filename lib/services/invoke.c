@@ -44,7 +44,7 @@ static int handle(struct cpn_channel *channel,
         CPN_OPTS_OPT_STRING(0, "--service-port", NULL, NULL, false),
         CPN_OPTS_OPT_STRING(0, "--service-type", NULL, NULL, false),
         CPN_OPTS_OPT_STRINGLIST(0, "--service-parameters", NULL, NULL, false),
-        CPN_OPTS_OPT_STRING(0, "--sessionid", NULL, NULL, false),
+        CPN_OPTS_OPT_UINT32(0, "--sessionid", NULL, NULL, false),
         CPN_OPTS_OPT_STRING(0, "--secret", NULL, NULL, false),
         CPN_OPTS_OPT_END
     };
@@ -65,7 +65,7 @@ static int handle(struct cpn_channel *channel,
         goto out;
     }
 
-    if (cpn_cap_parse(&cap, opts[5].value.string, opts[6].value.string,
+    if (cpn_cap_parse(&cap, opts[6].value.string,
                 CPN_CAP_RIGHT_EXEC | CPN_CAP_RIGHT_TERM) < 0)
     {
         cpn_log(LOG_LEVEL_ERROR, "Invalid capability");
@@ -84,7 +84,7 @@ static int handle(struct cpn_channel *channel,
         goto out;
     }
 
-    if (cpn_proto_initiate_session(&remote_channel, &cap) < 0) {
+    if (cpn_proto_initiate_session(&remote_channel, opts[5].value.uint32, &cap) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not connect to session");
         goto out;
     }

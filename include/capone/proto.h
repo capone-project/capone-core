@@ -221,7 +221,8 @@ void cpn_query_results_free(struct cpn_query_results *results);
  *
  * \see cpn_proto_answer_request
  */
-int cpn_proto_send_request(struct cpn_cap *invoker_cap,
+int cpn_proto_send_request(uint32_t *sessionid,
+        struct cpn_cap *invoker_cap,
         struct cpn_cap *requester_cap,
         struct cpn_channel *channel,
         const struct cpn_sign_key_public *invoker,
@@ -253,13 +254,14 @@ int cpn_proto_answer_request(struct cpn_channel *channel,
  * type.
  *
  * @param[in] channel Channel connected to the server
+ * @param[in] sessionid Identifier of the session to be invoked
  * @param[in] cap Capability referencing the session
  * @return <code>0</code> on success, <code>-1</code> otherwise
  *
  * \see cpn_proto_handle_session
  */
 int cpn_proto_initiate_session(struct cpn_channel *channel,
-        const struct cpn_cap *cap);
+        uint32_t sessionid, const struct cpn_cap *cap);
 
 /** @brief Handle incoming session invocation
  *
@@ -291,6 +293,7 @@ int cpn_proto_handle_session(struct cpn_channel *channel,
  * connection type.
  *
  * @param[in] channel Channel connected to the service.
+ * @param[in] sessionid Identifier of the session
  * @param[in] cap Capability granting the ability to terminate an
  *            object
  * @return <code>0</code> on success, <code>-1</code> otherwise
@@ -298,7 +301,7 @@ int cpn_proto_handle_session(struct cpn_channel *channel,
  * \see cpn_proto_handle_termination
  */
 int cpn_proto_initiate_termination(struct cpn_channel *channel,
-        const struct cpn_cap *cap);
+        uint32_t sessionid, const struct cpn_cap *cap);
 
 /** @brief Handle incoming session termination
  *

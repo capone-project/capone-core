@@ -66,6 +66,9 @@
 
 /** @brief A session wrapping identities and parameters */
 struct cpn_session {
+    /** @brief Session identifier used to distinguish sessions */
+    uint32_t identifier;
+
     /** @brief Session capability used for access control */
     struct cpn_cap cap;
 
