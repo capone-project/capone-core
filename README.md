@@ -54,7 +54,7 @@ following dependencies are required:
 Building the project is simple, then:
 
 ```
-$ git clone https://github.com/capone-project/capone-core.git
+$ git clone --recursive https://github.com/capone-project/capone-core.git
 $ cd capone-core
 $ mkdir build
 $ cd build

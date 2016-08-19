@@ -1,0 +1,3 @@
+[submodule "include/capone/proto"]
+	path = include/capone/proto
+	url = https://github.com/capone-project/capone-proto.git
