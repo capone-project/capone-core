@@ -45,33 +45,96 @@ static int hash(uint8_t *out,
     return 0;
 }
 
-int cpn_cap_parse(struct cpn_cap **out, const char *secret, enum cpn_cap_rights rights)
+int cpn_cap_from_string(struct cpn_cap **out, const char *string)
 {
     struct cpn_cap *cap;
-    uint8_t hash[CPN_CAP_SECRET_LEN];
+    uint8_t secret[CPN_CAP_SECRET_LEN];
+    uint32_t rights = 0;
+    char *ptr;
     int err = -1;
 
-    if (strlen(secret) != CPN_CAP_SECRET_LEN * 2) {
-        cpn_log(LOG_LEVEL_ERROR, "Invalid secret length");
-        goto out;
-    }
-
-    if (sodium_hex2bin(hash, sizeof(hash), secret, strlen(secret),
-                NULL, NULL, NULL) != 0)
-    {
+    ptr = strchr(string, ':');
+    if (ptr == NULL || (ptr - string) != CPN_CAP_SECRET_LEN * 2) {
         cpn_log(LOG_LEVEL_ERROR, "Invalid secret");
         goto out;
     }
 
+    if (parse_hex(secret, sizeof(secret), string, ptr - string) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Invalid hex secret");
+        goto out;
+    }
+
+    if (*(ptr + 1) == '\0') {
+        cpn_log(LOG_LEVEL_ERROR, "Capabilities has no rights");
+        goto out;
+    }
+
+    while (*++ptr != '\0') {
+        switch (*ptr) {
+            case 'x':
+                rights |= CPN_CAP_RIGHT_EXEC;
+                break;
+            case 't':
+                rights |= CPN_CAP_RIGHT_TERM;
+                break;
+            default:
+                return -1;
+        }
+    }
+
     cap = malloc(sizeof(struct cpn_cap));
     cap->rights = rights;
-    memcpy(cap->secret, hash, CPN_CAP_SECRET_LEN);
+    memcpy(cap->secret, secret, CPN_CAP_SECRET_LEN);
     *out = cap;
 
     err = 0;
 
 out:
     return err;
+}
+
+int rights_to_string(char **ptr, uint32_t rights)
+{
+    if (!rights)
+        return -1;
+    if (rights & CPN_CAP_RIGHT_EXEC)
+        *(*ptr)++ = 'x';
+    if (rights & CPN_CAP_RIGHT_TERM)
+        *(*ptr)++ = 't';
+    return 0;
+}
+
+int cpn_cap_to_string(char **out, const struct cpn_cap *cap)
+{
+    char *string, *ptr;
+    uint32_t len = 0;
+
+    if (!cap->rights)
+        return -1;
+
+    len += sizeof(cap->secret) * 2;
+    len += 1; /* separator */
+    len += (cap->rights & CPN_CAP_RIGHT_EXEC);
+    len += (cap->rights & CPN_CAP_RIGHT_TERM);
+
+    ptr = string = malloc(len + 1);
+
+    if (sodium_bin2hex(ptr, len, cap->secret, sizeof(cap->secret)) == NULL)
+        goto out_err;
+    ptr += sizeof(cap->secret) * 2;
+
+    *ptr++ = ':';
+    if (rights_to_string(&ptr, cap->rights) < 0)
+        goto out_err;
+    *ptr++ = '\0';
+
+    *out = string;
+
+    return 0;
+
+out_err:
+    free(string);
+    return -1;
 }
 
 int cpn_cap_from_protobuf(struct cpn_cap **out, const CapabilityMessage *msg)

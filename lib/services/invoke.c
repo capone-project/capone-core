@@ -65,8 +65,7 @@ static int handle(struct cpn_channel *channel,
         goto out;
     }
 
-    if (cpn_cap_parse(&cap, opts[6].value.string,
-                CPN_CAP_RIGHT_EXEC | CPN_CAP_RIGHT_TERM) < 0)
+    if (cpn_cap_from_string(&cap, opts[6].value.string) < 0)
     {
         cpn_log(LOG_LEVEL_ERROR, "Invalid capability");
         goto out;
