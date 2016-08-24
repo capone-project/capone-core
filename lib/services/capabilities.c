@@ -157,7 +157,7 @@ static int relay_capability_request(struct cpn_channel *channel,
     struct cpn_channel service_channel;
     struct cpn_sign_key_pair local_keys;
     struct cpn_sign_key_public service_key, invoker_key;
-    struct cpn_cap requester_cap, invoker_cap;
+    struct cpn_cap *requester_cap = NULL, *invoker_cap = NULL;
     uint32_t sessionid;
     int ret = 0;
 
@@ -196,7 +196,7 @@ static int relay_capability_request(struct cpn_channel *channel,
     cap_message.service.len = sizeof(service_key.data);
 
     cap_message.capability = malloc(sizeof(CapabilityMessage));
-    if (cpn_cap_to_protobuf(cap_message.capability, &invoker_cap) < 0) {
+    if (cpn_cap_to_protobuf(cap_message.capability, invoker_cap) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to parse capability");
         goto out;
     }
@@ -208,6 +208,9 @@ static int relay_capability_request(struct cpn_channel *channel,
 
 out:
     cpn_channel_close(&service_channel);
+
+    cpn_cap_free(invoker_cap);
+    cpn_cap_free(requester_cap);
 
     free(host);
     free(port);

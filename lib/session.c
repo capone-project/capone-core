@@ -46,7 +46,7 @@ int cpn_sessions_add(const struct cpn_session **out, int argc, const char **argv
     for (i = 0; i < argc; i++)
         session->argv[i] = strdup(argv[i]);
 
-    if (cpn_cap_init(&session->cap) < 0)
+    if (cpn_cap_create_root(&session->cap) < 0)
         return -1;
 
     memcpy(&session->creator, creator, sizeof(struct cpn_sign_key_public));
@@ -128,6 +128,7 @@ void cpn_session_free(struct cpn_session *session)
 
     if (session == NULL)
         return;
+    cpn_cap_free(session->cap);
     for (i = 0; i < session->argc; i++)
         free((char *) session->argv[i]);
     free(session->argv);

@@ -45,8 +45,9 @@ static int hash(uint8_t *out,
     return 0;
 }
 
-int cpn_cap_parse(struct cpn_cap *out, const char *secret, enum cpn_cap_rights rights)
+int cpn_cap_parse(struct cpn_cap **out, const char *secret, enum cpn_cap_rights rights)
 {
+    struct cpn_cap *cap;
     uint8_t hash[CPN_CAP_SECRET_LEN];
     int err = -1;
 
@@ -62,8 +63,10 @@ int cpn_cap_parse(struct cpn_cap *out, const char *secret, enum cpn_cap_rights r
         goto out;
     }
 
-    out->rights = rights;
-    memcpy(out->secret, hash, CPN_CAP_SECRET_LEN);
+    cap = malloc(sizeof(struct cpn_cap));
+    cap->rights = rights;
+    memcpy(cap->secret, hash, CPN_CAP_SECRET_LEN);
+    *out = cap;
 
     err = 0;
 
@@ -71,13 +74,18 @@ out:
     return err;
 }
 
-int cpn_cap_from_protobuf(struct cpn_cap *out, const CapabilityMessage *msg)
+int cpn_cap_from_protobuf(struct cpn_cap **out, const CapabilityMessage *msg)
 {
+    struct cpn_cap *cap;
+
     if (msg->secret.len != CPN_CAP_SECRET_LEN)
         return -1;
 
-    out->rights = msg->rights;
-    memcpy(out->secret, msg->secret.data, CPN_CAP_SECRET_LEN);
+    cap = malloc(sizeof(struct cpn_cap));
+    cap->rights = msg->rights;
+    memcpy(cap->secret, msg->secret.data, CPN_CAP_SECRET_LEN);
+
+    *out = cap;
 
     return 0;
 }
@@ -93,21 +101,39 @@ int cpn_cap_to_protobuf(CapabilityMessage *out, const struct cpn_cap *cap)
     return 0;
 }
 
-int cpn_cap_init(struct cpn_cap *cap)
+int cpn_cap_create_root(struct cpn_cap **out)
 {
+    struct cpn_cap *cap;
+
+    cap = malloc(sizeof(struct cpn_cap));
     cap->rights = CPN_CAP_RIGHT_EXEC | CPN_CAP_RIGHT_TERM;
     randombytes_buf(cap->secret, CPN_CAP_SECRET_LEN);
+
+    *out = cap;
 
     return 0;
 }
 
-int cpn_caps_create_reference(struct cpn_cap *out, const struct cpn_cap *root,
+int cpn_cap_create_ref(struct cpn_cap **out, const struct cpn_cap *root,
         uint32_t rights, const struct cpn_sign_key_public *key)
 {
-    out->rights = rights;
-    hash(out->secret, rights, root->secret, key);
+    struct cpn_cap *cap;
+
+    cap = malloc(sizeof(struct cpn_cap));
+    cap->rights = rights;
+    hash(cap->secret, rights, root->secret, key);
+
+    *out = cap;
 
     return 0;
+}
+
+void cpn_cap_free(struct cpn_cap *cap)
+{
+    if (!cap)
+        return;
+
+    free(cap);
 }
 
 int cpn_caps_verify(const struct cpn_cap *ref, const struct cpn_cap *root,

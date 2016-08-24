@@ -22,72 +22,76 @@
 
 #include "test.h"
 
-static struct cpn_cap root;
-static struct cpn_cap cap;
+static struct cpn_cap *root;
+static struct cpn_cap *ref;
 static struct cpn_sign_key_public pk;
 static struct cpn_sign_key_public other_pk;
 
 static int setup()
 {
-    memset(&root, 0, sizeof(root));
-    memset(&cap, 0, sizeof(cap));
+    root = NULL;
+    ref = NULL;
     other_pk.data[0] = 1;
     return 0;
 }
 
 static int teardown()
 {
+    cpn_cap_free(root);
+    cpn_cap_free(ref);
     return 0;
 }
 
 static void adding_capability_succeeds()
 {
-    assert_success(cpn_cap_init(&root));
+    assert_success(cpn_cap_create_root(&root));
 }
 
 static void adding_multiple_capabilities_succeeds()
 {
-    struct cpn_cap caps[10];
+    struct cpn_cap *caps[10];
     unsigned i;
 
     for (i = 0; i < ARRAY_SIZE(caps); i++)
-        assert_success(cpn_cap_init(&caps[i]));
-    for (i = 0; i < ARRAY_SIZE(caps) - 1; i++)
-        assert_memory_not_equal(&caps[i].secret, &caps[i + 1].secret, sizeof(caps[i].secret));
+        assert_success(cpn_cap_create_root(&caps[i]));
+    for (i = 0; i < ARRAY_SIZE(caps) - 1; i++) {
+        assert_memory_not_equal(&caps[i]->secret, &caps[i + 1]->secret, sizeof(caps[i]->secret));
+        cpn_cap_free(caps[i]);
+    }
 }
 
 static void creating_ref_succeeds()
 {
-    assert_success(cpn_cap_init(&root));
-    assert_success(cpn_caps_create_reference(&cap, &root, CPN_CAP_RIGHT_EXEC, &pk));
+    assert_success(cpn_cap_create_root(&root));
+    assert_success(cpn_cap_create_ref(&ref, root, CPN_CAP_RIGHT_EXEC, &pk));
 }
 
 static void verifying_valid_ref_succeeds()
 {
-    assert_success(cpn_cap_init(&root));
-    assert_success(cpn_caps_create_reference(&cap, &root, CPN_CAP_RIGHT_EXEC, &pk));
-    assert_success(cpn_caps_verify(&cap, &root, &pk, CPN_CAP_RIGHT_EXEC));
+    assert_success(cpn_cap_create_root(&root));
+    assert_success(cpn_cap_create_ref(&ref, root, CPN_CAP_RIGHT_EXEC, &pk));
+    assert_success(cpn_caps_verify(ref, root, &pk, CPN_CAP_RIGHT_EXEC));
 }
 
 static void verifying_valid_ref_with_different_pk_fails()
 {
-    assert_success(cpn_cap_init(&root));
-    assert_success(cpn_caps_create_reference(&cap, &root, CPN_CAP_RIGHT_EXEC, &pk));
-    assert_failure(cpn_caps_verify(&cap, &root, &other_pk, CPN_CAP_RIGHT_EXEC));
+    assert_success(cpn_cap_create_root(&root));
+    assert_success(cpn_cap_create_ref(&ref, root, CPN_CAP_RIGHT_EXEC, &pk));
+    assert_failure(cpn_caps_verify(ref, root, &other_pk, CPN_CAP_RIGHT_EXEC));
 }
 
 static void verifying_valid_ref_with_different_rights_fails()
 {
-    assert_success(cpn_cap_init(&root));
-    assert_success(cpn_caps_create_reference(&cap, &root, CPN_CAP_RIGHT_EXEC, &pk));
-    assert_failure(cpn_caps_verify(&cap, &root, &pk, CPN_CAP_RIGHT_TERM));
+    assert_success(cpn_cap_create_root(&root));
+    assert_success(cpn_cap_create_ref(&ref, root, CPN_CAP_RIGHT_EXEC, &pk));
+    assert_failure(cpn_caps_verify(ref, root, &pk, CPN_CAP_RIGHT_TERM));
 }
 
 static void verifying_valid_ref_with_additional_rights_fails()
 {
-    assert_success(cpn_cap_init(&root));
-    assert_success(cpn_caps_create_reference(&cap, &root, CPN_CAP_RIGHT_EXEC, &pk));
-    assert_failure(cpn_caps_verify(&cap, &root, &pk, CPN_CAP_RIGHT_EXEC | CPN_CAP_RIGHT_TERM));
+    assert_success(cpn_cap_create_root(&root));
+    assert_success(cpn_cap_create_ref(&ref, root, CPN_CAP_RIGHT_EXEC, &pk));
+    assert_failure(cpn_caps_verify(ref, root, &pk, CPN_CAP_RIGHT_EXEC | CPN_CAP_RIGHT_TERM));
 }
 
 static void parsing_cap_succeeds()
@@ -97,7 +101,7 @@ static void parsing_cap_succeeds()
     memset(secret, 'a', sizeof(secret) - 1);
     secret[sizeof(secret) - 1] = '\0';
 
-    assert_success(cpn_cap_parse(&cap, secret, CPN_CAP_RIGHT_EXEC));
+    assert_success(cpn_cap_parse(&ref, secret, CPN_CAP_RIGHT_EXEC));
 }
 
 static void parsing_cap_with_invalid_secret_length_fails()
@@ -107,7 +111,7 @@ static void parsing_cap_with_invalid_secret_length_fails()
     memset(secret, 'a', sizeof(secret) - 1);
     secret[sizeof(secret) - 1] = '\0';
 
-    assert_failure(cpn_cap_parse(&cap, secret, CPN_CAP_RIGHT_EXEC));
+    assert_failure(cpn_cap_parse(&ref, secret, CPN_CAP_RIGHT_EXEC));
 }
 
 static void parsing_cap_with_invalid_secret_chars_fails()
@@ -118,7 +122,7 @@ static void parsing_cap_with_invalid_secret_chars_fails()
     secret[sizeof(secret) - 2] = 'x';
     secret[sizeof(secret) - 1] = '\0';
 
-    assert_failure(cpn_cap_parse(&cap, secret, CPN_CAP_RIGHT_EXEC));
+    assert_failure(cpn_cap_parse(&ref, secret, CPN_CAP_RIGHT_EXEC));
 }
 
 int caps_test_run_suite(void)

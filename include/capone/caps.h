@@ -45,10 +45,10 @@ struct cpn_cap {
 };
 
 /** @brief Parse a capability from strings */
-int cpn_cap_parse(struct cpn_cap *out, const char *secret, enum cpn_cap_rights rights);
+int cpn_cap_parse(struct cpn_cap **out, const char *secret, enum cpn_cap_rights rights);
 
 /** @brief Create capability from Protobuf */
-int cpn_cap_from_protobuf(struct cpn_cap *out, const CapabilityMessage *msg);
+int cpn_cap_from_protobuf(struct cpn_cap **out, const CapabilityMessage *msg);
 
 /** @brief Create Protobuf from capability */
 int cpn_cap_to_protobuf(CapabilityMessage *out, const struct cpn_cap *cap);
@@ -59,10 +59,10 @@ int cpn_cap_to_protobuf(CapabilityMessage *out, const struct cpn_cap *cap);
  * internal capability can later on be used to get external
  * references, which may be distributed to third parties.
  *
- * @param[out] cap Capability to initialize.
+ * @param[out] cap Newly allocated capability
  * @return <code>0</code> on success, <code>-1</code> otherwise
  */
-int cpn_cap_init(struct cpn_cap *cap);
+int cpn_cap_create_root(struct cpn_cap **out);
 
 /** @brief Create an external reference to an internal capability
  *
@@ -78,8 +78,11 @@ int cpn_cap_init(struct cpn_cap *cap);
  *            capability shall be granted
  * @return <code>0</code> on success, <code>-1</code> otherwise
  */
-int cpn_caps_create_reference(struct cpn_cap *out, const struct cpn_cap *root,
+int cpn_cap_create_ref(struct cpn_cap **out, const struct cpn_cap *root,
         uint32_t rights, const struct cpn_sign_key_public *key);
+
+/** @brief Free an allocated capability */
+void cpn_cap_free(struct cpn_cap *cap);
 
 /** @brief Verify that the given capability is valid
  *
