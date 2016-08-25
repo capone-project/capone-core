@@ -40,8 +40,13 @@ enum cpn_cap_rights {
 };
 
 struct cpn_cap {
-    uint32_t rights;
     uint8_t secret[CPN_CAP_SECRET_LEN];
+
+    struct {
+        struct cpn_sign_key_public entity;
+        uint32_t rights;
+    } *chain;
+    uint32_t chain_depth;
 };
 
 /** @brief Parse a capability from strings */

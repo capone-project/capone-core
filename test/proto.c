@@ -379,6 +379,8 @@ static void connect_refuses_without_session()
     struct cpn_thread t;
     struct cpn_cap cap;
 
+    cap.chain_depth = 0;
+
     cpn_spawn(&t, handle_session, &args);
 
     assert_success(cpn_proto_initiate_encryption(&local, &local_keys,
@@ -419,6 +421,7 @@ static void terminating_nonexistent_does_nothing()
     };
     struct cpn_thread t;
     struct cpn_cap cap;
+    cap.chain_depth = 0;
 
     cpn_spawn(&t, handle_termination, &args);
     assert_success(cpn_proto_initiate_termination(&local, 12345, &cap));
