@@ -15,6 +15,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <string.h>
 #include <time.h>
 
 #include "capone/common.h"
@@ -167,6 +168,55 @@ static void parsing_uint64t_plus_1_fails()
     assert_failure(parse_uint32t(&i, str));
 }
 
+static void parsing_hex_succeeds()
+{
+    uint8_t out[1];
+    char str[] = "aa";
+    assert_success(parse_hex(out, sizeof(out), str, strlen(str)));
+}
+
+static void parsing_longer_hex_succeeds()
+{
+    uint8_t out[8];
+    char str[] = "aa13489570134572";
+    assert_success(parse_hex(out, sizeof(out), str, strlen(str)));
+}
+
+static void parsing_hex_with_too_short_out_fails()
+{
+    uint8_t out[3];
+    char str[] = "aa13489570134572";
+    assert_failure(parse_hex(out, sizeof(out), str, strlen(str)));
+}
+
+static void parsing_hex_with_too_long_out_fails()
+{
+    uint8_t out[20];
+    char str[] = "aa13489570134572";
+    assert_failure(parse_hex(out, sizeof(out), str, strlen(str)));
+}
+
+static void parsing_hex_with_invalid_characters_fails()
+{
+    uint8_t out[1];
+    char str[] = "zz";
+    assert_failure(parse_hex(out, sizeof(out), str, strlen(str)));
+}
+
+static void parsing_hex_without_zero_termination_succeeds()
+{
+    uint8_t out[1];
+    char str[2] = "ab";
+    assert_success(parse_hex(out, sizeof(out), str, 2));
+}
+
+static void parsing_hex_with_shorter_strlen_succeeds()
+{
+    uint8_t out[1];
+    char str[] = "abcd";
+    assert_success(parse_hex(out, sizeof(out), str, 2));
+}
+
 int common_test_run_suite(void)
 {
     const struct CMUnitTest tests[] = {
@@ -182,7 +232,15 @@ int common_test_run_suite(void)
         test(parsing_string_with_trailing_number_fails),
         test(parsing_string_with_leading_number_fails),
         test(parsing_too_big_number_fails),
-        test(parsing_uint64t_plus_1_fails)
+        test(parsing_uint64t_plus_1_fails),
+
+        test(parsing_hex_succeeds),
+        test(parsing_longer_hex_succeeds),
+        test(parsing_hex_with_too_short_out_fails),
+        test(parsing_hex_with_too_long_out_fails),
+        test(parsing_hex_with_invalid_characters_fails),
+        test(parsing_hex_without_zero_termination_succeeds),
+        test(parsing_hex_with_shorter_strlen_succeeds)
     };
 
     return execute_test_suite("common", tests, setup, teardown);

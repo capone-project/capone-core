@@ -26,6 +26,8 @@
 #include "capone/log.h"
 #include "capone/common.h"
 
+#define HEXCHARS "1234567890abcdefABCDEF"
+
 int cpn_spawn(struct cpn_thread *t, thread_fn fn, void *payload)
 {
     pthread_t stub;
@@ -74,4 +76,28 @@ int parse_uint32t(uint32_t *out, const char *num)
 out:
     errno = saved_errno;
     return ret;
+}
+
+int parse_hex(uint8_t *out, uint32_t outlen, const char *hex, uint32_t hexlen)
+{
+    uint32_t i;
+    const char *end;
+
+    if (hex == NULL)
+        return -1;
+
+    for (i = 0; i < hexlen; i++)
+        if (hex[i] == '\0' || memchr(HEXCHARS, hex[i], strlen(HEXCHARS)) == NULL)
+            return -1;
+
+    if (sodium_hex2bin(out, outlen, hex, hexlen, NULL, NULL, &end) < 0)
+        return -1;
+
+    if (outlen * 2 != hexlen)
+        return -1;
+
+    if (end != (hex + hexlen))
+        return -1;
+
+    return 0;
 }

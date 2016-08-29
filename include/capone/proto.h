@@ -222,8 +222,8 @@ void cpn_query_results_free(struct cpn_query_results *results);
  * \see cpn_proto_answer_request
  */
 int cpn_proto_send_request(uint32_t *sessionid,
-        struct cpn_cap *invoker_cap,
-        struct cpn_cap *requester_cap,
+        struct cpn_cap **invoker_cap,
+        struct cpn_cap **requester_cap,
         struct cpn_channel *channel,
         const struct cpn_sign_key_public *invoker,
         int argc, const char **argv);

@@ -108,9 +108,6 @@ static void sign_key_pair_from_config_with_invalid_pk_fails()
         "public_key=dbc08ee5b911INVALIDc78f3e35a0091df2e422b471065845c8d227486fb0e54\n"
         "secret_key="SK"\n";
 
-    /* TODO: This is currently not handled correctly */
-    skip();
-
     assert_success(cpn_cfg_parse_string(&config, text, strlen(text)));
 
     assert_failure(cpn_sign_key_pair_from_config(&sign_pair, &config));
@@ -123,9 +120,6 @@ static void sign_key_pair_from_config_with_invalid_sk_fails()
         "public_key="PK"\n"
         "secret_key=990ce9f899c2b4d3b4fb20af4de539d2b6352ba1fbf658d1d4926123293f61c6"
                    "dbc08ee5INVALID24cfc78f3e35a0091df2e422b471065845c8d227486fb0e54\n";
-
-    /* TODO: This is currently not handled correctly */
-    skip();
 
     assert_success(cpn_cfg_parse_string(&config, text, strlen(text)));
 

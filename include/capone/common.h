@@ -125,6 +125,8 @@ int cpn_join(struct cpn_thread *t, void **out);
  */
 int parse_uint32t(uint32_t *out, const char *num);
 
+int parse_hex(uint8_t *out, uint32_t outlen, const char *hex, uint32_t hexlen);
+
 #endif
 
 /** @} */

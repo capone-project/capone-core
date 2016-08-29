@@ -18,47 +18,22 @@
 #include <string.h>
 
 #include "capone/cfg.h"
+#include "capone/common.h"
 #include "capone/log.h"
 #include "capone/keys.h"
 
-#define HEXCHARS "1234567890abcdefABCDEF"
-
-static int verify_hex(const char *hex)
-{
-    const char *c;
-    int ret = 0;
-
-    for (c = hex; *c != '\0'; c++) {
-        if (memchr(HEXCHARS, *c, strlen(HEXCHARS)) == NULL)
-            ret |= 1;
-        else
-            ret |= 0;
-    }
-
-    return -ret;
-}
-
 static int cpn_sign_key_secret_from_hex(struct cpn_sign_key_secret *out, const char *hex)
 {
-    int hexlen;
-
-    if (out == NULL || hex == NULL) {
-        cpn_log(LOG_LEVEL_ERROR, "Got no secret keys to decipher");
+    if (hex == NULL) {
+        cpn_log(LOG_LEVEL_ERROR, "Error parsing nonexistent secret signature key");
         return -1;
     }
 
-    if (verify_hex(hex) < 0) {
-        cpn_log(LOG_LEVEL_ERROR, "Got secret key with invalid characters");
+    if (parse_hex(out->data, sizeof(out->data), hex, strlen(hex)) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Error parsing invalid secret signature key");
         return -1;
     }
-
-    hexlen = strlen(hex);
-    if (hexlen != crypto_sign_SECRETKEYBYTES * 2) {
-        cpn_log(LOG_LEVEL_ERROR, "Hex length does not match required secret sign key length");
-        return -1;
-    }
-
-    return sodium_hex2bin(out->data, sizeof(out->data), hex, hexlen, NULL, NULL, NULL);
+    return 0;
 }
 
 int cpn_sign_key_pair_generate(struct cpn_sign_key_pair *out)
@@ -121,25 +96,16 @@ out:
 
 int cpn_sign_key_public_from_hex(struct cpn_sign_key_public *out, const char *hex)
 {
-    int hexlen;
-
-    if (out == NULL || hex == NULL) {
-        cpn_log(LOG_LEVEL_ERROR, "Got no keys to decipher");
+    if (hex == NULL) {
+        cpn_log(LOG_LEVEL_ERROR, "Error parsing nonexistent public signature key");
         return -1;
     }
 
-    if (verify_hex(hex) < 0) {
-        cpn_log(LOG_LEVEL_ERROR, "Got public key with invalid characters");
+    if (parse_hex(out->data, sizeof(out->data), hex, strlen(hex)) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Error parsing invalid public signature key");
         return -1;
     }
-
-    hexlen = strlen(hex);
-    if (hexlen != crypto_sign_PUBLICKEYBYTES * 2) {
-        cpn_log(LOG_LEVEL_ERROR, "Hex length does not match required public sign key length");
-        return -1;
-    }
-
-    return sodium_hex2bin(out->data, sizeof(out->data), hex, hexlen, NULL, NULL, NULL);
+    return 0;
 }
 
 int cpn_sign_key_public_from_bin(struct cpn_sign_key_public *out, const uint8_t *pk, size_t pklen)
@@ -195,15 +161,16 @@ int cpn_symmetric_key_generate(struct cpn_symmetric_key *out)
 
 int cpn_symmetric_key_from_hex(struct cpn_symmetric_key *out, const char *hex)
 {
-    int hexlen;
-
-    hexlen = strlen(hex);
-    if (hexlen != crypto_secretbox_KEYBYTES * 2) {
-        cpn_log(LOG_LEVEL_ERROR, "Hex length does not match required symmetric key length");
+    if (hex == NULL) {
+        cpn_log(LOG_LEVEL_ERROR, "Error parsing nonexistent symmetric key");
         return -1;
     }
 
-    return sodium_hex2bin(out->data, sizeof(out->data), hex, hexlen, NULL, NULL, NULL);
+    if (parse_hex(out->data, sizeof(out->data), hex, strlen(hex)) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Error parsing invalid symmetric key");
+        return -1;
+    }
+    return 0;
 }
 
 int cpn_symmetric_key_from_bin(struct cpn_symmetric_key *out, const uint8_t *key, size_t keylen)

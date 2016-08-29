@@ -114,10 +114,11 @@ static int cmd_query(void)
 static int cmd_request(const struct cpn_sign_key_public *invoker_key,
         const struct cpn_opts_stringlist *parameters)
 {
-    char invoker_hex[CPN_CAP_SECRET_LEN * 2 + 1], requester_hex[CPN_CAP_SECRET_LEN * 2 + 1];
-    struct cpn_cap requester_cap, invoker_cap;
+    struct cpn_cap *requester_cap = NULL, *invoker_cap = NULL;
     struct cpn_channel channel;
+    char *invoker_hex = NULL, *requester_hex = NULL;
     uint32_t sessionid;
+    int err = -1;
 
     memset(&channel, 0, sizeof(channel));
 
@@ -134,23 +135,28 @@ static int cmd_request(const struct cpn_sign_key_public *invoker_key,
         goto out_err;
     }
 
-    sodium_bin2hex(invoker_hex, sizeof(invoker_hex),
-            invoker_cap.secret, CPN_CAP_SECRET_LEN);
-    sodium_bin2hex(requester_hex, sizeof(requester_hex),
-            requester_cap.secret, CPN_CAP_SECRET_LEN);
+    if (cpn_cap_to_string(&invoker_hex, invoker_cap) < 0
+            || cpn_cap_to_string(&requester_hex, requester_cap) < 0)
+    {
+        puts("Invalid capability");
+        goto out_err;
+    }
 
-    printf("sessionid:          %"PRIu32"\n"
-           "invoker-secret:     %s\n"
-           "requester-secret:   %s\n",
+    printf("sessionid:            %"PRIu32"\n"
+           "invoker-capability:   %s\n"
+           "requester-capability: %s\n",
            sessionid, invoker_hex, requester_hex);
 
-    cpn_channel_close(&channel);
-
-    return 0;
+    err = 0;
 
 out_err:
     cpn_channel_close(&channel);
-    return -1;
+    cpn_cap_free(invoker_cap);
+    cpn_cap_free(requester_cap);
+    free(invoker_hex);
+    free(requester_hex);
+
+    return err;
 }
 
 static int cmd_connect(const char *service_type, uint32_t sessionid,
@@ -159,61 +165,73 @@ static int cmd_connect(const char *service_type, uint32_t sessionid,
 {
     const struct cpn_service_plugin *plugin;
     struct cpn_channel channel;
-    struct cpn_cap cap;
+    struct cpn_cap *cap = NULL;
+    int err = -1;
+
+    channel.fd = -1;
 
     if (cpn_service_plugin_for_type(&plugin, service_type) < 0) {
         printf("Invalid service plugin %s\n", service_type);
-        return -1;
+        goto out;
     }
 
-    if (cpn_cap_parse(&cap, capability, CPN_CAP_RIGHT_EXEC | CPN_CAP_RIGHT_TERM) < 0) {
+    if (cpn_cap_from_string(&cap, capability) < 0) {
         puts("Invalid capability");
-        return -1;
+        goto out;
     }
 
     if (cpn_proto_initiate_connection(&channel, remote_host, remote_port,
                 &local_keys, &remote_key, CPN_CONNECTION_TYPE_CONNECT) < 0) {
         puts("Could not start connection");
-        return -1;
+        goto out;
     }
 
-    if (cpn_proto_initiate_session(&channel, sessionid, &cap) < 0) {
+    if (cpn_proto_initiate_session(&channel, sessionid, cap) < 0) {
         puts("Could not connect to session");
-        return -1;
+        goto out;
     }
 
     if (plugin->invoke(&channel, parameters->argc, parameters->argv) < 0) {
         puts("Could not invoke service");
-        return -1;
+        goto out;
     }
 
-    cpn_channel_close(&channel);
+    err = 0;
 
-    return 0;
+out:
+    cpn_channel_close(&channel);
+    cpn_cap_free(cap);
+
+    return err;
 }
 
 static int cmd_terminate(uint32_t sessionid, const char *capability)
 {
     struct cpn_channel channel;
-    struct cpn_cap cap;
+    struct cpn_cap *cap = NULL;
+    int err = -1;
 
-    if (cpn_cap_parse(&cap, capability, CPN_CAP_RIGHT_TERM) < 0) {
+    if (cpn_cap_from_string(&cap, capability) < 0) {
         puts("Invalid capability\n");
-        return -1;
+        goto out;
     }
 
     if (cpn_proto_initiate_connection(&channel, remote_host, remote_port,
                 &local_keys, &remote_key, CPN_CONNECTION_TYPE_TERMINATE) < 0) {
         puts("Could not start connection");
-        return -1;
+        goto out;
     }
 
-    if (cpn_proto_initiate_termination(&channel, sessionid, &cap) < 0) {
+    if (cpn_proto_initiate_termination(&channel, sessionid, cap) < 0) {
         puts("Could not initiate termination");
-        return -1;
+        goto out;
     }
 
-    return 0;
+    err = 0;
+
+out:
+    cpn_cap_free(cap);
+    return err;
 }
 
 int main(int argc, const char *argv[])

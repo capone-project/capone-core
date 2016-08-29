@@ -70,7 +70,7 @@ struct cpn_session {
     uint32_t identifier;
 
     /** @brief Session capability used for access control */
-    struct cpn_cap cap;
+    struct cpn_cap *cap;
 
     /** @brief Identity of the user who created the session */
     struct cpn_sign_key_public creator;

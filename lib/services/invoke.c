@@ -51,7 +51,7 @@ static int handle(struct cpn_channel *channel,
     const struct cpn_service_plugin *plugin;
     struct cpn_sign_key_pair local_keys;
     struct cpn_channel remote_channel;
-    struct cpn_cap cap;
+    struct cpn_cap *cap = NULL;
 
     UNUSED(channel);
     UNUSED(invoker);
@@ -65,8 +65,7 @@ static int handle(struct cpn_channel *channel,
         goto out;
     }
 
-    if (cpn_cap_parse(&cap, opts[6].value.string,
-                CPN_CAP_RIGHT_EXEC | CPN_CAP_RIGHT_TERM) < 0)
+    if (cpn_cap_from_string(&cap, opts[6].value.string) < 0)
     {
         cpn_log(LOG_LEVEL_ERROR, "Invalid capability");
         goto out;
@@ -84,7 +83,7 @@ static int handle(struct cpn_channel *channel,
         goto out;
     }
 
-    if (cpn_proto_initiate_session(&remote_channel, opts[5].value.uint32, &cap) < 0) {
+    if (cpn_proto_initiate_session(&remote_channel, opts[5].value.uint32, cap) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not connect to session");
         goto out;
     }
@@ -95,6 +94,8 @@ static int handle(struct cpn_channel *channel,
     }
 
 out:
+    cpn_cap_free(cap);
+
     return 0;
 }
 
