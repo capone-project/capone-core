@@ -17,11 +17,16 @@ fi
 # install protobuf
 (
     cd /tmp
-    wget https://github.com/google/protobuf/releases/download/v2.5.0/protobuf-2.5.0.tar.bz2
-    tar -xf protobuf-2.5.0.tar.bz2
-    cd protobuf-2.5.0
-    autoreconf -fi
-    ./configure --host="${TARGET}" --prefix="${PREFIX}"
+    wget https://github.com/google/protobuf/archive/v3.0.0.tar.gz
+    tar -xf v3.0.0.tar.gz
+    cd protobuf-3.0.0
+    mkdir build-dir
+    cd build-dir
+    cmake -G "${GENERATOR}" \
+        -DCMAKE_INSTALL_PREFIX:PATH="${PREFIX}" \
+        -Dprotobuf_BUILD_TESTS=OFF \
+        -Dprotobuf_WITH_ZLIB=OFF \
+        ../cmake
     make
     make install
 )
@@ -32,8 +37,11 @@ fi
     wget https://github.com/protobuf-c/protobuf-c/releases/download/v1.0.2/protobuf-c-1.0.2.tar.gz
     tar -xf protobuf-c-1.0.2.tar.gz
     cd protobuf-c-1.0.2
-    autoreconf -fi
-    ./configure --host="${TARGET}" --prefix="${PREFIX}"
+    mkdir build
+    cd build
+    cmake -G "${GENERATOR}" \
+        -DCMAKE_INSTALL_PREFIX:PATH="${PREFIX}" \
+        ../build-cmake
     make
     make install
 )
@@ -47,7 +55,10 @@ fi
     mkdir build
     cd build
     # Fix building without RPATH
-    cmake -G "${GENERATOR}" -DCMAKE_MACOSX_RPATH=ON -DCMAKE_INSTALL_PREFIX:PATH="${PREFIX}" ..
+    cmake -G "${GENERATOR}" \
+        -DCMAKE_MACOSX_RPATH=ON \
+        -DCMAKE_INSTALL_PREFIX:PATH="${PREFIX}" \
+        ..
     make
     make install
 )
