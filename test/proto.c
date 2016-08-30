@@ -273,7 +273,7 @@ static void request_constructs_session()
     struct await_request_args args = {
         { &remote, &remote_keys }, &service, &local_keys.pk, NULL, 0
     };
-    struct cpn_cap *invoker = NULL, *requester = NULL;
+    struct cpn_cap *cap = NULL;
     struct cpn_session *added;
     struct cpn_thread t;
     uint32_t sessionid;
@@ -281,15 +281,14 @@ static void request_constructs_session()
     cpn_spawn(&t, await_request, &args);
     assert_success(cpn_proto_initiate_encryption(&local, &local_keys,
                 &remote_keys.pk));
-    assert_success(cpn_proto_send_request(&sessionid, &invoker, &requester, &local, &local_keys.pk, ARRAY_SIZE(params), params));
+    assert_success(cpn_proto_send_request(&sessionid, &cap, &local, ARRAY_SIZE(params), params));
     cpn_join(&t, NULL);
 
     assert_success(cpn_sessions_remove(&added, sessionid));
     assert_int_equal(sessionid, added->identifier);
 
     cpn_session_free(added);
-    cpn_cap_free(invoker);
-    cpn_cap_free(requester);
+    cpn_cap_free(cap);
 }
 
 static void request_without_params_succeeds()
@@ -297,14 +296,14 @@ static void request_without_params_succeeds()
     struct await_request_args args = {
         { &remote, &remote_keys }, &service, &local_keys.pk, NULL, 0
     };
-    struct cpn_cap *invoker = NULL, *requester = NULL;
+    struct cpn_cap *cap = NULL;
     struct cpn_session *added;
     struct cpn_thread t;
     uint32_t sessionid;
 
     cpn_spawn(&t, await_request, &args);
     assert_success(cpn_proto_initiate_encryption(&local, &local_keys, &remote_keys.pk));
-    assert_success(cpn_proto_send_request(&sessionid, &invoker, &requester, &local, &local_keys.pk, 0, NULL));
+    assert_success(cpn_proto_send_request(&sessionid, &cap, &local, 0, NULL));
     cpn_join(&t, NULL);
 
     assert_success(cpn_sessions_remove(&added, sessionid));
@@ -312,8 +311,7 @@ static void request_without_params_succeeds()
     assert_int_equal(added->argc, 0);
 
     cpn_session_free(added);
-    cpn_cap_free(invoker);
-    cpn_cap_free(requester);
+    cpn_cap_free(cap);
 }
 
 static void whitlisted_request_constructs_session()
@@ -326,21 +324,20 @@ static void whitlisted_request_constructs_session()
     };
     struct cpn_session *added;
     struct cpn_thread t;
-    struct cpn_cap *invoker = NULL, *requester = NULL;
+    struct cpn_cap *cap = NULL;
     uint32_t sessionid;
 
     cpn_spawn(&t, await_request, &args);
     assert_success(cpn_proto_initiate_encryption(&local, &local_keys,
                 &remote_keys.pk));
-    assert_success(cpn_proto_send_request(&sessionid, &invoker, &requester, &local, &local_keys.pk, ARRAY_SIZE(params), params));
+    assert_success(cpn_proto_send_request(&sessionid, &cap, &local, ARRAY_SIZE(params), params));
     cpn_join(&t, NULL);
 
     assert_success(cpn_sessions_remove(&added, sessionid));
     assert_int_equal(sessionid, added->identifier);
 
     cpn_session_free(added);
-    cpn_cap_free(invoker);
-    cpn_cap_free(requester);
+    cpn_cap_free(cap);
 }
 
 static void service_connects()
