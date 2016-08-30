@@ -29,8 +29,6 @@
 #include "capone/service.h"
 
 static struct cpn_opt request_opts[] = {
-    CPN_OPTS_OPT_SIGKEY(0, "--invoker-key",
-            "For whom to request the capability", "KEY", false),
     CPN_OPTS_OPT_STRINGLIST(0, "--parameters", NULL, "PARAMETER", false),
     CPN_OPTS_OPT_END
 };
@@ -111,12 +109,11 @@ static int cmd_query(void)
     return 0;
 }
 
-static int cmd_request(const struct cpn_sign_key_public *invoker_key,
-        const struct cpn_opts_stringlist *parameters)
+static int cmd_request(const struct cpn_opts_stringlist *parameters)
 {
-    struct cpn_cap *requester_cap = NULL, *invoker_cap = NULL;
+    struct cpn_cap *cap = NULL;
     struct cpn_channel channel;
-    char *invoker_hex = NULL, *requester_hex = NULL;
+    char *cap_hex = NULL;
     uint32_t sessionid;
     int err = -1;
 
@@ -128,33 +125,29 @@ static int cmd_request(const struct cpn_sign_key_public *invoker_key,
         goto out_err;
     }
 
-    if (cpn_proto_send_request(&sessionid, &invoker_cap, &requester_cap,
-                &channel, invoker_key, parameters->argc, parameters->argv) < 0)
+    if (cpn_proto_send_request(&sessionid, &cap, &channel,
+                parameters->argc, parameters->argv) < 0)
     {
         puts("Unable to request session");
         goto out_err;
     }
 
-    if (cpn_cap_to_string(&invoker_hex, invoker_cap) < 0
-            || cpn_cap_to_string(&requester_hex, requester_cap) < 0)
+    if (cpn_cap_to_string(&cap_hex, cap) < 0)
     {
         puts("Invalid capability");
         goto out_err;
     }
 
-    printf("sessionid:            %"PRIu32"\n"
-           "invoker-capability:   %s\n"
-           "requester-capability: %s\n",
-           sessionid, invoker_hex, requester_hex);
+    printf("sessionid:  %"PRIu32"\n"
+           "capability: %s\n",
+           sessionid, cap_hex);
 
     err = 0;
 
 out_err:
     cpn_channel_close(&channel);
-    cpn_cap_free(invoker_cap);
-    cpn_cap_free(requester_cap);
-    free(invoker_hex);
-    free(requester_hex);
+    cpn_cap_free(cap);
+    free(cap_hex);
 
     return err;
 }
@@ -255,8 +248,7 @@ int main(int argc, const char *argv[])
     if (opts[4].set)
         return cmd_query();
     else if (opts[5].set)
-        return cmd_request(&request_opts[0].value.sigkey,
-                &request_opts[1].value.stringlist);
+        return cmd_request(&request_opts[1].value.stringlist);
     else if (opts[6].set)
         return cmd_connect(connect_opts[0].value.string,
                connect_opts[1].value.uint32,

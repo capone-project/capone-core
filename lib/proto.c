@@ -226,18 +226,14 @@ out:
 }
 
 int cpn_proto_send_request(uint32_t *sessionid,
-        struct cpn_cap **invoker_cap,
-        struct cpn_cap **requester_cap,
+        struct cpn_cap **cap,
         struct cpn_channel *channel,
-        const struct cpn_sign_key_public *invoker,
         int argc, const char **argv)
 {
     SessionRequestMessage request = SESSION_REQUEST_MESSAGE__INIT;
     SessionMessage *session = NULL;
     int err = -1;
 
-    request.invoker.data = (uint8_t *) invoker->data;
-    request.invoker.len = sizeof(invoker->data);
     request.n_parameters = argc;
     request.parameters = (char **) argv;
 
@@ -253,9 +249,7 @@ int cpn_proto_send_request(uint32_t *sessionid,
         goto out;
     }
 
-    if (cpn_cap_from_protobuf(invoker_cap, session->invoker_cap) < 0 ||
-            cpn_cap_from_protobuf(requester_cap, session->requester_cap) <0)
-    {
+    if (cpn_cap_from_protobuf(cap, session->cap) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to read capabilities");
         goto out;
     }
@@ -373,7 +367,6 @@ int cpn_proto_answer_request(struct cpn_channel *channel,
 {
     SessionRequestMessage *request = NULL;
     SessionMessage session_message = SESSION_MESSAGE__INIT;
-    struct cpn_sign_key_public identity_key;
     const struct cpn_session *session;
     int err = -1;
 
@@ -382,13 +375,6 @@ int cpn_proto_answer_request(struct cpn_channel *channel,
             (ProtobufCMessage **) &request) < 0)
     {
         cpn_log(LOG_LEVEL_ERROR, "Unable to receive request");
-        goto out;
-    }
-
-    if (cpn_sign_key_public_from_bin(&identity_key,
-                request->invoker.data, request->invoker.len) < 0)
-    {
-        cpn_log(LOG_LEVEL_ERROR, "Unable to parse invoker key");
         goto out;
     }
 
@@ -401,11 +387,9 @@ int cpn_proto_answer_request(struct cpn_channel *channel,
 
     session_message.identifier = session->identifier;
 
-    if (create_cap(&session_message.invoker_cap, session->cap, CPN_CAP_RIGHT_EXEC | CPN_CAP_RIGHT_TERM, &identity_key) < 0) {
-        cpn_log(LOG_LEVEL_ERROR, "Unable to add invoker capability");
-        goto out;
-    }
-    if (create_cap(&session_message.requester_cap, session->cap, CPN_CAP_RIGHT_TERM, remote_key) < 0) {
+    if (create_cap(&session_message.cap, session->cap,
+                CPN_CAP_RIGHT_EXEC | CPN_CAP_RIGHT_TERM, remote_key) < 0)
+    {
         cpn_log(LOG_LEVEL_ERROR, "Unable to add invoker capability");
         goto out;
     }
@@ -419,10 +403,8 @@ int cpn_proto_answer_request(struct cpn_channel *channel,
     err = 0;
 
 out:
-    if (session_message.invoker_cap)
-        capability_message__free_unpacked(session_message.invoker_cap, NULL);
-    if (session_message.requester_cap)
-        capability_message__free_unpacked(session_message.requester_cap, NULL);
+    if (session_message.cap)
+        capability_message__free_unpacked(session_message.cap, NULL);
     if (request)
         session_request_message__free_unpacked(request, NULL);
 

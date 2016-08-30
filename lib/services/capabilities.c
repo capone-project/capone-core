@@ -157,7 +157,7 @@ static int relay_capability_request(struct cpn_channel *channel,
     struct cpn_channel service_channel;
     struct cpn_sign_key_pair local_keys;
     struct cpn_sign_key_public service_key, invoker_key;
-    struct cpn_cap *requester_cap = NULL, *invoker_cap = NULL;
+    struct cpn_cap *root_cap = NULL, *ref_cap = NULL;
     uint32_t sessionid;
     int ret = 0;
 
@@ -180,11 +180,15 @@ static int relay_capability_request(struct cpn_channel *channel,
         goto out;
     }
 
-    if ((ret = cpn_proto_send_request(&sessionid, &invoker_cap, &requester_cap,
-                    &service_channel, &invoker_key,
+    if ((ret = cpn_proto_send_request(&sessionid, &root_cap, &service_channel,
                     request->n_parameters, (const char **) request->parameters)) < 0)
     {
         cpn_log(LOG_LEVEL_ERROR, "Unable to send request to remote service");
+        goto out;
+    }
+
+    if (cpn_cap_create_ref(&ref_cap, root_cap, CPN_CAP_RIGHT_EXEC|CPN_CAP_RIGHT_TERM, &invoker_key) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Unable to create referencing capability");
         goto out;
     }
 
@@ -196,7 +200,7 @@ static int relay_capability_request(struct cpn_channel *channel,
     cap_message.service.len = sizeof(service_key.data);
 
     cap_message.capability = malloc(sizeof(CapabilityMessage));
-    if (cpn_cap_to_protobuf(cap_message.capability, invoker_cap) < 0) {
+    if (cpn_cap_to_protobuf(cap_message.capability, ref_cap) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to parse capability");
         goto out;
     }
@@ -209,8 +213,8 @@ static int relay_capability_request(struct cpn_channel *channel,
 out:
     cpn_channel_close(&service_channel);
 
-    cpn_cap_free(invoker_cap);
-    cpn_cap_free(requester_cap);
+    cpn_cap_free(root_cap);
+    cpn_cap_free(ref_cap);
 
     free(host);
     free(port);
