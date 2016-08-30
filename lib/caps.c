@@ -205,10 +205,8 @@ int cpn_cap_from_protobuf(struct cpn_cap **out, const CapabilityMessage *msg)
 
         for (i = 0; i < msg->n_chain; i++) {
             cap->chain[i].rights = msg->chain[i]->rights;
-            if (msg->chain[i]->entity.len != sizeof(struct cpn_sign_key_public))
+            if (cpn_sign_key_public_from_proto(&cap->chain[i].entity, msg->chain[i]->entity) < 0)
                 goto out_err;
-            memcpy(cap->chain[i].entity.data, msg->chain[i]->entity.data,
-                    sizeof(struct cpn_sign_key_public));
         }
     } else {
         cap->chain = NULL;
@@ -243,9 +241,7 @@ int cpn_cap_to_protobuf(CapabilityMessage *out, const struct cpn_cap *cap)
             CapabilityMessage__Chain *chain = malloc(sizeof(*chain));
             capability_message__chain__init(chain);
             chain->rights = cap->chain[i].rights;
-            chain->entity.len = sizeof(cap->chain[i].entity.data);
-            chain->entity.data = malloc(chain->entity.len);
-            memcpy(chain->entity.data, cap->chain[i].entity.data, chain->entity.len);
+            cpn_sign_key_public_to_proto(&chain->entity, &cap->chain[i].entity);
             out->chain[i] = chain;
         }
     } else {

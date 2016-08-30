@@ -168,10 +168,8 @@ static int relay_capability_request(struct cpn_channel *channel,
         goto out;
     }
 
-    cpn_sign_key_public_from_bin(&service_key,
-            request->service_identity.data, request->service_identity.len);
-    cpn_sign_key_public_from_bin(&invoker_key,
-            request->invoker_identity.data, request->invoker_identity.len);
+    cpn_sign_key_public_from_proto(&service_key, request->service_identity);
+    cpn_sign_key_public_from_proto(&invoker_key, request->invoker_identity);
 
     if ((ret = cpn_proto_initiate_connection(&service_channel,
                     request->service_address, request->service_port,
@@ -225,7 +223,8 @@ out:
 static int invoke_register(struct cpn_channel *channel, struct cpn_opt *opts)
 {
     CapabilityRequest *request;
-    struct cpn_sign_key_hex requester, invoker, service;
+    struct cpn_sign_key_hex requester_hex, invoker_hex, service_hex;
+    struct cpn_sign_key_public requester, invoker, service;
     struct cpn_cfg cfg;
     size_t i;
 
@@ -242,16 +241,17 @@ static int invoke_register(struct cpn_channel *channel, struct cpn_opt *opts)
             return -1;
         }
 
-        if (cpn_sign_key_hex_from_bin(&requester,
-                    request->requester_identity.data, request->requester_identity.len) < 0 ||
-                cpn_sign_key_hex_from_bin(&invoker,
-                    request->invoker_identity.data, request->invoker_identity.len) < 0 ||
-                cpn_sign_key_hex_from_bin(&service,
-                    request->service_identity.data, request->service_identity.len) < 0)
+        if (cpn_sign_key_public_from_proto(&requester, request->requester_identity) < 0 ||
+                cpn_sign_key_public_from_proto(&invoker, request->invoker_identity) < 0 ||
+                cpn_sign_key_public_from_proto(&service, request->service_identity) < 0)
         {
             cpn_log(LOG_LEVEL_ERROR, "Unable to parse remote keys");
             return -1;
         }
+
+        cpn_sign_key_hex_from_key(&requester_hex, &requester);
+        cpn_sign_key_hex_from_key(&invoker_hex, &invoker);
+        cpn_sign_key_hex_from_key(&service_hex, &service);
 
         printf("request from: %s\n"
                "     invoker: %s\n"
@@ -259,7 +259,7 @@ static int invoke_register(struct cpn_channel *channel, struct cpn_opt *opts)
                "     address: %s\n"
                "        port: %s\n"
                "  parameters: ",
-               requester.data, invoker.data, service.data,
+               requester_hex.data, invoker_hex.data, service_hex.data,
                request->service_address, request->service_port);
         for (i = 0; i < request->n_parameters; i++) {
             printf("%s ", request->parameters[i]);
@@ -412,13 +412,10 @@ static int handle_request(struct cpn_channel *channel,
 
     request.requestid = requestid++;
 
-    request.invoker_identity.data = (uint8_t *) opts[0].value.sigkey.data;
-    request.invoker_identity.len = sizeof(struct cpn_sign_key_public);
-    request.requester_identity.data = (uint8_t *) opts[0].value.sigkey.data;
-    request.requester_identity.len = sizeof(struct cpn_sign_key_public);
+    cpn_sign_key_public_to_proto(&request.invoker_identity, &opts[0].value.sigkey);
+    cpn_sign_key_public_to_proto(&request.requester_identity, &opts[1].value.sigkey);
+    cpn_sign_key_public_to_proto(&request.service_identity, &opts[2].value.sigkey);
 
-    request.service_identity.data = (uint8_t *) opts[2].value.sigkey.data;
-    request.service_identity.len = sizeof(struct cpn_sign_key_public);
     request.service_address = (char *) opts[3].value.string;
     request.service_port = (char *) opts[4].value.string;
     request.n_parameters = opts[5].value.stringlist.argc;
