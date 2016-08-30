@@ -129,7 +129,7 @@ static void *await_request(void *payload)
 
     await_encryption(&args->enc_args);
 
-    UNUSED(cpn_proto_answer_request(args->enc_args.c, args->r));
+    UNUSED(cpn_proto_answer_request(args->enc_args.c, args->r, service.plugin));
 
     return NULL;
 }
@@ -267,9 +267,7 @@ static void whitelisted_query_succeeds()
 
 static void request_constructs_session()
 {
-    const char *params[] = {
-        "port", "9999"
-    };
+    const char *params[] = { "text" };
     struct await_request_args args = {
         { &remote, &remote_keys }, &service, &local_keys.pk, NULL, 0
     };
@@ -308,7 +306,7 @@ static void request_without_params_succeeds()
 
     assert_success(cpn_sessions_remove(&added, sessionid));
     assert_int_equal(sessionid, added->identifier);
-    assert_int_equal(added->argc, 0);
+    assert_null(added->parameters);
 
     cpn_session_free(added);
     cpn_cap_free(cap);
@@ -316,9 +314,7 @@ static void request_without_params_succeeds()
 
 static void whitlisted_request_constructs_session()
 {
-    const char *params[] = {
-        "port", "9999"
-    };
+    const char *params[] = { "testdata" };
     struct await_request_args args = {
         { &remote, &remote_keys }, &service, &local_keys.pk, &local_keys.pk, 1
     };
@@ -342,7 +338,8 @@ static void whitlisted_request_constructs_session()
 
 static void service_connects()
 {
-    const char *params[] = { "data", "parameter-data" };
+    ProtobufCMessage *params_proto;
+    const char *params[] = { "parameter-data" };
     struct handle_session_args args = {
         { &remote, &remote_keys }, &local_keys.pk, &service, &config
     };
@@ -353,13 +350,14 @@ static void service_connects()
 
     cpn_spawn(&t, handle_session, &args);
 
-    assert_success(cpn_sessions_add(&session, ARRAY_SIZE(params), params, &remote_keys.pk));
+    assert_success(service.plugin->parse_fn(&params_proto, ARRAY_SIZE(params), params));
+    assert_success(cpn_sessions_add(&session, params_proto, &remote_keys.pk));
     assert_success(cpn_cap_create_ref(&cap, session->cap, CPN_CAP_RIGHT_EXEC, &local_keys.pk));
 
     assert_success(cpn_proto_initiate_encryption(&local, &local_keys,
                 &remote_keys.pk));
     assert_success(cpn_proto_initiate_session(&local, session->identifier, cap));
-    assert_success(service.plugin->invoke(&local, 0, NULL) < 0);
+    assert_success(service.plugin->client_fn(&local, 0, NULL) < 0);
 
     cpn_cap_free(cap);
     cpn_join(&t, NULL);
@@ -397,7 +395,7 @@ static void termination_kills_session()
     const struct cpn_session *session;
     uint32_t sessionid;
 
-    assert_success(cpn_sessions_add(&session, 0, NULL, &remote_keys.pk));
+    assert_success(cpn_sessions_add(&session, 0, &remote_keys.pk));
     sessionid = session->identifier;
 
     assert_success(cpn_cap_create_ref(&cap, session->cap, CPN_CAP_RIGHT_TERM, &local_keys.pk));

@@ -30,6 +30,8 @@
 
 static struct cpn_opt request_opts[] = {
     CPN_OPTS_OPT_STRINGLIST(0, "--parameters", NULL, "PARAMETER", false),
+    CPN_OPTS_OPT_STRING('c', "--service-type",
+            "Type of service which is to be invoked", "TYPE", false),
     CPN_OPTS_OPT_END
 };
 
@@ -109,8 +111,10 @@ static int cmd_query(void)
     return 0;
 }
 
-static int cmd_request(const struct cpn_opts_stringlist *parameters)
+static int cmd_request(const char *service_type, const struct cpn_opts_stringlist *parameters)
 {
+    ProtobufCMessage *params = NULL;
+    const struct cpn_service_plugin *plugin;
     struct cpn_cap *cap = NULL;
     struct cpn_channel channel;
     char *cap_hex = NULL;
@@ -118,6 +122,15 @@ static int cmd_request(const struct cpn_opts_stringlist *parameters)
     int err = -1;
 
     memset(&channel, 0, sizeof(channel));
+
+    if (cpn_service_plugin_for_type(&plugin, service_type) < 0) {
+        printf("Could not find service plugin for type %s\n", service_type);
+        goto out_err;
+    }
+
+    if (plugin->parse_fn(&params, parameters->argc, parameters->argv) < 0) {
+        goto out_err;
+    }
 
     if (cpn_proto_initiate_connection(&channel, remote_host, remote_port,
                 &local_keys, &remote_key, CPN_CONNECTION_TYPE_REQUEST) < 0) {
@@ -148,6 +161,8 @@ out_err:
     cpn_channel_close(&channel);
     cpn_cap_free(cap);
     free(cap_hex);
+    if (params)
+        protobuf_c_message_free_unpacked(params, NULL);
 
     return err;
 }
@@ -184,7 +199,7 @@ static int cmd_connect(const char *service_type, uint32_t sessionid,
         goto out;
     }
 
-    if (plugin->invoke(&channel, parameters->argc, parameters->argv) < 0) {
+    if (plugin->client_fn(&channel, parameters->argc, parameters->argv) < 0) {
         puts("Could not invoke service");
         goto out;
     }
@@ -248,7 +263,7 @@ int main(int argc, const char *argv[])
     if (opts[4].set)
         return cmd_query();
     else if (opts[5].set)
-        return cmd_request(&request_opts[1].value.stringlist);
+        return cmd_request(request_opts[2].value.string, &request_opts[1].value.stringlist);
     else if (opts[6].set)
         return cmd_connect(connect_opts[0].value.string,
                connect_opts[1].value.uint32,

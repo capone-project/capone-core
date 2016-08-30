@@ -30,21 +30,13 @@ static uint32_t sessionid;
 
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
-int cpn_sessions_add(const struct cpn_session **out, int argc, const char **argv,
+int cpn_sessions_add(const struct cpn_session **out, ProtobufCMessage *params,
         const struct cpn_sign_key_public *creator)
 {
     struct cpn_session *session;
-    int i;
 
     session = malloc(sizeof(struct cpn_session));
-    session->argc = argc;
-    if (argc)
-        session->argv = malloc(sizeof(char *) * argc);
-    else
-        session->argv = NULL;
-
-    for (i = 0; i < argc; i++)
-        session->argv[i] = strdup(argv[i]);
+    session->parameters = params;
 
     if (cpn_cap_create_root(&session->cap) < 0)
         return -1;
@@ -124,13 +116,10 @@ int cpn_sessions_clear(void)
 
 void cpn_session_free(struct cpn_session *session)
 {
-    size_t i;
-
     if (session == NULL)
         return;
     cpn_cap_free(session->cap);
-    for (i = 0; i < session->argc; i++)
-        free((char *) session->argv[i]);
-    free(session->argv);
+    if (session->parameters)
+        protobuf_c_message_free_unpacked(session->parameters, NULL);
     free(session);
 }

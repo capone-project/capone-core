@@ -200,3 +200,25 @@ void cpn_symmetric_key_hex_from_key(struct cpn_symmetric_key_hex *out, const str
 {
     sodium_bin2hex(out->data, sizeof(out->data), key->data, sizeof(key->data));
 }
+
+int cpn_sign_key_public_from_proto(struct cpn_sign_key_public *out, const SignatureKey *hex)
+{
+    if (hex->data.len != sizeof(out->data))
+        return -1;
+    memcpy(out->data, hex->data.data, hex->data.len);
+    return 0;
+}
+
+int cpn_sign_key_public_to_proto(SignatureKey **out, const struct cpn_sign_key_public *key)
+{
+    SignatureKey *result = malloc(sizeof(SignatureKey));
+    signature_key__init(result);
+
+    result->data.len = sizeof(key->data);
+    result->data.data = malloc(sizeof(key->data));
+    memcpy(result->data.data, key->data, sizeof(key->data));
+
+    *out = result;
+
+    return 0;
+}

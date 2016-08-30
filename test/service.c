@@ -57,8 +57,8 @@ static void test_service_from_config()
     /* Check plugin pointers */
     assert_string_equal(service.plugin->type, "exec");
     assert_string_equal(service.plugin->category, "Shell");
-    assert_non_null(service.plugin->handle);
-    assert_non_null(service.plugin->invoke);
+    assert_non_null(service.plugin->server_fn);
+    assert_non_null(service.plugin->client_fn);
     assert_non_null(service.plugin->version);
 }
 

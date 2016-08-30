@@ -23,6 +23,7 @@
 #include "capone/service.h"
 
 #include "test.h"
+#include "test.pb-c.h"
 
 static struct cpn_sign_key_public pk;
 static const struct cpn_session *session;
@@ -43,12 +44,11 @@ static void add_sessions_adds_session()
 {
     struct cpn_session *removed;
 
-    assert_success(cpn_sessions_add(&session, 0, NULL, &pk));
+    assert_success(cpn_sessions_add(&session, NULL, &pk));
     assert_success(cpn_sessions_remove(&removed, session->identifier));
 
     assert_int_equal(removed->identifier, session->identifier);
-    assert_int_equal(removed->argc, 0);
-    assert_null(removed->argv);
+    assert_null(removed->parameters);
     assert_memory_equal(&removed->creator, &pk, sizeof(struct cpn_sign_key_public));
 
     cpn_session_free(removed);
@@ -56,24 +56,24 @@ static void add_sessions_adds_session()
 
 static void add_session_with_params_succeeds()
 {
+    TestParams *params;
     struct cpn_session *removed;
-    const char *params[] = {
-        "data", "block"
-    };
 
-    assert_success(cpn_sessions_add(&session, ARRAY_SIZE(params), params, &pk));
+    params = malloc(sizeof(TestParams));
+    test_params__init(params);
+    params->msg = strdup("test");
+
+    assert_success(cpn_sessions_add(&session, &params->base, &pk));
     assert_success(cpn_sessions_remove(&removed, session->identifier));
 
-    assert_int_equal(removed->argc, 2);
-    assert_string_equal(removed->argv[0], params[0]);
-    assert_string_equal(removed->argv[1], params[1]);
+    assert_ptr_equal(removed->parameters, params);
 
     cpn_session_free(removed);
 }
 
 static void *add_session(void *ptr)
 {
-    assert_success(cpn_sessions_add((const struct cpn_session **) ptr, 0, NULL, &pk));
+    assert_success(cpn_sessions_add((const struct cpn_session **) ptr, NULL, &pk));
 
     return NULL;
 }
@@ -104,7 +104,7 @@ static void adding_session_with_different_invoker_succeeds()
 {
     struct cpn_session *removed;
 
-    assert_success(cpn_sessions_add(&session, 0, NULL, &pk));
+    assert_success(cpn_sessions_add(&session, NULL, &pk));
     assert_success(cpn_sessions_remove(&removed, session->identifier));
 
     assert_int_equal(removed->identifier, session->identifier);
@@ -116,7 +116,7 @@ static void removing_session_twice_fails()
     struct cpn_session *removed;
     uint32_t identifier;
 
-    assert_success(cpn_sessions_add(&session, 0, NULL, &pk));
+    assert_success(cpn_sessions_add(&session, NULL, &pk));
     identifier = session->identifier;
 
     assert_success(cpn_sessions_remove(&removed, session->identifier));
@@ -147,7 +147,7 @@ static void finding_invalid_session_fails()
 
 static void finding_session_with_invalid_id_fails()
 {
-    assert_success(cpn_sessions_add(&session, 0, NULL, &pk));
+    assert_success(cpn_sessions_add(&session, NULL, &pk));
     assert_failure(cpn_sessions_find(&session, session->identifier + 1));
 }
 
@@ -155,7 +155,7 @@ static void finding_existing_session_succeeds()
 {
     const struct cpn_session *found;
 
-    assert_success(cpn_sessions_add(&session, 0, NULL, &pk));
+    assert_success(cpn_sessions_add(&session, NULL, &pk));
     assert_success(cpn_sessions_find(&found, session->identifier));
 
     assert_int_equal(found->identifier, session->identifier);
@@ -163,7 +163,7 @@ static void finding_existing_session_succeeds()
 
 static void finding_session_without_out_param_succeeds()
 {
-    assert_success(cpn_sessions_add(&session, 0, NULL, &pk));
+    assert_success(cpn_sessions_add(&session, NULL, &pk));
     assert_success(cpn_sessions_find(NULL, session->identifier));
 }
 
@@ -171,9 +171,9 @@ static void finding_intermediate_session_returns_correct_index()
 {
     const struct cpn_session *sessions[3];
 
-    assert_success(cpn_sessions_add(&sessions[0], 0, NULL, &pk));
-    assert_success(cpn_sessions_add(&sessions[1], 0, NULL, &pk));
-    assert_success(cpn_sessions_add(&sessions[2], 0, NULL, &pk));
+    assert_success(cpn_sessions_add(&sessions[0], NULL, &pk));
+    assert_success(cpn_sessions_add(&sessions[1], NULL, &pk));
+    assert_success(cpn_sessions_add(&sessions[2], NULL, &pk));
 
     assert_success(cpn_sessions_find(&session, sessions[2]->identifier));
     assert_int_equal(session, sessions[2]);
@@ -185,7 +185,7 @@ static void finding_session_with_multiple_sessions_succeeds()
     uint32_t i;
 
     for (i = 0; i < ARRAY_SIZE(sessions); i++)
-        assert_success(cpn_sessions_add(&sessions[i], 0, NULL, &pk));
+        assert_success(cpn_sessions_add(&sessions[i], NULL, &pk));
 
     for (i = 0; i < ARRAY_SIZE(sessions); i++) {
         assert_success(cpn_sessions_find(&session, sessions[i]->identifier));
@@ -201,11 +201,14 @@ static void free_session_succeeds_without_params()
 
 static void free_session_succeeds_with_params()
 {
+    TestParams *params;
     struct cpn_session *session = calloc(1, sizeof(struct cpn_session));
-    session->argc = 2;
-    session->argv = malloc(sizeof(char *) * 2);
-    session->argv[0] = strdup("data");
-    session->argv[1] = strdup("block");
+
+    params = malloc(sizeof(TestParams));
+    test_params__init(params);
+    params->msg = strdup("test");
+
+    session->parameters = &params->base;
 
     cpn_session_free(session);
 }

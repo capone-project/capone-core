@@ -25,6 +25,7 @@
 #include "capone/service.h"
 
 #include "capone/services/exec.h"
+#include "capone/proto/exec.pb-c.h"
 
 static int invoke(struct cpn_channel *channel, int argc, const char **argv)
 {
@@ -89,10 +90,7 @@ static int handle(struct cpn_channel *channel,
         const struct cpn_session *session,
         const struct cpn_cfg *cfg)
 {
-    struct cpn_opt opts[] = {
-        CPN_OPTS_OPT_STRING(0, "--command", NULL, NULL, false),
-        CPN_OPTS_OPT_STRINGLIST(0, "--arguments", NULL, NULL, false),
-    };
+    ExecParams *params;
     int pid;
     int stdout_fds[2] = { -1, -1 }, stderr_fds[2] = { -1, -1 };
     int error = 0;
@@ -100,9 +98,7 @@ static int handle(struct cpn_channel *channel,
     UNUSED(cfg);
     UNUSED(invoker);
 
-    if (cpn_opts_parse(opts, session->argc, session->argv) < 0) {
-        return -1;
-    }
+    params = (ExecParams *) session->parameters;
 
     if ((error = pipe(stdout_fds)) < 0 ||
             (error = pipe(stderr_fds)) < 0)
@@ -126,8 +122,7 @@ static int handle(struct cpn_channel *channel,
         close(stderr_fds[0]);
         close(stderr_fds[1]);
 
-        exec(opts[0].value.string,
-                opts[0].value.stringlist.argv, opts[0].value.stringlist.argc, NULL, 0);
+        exec(params->command, (const char **) params->arguments, params->n_arguments, NULL, 0);
     } else {
         close(stdout_fds[1]);
         close(stderr_fds[1]);
@@ -148,6 +143,35 @@ out:
     return error;
 }
 
+static int parse(ProtobufCMessage **out, int argc, const char *argv[])
+{
+    struct cpn_opt opts[] = {
+        CPN_OPTS_OPT_STRING(0, "--command", NULL, NULL, false),
+        CPN_OPTS_OPT_STRINGLIST(0, "--arguments", NULL, NULL, false),
+        CPN_OPTS_OPT_END
+    };
+    ExecParams *params;
+    uint32_t i;
+
+    if (cpn_opts_parse(opts, argc, argv) < 0)
+        return -1;
+
+    params = malloc(sizeof(ExecParams));
+    exec_params__init(params);
+
+    params->command = strdup(opts[0].value.string);
+
+    params->n_arguments = opts[2].value.stringlist.argc;
+    params->arguments = malloc(sizeof(char *) * params->n_arguments);
+    for (i = 0; i < params->n_arguments; i++) {
+        params->arguments[i] = strdup(opts[2].value.stringlist.argv[i]);
+    }
+
+    *out = &params->base;
+
+    return 0;
+}
+
 int cpn_exec_init_service(const struct cpn_service_plugin **out)
 {
     static struct cpn_service_plugin plugin = {
@@ -155,7 +179,8 @@ int cpn_exec_init_service(const struct cpn_service_plugin **out)
         "exec",
         "0.0.1",
         handle,
-        invoke
+        invoke,
+        parse
     };
 
     *out = &plugin;
