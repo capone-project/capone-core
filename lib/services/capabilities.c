@@ -477,6 +477,61 @@ static int handle(struct cpn_channel *channel,
     return 0;
 }
 
+int parse(ProtobufCMessage **out, int argc, const char *argv[])
+{
+    struct cpn_opt request_opts[] = {
+        CPN_OPTS_OPT_SIGKEY(0, "--invoker-identity", NULL, NULL, false),
+        CPN_OPTS_OPT_SIGKEY(0, "--requested-identity", NULL, NULL, false),
+        CPN_OPTS_OPT_SIGKEY(0, "--service-identity", NULL, NULL, false),
+        CPN_OPTS_OPT_STRING(0, "--service-address", NULL, NULL, false),
+        CPN_OPTS_OPT_STRING(0, "--service-port", NULL, NULL, false),
+        CPN_OPTS_OPT_STRINGLIST(0, "--service-parameters", NULL, NULL, false),
+        CPN_OPTS_OPT_END
+    };
+    struct cpn_opt opts[] = {
+        CPN_OPTS_OPT_ACTION("register", NULL, NULL),
+        CPN_OPTS_OPT_ACTION("request", NULL, NULL),
+        CPN_OPTS_OPT_END
+    };
+    CapabilitiesParams *params;
+
+    opts[1].value.action_opts = request_opts;
+    if (cpn_opts_parse(opts, argc, argv) < 0)
+        return -1;
+
+    params = malloc(sizeof(CapabilitiesParams));
+    capabilities_params__init(params);
+
+    if (opts[0].set) {
+        params->type = CAPABILITIES_PARAMS__TYPE__REGISTER;
+    } else {
+        CapabilitiesParams__RequestParams *rparams;
+        uint32_t i;
+
+        rparams = malloc(sizeof(CapabilitiesParams__RequestParams));
+        capabilities_params__request_params__init(rparams);
+
+        cpn_sign_key_public_to_proto(&rparams->invoker_identity, &request_opts[0].value.sigkey);
+        cpn_sign_key_public_to_proto(&rparams->requester_identity, &request_opts[1].value.sigkey);
+        cpn_sign_key_public_to_proto(&rparams->service_identity, &request_opts[2].value.sigkey);
+        rparams->service_address = strdup(request_opts[3].value.string);
+        rparams->service_port = strdup(request_opts[4].value.string);
+
+        rparams->n_parameters = request_opts[5].value.stringlist.argc;
+        rparams->parameters = malloc(sizeof(char *) * rparams->n_parameters);
+        for (i = 0; i < rparams->n_parameters; i++) {
+            rparams->parameters[i] = strdup(request_opts[5].value.stringlist.argv[i]);
+        }
+
+        params->request_params = rparams;
+        params->type = CAPABILITIES_PARAMS__TYPE__REQUEST;
+    }
+
+    *out = &params->base;
+
+    return 0;
+}
+
 int cpn_capabilities_init_service(const struct cpn_service_plugin **service)
 {
     static struct cpn_service_plugin plugin = {
@@ -484,7 +539,8 @@ int cpn_capabilities_init_service(const struct cpn_service_plugin **service)
         "capabilities",
         "0.0.1",
         handle,
-        invoke
+        invoke,
+        parse
     };
 
     *service = &plugin;

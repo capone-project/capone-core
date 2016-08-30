@@ -45,6 +45,15 @@ static int handle(struct cpn_channel *channel,
             (uint8_t *) session->argv[0], strlen(session->argv[0]));
 }
 
+static int parse(ProtobufCMessage **out, int argc, const char *argv[])
+{
+    UNUSED(argv);
+    if (argc)
+        return -1;
+    *out = NULL;
+    return 0;
+}
+
 int cpn_test_init_service(const struct cpn_service_plugin **out)
 {
     static struct cpn_service_plugin plugin = {
@@ -52,7 +61,8 @@ int cpn_test_init_service(const struct cpn_service_plugin **out)
         "test",
         "0.0.1",
         handle,
-        invoke
+        invoke,
+        parse
     };
 
     *out = &plugin;

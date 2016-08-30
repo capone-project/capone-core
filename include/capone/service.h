@@ -66,6 +66,17 @@ typedef int (*cpn_service_server_fn)(struct cpn_channel *channel,
         const struct cpn_session *session,
         const struct cpn_cfg *cfg);
 
+/** @brief Function parsing a client command line
+ *
+ * This function will be invoked prior to connecting to the
+ * remote service in order to parse the client's given
+ * parameters.
+ *
+ * @param[out] out Protobuf containing parsed parameters
+ * @param[in] argc Number of arguments
+ * @param[in] argv Arguments
+ * */
+typedef int (*cpn_service_parse_fn)(ProtobufCMessage **out, int argc, const char *argv[]);
 
 struct cpn_service_plugin {
     /** @brief Category of the sevice
@@ -92,6 +103,8 @@ struct cpn_service_plugin {
     cpn_service_server_fn server_fn;
     /** \see cpn_service_client_fn */
     cpn_service_client_fn client_fn;
+    /** \see  cpn_service_parse_fn */
+    cpn_service_parse_fn parse_fn;
 };
 
 /** @brief Structure wrapping a service's functionality
