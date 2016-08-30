@@ -28,6 +28,7 @@
 
 #include "capone/services/capabilities.h"
 #include "capone/services/exec.h"
+#include "capone/services/fs.h"
 #include "capone/services/invoke.h"
 #include "capone/services/synergy.h"
 #include "capone/services/xpra.h"
@@ -64,6 +65,7 @@ int cpn_service_plugin_register_builtins(void)
     int (*initializers[])(const struct cpn_service_plugin **) = {
         cpn_capabilities_init_service,
         cpn_exec_init_service,
+        cpn_fs_init_service,
         cpn_invoke_init_service,
         cpn_synergy_init_service,
         cpn_xpra_init_service,

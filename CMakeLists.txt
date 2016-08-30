@@ -46,6 +46,7 @@ PROTOBUF_GENERATE_C(PROTO_SOURCES PROTO_HEADERS
     include/capone/proto/discovery.proto
     include/capone/proto/encryption.proto
     include/capone/proto/exec.proto
+    include/capone/proto/fs.proto
     include/capone/proto/invoke.proto)
 
 ADD_LIBRARY(capone SHARED
@@ -71,6 +72,7 @@ ADD_LIBRARY(capone SHARED
     lib/crypto/symmetric.c
     lib/services/capabilities.c
     lib/services/exec.c
+    lib/services/fs.c
     lib/services/invoke.c
     lib/services/synergy.c
     lib/services/xpra.c
