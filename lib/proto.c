@@ -209,7 +209,7 @@ out_notify:
     if (err)
         goto out;
 
-    if ((err = service->plugin->handle(channel, remote_key, session, cfg)) < 0) {
+    if ((err = service->plugin->server_fn(channel, remote_key, session, cfg)) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Service could not handle connection");
         goto out;
     }

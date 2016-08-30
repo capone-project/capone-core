@@ -88,7 +88,7 @@ static int handle(struct cpn_channel *channel,
         goto out;
     }
 
-    if (plugin->invoke(&remote_channel, opts[4].value.stringlist.argc, opts[4].value.stringlist.argv) < 0) {
+    if (plugin->client_fn(&remote_channel, opts[4].value.stringlist.argc, opts[4].value.stringlist.argv) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not invoke service");
         goto out;
     }

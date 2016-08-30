@@ -49,7 +49,7 @@ struct cpn_channel;
  * @param[in] argv Array of arguments specified by the client
  * @return <code>0</code> on success, <code>-1</code> otherwise
  */
-typedef int (*invoke_fn)(struct cpn_channel *channel, int argc, const char **argv);
+typedef int (*cpn_service_client_fn)(struct cpn_channel *channel, int argc, const char **argv);
 
 /** @brief Function executed when a service is started by a client
  *
@@ -61,7 +61,7 @@ typedef int (*invoke_fn)(struct cpn_channel *channel, int argc, const char **arg
  * @param[in] cfg Configuration of the server
  * @return <code>0</code> on success, <code>-1</code> otherwise
  */
-typedef int (*handle_fn)(struct cpn_channel *channel,
+typedef int (*cpn_service_server_fn)(struct cpn_channel *channel,
         const struct cpn_sign_key_public *invoker,
         const struct cpn_session *session,
         const struct cpn_cfg *cfg);
@@ -88,10 +88,10 @@ struct cpn_service_plugin {
     /** @brief Version of the plugin */
     const char *version;
 
-    /** \see handle_fn */
-    handle_fn handle;
-    /** \see invoke_fn */
-    invoke_fn invoke;
+    /** \see cpn_service_server_fn */
+    cpn_service_server_fn server_fn;
+    /** \see cpn_service_client_fn */
+    cpn_service_client_fn client_fn;
 };
 
 /** @brief Structure wrapping a service's functionality
