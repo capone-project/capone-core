@@ -23,6 +23,7 @@
 
 #include "test.h"
 #include "test-service.h"
+#include "test.pb-c.h"
 
 static uint8_t buf[1024];
 
@@ -38,19 +39,33 @@ static int handle(struct cpn_channel *channel,
         const struct cpn_session *session,
         const struct cpn_cfg *cfg)
 {
+    TestParams *params;
+
     UNUSED(cfg);
     UNUSED(invoker);
 
-    return cpn_channel_write_data(channel,
-            (uint8_t *) session->argv[0], strlen(session->argv[0]));
+    params = (TestParams *) session->parameters;
+
+    return cpn_channel_write_data(channel, (uint8_t *) params->msg, strlen(params->msg));
 }
 
 static int parse(ProtobufCMessage **out, int argc, const char *argv[])
 {
-    UNUSED(argv);
-    if (argc)
-        return -1;
+    TestParams *params;
+
     *out = NULL;
+
+    if (argc == 0)
+        return 0;
+    if (argc != 1)
+        return -1;
+
+    params = malloc(sizeof(TestParams));
+    test_params__init(params);
+    params->msg = strdup(argv[0]);
+
+    *out = &params->base;
+
     return 0;
 }
 

@@ -169,7 +169,6 @@ static int relay_capability_request(struct cpn_channel *channel,
     }
 
     cpn_sign_key_public_from_proto(&service_key, request->service_identity);
-    cpn_sign_key_public_from_proto(&invoker_key, request->invoker_identity);
 
     if ((ret = cpn_proto_initiate_connection(&service_channel,
                     request->service_address, request->service_port,
@@ -192,10 +191,7 @@ static int relay_capability_request(struct cpn_channel *channel,
 
     cap_message.requestid = request->requestid;
     cap_message.sessionid = sessionid;
-    cap_message.identity.data = invoker_key.data;
-    cap_message.identity.len = sizeof(invoker_key.data);
-    cap_message.service.data = service_key.data;
-    cap_message.service.len = sizeof(service_key.data);
+    cpn_sign_key_public_to_proto(&cap_message.service_identity, &service_key);
 
     cap_message.capability = malloc(sizeof(CapabilityMessage));
     if (cpn_cap_to_protobuf(cap_message.capability, ref_cap) < 0) {
@@ -223,8 +219,8 @@ out:
 static int invoke_register(struct cpn_channel *channel, struct cpn_opt *opts)
 {
     CapabilityRequest *request;
-    struct cpn_sign_key_hex requester_hex, invoker_hex, service_hex;
-    struct cpn_sign_key_public requester, invoker, service;
+    struct cpn_sign_key_hex requester_hex, service_hex;
+    struct cpn_sign_key_public requester, service;
     struct cpn_cfg cfg;
     size_t i;
 
@@ -242,7 +238,6 @@ static int invoke_register(struct cpn_channel *channel, struct cpn_opt *opts)
         }
 
         if (cpn_sign_key_public_from_proto(&requester, request->requester_identity) < 0 ||
-                cpn_sign_key_public_from_proto(&invoker, request->invoker_identity) < 0 ||
                 cpn_sign_key_public_from_proto(&service, request->service_identity) < 0)
         {
             cpn_log(LOG_LEVEL_ERROR, "Unable to parse remote keys");
@@ -250,16 +245,14 @@ static int invoke_register(struct cpn_channel *channel, struct cpn_opt *opts)
         }
 
         cpn_sign_key_hex_from_key(&requester_hex, &requester);
-        cpn_sign_key_hex_from_key(&invoker_hex, &invoker);
         cpn_sign_key_hex_from_key(&service_hex, &service);
 
         printf("request from: %s\n"
-               "     invoker: %s\n"
                "     service: %s\n"
                "     address: %s\n"
                "        port: %s\n"
                "  parameters: ",
-               requester_hex.data, invoker_hex.data, service_hex.data,
+               requester_hex.data, service_hex.data,
                request->service_address, request->service_port);
         for (i = 0; i < request->n_parameters; i++) {
             printf("%s ", request->parameters[i]);
@@ -292,44 +285,50 @@ static int invoke_register(struct cpn_channel *channel, struct cpn_opt *opts)
 
 static int invoke_request(struct cpn_channel *channel)
 {
-    Capability *capability;
-    struct cpn_sign_key_hex identity_hex, service_hex;
-    char cap_hex[CPN_CAP_SECRET_LEN * 2 + 1];
+    Capability *capability = NULL;
+    struct cpn_sign_key_public service;
+    struct cpn_sign_key_hex service_hex;
+    struct cpn_cap *cap = NULL;
+    char *cap_hex = NULL;
+    int err = -1;
 
     if (cpn_channel_receive_protobuf(channel, &capability__descriptor,
                 (ProtobufCMessage **) &capability) < 0)
     {
         cpn_log(LOG_LEVEL_ERROR, "Unable to receive capability");
-        return -1;
+        goto out;
     }
 
-    if (cpn_sign_key_hex_from_bin(&identity_hex,
-                capability->identity.data, capability->identity.len) < 0 ||
-            cpn_sign_key_hex_from_bin(&service_hex,
-                capability->service.data, capability->service.len) < 0)
-    {
-        cpn_log(LOG_LEVEL_ERROR, "Unable to parse capability keys");
-        return -1;
+    if (cpn_sign_key_public_from_proto(&service, capability->service_identity) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Unable to parse service identity");
+        goto out;
     }
+    cpn_sign_key_hex_from_key(&service_hex, &service);
 
-    if (sodium_bin2hex(cap_hex, sizeof(cap_hex),
-                capability->capability->secret.data,
-                capability->capability->secret.len) == NULL)
-    {
+    if (cpn_cap_from_protobuf(&cap, capability->capability) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to parse capability secret");
-        return -1;
+        goto out;
     }
 
-    printf("identity:   %s\n"
-           "service:    %s\n"
+    if (cpn_cap_to_string(&cap_hex, cap) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Unable to convert capability");
+        goto out;
+    }
+
+    printf("service:    %s\n"
            "sessionid:  %"PRIu32"\n"
            "secret:     %s\n",
-           identity_hex.data, service_hex.data,
-           capability->sessionid, cap_hex);
+           service_hex.data, capability->sessionid, cap_hex);
 
-    capability__free_unpacked(capability, NULL);
+    err = 0;
 
-    return 0;
+out:
+    if (capability)
+        capability__free_unpacked(capability, NULL);
+    cpn_cap_free(cap);
+    free(cap_hex);
+
+    return err;
 }
 
 static int invoke(struct cpn_channel *channel, int argc, const char **argv)
@@ -390,7 +389,8 @@ static int handle_register(struct cpn_channel *channel,
 }
 
 static int handle_request(struct cpn_channel *channel,
-        const struct cpn_opt *opts)
+        const struct cpn_sign_key_public *invoker,
+        CapabilitiesParams__RequestParams *params)
 {
     CapabilityRequest request = CAPABILITY_REQUEST__INIT;
     struct cpn_list_entry *it;
@@ -400,7 +400,8 @@ static int handle_request(struct cpn_channel *channel,
 
     pthread_mutex_lock(&registrants_mutex);
     cpn_list_foreach(&registrants, it, reg) {
-        if (!memcmp(reg->identity.data, opts[1].value.sigkey.data, sizeof(struct cpn_sign_key_public)))
+        if (!memcmp(reg->identity.data, params->requested_identity->data.data,
+                    sizeof(struct cpn_sign_key_public)))
             break;
     }
     pthread_mutex_unlock(&registrants_mutex);
@@ -412,14 +413,12 @@ static int handle_request(struct cpn_channel *channel,
 
     request.requestid = requestid++;
 
-    cpn_sign_key_public_to_proto(&request.invoker_identity, &opts[0].value.sigkey);
-    cpn_sign_key_public_to_proto(&request.requester_identity, &opts[1].value.sigkey);
-    cpn_sign_key_public_to_proto(&request.service_identity, &opts[2].value.sigkey);
-
-    request.service_address = (char *) opts[3].value.string;
-    request.service_port = (char *) opts[4].value.string;
-    request.n_parameters = opts[5].value.stringlist.argc;
-    request.parameters = (char **) opts[5].value.stringlist.argv;
+    cpn_sign_key_public_to_proto(&request.requester_identity, invoker);
+    request.service_identity = params->service_identity;
+    request.service_address = params->service_address;
+    request.service_port = params->service_port;
+    request.n_parameters = params->n_parameters;
+    request.parameters = params->parameters;
 
     if (cpn_channel_write_protobuf(&reg->channel, &request.base) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to request capability request");
@@ -447,41 +446,22 @@ static int handle(struct cpn_channel *channel,
         const struct cpn_session *session,
         const struct cpn_cfg *cfg)
 {
-    struct cpn_opt request_opts[] = {
-        CPN_OPTS_OPT_SIGKEY(0, "--invoker-identity", NULL, NULL, false),
-        CPN_OPTS_OPT_SIGKEY(0, "--requested-identity", NULL, NULL, false),
-        CPN_OPTS_OPT_SIGKEY(0, "--service-identity", NULL, NULL, false),
-        CPN_OPTS_OPT_STRING(0, "--service-address", NULL, NULL, false),
-        CPN_OPTS_OPT_STRING(0, "--service-port", NULL, NULL, false),
-        CPN_OPTS_OPT_STRINGLIST(0, "--service-parameters", NULL, NULL, false),
-        CPN_OPTS_OPT_END
-    };
-    struct cpn_opt opts[] = {
-        CPN_OPTS_OPT_ACTION("register", NULL, NULL),
-        CPN_OPTS_OPT_ACTION("request", NULL, NULL),
-        CPN_OPTS_OPT_END
-    };
-
-    opts[1].value.action_opts = request_opts;
-
+    CapabilitiesParams *params = (CapabilitiesParams *) session->parameters;
     UNUSED(cfg);
 
-    if (cpn_opts_parse(opts, session->argc, session->argv) < 0)
-        return -1;
-
-    if (opts[0].set)
-        return handle_register(channel, invoker);
-    else if (opts[1].set)
-        return handle_request(channel, request_opts);
-
-    return 0;
+    switch (params->type) {
+        case CAPABILITIES_PARAMS__TYPE__REGISTER:
+            return handle_register(channel, invoker);
+        case CAPABILITIES_PARAMS__TYPE__REQUEST:
+            return handle_request(channel, invoker, params->request_params);
+        default:
+            return -1;
+    }
 }
 
 int parse(ProtobufCMessage **out, int argc, const char *argv[])
 {
     struct cpn_opt request_opts[] = {
-        CPN_OPTS_OPT_SIGKEY(0, "--invoker-identity", NULL, NULL, false),
-        CPN_OPTS_OPT_SIGKEY(0, "--requested-identity", NULL, NULL, false),
         CPN_OPTS_OPT_SIGKEY(0, "--service-identity", NULL, NULL, false),
         CPN_OPTS_OPT_STRING(0, "--service-address", NULL, NULL, false),
         CPN_OPTS_OPT_STRING(0, "--service-port", NULL, NULL, false),
@@ -511,16 +491,15 @@ int parse(ProtobufCMessage **out, int argc, const char *argv[])
         rparams = malloc(sizeof(CapabilitiesParams__RequestParams));
         capabilities_params__request_params__init(rparams);
 
-        cpn_sign_key_public_to_proto(&rparams->invoker_identity, &request_opts[0].value.sigkey);
-        cpn_sign_key_public_to_proto(&rparams->requester_identity, &request_opts[1].value.sigkey);
-        cpn_sign_key_public_to_proto(&rparams->service_identity, &request_opts[2].value.sigkey);
-        rparams->service_address = strdup(request_opts[3].value.string);
-        rparams->service_port = strdup(request_opts[4].value.string);
+        cpn_sign_key_public_to_proto(&rparams->requested_identity, &request_opts[0].value.sigkey);
+        cpn_sign_key_public_to_proto(&rparams->service_identity, &request_opts[1].value.sigkey);
+        rparams->service_address = strdup(request_opts[2].value.string);
+        rparams->service_port = strdup(request_opts[3].value.string);
 
-        rparams->n_parameters = request_opts[5].value.stringlist.argc;
+        rparams->n_parameters = request_opts[4].value.stringlist.argc;
         rparams->parameters = malloc(sizeof(char *) * rparams->n_parameters);
         for (i = 0; i < rparams->n_parameters; i++) {
-            rparams->parameters[i] = strdup(request_opts[5].value.stringlist.argv[i]);
+            rparams->parameters[i] = strdup(request_opts[4].value.stringlist.argv[i]);
         }
 
         params->request_params = rparams;

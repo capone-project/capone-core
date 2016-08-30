@@ -90,11 +90,7 @@ static int handle(struct cpn_channel *channel,
         const struct cpn_session *session,
         const struct cpn_cfg *cfg)
 {
-    struct cpn_opt opts[] = {
-        CPN_OPTS_OPT_STRING(0, "--command", NULL, NULL, false),
-        CPN_OPTS_OPT_STRINGLIST(0, "--arguments", NULL, NULL, false),
-        CPN_OPTS_OPT_END
-    };
+    ExecParams *params;
     int pid;
     int stdout_fds[2] = { -1, -1 }, stderr_fds[2] = { -1, -1 };
     int error = 0;
@@ -102,9 +98,7 @@ static int handle(struct cpn_channel *channel,
     UNUSED(cfg);
     UNUSED(invoker);
 
-    if (cpn_opts_parse(opts, session->argc, session->argv) < 0) {
-        return -1;
-    }
+    params = (ExecParams *) session->parameters;
 
     if ((error = pipe(stdout_fds)) < 0 ||
             (error = pipe(stderr_fds)) < 0)
@@ -128,8 +122,7 @@ static int handle(struct cpn_channel *channel,
         close(stderr_fds[0]);
         close(stderr_fds[1]);
 
-        exec(opts[0].value.string,
-                opts[0].value.stringlist.argv, opts[0].value.stringlist.argc, NULL, 0);
+        exec(params->command, (const char **) params->arguments, params->n_arguments, NULL, 0);
     } else {
         close(stdout_fds[1]);
         close(stderr_fds[1]);

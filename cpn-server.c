@@ -156,7 +156,7 @@ static void *handle_connection(void *payload)
                 goto out;
             }
 
-            if (cpn_proto_answer_request(&args->channel, &remote_key) < 0) {
+            if (cpn_proto_answer_request(&args->channel, &remote_key, service.plugin) < 0) {
                 cpn_log(LOG_LEVEL_ERROR, "Received invalid request");
                 goto out;
             }

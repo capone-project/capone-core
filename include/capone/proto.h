@@ -239,7 +239,8 @@ int cpn_proto_send_request(uint32_t *sessionid,
  * \see cpn_proto_send_request
  */
 int cpn_proto_answer_request(struct cpn_channel *channel,
-        const struct cpn_sign_key_public *remote_key);
+        const struct cpn_sign_key_public *remote_key,
+        const struct cpn_service_plugin *plugin);
 
 /** @brief Start a session
  *

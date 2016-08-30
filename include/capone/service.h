@@ -76,7 +76,7 @@ typedef int (*cpn_service_server_fn)(struct cpn_channel *channel,
  * @param[in] argc Number of arguments
  * @param[in] argv Arguments
  * */
-typedef int (*cpn_service_parse_fn)(ProtobufCMessage **out, int argc, const char *argv[]);
+typedef int (*cpn_service_parse_fn)(ProtobufCMessage **out, int argc, const char **argv);
 
 struct cpn_service_plugin {
     /** @brief Category of the sevice

@@ -221,19 +221,18 @@ static void write_with_response()
 static void write_protobuf()
 {
     TestMessage msg, *recv = NULL;
-    unsigned char value[] = "test";
+    char value[] = "test";
 
     stub_sockets(&channel, &remote);
 
     test_message__init(&msg);
-    msg.value.data = value;
-    msg.value.len = sizeof(value);
+    msg.value = value;
 
     assert_success(cpn_channel_write_protobuf(&channel, (ProtobufCMessage *)&msg));
     assert_success(cpn_channel_receive_protobuf(&remote, &test_message__descriptor,
             (ProtobufCMessage **) &recv));
 
-    assert_string_equal(msg.value.data, recv->value.data);
+    assert_string_equal(msg.value, recv->value);
 
     test_message__free_unpacked(recv, NULL);
 }

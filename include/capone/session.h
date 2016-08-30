@@ -75,10 +75,8 @@ struct cpn_session {
     /** @brief Identity of the user who created the session */
     struct cpn_sign_key_public creator;
 
-    /** @brief Number of parameters */
-    size_t argc;
-    /** @brief Parameters chosen for the session */
-    const char **argv;
+    /** @brief Parameters */
+    ProtobufCMessage *parameters;
 };
 
 /** @brief Initialize sessions
@@ -100,12 +98,11 @@ int cpn_sessions_init(void);
  * identifier and invoker has already been specified.
  *
  * @param[out] out The newly created session
- * @param[in] argc Number of arguments
- * @param[in] argv Session arguments
+ * @param[in] params Session arguments
  * @param[in] creator Creator of the session
  * @return <code>0</code> on success, <code>-1</code> otherwise
  */
-int cpn_sessions_add(const struct cpn_session **out, int argc, const char **argv,
+int cpn_sessions_add(const struct cpn_session **out, ProtobufCMessage *params,
         const struct cpn_sign_key_public *creator);
 
 /** @brief Remove a session

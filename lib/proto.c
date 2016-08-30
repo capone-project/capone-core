@@ -363,9 +363,11 @@ out:
 }
 
 int cpn_proto_answer_request(struct cpn_channel *channel,
-        const struct cpn_sign_key_public *remote_key)
+        const struct cpn_sign_key_public *remote_key,
+        const struct cpn_service_plugin *service)
 {
     SessionRequestMessage *request = NULL;
+    ProtobufCMessage *parameters = NULL;
     SessionMessage session_message = SESSION_MESSAGE__INIT;
     const struct cpn_session *session;
     int err = -1;
@@ -378,9 +380,12 @@ int cpn_proto_answer_request(struct cpn_channel *channel,
         goto out;
     }
 
-    if (cpn_sessions_add(&session, request->n_parameters,
-                (const char **) request->parameters, remote_key) < 0)
-    {
+    if (service->parse_fn(&parameters, request->n_parameters, (const char **) request->parameters) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Unable to parse parameters");
+        goto out;
+    }
+
+    if (cpn_sessions_add(&session, parameters, remote_key) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to add session");
         goto out;
     }
