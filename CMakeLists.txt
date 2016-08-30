@@ -73,6 +73,9 @@ TARGET_LINK_LIBRARIES(capone
 ADD_EXECUTABLE(cpn-client cpn-client.c)
 TARGET_LINK_LIBRARIES(cpn-client capone)
 
+ADD_EXECUTABLE(cpn-derive cpn-derive.c)
+TARGET_LINK_LIBRARIES(cpn-derive capone)
+
 ADD_EXECUTABLE(cpn-discover cpn-discover.c)
 TARGET_LINK_LIBRARIES(cpn-discover capone)
 
