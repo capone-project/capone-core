@@ -10,6 +10,14 @@ IF(CMOCKA_FOUND)
         ${CMOCKA_INCLUDE_DIR}
         ${PROJECT_BINARY_DIR})
 
+    ADD_EXECUTABLE(test-helper test-helper.c)
+
+    SET(TEST_HELPER_EXECUTABLE
+        ${CMAKE_CURRENT_BINARY_DIR}/test-helper${CMAKE_EXECUTABLE_SUFFIX})
+
+    CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/config.h.in
+        ${CMAKE_CURRENT_BINARY_DIR}/config.h)
+
     ADD_LIBRARY(capone-test SHARED bench.c test.c)
     TARGET_LINK_LIBRARIES(capone-test capone cmocka)
 
@@ -27,6 +35,7 @@ IF(CMOCKA_FOUND)
         lib/service.c
         lib/session.c
         lib/test-service.c
+        lib/service/exec.c
         ${TEST_PROTO_SOURCES})
     TARGET_LINK_LIBRARIES(cpn-test capone-test)
 

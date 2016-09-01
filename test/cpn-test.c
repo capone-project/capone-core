@@ -36,6 +36,8 @@ extern int server_test_run_suite(void);
 extern int service_test_run_suite(void);
 extern int session_test_run_suite(void);
 
+extern int exec_service_test_run_suite(void);
+
 static struct cpn_opt opts[] = {
     CPN_OPTS_OPT_COUNTER('v', "--verbose", NULL),
     CPN_OPTS_OPT_END
@@ -53,7 +55,8 @@ static int (*suite_fns[])(void) = {
     server_test_run_suite,
     service_test_run_suite,
     session_test_run_suite,
-    proto_test_run_suite
+    proto_test_run_suite,
+    exec_service_test_run_suite
 };
 
 int main(int argc, const char *argv[])

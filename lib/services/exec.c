@@ -42,7 +42,7 @@ static int invoke(struct cpn_channel *channel,
     return 0;
 }
 
-static int exec(const char *cmd, const char **args, int nargs)
+static int execute(const char *cmd, const char **args, int nargs)
 {
     char **argv = NULL;
     int i, err;
@@ -115,7 +115,7 @@ static int handle(struct cpn_channel *channel,
         close(fds[0]);
         close(fds[1]);
 
-        if (exec(params->command, (const char **) params->arguments, params->n_arguments) < 0) {
+        if (execute(params->command, (const char **) params->arguments, params->n_arguments) < 0) {
             cpn_log(LOG_LEVEL_ERROR, "Unable to execute %s", params->command);
             _exit(-1);
         }

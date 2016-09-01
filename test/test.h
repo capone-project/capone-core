@@ -28,6 +28,8 @@
 
 #include "capone/channel.h"
 
+#include "config.h"
+
 #define assert_success(fn) assert_int_equal((fn), 0)
 #define assert_failure(fn) assert_int_equal((fn), -1)
 
