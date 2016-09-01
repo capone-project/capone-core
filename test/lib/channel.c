@@ -28,7 +28,7 @@
 #include "capone/channel.h"
 
 #include "test.h"
-#include "test.pb-c.h"
+#include "lib/test.pb-c.h"
 
 struct relay_args {
     struct cpn_channel *c;

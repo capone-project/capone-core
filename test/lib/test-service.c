@@ -23,7 +23,7 @@
 
 #include "test.h"
 #include "test-service.h"
-#include "test.pb-c.h"
+#include "test/lib/test.pb-c.h"
 
 static uint8_t buf[1024];
 

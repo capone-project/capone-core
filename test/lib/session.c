@@ -23,7 +23,7 @@
 #include "capone/service.h"
 
 #include "test.h"
-#include "test.pb-c.h"
+#include "lib/test.pb-c.h"
 
 static struct cpn_sign_key_public pk;
 static const struct cpn_session *session;

@@ -4,27 +4,29 @@ IF(CMOCKA_FOUND)
     MESSAGE(STATUS "Found cmocka: TRUE")
     MESSAGE(STATUS "  Building tests")
 
-    PROTOBUF_GENERATE_C(TEST_PROTO_SOURCES TEST_PROTO_HEADERS test.proto)
+    PROTOBUF_GENERATE_C(TEST_PROTO_SOURCES TEST_PROTO_HEADERS lib/test.proto)
 
-    INCLUDE_DIRECTORIES(SYSTEM ${CMOCKA_INCLUDE_DIR})
+    INCLUDE_DIRECTORIES(SYSTEM
+        ${CMOCKA_INCLUDE_DIR}
+        ${PROJECT_BINARY_DIR})
 
     ADD_LIBRARY(capone-test SHARED bench.c test.c)
     TARGET_LINK_LIBRARIES(capone-test capone cmocka)
 
     ADD_EXECUTABLE(cpn-test cpn-test.c
-        acl.c
-        caps.c
-        cfg.c
-        channel.c
-        common.c
-        keys.c
-        list.c
-        opts.c
-        proto.c
-        server.c
-        service.c
-        session.c
-        test-service.c
+        lib/acl.c
+        lib/caps.c
+        lib/cfg.c
+        lib/channel.c
+        lib/common.c
+        lib/keys.c
+        lib/list.c
+        lib/opts.c
+        lib/proto.c
+        lib/server.c
+        lib/service.c
+        lib/session.c
+        lib/test-service.c
         ${TEST_PROTO_SOURCES})
     TARGET_LINK_LIBRARIES(cpn-test capone-test)
 
