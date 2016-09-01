@@ -150,7 +150,7 @@ static int parse(ProtobufCMessage **out, int argc, const char *argv[])
 {
     struct cpn_opt opts[] = {
         CPN_OPTS_OPT_STRING(0, "--command", NULL, NULL, false),
-        CPN_OPTS_OPT_STRINGLIST(0, "--arguments", NULL, NULL, false),
+        CPN_OPTS_OPT_STRINGLIST(0, "--arguments", NULL, NULL, true),
         CPN_OPTS_OPT_END
     };
     ExecParams *params;
@@ -164,10 +164,15 @@ static int parse(ProtobufCMessage **out, int argc, const char *argv[])
 
     params->command = strdup(opts[0].value.string);
 
-    params->n_arguments = opts[2].value.stringlist.argc;
-    params->arguments = malloc(sizeof(char *) * params->n_arguments);
-    for (i = 0; i < params->n_arguments; i++) {
-        params->arguments[i] = strdup(opts[2].value.stringlist.argv[i]);
+    if (opts[1].set) {
+        params->n_arguments = opts[1].value.stringlist.argc;
+        params->arguments = malloc(sizeof(char *) * params->n_arguments);
+        for (i = 0; i < params->n_arguments; i++) {
+            params->arguments[i] = strdup(opts[1].value.stringlist.argv[i]);
+        }
+    } else {
+        params->n_arguments = 0;
+        params->arguments = NULL;
     }
 
     *out = &params->base;
