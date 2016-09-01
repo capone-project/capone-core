@@ -199,8 +199,7 @@ static int relay_capability_request(struct cpn_channel *channel,
     cap_message.sessionid = sessionid;
     cpn_sign_key_public_to_proto(&cap_message.service_identity, &service_key);
 
-    cap_message.capability = malloc(sizeof(CapabilityMessage));
-    if (cpn_cap_to_protobuf(cap_message.capability, ref_cap) < 0) {
+    if (cpn_cap_to_protobuf(&cap_message.capability, ref_cap) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to parse capability");
         goto out;
     }

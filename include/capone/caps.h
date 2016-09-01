@@ -59,7 +59,7 @@ int cpn_cap_to_string(char **out, const struct cpn_cap *cap);
 int cpn_cap_from_protobuf(struct cpn_cap **out, const CapabilityMessage *msg);
 
 /** @brief Create Protobuf from capability */
-int cpn_cap_to_protobuf(CapabilityMessage *out, const struct cpn_cap *cap);
+int cpn_cap_to_protobuf(CapabilityMessage **out, const struct cpn_cap *cap);
 
 /** @brief Initialize a new internal capability
  *

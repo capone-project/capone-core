@@ -126,8 +126,7 @@ static int parse(ProtobufCMessage **out, int argc, const char *argv[])
     params = malloc(sizeof(InvokeParams));
     invoke_params__init(params);
     params->sessionid = opts[0].value.uint32;
-    params->cap = malloc(sizeof(*params->cap));
-    cpn_cap_to_protobuf(params->cap, cap);
+    cpn_cap_to_protobuf(&params->cap, cap);
 
     cpn_sign_key_public_to_proto(&params->service_identity, &opts[2].value.sigkey);
     params->service_address = strdup(opts[3].value.string);

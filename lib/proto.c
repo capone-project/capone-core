@@ -121,8 +121,7 @@ int cpn_proto_initiate_session(struct cpn_channel *channel,
     int ret = 0;
 
     initiation.identifier = sessionid;
-    initiation.capability = malloc(sizeof(CapabilityMessage));
-    if (cpn_cap_to_protobuf(initiation.capability, cap) < 0) {
+    if (cpn_cap_to_protobuf(&initiation.capability, cap) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not read capability");
         ret = -1;
         goto out;
@@ -366,8 +365,7 @@ static int create_cap(CapabilityMessage **out, const struct cpn_cap *root, uint3
     if (cpn_cap_create_ref(&cap, root, rights, key) < 0)
         goto out;
 
-    msg = malloc(sizeof(CapabilityMessage));
-    if (cpn_cap_to_protobuf(msg, cap) < 0)
+    if (cpn_cap_to_protobuf(&msg, cap) < 0)
         goto out;
 
     *out = msg;
@@ -443,8 +441,7 @@ int cpn_proto_initiate_termination(struct cpn_channel *channel,
     int err = 0;
 
     msg.identifier = sessionid;
-    msg.capability = malloc(sizeof(CapabilityMessage));
-    if ((err = cpn_cap_to_protobuf(msg.capability, cap)) < 0) {
+    if ((err = cpn_cap_to_protobuf(&msg.capability, cap)) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to write termination message");
         goto out;
     }
