@@ -57,8 +57,9 @@ static void exec(const char *cmd,
         }
         argv[nargs + 1] = NULL;
     } else {
-        argv = malloc(sizeof(char * const) * 1);
+        argv = malloc(sizeof(char * const) * 2);
         argv[0] = strdup(cmd);
+        argv[1] = NULL;
     }
 
     for (i = 0; i < nenvs; i++) {
