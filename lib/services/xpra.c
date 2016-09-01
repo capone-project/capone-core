@@ -141,17 +141,6 @@ static int handle(struct cpn_channel *channel,
     return 0;
 }
 
-static int parse(ProtobufCMessage **out, int argc, const char *argv[])
-{
-    UNUSED(argv);
-
-    if (argc)
-        return -1;
-
-    *out = NULL;
-    return 0;
-}
-
 int cpn_xpra_init_service(const struct cpn_service_plugin **out)
 {
     static struct cpn_service_plugin plugin = {
@@ -160,7 +149,8 @@ int cpn_xpra_init_service(const struct cpn_service_plugin **out)
         "0.0.1",
         handle,
         invoke,
-        parse
+        NULL,
+        NULL
     };
 
     *out = &plugin;

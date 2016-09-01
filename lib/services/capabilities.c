@@ -158,6 +158,7 @@ static int relay_capability_request(struct cpn_channel *channel,
     struct cpn_sign_key_pair local_keys;
     struct cpn_sign_key_public service_key, invoker_key;
     struct cpn_cap *root_cap = NULL, *ref_cap = NULL;
+    const struct cpn_service_plugin *service;
     uint32_t sessionid;
     int ret = 0;
 
@@ -165,6 +166,11 @@ static int relay_capability_request(struct cpn_channel *channel,
 
     if ((ret = cpn_sign_key_pair_from_config(&local_keys, cfg)) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to retrieve local key pair from config");
+        goto out;
+    }
+
+    if (cpn_service_plugin_for_type(&service, request->service_type) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Request for unknown service");
         goto out;
     }
 
@@ -177,7 +183,7 @@ static int relay_capability_request(struct cpn_channel *channel,
         goto out;
     }
 
-    if ((ret = cpn_proto_send_request(&sessionid, &root_cap, &service_channel,
+    if ((ret = cpn_proto_send_request(&sessionid, &root_cap, &service_channel, service,
                     request->n_parameters, (const char **) request->parameters)) < 0)
     {
         cpn_log(LOG_LEVEL_ERROR, "Unable to send request to remote service");
@@ -465,6 +471,7 @@ int parse(ProtobufCMessage **out, int argc, const char *argv[])
         CPN_OPTS_OPT_SIGKEY(0, "--service-identity", NULL, NULL, false),
         CPN_OPTS_OPT_STRING(0, "--service-address", NULL, NULL, false),
         CPN_OPTS_OPT_STRING(0, "--service-port", NULL, NULL, false),
+        CPN_OPTS_OPT_STRING(0, "--service-type", NULL, NULL, false),
         CPN_OPTS_OPT_STRINGLIST(0, "--service-parameters", NULL, NULL, false),
         CPN_OPTS_OPT_END
     };
@@ -495,11 +502,12 @@ int parse(ProtobufCMessage **out, int argc, const char *argv[])
         cpn_sign_key_public_to_proto(&rparams->service_identity, &request_opts[1].value.sigkey);
         rparams->service_address = strdup(request_opts[2].value.string);
         rparams->service_port = strdup(request_opts[3].value.string);
+        rparams->service_type = strdup(request_opts[4].value.string);
 
-        rparams->n_parameters = request_opts[4].value.stringlist.argc;
+        rparams->n_parameters = request_opts[5].value.stringlist.argc;
         rparams->parameters = malloc(sizeof(char *) * rparams->n_parameters);
         for (i = 0; i < rparams->n_parameters; i++) {
-            rparams->parameters[i] = strdup(request_opts[4].value.stringlist.argv[i]);
+            rparams->parameters[i] = strdup(request_opts[5].value.stringlist.argv[i]);
         }
 
         params->request_params = rparams;
@@ -519,7 +527,8 @@ int cpn_capabilities_init_service(const struct cpn_service_plugin **service)
         "0.0.1",
         handle,
         invoke,
-        parse
+        parse,
+        &capabilities_params__descriptor
     };
 
     *service = &plugin;
