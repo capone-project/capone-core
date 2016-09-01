@@ -228,14 +228,32 @@ out:
 int cpn_proto_send_request(uint32_t *sessionid,
         struct cpn_cap **cap,
         struct cpn_channel *channel,
+        const struct cpn_service_plugin *service,
         int argc, const char **argv)
 {
     SessionRequestMessage request = SESSION_REQUEST_MESSAGE__INIT;
     SessionMessage *session = NULL;
     int err = -1;
 
-    request.n_parameters = argc;
-    request.parameters = (char **) argv;
+    if (service->parse_fn) {
+        ProtobufCMessage *params;
+        size_t len;
+
+        if (service->parse_fn(&params, argc, argv) < 0) {
+            cpn_log(LOG_LEVEL_ERROR, "Unable to parse parameters");
+            goto out;
+        }
+
+        if (!params) {
+            cpn_log(LOG_LEVEL_ERROR, "Parser created no parameters");
+            goto out;
+        }
+
+        len = protobuf_c_message_get_packed_size(params);
+        request.parameters.data = malloc(len);
+        request.parameters.len = len;
+        protobuf_c_message_pack(params, request.parameters.data);
+    }
 
     if (cpn_channel_write_protobuf(channel, &request.base) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to send connection request");
@@ -261,6 +279,7 @@ int cpn_proto_send_request(uint32_t *sessionid,
 out:
     if (session)
         session_message__free_unpacked(session, NULL);
+    free(request.parameters.data);
 
     return err;
 }
@@ -380,9 +399,10 @@ int cpn_proto_answer_request(struct cpn_channel *channel,
         goto out;
     }
 
-    if (service->parse_fn(&parameters, request->n_parameters, (const char **) request->parameters) < 0) {
-        cpn_log(LOG_LEVEL_ERROR, "Unable to parse parameters");
-        goto out;
+    if (service->params_desc) {
+        if ((parameters = protobuf_c_message_unpack(service->params_desc, NULL,
+                request->parameters.len, request->parameters.data)) == NULL)
+            goto out;
     }
 
     if (cpn_sessions_add(&session, parameters, remote_key) < 0) {

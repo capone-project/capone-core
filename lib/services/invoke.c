@@ -156,7 +156,8 @@ int cpn_invoke_init_service(const struct cpn_service_plugin **out)
         "0.0.1",
         handle,
         invoke,
-        parse
+        parse,
+        &invoke_params__descriptor
     };
 
     *out = &plugin;

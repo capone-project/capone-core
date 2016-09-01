@@ -67,6 +67,7 @@ static struct cpn_cfg config;
 static struct cpn_service service;
 static struct cpn_channel local, remote;
 static struct cpn_sign_key_pair local_keys, remote_keys;
+static const struct cpn_service_plugin *test_service;
 
 static int setup()
 {
@@ -279,7 +280,7 @@ static void request_constructs_session()
     cpn_spawn(&t, await_request, &args);
     assert_success(cpn_proto_initiate_encryption(&local, &local_keys,
                 &remote_keys.pk));
-    assert_success(cpn_proto_send_request(&sessionid, &cap, &local, ARRAY_SIZE(params), params));
+    assert_success(cpn_proto_send_request(&sessionid, &cap, &local, test_service, ARRAY_SIZE(params), params));
     cpn_join(&t, NULL);
 
     assert_success(cpn_sessions_remove(&added, sessionid));
@@ -301,12 +302,11 @@ static void request_without_params_succeeds()
 
     cpn_spawn(&t, await_request, &args);
     assert_success(cpn_proto_initiate_encryption(&local, &local_keys, &remote_keys.pk));
-    assert_success(cpn_proto_send_request(&sessionid, &cap, &local, 0, NULL));
+    assert_success(cpn_proto_send_request(&sessionid, &cap, &local, test_service, 0, NULL));
     cpn_join(&t, NULL);
 
     assert_success(cpn_sessions_remove(&added, sessionid));
     assert_int_equal(sessionid, added->identifier);
-    assert_null(added->parameters);
 
     cpn_session_free(added);
     cpn_cap_free(cap);
@@ -326,7 +326,8 @@ static void whitlisted_request_constructs_session()
     cpn_spawn(&t, await_request, &args);
     assert_success(cpn_proto_initiate_encryption(&local, &local_keys,
                 &remote_keys.pk));
-    assert_success(cpn_proto_send_request(&sessionid, &cap, &local, ARRAY_SIZE(params), params));
+    assert_success(cpn_proto_send_request(&sessionid, &cap, &local, test_service,
+                ARRAY_SIZE(params), params));
     cpn_join(&t, NULL);
 
     assert_success(cpn_sessions_remove(&added, sessionid));
@@ -431,7 +432,6 @@ int proto_test_run_suite(void)
         "type=test\n"
         "location=Dunno\n"
         "port=1234\n";
-    const struct cpn_service_plugin *test_service;
 
     const struct CMUnitTest tests[] = {
         test(connection_initiation_succeeds),

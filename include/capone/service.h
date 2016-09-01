@@ -105,6 +105,8 @@ struct cpn_service_plugin {
     cpn_service_client_fn client_fn;
     /** \see  cpn_service_parse_fn */
     cpn_service_parse_fn parse_fn;
+    /** @brief Protobuf descriptor for parameters */
+    const ProtobufCMessageDescriptor *params_desc;
 };
 
 /** @brief Structure wrapping a service's functionality

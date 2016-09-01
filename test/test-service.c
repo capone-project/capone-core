@@ -55,14 +55,14 @@ static int parse(ProtobufCMessage **out, int argc, const char *argv[])
 
     *out = NULL;
 
-    if (argc == 0)
-        return 0;
-    if (argc != 1)
+    if (argc > 1)
         return -1;
 
     params = malloc(sizeof(TestParams));
     test_params__init(params);
-    params->msg = strdup(argv[0]);
+    if (argc) {
+        params->msg = strdup(argv[0]);
+    }
 
     *out = &params->base;
 
@@ -77,7 +77,8 @@ int cpn_test_init_service(const struct cpn_service_plugin **out)
         "0.0.1",
         handle,
         invoke,
-        parse
+        parse,
+        &test_params__descriptor
     };
 
     *out = &plugin;

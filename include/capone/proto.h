@@ -214,6 +214,7 @@ void cpn_query_results_free(struct cpn_query_results *results);
  *                       established session
  * @param[out] cap Capability used for the session
  * @param[in] channel Channel connected to the server
+ * @param[in] service Service type to establish session with
  * @param[in] argc Number of session arguments
  * @param[in] argv Session arguments
  * @return <code>0</code> on success, <code>-1</code> otherwise
@@ -223,6 +224,7 @@ void cpn_query_results_free(struct cpn_query_results *results);
 int cpn_proto_send_request(uint32_t *sessionid,
         struct cpn_cap **cap,
         struct cpn_channel *channel,
+        const struct cpn_service_plugin *service,
         int argc, const char **argv);
 
 /** @brief Handle a session request
