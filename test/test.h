@@ -26,6 +26,8 @@
 #undef inline
 #endif
 
+#include "capone/channel.h"
+
 #define assert_success(fn) assert_int_equal((fn), 0)
 #define assert_failure(fn) assert_int_equal((fn), -1)
 
@@ -37,3 +39,5 @@ int _execute_test_suite(const char *name, const struct CMUnitTest *tests, const 
         CMFixtureFunction setup, CMFixtureFunction teardown);
 
 #define test(f) cmocka_unit_test_setup_teardown((f), setup, teardown)
+
+void stub_sockets(struct cpn_channel *local, struct cpn_channel *remote, enum cpn_channel_type type);
