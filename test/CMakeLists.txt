@@ -36,6 +36,7 @@ IF(CMOCKA_FOUND)
         lib/session.c
         lib/test-service.c
         lib/service/exec.c
+        lib/service/invoke.c
         ${TEST_PROTO_SOURCES})
     TARGET_LINK_LIBRARIES(cpn-test capone-test)
 

@@ -79,7 +79,8 @@ static int handle(struct cpn_channel *channel,
     if (cpn_proto_initiate_connection(&remote_channel,
                 params->service_address, params->service_port,
                 &local_keys, &service_key, CPN_CONNECTION_TYPE_CONNECT) < 0) {
-        cpn_log(LOG_LEVEL_ERROR, "Could not start invoke connection");
+        cpn_log(LOG_LEVEL_ERROR, "Could not connect to %s:%s",
+                params->service_address, params->service_port);
         goto out;
     }
 
