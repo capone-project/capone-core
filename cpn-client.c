@@ -66,6 +66,8 @@ static struct cpn_opt opts[] = {
     CPN_OPTS_OPT_END
 };
 
+static struct cpn_cfg cfg;
+
 static struct cpn_sign_key_pair local_keys;
 
 static struct cpn_sign_key_public remote_key;
@@ -247,8 +249,13 @@ int main(int argc, const char *argv[])
         return -1;
     }
 
-    if (cpn_sign_key_pair_from_config_file(&local_keys, opts[0].value.string) < 0) {
-        puts("Could not parse config");
+    if (cpn_cfg_parse(&cfg, opts[0].value.string) < 0) {
+        printf("Could not parse config '%s", opts[0].value.string);
+        return -1;
+    }
+
+    if (cpn_sign_key_pair_from_config(&local_keys, &cfg) < 0) {
+        puts("Could not keys from config");
         return -1;
     }
 
