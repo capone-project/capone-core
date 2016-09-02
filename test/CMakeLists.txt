@@ -35,6 +35,7 @@ IF(CMOCKA_FOUND)
         lib/service.c
         lib/session.c
         lib/test-service.c
+        lib/service/capabilities.c
         lib/service/exec.c
         lib/service/invoke.c
         ${TEST_PROTO_SOURCES})
