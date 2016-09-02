@@ -22,11 +22,6 @@
 
 #include "test.h"
 
-#define PK "dbc08ee5b91124024cfc78f3e35a0091df2e422b471065845c8d227486fb0e54"
-#define SK "990ce9f899c2b4d3b4fb20af4de539d2b6352ba1fbf658d1d4926123293f61c6" \
-           "dbc08ee5b91124024cfc78f3e35a0091df2e422b471065845c8d227486fb0e54"
-#define KEY "da20c55a1735c691205334472cb8cb30905598e1f600aada2c1879e1fdc22502"
-
 static struct cpn_sign_key_pair sign_pair;
 static struct cpn_sign_key_hex sign_hex;
 static struct cpn_sign_key_public pk;
@@ -232,8 +227,8 @@ static void encrypt_key_public_from_too_long_bin_fails()
 
 static void symmetric_key_from_hex_succeeds()
 {
-    assert_success(cpn_symmetric_key_from_hex(&key, KEY));
-    assert_symmetric_key_matches(&key, KEY);
+    assert_success(cpn_symmetric_key_from_hex(&key, SYMMETRIC_KEY));
+    assert_symmetric_key_matches(&key, SYMMETRIC_KEY);
 }
 
 static void symmetric_key_from_too_short_hex_fails()
@@ -243,14 +238,14 @@ static void symmetric_key_from_too_short_hex_fails()
 
 static void symmetric_key_from_too_long_hex_fails()
 {
-    assert_failure(cpn_symmetric_key_from_hex(&key, KEY "1"));
+    assert_failure(cpn_symmetric_key_from_hex(&key, SYMMETRIC_KEY "1"));
 }
 
 static void symmetric_key_from_bin_succeeds()
 {
     struct cpn_symmetric_key bin;
 
-    assert_success(cpn_symmetric_key_from_hex(&bin, KEY));
+    assert_success(cpn_symmetric_key_from_hex(&bin, SYMMETRIC_KEY));
     assert_success(cpn_symmetric_key_from_bin(&key, bin.data, sizeof(bin.data)));
     assert_memory_equal(&bin, &key, sizeof(bin));
 }
@@ -259,40 +254,40 @@ static void symmetric_key_from_too_short_bin_fails()
 {
     struct cpn_symmetric_key bin;
 
-    assert_success(cpn_symmetric_key_from_hex(&bin, KEY));
+    assert_success(cpn_symmetric_key_from_hex(&bin, SYMMETRIC_KEY));
     assert_failure(cpn_symmetric_key_from_bin(&key, bin.data, sizeof(bin.data) - 1));
 }
 
 static void symmetric_key_from_too_long_bin_fails()
 {
-    assert_success(cpn_symmetric_key_from_hex(&key, KEY));
+    assert_success(cpn_symmetric_key_from_hex(&key, SYMMETRIC_KEY));
     assert_failure(cpn_symmetric_key_from_bin(&key, key.data, sizeof(key.data) + 1));
 }
 
 static void symmetric_key_hex_from_bin_succeeds()
 {
-    assert_success(cpn_symmetric_key_from_hex(&key, KEY));
+    assert_success(cpn_symmetric_key_from_hex(&key, SYMMETRIC_KEY));
     assert_success(cpn_symmetric_key_hex_from_bin(&key_hex, key.data, sizeof(key.data)));
-    assert_string_equal(key_hex.data, KEY);
+    assert_string_equal(key_hex.data, SYMMETRIC_KEY);
 }
 
 static void symmetric_key_hex_from_too_short_bin_fails()
 {
-    assert_success(cpn_symmetric_key_from_hex(&key, KEY));
+    assert_success(cpn_symmetric_key_from_hex(&key, SYMMETRIC_KEY));
     assert_failure(cpn_symmetric_key_hex_from_bin(&key_hex, key.data, sizeof(key.data) - 1));
 }
 
 static void symmetric_key_hex_from_too_long_bin_fails()
 {
-    assert_success(cpn_symmetric_key_from_hex(&key, KEY));
+    assert_success(cpn_symmetric_key_from_hex(&key, SYMMETRIC_KEY));
     assert_failure(cpn_symmetric_key_hex_from_bin(&key_hex, key.data, sizeof(key.data) + 1));
 }
 
 static void symmetric_key_hex_from_key_succeeds()
 {
-    assert_success(cpn_symmetric_key_from_hex(&key, KEY));
+    assert_success(cpn_symmetric_key_from_hex(&key, SYMMETRIC_KEY));
     cpn_symmetric_key_hex_from_key(&key_hex, &key);
-    assert_string_equal(key_hex.data, KEY);
+    assert_string_equal(key_hex.data, SYMMETRIC_KEY);
 }
 
 int keys_test_run_suite(void)
