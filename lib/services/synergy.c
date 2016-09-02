@@ -26,7 +26,8 @@
 
 #include "capone/services/synergy.h"
 
-static int invoke(struct cpn_channel *channel, int argc, const char **argv)
+static int invoke(struct cpn_channel *channel, int argc, const char **argv,
+        const struct cpn_cfg *cfg)
 {
     struct cpn_channel synergy_channel;
     char *args[] = {
@@ -43,6 +44,7 @@ static int invoke(struct cpn_channel *channel, int argc, const char **argv)
 
     UNUSED(argc);
     UNUSED(argv);
+    UNUSED(cfg);
 
     if (cpn_channel_init_from_host(&synergy_channel, "127.0.0.1", "34589", CPN_CHANNEL_TYPE_TCP) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not initialize local synergy channel");

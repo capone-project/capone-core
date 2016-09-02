@@ -197,7 +197,7 @@ static int cmd_connect(const char *service_type, uint32_t sessionid,
         goto out;
     }
 
-    if (plugin->client_fn(&channel, parameters->argc, parameters->argv) < 0) {
+    if (plugin->client_fn(&channel, parameters->argc, parameters->argv, &cfg) < 0) {
         puts("Could not invoke service");
         goto out;
     }

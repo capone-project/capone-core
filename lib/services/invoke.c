@@ -27,11 +27,13 @@
 #include "capone/services/invoke.h"
 #include "capone/proto/invoke.pb-c.h"
 
-static int invoke(struct cpn_channel *channel, int argc, const char **argv)
+static int invoke(struct cpn_channel *channel, int argc, const char **argv,
+        const struct cpn_cfg *cfg)
 {
     UNUSED(argc);
     UNUSED(argv);
     UNUSED(channel);
+    UNUSED(cfg);
 
     return 0;
 }
@@ -86,7 +88,7 @@ static int handle(struct cpn_channel *channel,
     }
 
     if (plugin->client_fn(&remote_channel,
-                params->n_service_parameters, (const char **) params->service_parameters) < 0)
+                params->n_service_parameters, (const char **) params->service_parameters, cfg) < 0)
     {
         cpn_log(LOG_LEVEL_ERROR, "Could not invoke service");
         goto out;
