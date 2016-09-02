@@ -49,6 +49,7 @@ static int handle(struct cpn_channel *channel,
     struct cpn_sign_key_public service_key;
     struct cpn_channel remote_channel;
     struct cpn_cap *cap = NULL;
+    int err = -1;
 
     UNUSED(channel);
     UNUSED(invoker);
@@ -94,10 +95,12 @@ static int handle(struct cpn_channel *channel,
         goto out;
     }
 
+    err = 0;
+
 out:
     cpn_cap_free(cap);
 
-    return 0;
+    return err;
 }
 
 static int parse(ProtobufCMessage **out, int argc, const char *argv[])
