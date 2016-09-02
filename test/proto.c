@@ -358,7 +358,7 @@ static void service_connects()
     assert_success(cpn_proto_initiate_encryption(&local, &local_keys,
                 &remote_keys.pk));
     assert_success(cpn_proto_initiate_session(&local, session->identifier, cap));
-    assert_success(service.plugin->client_fn(&local, 0, NULL) < 0);
+    assert_success(service.plugin->client_fn(&local, 0, NULL, &config) < 0);
 
     cpn_cap_free(cap);
     cpn_join(&t, NULL);

@@ -222,18 +222,13 @@ out:
     return ret;
 }
 
-static int invoke_register(struct cpn_channel *channel, struct cpn_opt *opts)
+static int invoke_register(struct cpn_channel *channel,
+        const struct cpn_cfg *cfg)
 {
     CapabilityRequest *request;
     struct cpn_sign_key_hex requester_hex, service_hex;
     struct cpn_sign_key_public requester, service;
-    struct cpn_cfg cfg;
     size_t i;
-
-    if (cpn_cfg_parse(&cfg, opts[0].value.string) < 0) {
-        puts("Could not find config");
-        return -1;
-    }
 
     while (true) {
         if (cpn_channel_receive_protobuf(channel, &capability_request__descriptor,
@@ -272,7 +267,7 @@ static int invoke_register(struct cpn_channel *channel, struct cpn_opt *opts)
             c = getchar();
 
             if (c == 'y') {
-                if (relay_capability_request(channel, request, &cfg) < 0)
+                if (relay_capability_request(channel, request, cfg) < 0)
                     cpn_log(LOG_LEVEL_ERROR, "Unable to relay capability");
                 else
                     printf("Accepted capability request from %s\n", requester.data);
@@ -337,29 +332,21 @@ out:
     return err;
 }
 
-static int invoke(struct cpn_channel *channel, int argc, const char **argv)
+static int invoke(struct cpn_channel *channel,
+        int argc, const char **argv,
+        const struct cpn_cfg *cfg)
 {
-    struct cpn_opt register_opts[] = {
-        CPN_OPTS_OPT_STRING(0, "--config", NULL, NULL, false),
-        CPN_OPTS_OPT_END
-    };
-    struct cpn_opt request_opts[] = {
-        CPN_OPTS_OPT_END
-    };
     struct cpn_opt opts[] = {
         CPN_OPTS_OPT_ACTION("register", NULL, NULL),
         CPN_OPTS_OPT_ACTION("request", NULL, NULL),
         CPN_OPTS_OPT_END
     };
 
-    opts[0].value.action_opts = register_opts;
-    opts[0].value.action_opts = request_opts;
-
     if (cpn_opts_parse(opts, argc, argv) < 0)
         return -1;
 
     if (opts[0].set)
-        return invoke_register(channel, request_opts);
+        return invoke_register(channel, cfg);
     else if (opts[1].set)
         return invoke_request(channel);
     else {

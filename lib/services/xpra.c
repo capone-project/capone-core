@@ -27,7 +27,8 @@
 
 #include "capone/services/xpra.h"
 
-static int invoke(struct cpn_channel *channel, int argc, const char **argv)
+static int invoke(struct cpn_channel *channel, int argc, const char **argv,
+        const struct cpn_cfg *cfg)
 {
     struct cpn_opt opts[] = {
         CPN_OPTS_OPT_STRING(0, "--port", NULL, NULL, false),
@@ -35,6 +36,8 @@ static int invoke(struct cpn_channel *channel, int argc, const char **argv)
     };
     struct cpn_channel xpra_channel;
     char buf[1];
+
+    UNUSED(cfg);
 
     if (cpn_opts_parse(opts, argc, argv) < 0)
         return -1;
