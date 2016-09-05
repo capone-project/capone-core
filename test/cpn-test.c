@@ -85,5 +85,5 @@ int main(int argc, const char *argv[])
         printf("[  FAILED  ] %lu test(s) failed\n", failed_tests);
     }
 
-    return 0;
+    return !!failed_tests;
 }
