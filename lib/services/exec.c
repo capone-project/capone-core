@@ -15,6 +15,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <errno.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -41,12 +42,12 @@ static int invoke(struct cpn_channel *channel,
     return 0;
 }
 
-static void exec(const char *cmd,
+static int exec(const char *cmd,
         const char **args, int nargs,
         const char **envs, int nenvs)
 {
     char **argv = NULL;
-    int i;
+    int i, err;
 
     if (nargs > 0) {
         argv = malloc(sizeof(char * const) * (nargs + 2));
@@ -78,14 +79,15 @@ static void exec(const char *cmd,
         free(name);
     }
 
-    execvp(cmd, argv);
+    if ((err = execvp(cmd, argv)) < 0)
+        cpn_log(LOG_LEVEL_ERROR, "Could not spawn %s", cmd);
 
     for (i = 0; i < nargs; i++) {
         free(argv[i]);
     }
     free(argv);
 
-    _exit(0);
+    return err;
 }
 
 static int handle(struct cpn_channel *channel,
@@ -118,14 +120,29 @@ static int handle(struct cpn_channel *channel,
     }
 
     if (pid == 0) {
-        dup2(stdout_fds[1], STDOUT_FILENO);
+        while (dup2(stdout_fds[1], STDOUT_FILENO) < 0 && errno == EINTR);
+        if (error < 0) {
+            cpn_log(LOG_LEVEL_ERROR, "Unable to duplicate stdout: %s", strerror(errno));
+            _exit(-1);
+        }
+
         close(stdout_fds[0]);
         close(stdout_fds[1]);
-        dup2(stderr_fds[1], STDERR_FILENO);
+        while (dup2(stderr_fds[1], STDERR_FILENO) < 0 && errno == EINTR);
+        if (error < 0) {
+            cpn_log(LOG_LEVEL_ERROR, "Unable to duplicate stdout: %s", strerror(errno));
+            _exit(-1);
+        }
+
         close(stderr_fds[0]);
         close(stderr_fds[1]);
 
-        exec(params->command, (const char **) params->arguments, params->n_arguments, NULL, 0);
+        if (exec(params->command, (const char **) params->arguments, params->n_arguments, NULL, 0) < 0) {
+            cpn_log(LOG_LEVEL_ERROR, "Unable to execute %s", params->command);
+            _exit(-1);
+        }
+
+        _exit(0);
     } else {
         close(stdout_fds[1]);
         close(stderr_fds[1]);
