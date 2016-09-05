@@ -1,4 +1,4 @@
-FIND_PACKAGE(CMOCKA)
+PKG_CHECK_MODULES(CMOCKA cmocka)
 
 IF(CMOCKA_FOUND)
     MESSAGE(STATUS "Found cmocka: TRUE")
@@ -9,6 +9,7 @@ IF(CMOCKA_FOUND)
     INCLUDE_DIRECTORIES(SYSTEM
         ${CMOCKA_INCLUDE_DIR}
         ${PROJECT_BINARY_DIR})
+    LINK_DIRECTORIES(${CMOCKA_LIBRARY_DIRS})
 
     ADD_EXECUTABLE(test-helper test-helper.c)
 
@@ -19,7 +20,7 @@ IF(CMOCKA_FOUND)
         ${CMAKE_CURRENT_BINARY_DIR}/config.h)
 
     ADD_LIBRARY(capone-test SHARED bench.c test.c)
-    TARGET_LINK_LIBRARIES(capone-test capone cmocka)
+    TARGET_LINK_LIBRARIES(capone-test capone ${CMOCKA_LIBRARIES})
 
     ADD_EXECUTABLE(cpn-test cpn-test.c
         lib/acl.c
