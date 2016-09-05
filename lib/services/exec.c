@@ -42,9 +42,7 @@ static int invoke(struct cpn_channel *channel,
     return 0;
 }
 
-static int exec(const char *cmd,
-        const char **args, int nargs,
-        const char **envs, int nenvs)
+static int exec(const char *cmd, const char **args, int nargs)
 {
     char **argv = NULL;
     int i, err;
@@ -63,24 +61,8 @@ static int exec(const char *cmd,
         argv[1] = NULL;
     }
 
-    for (i = 0; i < nenvs; i++) {
-        char *name, *value;
-
-        if (strchr(envs[i], '=') == NULL)
-            continue;
-
-        name = strdup(envs[i]);
-        value = strchr(name, '=');
-        *value = '\0';
-        value++;
-
-        setenv(name, value, 0);
-
-        free(name);
-    }
-
     if ((err = execvp(cmd, argv)) < 0)
-        cpn_log(LOG_LEVEL_ERROR, "Could not spawn %s", cmd);
+        cpn_log(LOG_LEVEL_ERROR, "Could not spawn %s: %s", cmd, strerror(errno));
 
     for (i = 0; i < nargs; i++) {
         free(argv[i]);
@@ -137,7 +119,7 @@ static int handle(struct cpn_channel *channel,
         close(stderr_fds[0]);
         close(stderr_fds[1]);
 
-        if (exec(params->command, (const char **) params->arguments, params->n_arguments, NULL, 0) < 0) {
+        if (exec(params->command, (const char **) params->arguments, params->n_arguments) < 0) {
             cpn_log(LOG_LEVEL_ERROR, "Unable to execute %s", params->command);
             _exit(-1);
         }
