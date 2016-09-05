@@ -79,7 +79,7 @@ static int handle(struct cpn_channel *channel,
 {
     ExecParams *params;
     int pid;
-    int stdout_fds[2] = { -1, -1 }, stderr_fds[2] = { -1, -1 };
+    int fds[2] = { -1, -1 };
     int error = 0;
 
     UNUSED(cfg);
@@ -87,9 +87,7 @@ static int handle(struct cpn_channel *channel,
 
     params = (ExecParams *) session->parameters;
 
-    if ((error = pipe(stdout_fds)) < 0 ||
-            (error = pipe(stderr_fds)) < 0)
-    {
+    if ((error = pipe(fds)) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to create pipes to child");
         goto out;
     }
@@ -102,22 +100,20 @@ static int handle(struct cpn_channel *channel,
     }
 
     if (pid == 0) {
-        while (dup2(stdout_fds[1], STDOUT_FILENO) < 0 && errno == EINTR);
+        while (dup2(fds[1], STDOUT_FILENO) < 0 && errno == EINTR);
         if (error < 0) {
             cpn_log(LOG_LEVEL_ERROR, "Unable to duplicate stdout: %s", strerror(errno));
             _exit(-1);
         }
 
-        close(stdout_fds[0]);
-        close(stdout_fds[1]);
-        while (dup2(stderr_fds[1], STDERR_FILENO) < 0 && errno == EINTR);
+        while (dup2(fds[1], STDERR_FILENO) < 0 && errno == EINTR);
         if (error < 0) {
             cpn_log(LOG_LEVEL_ERROR, "Unable to duplicate stdout: %s", strerror(errno));
             _exit(-1);
         }
 
-        close(stderr_fds[0]);
-        close(stderr_fds[1]);
+        close(fds[0]);
+        close(fds[1]);
 
         if (exec(params->command, (const char **) params->arguments, params->n_arguments) < 0) {
             cpn_log(LOG_LEVEL_ERROR, "Unable to execute %s", params->command);
@@ -126,10 +122,9 @@ static int handle(struct cpn_channel *channel,
 
         _exit(0);
     } else {
-        close(stdout_fds[1]);
-        close(stderr_fds[1]);
+        close(fds[1]);
 
-        if (cpn_channel_relay(channel, 2, stdout_fds[0], stderr_fds[0]) < 0) {
+        if (cpn_channel_relay(channel, 1, fds[0]) < 0) {
             cpn_log(LOG_LEVEL_ERROR, "Unable to relay exec output");
             error = -1;
             goto out;
@@ -137,10 +132,8 @@ static int handle(struct cpn_channel *channel,
     }
 
 out:
-    if (stdout_fds[0] >= 0) close(stdout_fds[0]);
-    if (stdout_fds[1] >= 0) close(stdout_fds[1]);
-    if (stderr_fds[0] >= 0) close(stderr_fds[0]);
-    if (stderr_fds[1] >= 0) close(stderr_fds[1]);
+    if (fds[0] >= 0) close(fds[0]);
+    if (fds[1] >= 0) close(fds[1]);
 
     return error;
 }
