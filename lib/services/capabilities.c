@@ -483,6 +483,7 @@ static int handle(struct cpn_channel *channel,
 int parse(ProtobufCMessage **out, int argc, const char *argv[])
 {
     struct cpn_opt request_opts[] = {
+        CPN_OPTS_OPT_SIGKEY(0, "--requested-identity", NULL, NULL, false),
         CPN_OPTS_OPT_SIGKEY(0, "--service-identity", NULL, NULL, false),
         CPN_OPTS_OPT_STRING(0, "--service-address", NULL, NULL, false),
         CPN_OPTS_OPT_STRING(0, "--service-port", NULL, NULL, false),
