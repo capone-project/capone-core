@@ -29,7 +29,8 @@
 
 struct relay_args {
     struct cpn_channel *c;
-    int fd;
+    int nfds;
+    int *fds;
 };
 
 static struct cpn_symmetric_key key;
@@ -321,7 +322,14 @@ static void *relay_fn(void *payload)
 {
     struct relay_args *args = (struct relay_args *) payload;
 
-    cpn_channel_relay(args->c, 1, args->fd);
+    switch (args->nfds) {
+        case 1:
+            cpn_channel_relay(args->c, 1, args->fds[0]);
+            break;
+        case 2:
+            cpn_channel_relay(args->c, 2, args->fds[0], args->fds[1]);
+            break;
+    }
 
     return NULL;
 }
@@ -332,6 +340,7 @@ static void relaying_data_to_socket_succeeds()
     struct cpn_channel c1, c2, r1, r2;
     struct cpn_thread thread;
     struct relay_args args;
+    int fds[1];
 
     memset(&c1, 0, sizeof(c1));
     memset(&c2, 0, sizeof(c2));
@@ -341,8 +350,10 @@ static void relaying_data_to_socket_succeeds()
     stub_sockets(&c1, &r1, CPN_CHANNEL_TYPE_TCP);
     stub_sockets(&c2, &r2, CPN_CHANNEL_TYPE_TCP);
 
+    fds[0] = c2.fd;
     args.c = &r1;
-    args.fd = c2.fd;
+    args.nfds = ARRAY_SIZE(fds);
+    args.fds = fds;
 
     assert_success(cpn_spawn(&thread, relay_fn, &args));
 
@@ -364,6 +375,7 @@ static void relaying_data_to_channel_succeeds()
     struct cpn_channel c1, c2, r1, r2;
     struct cpn_thread thread;
     struct relay_args args;
+    int fds[1];
 
     memset(&c1, 0, sizeof(c1));
     memset(&c2, 0, sizeof(c2));
@@ -373,8 +385,11 @@ static void relaying_data_to_channel_succeeds()
     stub_sockets(&c1, &r1, CPN_CHANNEL_TYPE_TCP);
     stub_sockets(&c2, &r2, CPN_CHANNEL_TYPE_TCP);
 
+    fds[0] = r1.fd;
+
     args.c = &c2;
-    args.fd = r1.fd;
+    args.nfds = ARRAY_SIZE(fds);
+    args.fds = fds;
 
     assert_success(cpn_spawn(&thread, relay_fn, &args));
 
