@@ -112,6 +112,26 @@ static void write_data()
     assert_string_equal(sender, receiver);
 }
 
+static void write_data_with_different_block_lengths()
+{
+    size_t lengths[] = { 64, 128, 512, 1024, 2048 };
+    uint8_t sender[] = "test";
+    uint8_t receiver[sizeof(sender)];
+    uint8_t i;
+
+    stub_sockets(&channel, &remote, CPN_CHANNEL_TYPE_TCP);
+
+    for (i = 0; i < ARRAY_SIZE(lengths); i++) {
+        cpn_channel_set_blocklen(&channel, lengths[i]);
+        cpn_channel_set_blocklen(&remote, lengths[i]);
+
+        assert_success(cpn_channel_write_data(&channel, sender, sizeof(sender)));
+        assert_int_equal(cpn_channel_receive_data(&remote, receiver, sizeof(receiver)),
+                sizeof(sender));
+        assert_string_equal(sender, receiver);
+    }
+}
+
 static void write_some_data()
 {
     uint8_t m[4096];
@@ -496,6 +516,7 @@ int channel_test_run_suite(void)
         test(init_address_to_invalid_address),
 
         test(write_data),
+        test(write_data_with_different_block_lengths),
         test(write_some_data),
         test(receive_fails_with_too_small_buffer),
         test(write_multiple_messages),
