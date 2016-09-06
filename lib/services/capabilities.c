@@ -416,6 +416,11 @@ static int handle_request(struct cpn_channel *channel,
     struct client *client;
     int err = 0;
 
+    if (params->requested_identity == NULL) {
+        cpn_log(LOG_LEVEL_ERROR, "No requested identity specified");
+        return -1;
+    }
+
     pthread_mutex_lock(&registrants_mutex);
     cpn_list_foreach(&registrants, it, reg) {
         if (!memcmp(reg->identity.data, params->requested_identity->data.data,
