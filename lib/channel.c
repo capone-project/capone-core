@@ -213,12 +213,15 @@ static int write_data(struct cpn_channel *c, uint8_t *data, uint32_t datalen)
                 return -1;
         }
 
-        if (ret <= 0) {
+        if (ret < 0) {
             if (errno == EINTR)
                 continue;
             cpn_log(LOG_LEVEL_ERROR, "Could not send data: %s",
                     strerror(errno));
             return -1;
+        } else if (ret == 0) {
+            cpn_log(LOG_LEVEL_VERBOSE, "Channel closed while writing");
+            return 0;
         }
 
         written += ret;
@@ -239,6 +242,8 @@ int cpn_channel_write_data(struct cpn_channel *c, uint8_t *data, uint32_t datale
 
     while (offset || written != datalen) {
         uint32_t len;
+        ssize_t ret;
+
         if (c->crypto == CPN_CHANNEL_CRYPTO_SYMMETRIC) {
             len = MIN(datalen - written, c->blocklen - offset - crypto_secretbox_MACBYTES);
         } else {
@@ -258,8 +263,12 @@ int cpn_channel_write_data(struct cpn_channel *c, uint8_t *data, uint32_t datale
             sodium_increment(c->local_nonce, crypto_secretbox_NONCEBYTES);
         }
 
-        if (write_data(c, block, c->blocklen) < 0) {
-            cpn_log(LOG_LEVEL_ERROR, "Unable to write encrypted data");
+        ret = write_data(c, block, c->blocklen);
+        if (ret == 0) {
+            cpn_log(LOG_LEVEL_ERROR, "Unable to write data: channel closed");
+            return 0;
+        } else if (ret < 0) {
+            cpn_log(LOG_LEVEL_ERROR, "Unable to write data");
             return -1;
         }
         written += len;
@@ -305,7 +314,12 @@ static int receive_data(struct cpn_channel *c, uint8_t *out, size_t len)
 
     while (received != len) {
         ret = recv(c->fd, out + received, len - received, 0);
-        if (ret <= 0) {
+
+        if (ret == 0) {
+            cpn_log(LOG_LEVEL_VERBOSE, "Channel closed while receiving",
+                    strerror(errno));
+            return 0;
+        } else if (ret < 0) {
             if (errno == EINTR)
                 continue;
             cpn_log(LOG_LEVEL_ERROR, "Could not receive data: %s",
@@ -326,8 +340,13 @@ ssize_t cpn_channel_receive_data(struct cpn_channel *c, uint8_t *out, size_t max
 
     while (offset || received < pkglen) {
         uint32_t networklen, blocklen;
+        ssize_t ret;
 
-        if (receive_data(c, block, c->blocklen) < 0) {
+        ret = receive_data(c, block, c->blocklen);
+        if (ret == 0) {
+            cpn_log(LOG_LEVEL_VERBOSE, "Unable to receive data: channel closed");
+            return 0;
+        } else if (ret < 0) {
             cpn_log(LOG_LEVEL_ERROR, "Unable to receive data");
             return -1;
         }
