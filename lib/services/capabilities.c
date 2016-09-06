@@ -71,7 +71,6 @@ static void relay_capability_for_registrant(struct registrant *r)
                 break;
             }
         }
-        free(r);
         pthread_mutex_unlock(&registrants_mutex);
 
         /* Kill clients waiting for registrant */
@@ -88,6 +87,8 @@ static void relay_capability_for_registrant(struct registrant *r)
             free(c);
         }
         pthread_mutex_unlock(&clients_mutex);
+
+        free(r);
 
         cpn_log(LOG_LEVEL_ERROR, "Unable to receive capability");
         goto out;
