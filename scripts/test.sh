@@ -11,8 +11,10 @@ then
     cd "${TRAVIS_BUILD_DIR}"
 fi
 
+cd build
+
 PREFIX="${HOME}/local"
 
-export PATH="${PATH}:${PREFIX}/bin:${PWD}/build"
+export PATH="${PATH}:${PREFIX}/bin:${PWD}"
 
-build/test/cpn-test --verbose
+test/cpn-test --verbose

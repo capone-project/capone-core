@@ -27,8 +27,6 @@
 #include "test.h"
 #include "test-service.h"
 
-extern void stub_sockets(struct cpn_channel *local, struct cpn_channel *remote);
-
 struct initiate_connection_args {
     enum cpn_connection_type type;
 };
@@ -74,8 +72,7 @@ static int setup()
     memset(&local, 0, sizeof(local));
     memset(&remote, 0, sizeof(remote));
 
-    stub_sockets(&local, &remote);
-    local.type = remote.type = CPN_CHANNEL_TYPE_TCP;
+    stub_sockets(&local, &remote, CPN_CHANNEL_TYPE_TCP);
     local.crypto = remote.crypto = CPN_CHANNEL_CRYPTO_NONE;
 
     return 0;

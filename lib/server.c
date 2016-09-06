@@ -208,7 +208,7 @@ int cpn_server_get_address(struct cpn_server *s,
 
     if (getnameinfo((struct sockaddr *) &addr,
                 addrlen, host, hostlen, port, portlen,
-                NI_NUMERICHOST) != 0)
+                NI_NUMERICHOST | NI_NUMERICSERV) != 0)
     {
         cpn_log(LOG_LEVEL_ERROR, "Could not resolve name info: %s", strerror(errno));
         return -1;

@@ -22,15 +22,6 @@
 
 #include "test.h"
 
-#define NULL_SECRET "00000000000000000000000000000000" \
-                    "00000000000000000000000000000000"
-#define SECRET "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" \
-               "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-#define PK "dbc08ee5b91124024cfc78f3e35a0091" \
-           "df2e422b471065845c8d227486fb0e54"
-#define OTHER_PK "0e29d67c6f96d2594bd7af24dc2ab3bc" \
-                 "3eebb1f8444b422e30441b0743d5dde3"
-
 static char *string;
 
 static struct cpn_cap *root;
@@ -225,8 +216,8 @@ static void cap_to_string_succeeds_with_reference()
     assert_success(cpn_cap_create_ref(&ref, &cap, CPN_CAP_RIGHT_EXEC | CPN_CAP_RIGHT_TERM, &pk));
 
     assert_success(cpn_cap_to_string(&string, ref));
-    assert_string_equal(string, "60d5175bdb2dcb0bdb6eb4884e082414"
-                                "20f6bb3b8eded2d33b2b3f8f29951bde"
+    assert_string_equal(string, "95e7f7564ccaa61a45f684873b1b0b9b"
+                                "36f01a08ba59f8038bd26f6a510c0aab"
                                 "|" PK ":xt");
 }
 

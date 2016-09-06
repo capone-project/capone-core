@@ -149,7 +149,7 @@ static void *relay_capabilities()
 }
 
 static int relay_capability_request(struct cpn_channel *channel,
-        const CapabilityRequest *request,
+        const CapabilitiesRequest *request,
         const struct cpn_cfg *cfg)
 {
     Capability cap_message = CAPABILITY__INIT;
@@ -199,8 +199,7 @@ static int relay_capability_request(struct cpn_channel *channel,
     cap_message.sessionid = sessionid;
     cpn_sign_key_public_to_proto(&cap_message.service_identity, &service_key);
 
-    cap_message.capability = malloc(sizeof(CapabilityMessage));
-    if (cpn_cap_to_protobuf(cap_message.capability, ref_cap) < 0) {
+    if (cpn_cap_to_protobuf(&cap_message.capability, ref_cap) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to parse capability");
         goto out;
     }
@@ -222,65 +221,90 @@ out:
     return ret;
 }
 
-static int invoke_register(struct cpn_channel *channel,
-        const struct cpn_cfg *cfg)
+static int answer_request(struct cpn_channel *channel,
+        const struct cpn_cfg *cfg,
+        CapabilitiesRequest *request)
 {
-    CapabilityRequest *request;
     struct cpn_sign_key_hex requester_hex, service_hex;
     struct cpn_sign_key_public requester, service;
     size_t i;
 
+    if (cpn_sign_key_public_from_proto(&requester, request->requester_identity) < 0 ||
+            cpn_sign_key_public_from_proto(&service, request->service_identity) < 0)
+    {
+        cpn_log(LOG_LEVEL_ERROR, "Unable to parse remote keys");
+        return -1;
+    }
+
+    cpn_sign_key_hex_from_key(&requester_hex, &requester);
+    cpn_sign_key_hex_from_key(&service_hex, &service);
+
+    printf("request from: %s\n"
+           "     service: %s\n"
+           "     address: %s\n"
+           "        port: %s\n"
+           "  parameters: ",
+           requester_hex.data, service_hex.data,
+           request->service_address, request->service_port);
+    for (i = 0; i < request->n_parameters; i++) {
+        printf("%s ", request->parameters[i]);
+    }
+
     while (true) {
-        if (cpn_channel_receive_protobuf(channel, &capability_request__descriptor,
-                (ProtobufCMessage **) &request) < 0)
+        int c;
+
+        printf("Accept? [y/n] ");
+
+        c = getchar();
+
+        if (c == 'y') {
+            if (relay_capability_request(channel, request, cfg) < 0)
+                cpn_log(LOG_LEVEL_ERROR, "Unable to relay capability");
+            else
+                printf("Accepted capability request from %s\n", requester.data);
+
+            break;
+        } else if (c == 'n') {
+            break;
+        }
+    }
+
+    return 0;
+}
+
+static int invoke_register(struct cpn_channel *channel,
+        const struct cpn_cfg *cfg)
+{
+    CapabilitiesCommand *cmd;
+
+    while (true) {
+        if (cpn_channel_receive_protobuf(channel,
+                    &capabilities_command__descriptor,
+                    (ProtobufCMessage **) &cmd) < 0)
         {
             cpn_log(LOG_LEVEL_ERROR, "Error receiving registered capability requests");
             return -1;
         }
 
-        if (cpn_sign_key_public_from_proto(&requester, request->requester_identity) < 0 ||
-                cpn_sign_key_public_from_proto(&service, request->service_identity) < 0)
-        {
-            cpn_log(LOG_LEVEL_ERROR, "Unable to parse remote keys");
-            return -1;
-        }
-
-        cpn_sign_key_hex_from_key(&requester_hex, &requester);
-        cpn_sign_key_hex_from_key(&service_hex, &service);
-
-        printf("request from: %s\n"
-               "     service: %s\n"
-               "     address: %s\n"
-               "        port: %s\n"
-               "  parameters: ",
-               requester_hex.data, service_hex.data,
-               request->service_address, request->service_port);
-        for (i = 0; i < request->n_parameters; i++) {
-            printf("%s ", request->parameters[i]);
-        }
-
-        while (true) {
-            int c;
-
-            printf("Accept? [y/n] ");
-
-            c = getchar();
-
-            if (c == 'y') {
-                if (relay_capability_request(channel, request, cfg) < 0)
-                    cpn_log(LOG_LEVEL_ERROR, "Unable to relay capability");
-                else
-                    printf("Accepted capability request from %s\n", requester.data);
-
+        switch (cmd->cmd) {
+            case CAPABILITIES_COMMAND__COMMAND__REQUEST:
+                if (answer_request(channel, cfg, cmd->request) < 0) {
+                    cpn_log(LOG_LEVEL_ERROR, "Unable to answer request");
+                    return -1;
+                }
                 break;
-            } else if (c == 'n') {
-                break;
-            }
+            case CAPABILITIES_COMMAND__COMMAND__TERMINATE:
+                capabilities_command__free_unpacked(cmd, NULL);
+                goto out;
+            default:
+                cpn_log(LOG_LEVEL_ERROR, "Received invalid request");
+                return -1;
         }
 
-        capability_request__free_unpacked(request, NULL);
+        capabilities_command__free_unpacked(cmd, NULL);
     }
 
+out:
     return 0;
 }
 
@@ -385,11 +409,17 @@ static int handle_request(struct cpn_channel *channel,
         const struct cpn_sign_key_public *invoker,
         CapabilitiesParams__RequestParams *params)
 {
-    CapabilityRequest request = CAPABILITY_REQUEST__INIT;
+    CapabilitiesCommand cmd = CAPABILITIES_COMMAND__INIT;
+    CapabilitiesRequest request = CAPABILITIES_REQUEST__INIT;
     struct cpn_list_entry *it;
     struct registrant *reg = NULL;
     struct client *client;
     int err = 0;
+
+    if (params->requested_identity == NULL) {
+        cpn_log(LOG_LEVEL_ERROR, "No requested identity specified");
+        return -1;
+    }
 
     pthread_mutex_lock(&registrants_mutex);
     cpn_list_foreach(&registrants, it, reg) {
@@ -410,10 +440,14 @@ static int handle_request(struct cpn_channel *channel,
     request.service_identity = params->service_identity;
     request.service_address = params->service_address;
     request.service_port = params->service_port;
+    request.service_type = params->service_type;
     request.n_parameters = params->n_parameters;
     request.parameters = params->parameters;
 
-    if (cpn_channel_write_protobuf(&reg->channel, &request.base) < 0) {
+    cmd.cmd = CAPABILITIES_COMMAND__COMMAND__REQUEST;
+    cmd.request = &request;
+
+    if (cpn_channel_write_protobuf(&reg->channel, &cmd.base) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to request capability request");
         return -1;
     }
@@ -455,6 +489,7 @@ static int handle(struct cpn_channel *channel,
 int parse(ProtobufCMessage **out, int argc, const char *argv[])
 {
     struct cpn_opt request_opts[] = {
+        CPN_OPTS_OPT_SIGKEY(0, "--requested-identity", NULL, NULL, false),
         CPN_OPTS_OPT_SIGKEY(0, "--service-identity", NULL, NULL, false),
         CPN_OPTS_OPT_STRING(0, "--service-address", NULL, NULL, false),
         CPN_OPTS_OPT_STRING(0, "--service-port", NULL, NULL, false),

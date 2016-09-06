@@ -15,6 +15,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <errno.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -41,12 +42,10 @@ static int invoke(struct cpn_channel *channel,
     return 0;
 }
 
-static void exec(const char *cmd,
-        const char **args, int nargs,
-        const char **envs, int nenvs)
+static int execute(const char *cmd, const char **args, int nargs)
 {
     char **argv = NULL;
-    int i;
+    int i, err;
 
     if (nargs > 0) {
         argv = malloc(sizeof(char * const) * (nargs + 2));
@@ -57,34 +56,20 @@ static void exec(const char *cmd,
         }
         argv[nargs + 1] = NULL;
     } else {
-        argv = malloc(sizeof(char * const) * 1);
+        argv = malloc(sizeof(char * const) * 2);
         argv[0] = strdup(cmd);
+        argv[1] = NULL;
     }
 
-    for (i = 0; i < nenvs; i++) {
-        char *name, *value;
-
-        if (strchr(envs[i], '=') == NULL)
-            continue;
-
-        name = strdup(envs[i]);
-        value = strchr(name, '=');
-        *value = '\0';
-        value++;
-
-        setenv(name, value, 0);
-
-        free(name);
-    }
-
-    execvp(cmd, argv);
+    if ((err = execvp(cmd, argv)) < 0)
+        cpn_log(LOG_LEVEL_ERROR, "Could not spawn %s: %s", cmd, strerror(errno));
 
     for (i = 0; i < nargs; i++) {
         free(argv[i]);
     }
     free(argv);
 
-    _exit(0);
+    return err;
 }
 
 static int handle(struct cpn_channel *channel,
@@ -94,7 +79,7 @@ static int handle(struct cpn_channel *channel,
 {
     ExecParams *params;
     int pid;
-    int stdout_fds[2] = { -1, -1 }, stderr_fds[2] = { -1, -1 };
+    int fds[2] = { -1, -1 };
     int error = 0;
 
     UNUSED(cfg);
@@ -102,9 +87,7 @@ static int handle(struct cpn_channel *channel,
 
     params = (ExecParams *) session->parameters;
 
-    if ((error = pipe(stdout_fds)) < 0 ||
-            (error = pipe(stderr_fds)) < 0)
-    {
+    if ((error = pipe(fds)) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to create pipes to child");
         goto out;
     }
@@ -117,19 +100,31 @@ static int handle(struct cpn_channel *channel,
     }
 
     if (pid == 0) {
-        dup2(stdout_fds[1], STDOUT_FILENO);
-        close(stdout_fds[0]);
-        close(stdout_fds[1]);
-        dup2(stderr_fds[1], STDERR_FILENO);
-        close(stderr_fds[0]);
-        close(stderr_fds[1]);
+        while (dup2(fds[1], STDOUT_FILENO) < 0 && errno == EINTR);
+        if (error < 0) {
+            cpn_log(LOG_LEVEL_ERROR, "Unable to duplicate stdout: %s", strerror(errno));
+            _exit(-1);
+        }
 
-        exec(params->command, (const char **) params->arguments, params->n_arguments, NULL, 0);
+        while (dup2(fds[1], STDERR_FILENO) < 0 && errno == EINTR);
+        if (error < 0) {
+            cpn_log(LOG_LEVEL_ERROR, "Unable to duplicate stdout: %s", strerror(errno));
+            _exit(-1);
+        }
+
+        close(fds[0]);
+        close(fds[1]);
+
+        if (execute(params->command, (const char **) params->arguments, params->n_arguments) < 0) {
+            cpn_log(LOG_LEVEL_ERROR, "Unable to execute %s", params->command);
+            _exit(-1);
+        }
+
+        _exit(0);
     } else {
-        close(stdout_fds[1]);
-        close(stderr_fds[1]);
+        close(fds[1]);
 
-        if (cpn_channel_relay(channel, 2, stdout_fds[0], stderr_fds[0]) < 0) {
+        if (cpn_channel_relay(channel, 1, fds[0]) < 0) {
             cpn_log(LOG_LEVEL_ERROR, "Unable to relay exec output");
             error = -1;
             goto out;
@@ -137,10 +132,8 @@ static int handle(struct cpn_channel *channel,
     }
 
 out:
-    if (stdout_fds[0] >= 0) close(stdout_fds[0]);
-    if (stdout_fds[1] >= 0) close(stdout_fds[1]);
-    if (stderr_fds[0] >= 0) close(stderr_fds[0]);
-    if (stderr_fds[1] >= 0) close(stderr_fds[1]);
+    if (fds[0] >= 0) close(fds[0]);
+    if (fds[1] >= 0) close(fds[1]);
 
     return error;
 }
@@ -149,7 +142,7 @@ static int parse(ProtobufCMessage **out, int argc, const char *argv[])
 {
     struct cpn_opt opts[] = {
         CPN_OPTS_OPT_STRING(0, "--command", NULL, NULL, false),
-        CPN_OPTS_OPT_STRINGLIST(0, "--arguments", NULL, NULL, false),
+        CPN_OPTS_OPT_STRINGLIST(0, "--arguments", NULL, NULL, true),
         CPN_OPTS_OPT_END
     };
     ExecParams *params;
@@ -163,10 +156,15 @@ static int parse(ProtobufCMessage **out, int argc, const char *argv[])
 
     params->command = strdup(opts[0].value.string);
 
-    params->n_arguments = opts[2].value.stringlist.argc;
-    params->arguments = malloc(sizeof(char *) * params->n_arguments);
-    for (i = 0; i < params->n_arguments; i++) {
-        params->arguments[i] = strdup(opts[2].value.stringlist.argv[i]);
+    if (opts[1].set) {
+        params->n_arguments = opts[1].value.stringlist.argc;
+        params->arguments = malloc(sizeof(char *) * params->n_arguments);
+        for (i = 0; i < params->n_arguments; i++) {
+            params->arguments[i] = strdup(opts[1].value.stringlist.argv[i]);
+        }
+    } else {
+        params->n_arguments = 0;
+        params->arguments = NULL;
     }
 
     *out = &params->base;

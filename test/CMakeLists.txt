@@ -1,30 +1,43 @@
-PROTOBUF_GENERATE_C(TEST_PROTO_SOURCES TEST_PROTO_HEADERS test.proto)
-
 FIND_PACKAGE(CMOCKA)
 
 IF(CMOCKA_FOUND)
     MESSAGE(STATUS "Found cmocka: TRUE")
     MESSAGE(STATUS "  Building tests")
 
-    INCLUDE_DIRECTORIES(SYSTEM ${CMOCKA_INCLUDE_DIR})
+    PROTOBUF_GENERATE_C(TEST_PROTO_SOURCES TEST_PROTO_HEADERS lib/test.proto)
+
+    INCLUDE_DIRECTORIES(SYSTEM
+        ${CMOCKA_INCLUDE_DIR}
+        ${PROJECT_BINARY_DIR})
+
+    ADD_EXECUTABLE(test-helper test-helper.c)
+
+    SET(TEST_HELPER_EXECUTABLE
+        ${CMAKE_CURRENT_BINARY_DIR}/test-helper${CMAKE_EXECUTABLE_SUFFIX})
+
+    CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/config.h.in
+        ${CMAKE_CURRENT_BINARY_DIR}/config.h)
 
     ADD_LIBRARY(capone-test SHARED bench.c test.c)
     TARGET_LINK_LIBRARIES(capone-test capone cmocka)
 
     ADD_EXECUTABLE(cpn-test cpn-test.c
-        acl.c
-        caps.c
-        cfg.c
-        channel.c
-        common.c
-        keys.c
-        list.c
-        opts.c
-        proto.c
-        server.c
-        service.c
-        session.c
-        test-service.c
+        lib/acl.c
+        lib/caps.c
+        lib/cfg.c
+        lib/channel.c
+        lib/common.c
+        lib/keys.c
+        lib/list.c
+        lib/opts.c
+        lib/proto.c
+        lib/server.c
+        lib/service.c
+        lib/session.c
+        lib/test-service.c
+        lib/service/capabilities.c
+        lib/service/exec.c
+        lib/service/invoke.c
         ${TEST_PROTO_SOURCES})
     TARGET_LINK_LIBRARIES(cpn-test capone-test)
 

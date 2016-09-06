@@ -432,7 +432,7 @@ int cpn_channel_relay(struct cpn_channel *channel, int nfds, ...)
 {
     fd_set fds;
     uint8_t buf[2048];
-    int written, received, maxfd, infd, fd, i, ret;
+    int written, received, maxfd, infd, fd, i, ret, finish = 0;
     va_list ap;
 
     if (nfds <= 0) {
@@ -462,7 +462,9 @@ int cpn_channel_relay(struct cpn_channel *channel, int nfds, ...)
         }
         va_end(ap);
 
-        if (select(maxfd + 1, &fds, NULL, NULL, NULL) <= 0) {
+        if (select(maxfd + 1, &fds, NULL, NULL, NULL) < 0) {
+            if (errno == EINTR)
+                continue;
             cpn_log(LOG_LEVEL_ERROR, "Error selecting fds");
             return -1;
         }
@@ -471,7 +473,7 @@ int cpn_channel_relay(struct cpn_channel *channel, int nfds, ...)
             received = cpn_channel_receive_data(channel, buf, sizeof(buf));
             if (received == 0) {
                 cpn_log(LOG_LEVEL_VERBOSE, "Channel closed, stopping relay");
-                return 0;
+                finish = 1;
             } else if (received < 0) {
                 cpn_log(LOG_LEVEL_ERROR, "Error relaying data from channel: %s", strerror(errno));
                 return -1;
@@ -496,7 +498,8 @@ int cpn_channel_relay(struct cpn_channel *channel, int nfds, ...)
                 received = read(fd, buf, sizeof(buf));
                 if (received == 0) {
                     cpn_log(LOG_LEVEL_VERBOSE, "File descriptor closed, stopping relay");
-                    return 0;
+                    finish = 1;
+                    continue;
                 } else if (received < 0) {
                     cpn_log(LOG_LEVEL_ERROR, "Error relaying data from fd");
                     return -1;
@@ -509,6 +512,9 @@ int cpn_channel_relay(struct cpn_channel *channel, int nfds, ...)
             }
         }
         va_end(ap);
+
+        if (finish)
+            return 0;
     }
 
     return 0;
