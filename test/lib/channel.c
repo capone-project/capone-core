@@ -112,6 +112,20 @@ static void write_data()
     assert_string_equal(sender, receiver);
 }
 
+static void write_data_udp()
+{
+    uint8_t sender[] = "test";
+    uint8_t receiver[sizeof(sender)];
+
+    stub_sockets(&channel, &remote, CPN_CHANNEL_TYPE_UDP);
+
+    assert_success(cpn_channel_write_data(&channel, sender, sizeof(sender)));
+    assert_int_equal(cpn_channel_receive_data(&remote, receiver, sizeof(receiver)),
+            sizeof(sender));
+
+    assert_string_equal(sender, receiver);
+}
+
 static void write_data_with_different_block_lengths()
 {
     size_t lengths[] = { 64, 128, 512, 1024, 2048 };
@@ -147,6 +161,23 @@ static void write_some_data()
 
     assert_string_equal(m, buf);
 }
+
+static void write_some_data_udp()
+{
+    uint8_t m[4096];
+    uint8_t buf[sizeof(m)];
+
+    memset(m, '1', sizeof(m));
+    m[sizeof(m) - 1] = '\0';
+
+    stub_sockets(&channel, &remote, CPN_CHANNEL_TYPE_UDP);
+
+    assert_success(cpn_channel_write_data(&channel, m, sizeof(m)));
+    assert_int_equal(cpn_channel_receive_data(&remote, buf, sizeof(buf)), sizeof(m));
+
+    assert_string_equal(m, buf);
+}
+
 
 static void receive_fails_with_too_small_buffer()
 {
@@ -516,8 +547,10 @@ int channel_test_run_suite(void)
         test(init_address_to_invalid_address),
 
         test(write_data),
+        test(write_data_udp),
         test(write_data_with_different_block_lengths),
         test(write_some_data),
+        test(write_some_data_udp),
         test(receive_fails_with_too_small_buffer),
         test(write_multiple_messages),
         test(write_repeated_before_read),
