@@ -186,28 +186,6 @@ int cpn_channel_set_blocklen(struct cpn_channel *c, size_t len);
  */
 int cpn_channel_close(struct cpn_channel *c);
 
-/** @brief Check if a channel is closed
- *
- * Check if a channel is closed. Note that this may be unreliable
- * depending on the host's platform.
- *
- * @param[in] c Channel to check
- * @return <code>true</code> if the chanenl is closed,
- *         <code>false</code> otherwise
- */
-bool cpn_channel_is_closed(struct cpn_channel *c);
-
-/** @brief Disable encryption for a channel
- *
- * Disable encryption and return to use plain-text messages
- * again. This zeroes out the channel's symmetric key used for
- * encryption.
- *
- * @param[in] c Channel to disable encryption for.
- * @return <code>0</code>
- */
-int cpn_channel_disable_encryption(struct cpn_channel *c);
-
 /** @brief Enable encryption for a channel
  *
  * Enable encryption for a channel with a given shared secret.

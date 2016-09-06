@@ -145,15 +145,6 @@ int cpn_channel_set_blocklen(struct cpn_channel *c, size_t len)
     return 0;
 }
 
-int cpn_channel_disable_encryption(struct cpn_channel *c)
-{
-    memset(&c->key, 0, sizeof(c->key));
-
-    c->crypto = CPN_CHANNEL_CRYPTO_NONE;
-
-    return 0;
-}
-
 int cpn_channel_enable_encryption(struct cpn_channel *c,
         const struct cpn_symmetric_key *key, enum cpn_channel_nonce nonce)
 {
@@ -187,27 +178,6 @@ int cpn_channel_close(struct cpn_channel *c)
     c->fd = -1;
 
     return 0;
-}
-
-bool cpn_channel_is_closed(struct cpn_channel *c)
-{
-    struct timeval tv = { 0, 0 };
-    fd_set fds;
-    int n = 0;
-
-    if (c->fd < 0)
-        return false;
-
-    FD_ZERO(&fds);
-    FD_SET(c->fd, &fds);
-
-    select(c->fd + 1, &fds, 0, 0, &tv);
-    if (!FD_ISSET(c->fd, &fds))
-        return false;
-
-    ioctl(c->fd, FIONREAD, &n);
-
-    return n == 0;
 }
 
 int cpn_channel_connect(struct cpn_channel *c)
