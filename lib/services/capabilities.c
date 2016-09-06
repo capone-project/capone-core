@@ -71,7 +71,6 @@ static void relay_capability_for_registrant(struct registrant *r)
                 break;
             }
         }
-        free(r);
         pthread_mutex_unlock(&registrants_mutex);
 
         /* Kill clients waiting for registrant */
@@ -88,6 +87,8 @@ static void relay_capability_for_registrant(struct registrant *r)
             free(c);
         }
         pthread_mutex_unlock(&clients_mutex);
+
+        free(r);
 
         cpn_log(LOG_LEVEL_ERROR, "Unable to receive capability");
         goto out;
@@ -139,9 +140,11 @@ static void *relay_capabilities()
         if (select(maxfd + 1, &fds, NULL, NULL, NULL) == -1)
             continue;
 
+        pthread_mutex_lock(&registrants_mutex);
         cpn_list_foreach(&registrants, it, r) {
             if (FD_ISSET(r->channel.fd, &fds))
                 relay_capability_for_registrant((struct registrant *) it->data);
+        pthread_mutex_unlock(&registrants_mutex);
         }
     }
 
@@ -387,13 +390,11 @@ static int handle_register(struct cpn_channel *channel,
     int n = 0;
 
     registrant = malloc(sizeof(struct registrant));
-
-    pthread_mutex_lock(&registrants_mutex);
-    cpn_list_append(&registrants, registrant);
-
     memcpy(&registrant->channel, channel, sizeof(struct cpn_channel));
     memcpy(&registrant->identity, invoker, sizeof(struct cpn_sign_key_public));
 
+    pthread_mutex_lock(&registrants_mutex);
+    cpn_list_append(&registrants, registrant);
     pthread_mutex_unlock(&registrants_mutex);
 
     cpn_sign_key_hex_from_key(&hex, invoker);
