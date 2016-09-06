@@ -440,6 +440,7 @@ static int handle_request(struct cpn_channel *channel,
     request.service_identity = params->service_identity;
     request.service_address = params->service_address;
     request.service_port = params->service_port;
+    request.service_type = params->service_type;
     request.n_parameters = params->n_parameters;
     request.parameters = params->parameters;
 
