@@ -55,7 +55,7 @@ static void *serve(void *payload)
     struct serve_opts *opts = (struct serve_opts *) payload;
 
     assert_success(service->server_fn(&server, &pk, &opts->session, &cfg));
-    assert_success(cpn_channel_close(&server));
+    shutdown(server.fd, SHUT_RDWR);
 
     return NULL;
 }
