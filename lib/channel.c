@@ -432,7 +432,7 @@ int cpn_channel_relay(struct cpn_channel *channel, int nfds, ...)
 {
     fd_set fds;
     uint8_t buf[2048];
-    int written, received, maxfd, infd, fd, i, ret, finish = 0;
+    int closed = 0, written, received, maxfd, infd, fd, i, ret;
     va_list ap;
 
     if (nfds <= 0) {
@@ -440,10 +440,14 @@ int cpn_channel_relay(struct cpn_channel *channel, int nfds, ...)
         return -1;
     }
 
+    FD_ZERO(&fds);
+    FD_SET(channel->fd, &fds);
     maxfd = channel->fd;
+
     va_start(ap, nfds);
     for (i = 0; i < nfds; i++) {
         fd = va_arg(ap, int);
+        FD_SET(fd, &fds);
         maxfd = MAX(maxfd, fd);
 
         if (i == 0)
@@ -452,28 +456,22 @@ int cpn_channel_relay(struct cpn_channel *channel, int nfds, ...)
     va_end(ap);
 
     while (1) {
-        FD_ZERO(&fds);
-        FD_SET(channel->fd, &fds);
+        fd_set tfds;
 
-        va_start(ap, nfds);
-        for (i = 0; i < nfds; i++) {
-            fd = va_arg(ap, int);
-            FD_SET(fd, &fds);
-        }
-        va_end(ap);
+        memcpy(&tfds, &fds, sizeof(fd_set));
 
-        if (select(maxfd + 1, &fds, NULL, NULL, NULL) < 0) {
+        if (select(maxfd + 1, &tfds, NULL, NULL, NULL) < 0) {
             if (errno == EINTR)
                 continue;
             cpn_log(LOG_LEVEL_ERROR, "Error selecting fds");
             return -1;
         }
 
-        if (FD_ISSET(channel->fd, &fds)) {
+        if (FD_ISSET(channel->fd, &tfds)) {
             received = cpn_channel_receive_data(channel, buf, sizeof(buf));
             if (received == 0) {
-                cpn_log(LOG_LEVEL_VERBOSE, "Channel closed, stopping relay");
-                finish = 1;
+                cpn_log(LOG_LEVEL_TRACE, "Channel closed, stopping relay");
+                return -1;
             } else if (received < 0) {
                 cpn_log(LOG_LEVEL_ERROR, "Error relaying data from channel: %s", strerror(errno));
                 return -1;
@@ -494,11 +492,12 @@ int cpn_channel_relay(struct cpn_channel *channel, int nfds, ...)
         for (i = 0; i < nfds; i++) {
             fd = va_arg(ap, int);
 
-            if (FD_ISSET(fd, &fds)) {
+            if (FD_ISSET(fd, &tfds)) {
                 received = read(fd, buf, sizeof(buf));
                 if (received == 0) {
-                    cpn_log(LOG_LEVEL_VERBOSE, "File descriptor closed, stopping relay");
-                    finish = 1;
+                    FD_CLR(fd, &fds);
+                    closed++;
+                    cpn_log(LOG_LEVEL_TRACE, "Relay file descriptor %d/%d closed", closed, nfds);
                     continue;
                 } else if (received < 0) {
                     cpn_log(LOG_LEVEL_ERROR, "Error relaying data from fd");
@@ -513,8 +512,10 @@ int cpn_channel_relay(struct cpn_channel *channel, int nfds, ...)
         }
         va_end(ap);
 
-        if (finish)
+        if (closed == nfds) {
+            cpn_log(LOG_LEVEL_TRACE, "All relay file descriptors closed");
             return 0;
+        }
     }
 
     return 0;
