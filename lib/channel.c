@@ -120,21 +120,11 @@ int cpn_channel_init_from_fd(struct cpn_channel *c,
         int fd, const struct sockaddr_storage *addr, size_t addrlen,
         enum cpn_channel_type type)
 {
-    char *env;
-    uint32_t blocklen;
-
     memset(c, 0, sizeof(struct cpn_channel));
 
-    env = getenv("CPN_BLOCKLEN");
-    if (env == NULL || parse_uint32t(&blocklen, env) < 0) {
-        c->blocklen = DEFAULT_BLOCKLEN;
-    } else {
-        c->blocklen = blocklen;
-    }
-
+    c->blocklen = DEFAULT_BLOCKLEN;
     c->fd = fd;
     c->type = type;
-
     c->crypto = CPN_CHANNEL_CRYPTO_NONE;
     memcpy(&c->addr, addr, sizeof(c->addr));
     c->addrlen = addrlen;
