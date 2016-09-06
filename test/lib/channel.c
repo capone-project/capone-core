@@ -405,6 +405,84 @@ static void relaying_data_to_channel_succeeds()
     assert_success(cpn_join(&thread, NULL));
 }
 
+static void relaying_multiple_sockets_succeeds()
+{
+    uint8_t data[] = "bla", buf[sizeof(data)];
+    struct cpn_channel c1, c2, c3, r1, r2, r3;
+    struct cpn_thread thread;
+    struct relay_args args;
+    int fds[2];
+
+    stub_sockets(&c1, &r1, CPN_CHANNEL_TYPE_TCP);
+    stub_sockets(&c2, &r2, CPN_CHANNEL_TYPE_TCP);
+    stub_sockets(&c3, &r3, CPN_CHANNEL_TYPE_TCP);
+
+    fds[0] = r2.fd;
+    fds[1] = r3.fd;
+
+    args.c = &c1;
+    args.nfds = ARRAY_SIZE(fds);
+    args.fds = fds;
+
+    assert_success(cpn_spawn(&thread, relay_fn, &args));
+
+    assert_int_equal(send(c2.fd, data, sizeof(data), 0), sizeof(data));
+    assert_int_equal(cpn_channel_receive_data(&r1, buf, sizeof(buf)), sizeof(data));
+    assert_string_equal(buf, data);
+    assert_int_equal(send(c3.fd, data, sizeof(data), 0), sizeof(data));
+    assert_int_equal(cpn_channel_receive_data(&r1, buf, sizeof(buf)), sizeof(data));
+    assert_string_equal(buf, data);
+
+    shutdown(c1.fd, SHUT_RDWR);
+    shutdown(c2.fd, SHUT_RDWR);
+    shutdown(c3.fd, SHUT_RDWR);
+    shutdown(r1.fd, SHUT_RDWR);
+    shutdown(r2.fd, SHUT_RDWR);
+    shutdown(r3.fd, SHUT_RDWR);
+
+    assert_success(cpn_join(&thread, NULL));
+}
+
+static void relaying_partially_closed_sockets_succeeds()
+{
+    uint8_t data[] = "bla", buf[sizeof(data)];
+    struct cpn_channel c1, c2, c3, r1, r2, r3;
+    struct cpn_thread thread;
+    struct relay_args args;
+    int fds[2];
+
+    stub_sockets(&c1, &r1, CPN_CHANNEL_TYPE_TCP);
+    stub_sockets(&c2, &r2, CPN_CHANNEL_TYPE_TCP);
+    stub_sockets(&c3, &r3, CPN_CHANNEL_TYPE_TCP);
+
+    fds[0] = r2.fd;
+    fds[1] = r3.fd;
+
+    args.c = &c1;
+    args.nfds = ARRAY_SIZE(fds);
+    args.fds = fds;
+
+    assert_success(cpn_spawn(&thread, relay_fn, &args));
+
+    shutdown(c2.fd, SHUT_RDWR);
+    shutdown(r2.fd, SHUT_RDWR);
+
+    assert_int_equal(send(c3.fd, data, sizeof(data), 0), sizeof(data));
+    assert_int_equal(cpn_channel_receive_data(&r1, buf, sizeof(buf)), sizeof(data));
+    assert_string_equal(buf, data);
+    assert_int_equal(send(c3.fd, data, sizeof(data), 0), sizeof(data));
+    assert_int_equal(cpn_channel_receive_data(&r1, buf, sizeof(buf)), sizeof(data));
+    assert_string_equal(buf, data);
+
+    shutdown(c1.fd, SHUT_RDWR);
+    shutdown(c3.fd, SHUT_RDWR);
+    shutdown(r1.fd, SHUT_RDWR);
+    shutdown(r3.fd, SHUT_RDWR);
+
+    assert_success(cpn_join(&thread, NULL));
+}
+
+
 int channel_test_run_suite(void)
 {
     const struct CMUnitTest tests[] = {
@@ -433,7 +511,9 @@ int channel_test_run_suite(void)
         test(connect_fails_without_other_side),
 
         test(relaying_data_to_socket_succeeds),
-        test(relaying_data_to_channel_succeeds)
+        test(relaying_data_to_channel_succeeds),
+        test(relaying_multiple_sockets_succeeds),
+        test(relaying_partially_closed_sockets_succeeds)
     };
 
     cpn_symmetric_key_generate(&key);
