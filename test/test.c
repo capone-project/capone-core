@@ -71,8 +71,8 @@ void stub_sockets(struct cpn_channel *local, struct cpn_channel *remote, enum cp
     assert_success(getsockname(sockets[1],
                 (struct sockaddr *) &raddr, &raddrlen));
 
-    assert_success(cpn_channel_init_from_fd(local, sockets[0], &laddr, laddrlen, local->type));
-    assert_success(cpn_channel_init_from_fd(remote, sockets[0], &raddr, raddrlen, remote->type));
+    assert_success(cpn_channel_init_from_fd(local, sockets[0], (struct sockaddr *) &laddr, laddrlen, local->type));
+    assert_success(cpn_channel_init_from_fd(remote, sockets[0], (struct sockaddr *) &raddr, raddrlen, remote->type));
 
     local->fd = sockets[0];
     remote->fd = sockets[1];

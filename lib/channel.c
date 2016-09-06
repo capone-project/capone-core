@@ -113,20 +113,22 @@ int cpn_channel_init_from_host(struct cpn_channel *c, const char *host,
         return -1;
     }
 
-    return cpn_channel_init_from_fd(c, fd, &addr, addrlen, type);
+    return cpn_channel_init_from_fd(c, fd, (struct sockaddr *) &addr, addrlen, type);
 }
 
 int cpn_channel_init_from_fd(struct cpn_channel *c,
-        int fd, const struct sockaddr_storage *addr, size_t addrlen,
+        int fd, const struct sockaddr *addr, size_t addrlen,
         enum cpn_channel_type type)
 {
     memset(c, 0, sizeof(struct cpn_channel));
+
+    assert(addrlen <= sizeof(c->addr));
 
     c->blocklen = DEFAULT_BLOCKLEN;
     c->fd = fd;
     c->type = type;
     c->crypto = CPN_CHANNEL_CRYPTO_NONE;
-    memcpy(&c->addr, addr, sizeof(c->addr));
+    memcpy(&c->addr, addr, addrlen);
     c->addrlen = addrlen;
 
     return 0;

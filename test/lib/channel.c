@@ -52,7 +52,7 @@ static void initialization_sets_socket()
     struct sockaddr_storage addr;
     memset(&addr, 0, sizeof(addr));
 
-    cpn_channel_init_from_fd(&channel, 123, &addr, sizeof(addr), CPN_CHANNEL_TYPE_TCP);
+    cpn_channel_init_from_fd(&channel, 123, (struct sockaddr *) &addr, sizeof(addr), CPN_CHANNEL_TYPE_TCP);
 
     assert_int_equal(channel.fd, 123);
 }

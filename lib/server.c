@@ -191,7 +191,7 @@ int cpn_server_accept(struct cpn_server *s, struct cpn_channel *out)
             return -1;
     }
 
-    return cpn_channel_init_from_fd(out, fd, &addr, addrsize, s->type);
+    return cpn_channel_init_from_fd(out, fd, (struct sockaddr *) &addr, addrsize, s->type);
 }
 
 int cpn_server_get_address(struct cpn_server *s,

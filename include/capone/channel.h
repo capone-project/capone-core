@@ -154,7 +154,7 @@ int cpn_channel_init_from_host(struct cpn_channel *c,
  * @return <code>0</code> on success, <code>-1</code> otherwise
  */
 int cpn_channel_init_from_fd(struct cpn_channel *c,
-        int fd, const struct sockaddr_storage *addr, size_t addrlen,
+        int fd, const struct sockaddr *addr, size_t addrlen,
         enum cpn_channel_type type);
 
 /** @brief Set block length used to split messages
