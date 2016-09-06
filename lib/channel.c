@@ -214,6 +214,8 @@ static int write_data(struct cpn_channel *c, uint8_t *data, uint32_t datalen)
         }
 
         if (ret <= 0) {
+            if (errno == EINTR)
+                continue;
             cpn_log(LOG_LEVEL_ERROR, "Could not send data: %s",
                     strerror(errno));
             return -1;
@@ -304,6 +306,10 @@ static int receive_data(struct cpn_channel *c, uint8_t *out, size_t len)
     while (received != len) {
         ret = recv(c->fd, out + received, len - received, 0);
         if (ret <= 0) {
+            if (errno == EINTR)
+                continue;
+            cpn_log(LOG_LEVEL_ERROR, "Could not receive data: %s",
+                    strerror(errno));
             return -1;
         }
 
@@ -462,6 +468,8 @@ int cpn_channel_relay(struct cpn_channel *channel, int nfds, ...)
                     cpn_log(LOG_LEVEL_TRACE, "Relay file descriptor %d/%d closed", closed, nfds);
                     continue;
                 } else if (received < 0) {
+                    if (errno == EINTR)
+                        continue;
                     cpn_log(LOG_LEVEL_ERROR, "Error relaying data from fd");
                     return -1;
                 }
