@@ -130,15 +130,18 @@ static int cmd_request(const char *service_type, const struct cpn_opts_stringlis
         goto out_err;
     }
 
+    if (plugin->parse_fn && plugin->parse_fn(&params, parameters->argc, parameters->argv) < 0) {
+        printf("Could not parse parameters\n");
+        goto out_err;
+    }
+
     if (cpn_proto_initiate_connection(&channel, remote_host, remote_port,
                 &local_keys, &remote_key, CPN_CONNECTION_TYPE_REQUEST) < 0) {
         puts("Could not establish connection");
         goto out_err;
     }
 
-    if (cpn_proto_send_request(&sessionid, &cap, &channel, plugin,
-                parameters->argc, parameters->argv) < 0)
-    {
+    if (cpn_proto_send_request(&sessionid, &cap, &channel, params) < 0) {
         puts("Unable to request session");
         goto out_err;
     }

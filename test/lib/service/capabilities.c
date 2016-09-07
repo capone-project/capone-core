@@ -25,6 +25,7 @@
 #include "capone/proto/capabilities.pb-c.h"
 
 #include "test.h"
+#include "test/lib/test.pb-c.h"
 
 struct handler_opts {
     struct cpn_channel *channel;
@@ -146,6 +147,8 @@ static void parsing_request_succeeds()
         "--service-parameters", "xvlc",
     };
     CapabilitiesParams *params;
+    TestParams *test_params;
+    const struct cpn_service_plugin *test_plugin;
 
     assert_success(service->parse_fn((ProtobufCMessage **) &params, ARRAY_SIZE(args), args));
     assert_true(protobuf_c_message_check(&params->base));
@@ -156,10 +159,15 @@ static void parsing_request_succeeds()
     assert_string_equal(params->request_params->service_address, "localhost");
     assert_string_equal(params->request_params->service_port, "12345");
     assert_string_equal(params->request_params->service_type, "test");
-    assert_int_equal(params->request_params->n_parameters, 1);
-    assert_string_equal(params->request_params->parameters[0], "xvlc");
+
+
+    assert_success(cpn_service_plugin_for_type(&test_plugin, "test"));
+    test_params = (TestParams *) protobuf_c_message_unpack(test_plugin->params_desc,
+            NULL, params->request_params->parameters.len, params->request_params->parameters.data);
+    assert_string_equal(test_params->msg, "xvlc");
 
     capabilities_params__free_unpacked(params, NULL);
+    test_params__free_unpacked(test_params, NULL);
 }
 
 int capabilities_service_test_run_suite(void)

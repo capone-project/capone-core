@@ -227,28 +227,14 @@ out:
 int cpn_proto_send_request(uint32_t *sessionid,
         struct cpn_cap **cap,
         struct cpn_channel *channel,
-        const struct cpn_service_plugin *service,
-        int argc, const char **argv)
+        const struct ProtobufCMessage *params)
 {
     SessionRequestMessage request = SESSION_REQUEST_MESSAGE__INIT;
     SessionMessage *session = NULL;
     int err = -1;
 
-    if (service->parse_fn) {
-        ProtobufCMessage *params;
-        size_t len;
-
-        if (service->parse_fn(&params, argc, argv) < 0) {
-            cpn_log(LOG_LEVEL_ERROR, "Unable to parse parameters");
-            goto out;
-        }
-
-        if (!params) {
-            cpn_log(LOG_LEVEL_ERROR, "Parser created no parameters");
-            goto out;
-        }
-
-        len = protobuf_c_message_get_packed_size(params);
+    if (params) {
+        int len = protobuf_c_message_get_packed_size(params);
         request.parameters.data = malloc(len);
         request.parameters.len = len;
         protobuf_c_message_pack(params, request.parameters.data);

@@ -23,11 +23,13 @@
 #include <string.h>
 #include <inttypes.h>
 
+#include "capone/buf.h"
 #include "capone/cfg.h"
 #include "capone/channel.h"
 #include "capone/common.h"
 #include "capone/keys.h"
 #include "capone/proto.h"
+#include "capone/protobuf.h"
 #include "capone/service.h"
 #include "capone/list.h"
 #include "capone/log.h"
@@ -162,6 +164,7 @@ static int relay_capability_request(struct cpn_channel *channel,
     struct cpn_sign_key_public service_key, invoker_key;
     struct cpn_cap *root_cap = NULL, *ref_cap = NULL;
     const struct cpn_service_plugin *service;
+    ProtobufCMessage *params = NULL;
     uint32_t sessionid;
     int ret = 0;
 
@@ -186,8 +189,7 @@ static int relay_capability_request(struct cpn_channel *channel,
         goto out;
     }
 
-    if ((ret = cpn_proto_send_request(&sessionid, &root_cap, &service_channel, service,
-                    request->n_parameters, (const char **) request->parameters)) < 0)
+    if ((ret = cpn_proto_send_request(&sessionid, &root_cap, &service_channel, params)) < 0)
     {
         cpn_log(LOG_LEVEL_ERROR, "Unable to send request to remote service");
         goto out;
@@ -221,6 +223,9 @@ out:
     free(host);
     free(port);
 
+    if (params)
+        protobuf_c_message_free_unpacked(params, NULL);
+
     return ret;
 }
 
@@ -228,9 +233,11 @@ static int answer_request(struct cpn_channel *channel,
         const struct cpn_cfg *cfg,
         CapabilitiesRequest *request)
 {
+    struct cpn_buf buf = CPN_BUF_INIT;
     struct cpn_sign_key_hex requester_hex, service_hex;
     struct cpn_sign_key_public requester, service;
-    size_t i;
+    const struct cpn_service_plugin *plugin;
+    ProtobufCMessage *params;
 
     if (cpn_sign_key_public_from_proto(&requester, request->requester_identity) < 0 ||
             cpn_sign_key_public_from_proto(&service, request->service_identity) < 0)
@@ -242,15 +249,25 @@ static int answer_request(struct cpn_channel *channel,
     cpn_sign_key_hex_from_key(&requester_hex, &requester);
     cpn_sign_key_hex_from_key(&service_hex, &service);
 
-    printf("request from: %s\n"
+    cpn_buf_printf(&buf,
+           "request from: %s\n"
            "     service: %s\n"
+           "        type: %s\n"
            "     address: %s\n"
            "        port: %s\n"
-           "  parameters: ",
-           requester_hex.data, service_hex.data,
+           "      params: %s\n",
+           requester_hex.data, service_hex.data, request->service_type,
            request->service_address, request->service_port);
-    for (i = 0; i < request->n_parameters; i++) {
-        printf("%s ", request->parameters[i]);
+
+    if (cpn_service_plugin_for_type(&plugin, request->service_type) < 0) {
+        cpn_buf_append(&buf, "Unable to display parameters for unknown service type");
+    } else if ((params = protobuf_c_message_unpack(plugin->params_desc, NULL,
+                request->parameters.len, request->parameters.data)) == NULL)
+    {
+        cpn_buf_append(&buf, "Received invalid parameters");
+    } else {
+        cpn_buf_append(&buf, "  parameters:\n");
+        cpn_protobuf_to_string(&buf, 4, params);
     }
 
     while (true) {
@@ -271,6 +288,8 @@ static int answer_request(struct cpn_channel *channel,
             break;
         }
     }
+
+    cpn_buf_clear(&buf);
 
     return 0;
 }
@@ -442,8 +461,8 @@ static int handle_request(struct cpn_channel *channel,
     request.service_address = params->service_address;
     request.service_port = params->service_port;
     request.service_type = params->service_type;
-    request.n_parameters = params->n_parameters;
-    request.parameters = params->parameters;
+    request.parameters.data = params->parameters.data;
+    request.parameters.len = params->parameters.len;
 
     cmd.cmd = CAPABILITIES_COMMAND__COMMAND__REQUEST;
     cmd.request = &request;
@@ -516,7 +535,17 @@ int parse(ProtobufCMessage **out, int argc, const char *argv[])
         params->type = CAPABILITIES_PARAMS__TYPE__REGISTER;
     } else {
         CapabilitiesParams__RequestParams *rparams;
-        uint32_t i;
+        ProtobufCMessage *service_params;
+        const struct cpn_service_plugin *plugin;
+        uint32_t size;
+
+        if (cpn_service_plugin_for_type(&plugin, request_opts[4].value.string) < 0)
+            goto out_err;
+
+        if (plugin->parse_fn(&service_params,
+                    request_opts[5].value.stringlist.argc,
+                    request_opts[5].value.stringlist.argv) < 0)
+            goto out_err;
 
         rparams = malloc(sizeof(CapabilitiesParams__RequestParams));
         capabilities_params__request_params__init(rparams);
@@ -526,11 +555,10 @@ int parse(ProtobufCMessage **out, int argc, const char *argv[])
         rparams->service_address = strdup(request_opts[2].value.string);
         rparams->service_port = strdup(request_opts[3].value.string);
         rparams->service_type = strdup(request_opts[4].value.string);
-
-        rparams->n_parameters = request_opts[5].value.stringlist.argc;
-        rparams->parameters = malloc(sizeof(char *) * rparams->n_parameters);
-        for (i = 0; i < rparams->n_parameters; i++) {
-            rparams->parameters[i] = strdup(request_opts[5].value.stringlist.argv[i]);
+        if ((size = protobuf_c_message_get_packed_size(service_params)) > 0) {
+            rparams->parameters.len = size;
+            rparams->parameters.data = malloc(size);
+            protobuf_c_message_pack(service_params, rparams->parameters.data);
         }
 
         params->request_params = rparams;
@@ -540,6 +568,10 @@ int parse(ProtobufCMessage **out, int argc, const char *argv[])
     *out = &params->base;
 
     return 0;
+
+out_err:
+    capabilities_params__free_unpacked(params, NULL);
+    return -1;
 }
 
 int cpn_capabilities_init_service(const struct cpn_service_plugin **service)
