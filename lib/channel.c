@@ -206,7 +206,7 @@ static int write_data(struct cpn_channel *c, uint8_t *data, uint32_t datalen)
                 break;
             case CPN_CHANNEL_TYPE_UDP:
                 ret = sendto(c->fd, data + written, datalen - written, 0,
-                        (struct sockaddr *) &c->addr, sizeof(c->addr));
+                        (struct sockaddr *) &c->addr, c->addrlen);
                 break;
             default:
                 cpn_log(LOG_LEVEL_ERROR, "Unknown channel type");
