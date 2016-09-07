@@ -29,7 +29,8 @@
 
 struct relay_args {
     struct cpn_channel *c;
-    int fd;
+    int nfds;
+    int *fds;
 };
 
 static struct cpn_symmetric_key key;
@@ -52,7 +53,7 @@ static void initialization_sets_socket()
     struct sockaddr_storage addr;
     memset(&addr, 0, sizeof(addr));
 
-    cpn_channel_init_from_fd(&channel, 123, &addr, sizeof(addr), CPN_CHANNEL_TYPE_TCP);
+    cpn_channel_init_from_fd(&channel, 123, (struct sockaddr *) &addr, sizeof(addr), CPN_CHANNEL_TYPE_TCP);
 
     assert_int_equal(channel.fd, 123);
 }
@@ -111,6 +112,40 @@ static void write_data()
     assert_string_equal(sender, receiver);
 }
 
+static void write_data_udp()
+{
+    uint8_t sender[] = "test";
+    uint8_t receiver[sizeof(sender)];
+
+    stub_sockets(&channel, &remote, CPN_CHANNEL_TYPE_UDP);
+
+    assert_success(cpn_channel_write_data(&channel, sender, sizeof(sender)));
+    assert_int_equal(cpn_channel_receive_data(&remote, receiver, sizeof(receiver)),
+            sizeof(sender));
+
+    assert_string_equal(sender, receiver);
+}
+
+static void write_data_with_different_block_lengths()
+{
+    size_t lengths[] = { 64, 128, 512, 1024, 2048 };
+    uint8_t sender[] = "test";
+    uint8_t receiver[sizeof(sender)];
+    uint8_t i;
+
+    stub_sockets(&channel, &remote, CPN_CHANNEL_TYPE_TCP);
+
+    for (i = 0; i < ARRAY_SIZE(lengths); i++) {
+        cpn_channel_set_blocklen(&channel, lengths[i]);
+        cpn_channel_set_blocklen(&remote, lengths[i]);
+
+        assert_success(cpn_channel_write_data(&channel, sender, sizeof(sender)));
+        assert_int_equal(cpn_channel_receive_data(&remote, receiver, sizeof(receiver)),
+                sizeof(sender));
+        assert_string_equal(sender, receiver);
+    }
+}
+
 static void write_some_data()
 {
     uint8_t m[4096];
@@ -126,6 +161,23 @@ static void write_some_data()
 
     assert_string_equal(m, buf);
 }
+
+static void write_some_data_udp()
+{
+    uint8_t m[4096];
+    uint8_t buf[sizeof(m)];
+
+    memset(m, '1', sizeof(m));
+    m[sizeof(m) - 1] = '\0';
+
+    stub_sockets(&channel, &remote, CPN_CHANNEL_TYPE_UDP);
+
+    assert_success(cpn_channel_write_data(&channel, m, sizeof(m)));
+    assert_int_equal(cpn_channel_receive_data(&remote, buf, sizeof(buf)), sizeof(m));
+
+    assert_string_equal(m, buf);
+}
+
 
 static void receive_fails_with_too_small_buffer()
 {
@@ -321,7 +373,14 @@ static void *relay_fn(void *payload)
 {
     struct relay_args *args = (struct relay_args *) payload;
 
-    cpn_channel_relay(args->c, 1, args->fd);
+    switch (args->nfds) {
+        case 1:
+            cpn_channel_relay(args->c, 1, args->fds[0]);
+            break;
+        case 2:
+            cpn_channel_relay(args->c, 2, args->fds[0], args->fds[1]);
+            break;
+    }
 
     return NULL;
 }
@@ -332,6 +391,7 @@ static void relaying_data_to_socket_succeeds()
     struct cpn_channel c1, c2, r1, r2;
     struct cpn_thread thread;
     struct relay_args args;
+    int fds[1];
 
     memset(&c1, 0, sizeof(c1));
     memset(&c2, 0, sizeof(c2));
@@ -341,8 +401,10 @@ static void relaying_data_to_socket_succeeds()
     stub_sockets(&c1, &r1, CPN_CHANNEL_TYPE_TCP);
     stub_sockets(&c2, &r2, CPN_CHANNEL_TYPE_TCP);
 
+    fds[0] = c2.fd;
     args.c = &r1;
-    args.fd = c2.fd;
+    args.nfds = ARRAY_SIZE(fds);
+    args.fds = fds;
 
     assert_success(cpn_spawn(&thread, relay_fn, &args));
 
@@ -364,6 +426,7 @@ static void relaying_data_to_channel_succeeds()
     struct cpn_channel c1, c2, r1, r2;
     struct cpn_thread thread;
     struct relay_args args;
+    int fds[1];
 
     memset(&c1, 0, sizeof(c1));
     memset(&c2, 0, sizeof(c2));
@@ -373,8 +436,11 @@ static void relaying_data_to_channel_succeeds()
     stub_sockets(&c1, &r1, CPN_CHANNEL_TYPE_TCP);
     stub_sockets(&c2, &r2, CPN_CHANNEL_TYPE_TCP);
 
+    fds[0] = r1.fd;
+
     args.c = &c2;
-    args.fd = r1.fd;
+    args.nfds = ARRAY_SIZE(fds);
+    args.fds = fds;
 
     assert_success(cpn_spawn(&thread, relay_fn, &args));
 
@@ -390,6 +456,84 @@ static void relaying_data_to_channel_succeeds()
     assert_success(cpn_join(&thread, NULL));
 }
 
+static void relaying_multiple_sockets_succeeds()
+{
+    uint8_t data[] = "bla", buf[sizeof(data)];
+    struct cpn_channel c1, c2, c3, r1, r2, r3;
+    struct cpn_thread thread;
+    struct relay_args args;
+    int fds[2];
+
+    stub_sockets(&c1, &r1, CPN_CHANNEL_TYPE_TCP);
+    stub_sockets(&c2, &r2, CPN_CHANNEL_TYPE_TCP);
+    stub_sockets(&c3, &r3, CPN_CHANNEL_TYPE_TCP);
+
+    fds[0] = r2.fd;
+    fds[1] = r3.fd;
+
+    args.c = &c1;
+    args.nfds = ARRAY_SIZE(fds);
+    args.fds = fds;
+
+    assert_success(cpn_spawn(&thread, relay_fn, &args));
+
+    assert_int_equal(send(c2.fd, data, sizeof(data), 0), sizeof(data));
+    assert_int_equal(cpn_channel_receive_data(&r1, buf, sizeof(buf)), sizeof(data));
+    assert_string_equal(buf, data);
+    assert_int_equal(send(c3.fd, data, sizeof(data), 0), sizeof(data));
+    assert_int_equal(cpn_channel_receive_data(&r1, buf, sizeof(buf)), sizeof(data));
+    assert_string_equal(buf, data);
+
+    shutdown(c1.fd, SHUT_RDWR);
+    shutdown(c2.fd, SHUT_RDWR);
+    shutdown(c3.fd, SHUT_RDWR);
+    shutdown(r1.fd, SHUT_RDWR);
+    shutdown(r2.fd, SHUT_RDWR);
+    shutdown(r3.fd, SHUT_RDWR);
+
+    assert_success(cpn_join(&thread, NULL));
+}
+
+static void relaying_partially_closed_sockets_succeeds()
+{
+    uint8_t data[] = "bla", buf[sizeof(data)];
+    struct cpn_channel c1, c2, c3, r1, r2, r3;
+    struct cpn_thread thread;
+    struct relay_args args;
+    int fds[2];
+
+    stub_sockets(&c1, &r1, CPN_CHANNEL_TYPE_TCP);
+    stub_sockets(&c2, &r2, CPN_CHANNEL_TYPE_TCP);
+    stub_sockets(&c3, &r3, CPN_CHANNEL_TYPE_TCP);
+
+    fds[0] = r2.fd;
+    fds[1] = r3.fd;
+
+    args.c = &c1;
+    args.nfds = ARRAY_SIZE(fds);
+    args.fds = fds;
+
+    assert_success(cpn_spawn(&thread, relay_fn, &args));
+
+    shutdown(c2.fd, SHUT_RDWR);
+    shutdown(r2.fd, SHUT_RDWR);
+
+    assert_int_equal(send(c3.fd, data, sizeof(data), 0), sizeof(data));
+    assert_int_equal(cpn_channel_receive_data(&r1, buf, sizeof(buf)), sizeof(data));
+    assert_string_equal(buf, data);
+    assert_int_equal(send(c3.fd, data, sizeof(data), 0), sizeof(data));
+    assert_int_equal(cpn_channel_receive_data(&r1, buf, sizeof(buf)), sizeof(data));
+    assert_string_equal(buf, data);
+
+    shutdown(c1.fd, SHUT_RDWR);
+    shutdown(c3.fd, SHUT_RDWR);
+    shutdown(r1.fd, SHUT_RDWR);
+    shutdown(r3.fd, SHUT_RDWR);
+
+    assert_success(cpn_join(&thread, NULL));
+}
+
+
 int channel_test_run_suite(void)
 {
     const struct CMUnitTest tests[] = {
@@ -403,7 +547,10 @@ int channel_test_run_suite(void)
         test(init_address_to_invalid_address),
 
         test(write_data),
+        test(write_data_udp),
+        test(write_data_with_different_block_lengths),
         test(write_some_data),
+        test(write_some_data_udp),
         test(receive_fails_with_too_small_buffer),
         test(write_multiple_messages),
         test(write_repeated_before_read),
@@ -418,7 +565,9 @@ int channel_test_run_suite(void)
         test(connect_fails_without_other_side),
 
         test(relaying_data_to_socket_succeeds),
-        test(relaying_data_to_channel_succeeds)
+        test(relaying_data_to_channel_succeeds),
+        test(relaying_multiple_sockets_succeeds),
+        test(relaying_partially_closed_sockets_succeeds)
     };
 
     cpn_symmetric_key_generate(&key);

@@ -15,8 +15,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <arpa/inet.h>
+
+#include <string.h>
 
 #include "capone/channel.h"
 
@@ -51,29 +55,42 @@ int _execute_test_suite(const char *name, const struct CMUnitTest *tests, const 
 
 void stub_sockets(struct cpn_channel *local, struct cpn_channel *remote, enum cpn_channel_type type)
 {
-    int sockets[2];
+    int lfd, rfd;
+    struct sockaddr_in addr;
     struct sockaddr_storage laddr, raddr;
     socklen_t laddrlen = sizeof(laddr), raddrlen = sizeof(raddr);
 
-    local->type = remote->type = type;
+    memset(&addr, 0, sizeof(addr));
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(0);
+    addr.sin_addr.s_addr = htonl(INADDR_ANY);
 
-    switch (type) {
-        case CPN_CHANNEL_TYPE_TCP:
-            assert_success(socketpair(AF_UNIX, SOCK_STREAM, 0, sockets));
-            break;
-        case CPN_CHANNEL_TYPE_UDP:
-            assert_success(socketpair(AF_UNIX, SOCK_DGRAM, 0, sockets));
-            break;
+    if (type == CPN_CHANNEL_TYPE_TCP) {
+        int sfd;
+        struct sockaddr_storage saddr;
+        socklen_t saddrlen = sizeof(saddr);
+
+        assert((sfd = socket(AF_INET, SOCK_STREAM, 0)) >= 0);
+        assert_success(bind(sfd, (struct sockaddr * ) &addr, sizeof(addr)));
+        assert_success(listen(sfd, 1));
+        assert_success(getsockname(sfd, (struct sockaddr *) &saddr, &saddrlen));
+
+        assert((rfd = socket(AF_INET, SOCK_STREAM, 0)) >= 0);
+        assert_success(connect(rfd, (struct sockaddr *) &saddr, saddrlen));
+        lfd = accept(sfd, NULL, NULL);
+
+        assert_success(close(sfd));
+    } else {
+        assert((rfd = socket(AF_INET, SOCK_DGRAM, 0)) >= 0);
+        assert_success(bind(rfd, (struct sockaddr *) &addr, sizeof(addr)));
+
+        assert((lfd = socket(AF_INET, SOCK_DGRAM, 0)) >= 0);
+        assert_success(bind(lfd, (struct sockaddr *) &addr, sizeof(addr)));
     }
 
-    assert_success(getsockname(sockets[0],
-                (struct sockaddr *) &laddr, &laddrlen));
-    assert_success(getsockname(sockets[1],
-                (struct sockaddr *) &raddr, &raddrlen));
+    assert_success(getsockname(lfd, (struct sockaddr *) &laddr, &laddrlen));
+    assert_success(getsockname(rfd, (struct sockaddr *) &raddr, &raddrlen));
 
-    assert_success(cpn_channel_init_from_fd(local, sockets[0], &laddr, laddrlen, local->type));
-    assert_success(cpn_channel_init_from_fd(remote, sockets[0], &raddr, raddrlen, remote->type));
-
-    local->fd = sockets[0];
-    remote->fd = sockets[1];
+    assert_success(cpn_channel_init_from_fd(local, lfd, (struct sockaddr *) &raddr, raddrlen, type));
+    assert_success(cpn_channel_init_from_fd(remote, rfd, (struct sockaddr *) &laddr, laddrlen, type));
 }

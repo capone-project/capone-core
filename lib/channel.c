@@ -113,30 +113,22 @@ int cpn_channel_init_from_host(struct cpn_channel *c, const char *host,
         return -1;
     }
 
-    return cpn_channel_init_from_fd(c, fd, &addr, addrlen, type);
+    return cpn_channel_init_from_fd(c, fd, (struct sockaddr *) &addr, addrlen, type);
 }
 
 int cpn_channel_init_from_fd(struct cpn_channel *c,
-        int fd, const struct sockaddr_storage *addr, size_t addrlen,
+        int fd, const struct sockaddr *addr, size_t addrlen,
         enum cpn_channel_type type)
 {
-    char *env;
-    uint32_t blocklen;
-
     memset(c, 0, sizeof(struct cpn_channel));
 
-    env = getenv("CPN_BLOCKLEN");
-    if (env == NULL || parse_uint32t(&blocklen, env) < 0) {
-        c->blocklen = DEFAULT_BLOCKLEN;
-    } else {
-        c->blocklen = blocklen;
-    }
+    assert(addrlen <= sizeof(c->addr));
 
+    c->blocklen = DEFAULT_BLOCKLEN;
     c->fd = fd;
     c->type = type;
-
     c->crypto = CPN_CHANNEL_CRYPTO_NONE;
-    memcpy(&c->addr, addr, sizeof(c->addr));
+    memcpy(&c->addr, addr, addrlen);
     c->addrlen = addrlen;
 
     return 0;
@@ -151,15 +143,6 @@ int cpn_channel_set_blocklen(struct cpn_channel *c, size_t len)
     }
 
     c->blocklen = len;
-
-    return 0;
-}
-
-int cpn_channel_disable_encryption(struct cpn_channel *c)
-{
-    memset(&c->key, 0, sizeof(c->key));
-
-    c->crypto = CPN_CHANNEL_CRYPTO_NONE;
 
     return 0;
 }
@@ -199,27 +182,6 @@ int cpn_channel_close(struct cpn_channel *c)
     return 0;
 }
 
-bool cpn_channel_is_closed(struct cpn_channel *c)
-{
-    struct timeval tv = { 0, 0 };
-    fd_set fds;
-    int n = 0;
-
-    if (c->fd < 0)
-        return false;
-
-    FD_ZERO(&fds);
-    FD_SET(c->fd, &fds);
-
-    select(c->fd + 1, &fds, 0, 0, &tv);
-    if (!FD_ISSET(c->fd, &fds))
-        return false;
-
-    ioctl(c->fd, FIONREAD, &n);
-
-    return n == 0;
-}
-
 int cpn_channel_connect(struct cpn_channel *c)
 {
     assert(c->fd >= 0);
@@ -244,17 +206,22 @@ static int write_data(struct cpn_channel *c, uint8_t *data, uint32_t datalen)
                 break;
             case CPN_CHANNEL_TYPE_UDP:
                 ret = sendto(c->fd, data + written, datalen - written, 0,
-                        (struct sockaddr *) &c->addr, sizeof(c->addr));
+                        (struct sockaddr *) &c->addr, c->addrlen);
                 break;
             default:
                 cpn_log(LOG_LEVEL_ERROR, "Unknown channel type");
                 return -1;
         }
 
-        if (ret <= 0) {
+        if (ret < 0) {
+            if (errno == EINTR)
+                continue;
             cpn_log(LOG_LEVEL_ERROR, "Could not send data: %s",
                     strerror(errno));
             return -1;
+        } else if (ret == 0) {
+            cpn_log(LOG_LEVEL_VERBOSE, "Channel closed while writing");
+            return 0;
         }
 
         written += ret;
@@ -275,6 +242,8 @@ int cpn_channel_write_data(struct cpn_channel *c, uint8_t *data, uint32_t datale
 
     while (offset || written != datalen) {
         uint32_t len;
+        ssize_t ret;
+
         if (c->crypto == CPN_CHANNEL_CRYPTO_SYMMETRIC) {
             len = MIN(datalen - written, c->blocklen - offset - crypto_secretbox_MACBYTES);
         } else {
@@ -294,8 +263,12 @@ int cpn_channel_write_data(struct cpn_channel *c, uint8_t *data, uint32_t datale
             sodium_increment(c->local_nonce, crypto_secretbox_NONCEBYTES);
         }
 
-        if (write_data(c, block, c->blocklen) < 0) {
-            cpn_log(LOG_LEVEL_ERROR, "Unable to write encrypted data");
+        ret = write_data(c, block, c->blocklen);
+        if (ret == 0) {
+            cpn_log(LOG_LEVEL_ERROR, "Unable to write data: channel closed");
+            return 0;
+        } else if (ret < 0) {
+            cpn_log(LOG_LEVEL_ERROR, "Unable to write data");
             return -1;
         }
         written += len;
@@ -341,7 +314,16 @@ static int receive_data(struct cpn_channel *c, uint8_t *out, size_t len)
 
     while (received != len) {
         ret = recv(c->fd, out + received, len - received, 0);
-        if (ret <= 0) {
+
+        if (ret == 0) {
+            cpn_log(LOG_LEVEL_VERBOSE, "Channel closed while receiving",
+                    strerror(errno));
+            return 0;
+        } else if (ret < 0) {
+            if (errno == EINTR)
+                continue;
+            cpn_log(LOG_LEVEL_ERROR, "Could not receive data: %s",
+                    strerror(errno));
             return -1;
         }
 
@@ -358,8 +340,13 @@ ssize_t cpn_channel_receive_data(struct cpn_channel *c, uint8_t *out, size_t max
 
     while (offset || received < pkglen) {
         uint32_t networklen, blocklen;
+        ssize_t ret;
 
-        if (receive_data(c, block, c->blocklen) < 0) {
+        ret = receive_data(c, block, c->blocklen);
+        if (ret == 0) {
+            cpn_log(LOG_LEVEL_VERBOSE, "Unable to receive data: channel closed");
+            return 0;
+        } else if (ret < 0) {
             cpn_log(LOG_LEVEL_ERROR, "Unable to receive data");
             return -1;
         }
@@ -432,7 +419,7 @@ int cpn_channel_relay(struct cpn_channel *channel, int nfds, ...)
 {
     fd_set fds;
     uint8_t buf[2048];
-    int written, received, maxfd, infd, fd, i, ret, finish = 0;
+    int closed = 0, written, received, maxfd, infd, fd, i, ret;
     va_list ap;
 
     if (nfds <= 0) {
@@ -440,10 +427,14 @@ int cpn_channel_relay(struct cpn_channel *channel, int nfds, ...)
         return -1;
     }
 
+    FD_ZERO(&fds);
+    FD_SET(channel->fd, &fds);
     maxfd = channel->fd;
+
     va_start(ap, nfds);
     for (i = 0; i < nfds; i++) {
         fd = va_arg(ap, int);
+        FD_SET(fd, &fds);
         maxfd = MAX(maxfd, fd);
 
         if (i == 0)
@@ -452,28 +443,22 @@ int cpn_channel_relay(struct cpn_channel *channel, int nfds, ...)
     va_end(ap);
 
     while (1) {
-        FD_ZERO(&fds);
-        FD_SET(channel->fd, &fds);
+        fd_set tfds;
 
-        va_start(ap, nfds);
-        for (i = 0; i < nfds; i++) {
-            fd = va_arg(ap, int);
-            FD_SET(fd, &fds);
-        }
-        va_end(ap);
+        memcpy(&tfds, &fds, sizeof(fd_set));
 
-        if (select(maxfd + 1, &fds, NULL, NULL, NULL) < 0) {
+        if (select(maxfd + 1, &tfds, NULL, NULL, NULL) < 0) {
             if (errno == EINTR)
                 continue;
             cpn_log(LOG_LEVEL_ERROR, "Error selecting fds");
             return -1;
         }
 
-        if (FD_ISSET(channel->fd, &fds)) {
+        if (FD_ISSET(channel->fd, &tfds)) {
             received = cpn_channel_receive_data(channel, buf, sizeof(buf));
             if (received == 0) {
-                cpn_log(LOG_LEVEL_VERBOSE, "Channel closed, stopping relay");
-                finish = 1;
+                cpn_log(LOG_LEVEL_TRACE, "Channel closed, stopping relay");
+                return -1;
             } else if (received < 0) {
                 cpn_log(LOG_LEVEL_ERROR, "Error relaying data from channel: %s", strerror(errno));
                 return -1;
@@ -494,13 +479,16 @@ int cpn_channel_relay(struct cpn_channel *channel, int nfds, ...)
         for (i = 0; i < nfds; i++) {
             fd = va_arg(ap, int);
 
-            if (FD_ISSET(fd, &fds)) {
+            if (FD_ISSET(fd, &tfds)) {
                 received = read(fd, buf, sizeof(buf));
                 if (received == 0) {
-                    cpn_log(LOG_LEVEL_VERBOSE, "File descriptor closed, stopping relay");
-                    finish = 1;
+                    FD_CLR(fd, &fds);
+                    closed++;
+                    cpn_log(LOG_LEVEL_TRACE, "Relay file descriptor %d/%d closed", closed, nfds);
                     continue;
                 } else if (received < 0) {
+                    if (errno == EINTR)
+                        continue;
                     cpn_log(LOG_LEVEL_ERROR, "Error relaying data from fd");
                     return -1;
                 }
@@ -513,8 +501,10 @@ int cpn_channel_relay(struct cpn_channel *channel, int nfds, ...)
         }
         va_end(ap);
 
-        if (finish)
+        if (closed == nfds) {
+            cpn_log(LOG_LEVEL_TRACE, "All relay file descriptors closed");
             return 0;
+        }
     }
 
     return 0;
