@@ -33,6 +33,7 @@ IF(CMOCKA_FOUND)
         lib/list.c
         lib/opts.c
         lib/proto.c
+        lib/protobuf.c
         lib/server.c
         lib/service.c
         lib/session.c
