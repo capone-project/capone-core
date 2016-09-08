@@ -19,6 +19,7 @@
 #include <string.h>
 #include <pthread.h>
 
+#include "capone/buf.h"
 #include "capone/caps.h"
 #include "capone/common.h"
 #include "capone/list.h"
@@ -129,62 +130,38 @@ out:
     return err;
 }
 
-int chain_to_string(char **ptr, const struct cpn_cap *cap, uint32_t idx)
-{
-    struct cpn_sign_key_hex hex;
-
-    cpn_sign_key_hex_from_key(&hex, &cap->chain[idx].entity);
-    memcpy(*ptr, hex.data, sizeof(hex.data));
-
-    *ptr += sizeof(struct cpn_sign_key_public) * 2;
-    *(*ptr)++ = ':';
-
-    if (!cap->chain[idx].rights)
-        return -1;
-    if (cap->chain[idx].rights & CPN_CAP_RIGHT_EXEC)
-        *(*ptr)++ = 'x';
-    if (cap->chain[idx].rights & CPN_CAP_RIGHT_TERM)
-        *(*ptr)++ = 't';
-    return 0;
-}
-
 int cpn_cap_to_string(char **out, const struct cpn_cap *cap)
 {
-    char *string, *ptr;
-    uint32_t i, len = 0;
+    struct cpn_buf buf = CPN_BUF_INIT;
+    struct cpn_sign_key_hex hex;
+    char buffer[CPN_CAP_SECRET_LEN * 2 + 1];
+    uint32_t i;
 
-    len += sizeof(cap->secret) * 2;
-    if (cap->chain_depth) {
-        uint32_t per_chain_len = 0;
-        per_chain_len += 1; /* leading separator */
-        per_chain_len += sizeof(struct cpn_sign_key_public) * 2;
-        per_chain_len += 3; /* up to three bits for trailing rights */
-        len += per_chain_len * cap->chain_depth;
-    }
-    len += 1;
-
-    ptr = string = malloc(len);
-
-    if (sodium_bin2hex(ptr, len, cap->secret, sizeof(cap->secret)) == NULL)
+    if (sodium_bin2hex(buffer, sizeof(buffer), cap->secret, sizeof(cap->secret)) == NULL)
         goto out_err;
-    ptr += sizeof(cap->secret) * 2;
+    cpn_buf_append(&buf, buffer);
 
     if (cap->chain_depth) {
         for (i = 0; i < cap->chain_depth; i++) {
-            *ptr++ = '|';
-            if (chain_to_string(&ptr, cap, i) < 0)
+            if (!cap->chain[i].rights)
                 goto out_err;
-        }
 
-        *ptr++ = '\0';
+            cpn_sign_key_hex_from_key(&hex, &cap->chain[i].entity);
+            cpn_buf_printf(&buf, "|%s:", hex.data);
+
+            if (cap->chain[i].rights & CPN_CAP_RIGHT_EXEC)
+                cpn_buf_append(&buf, "x");
+            if (cap->chain[i].rights & CPN_CAP_RIGHT_TERM)
+                cpn_buf_append(&buf, "t");
+        }
     }
 
-    *out = string;
+    *out = buf.data;
 
     return 0;
 
 out_err:
-    free(string);
+    cpn_buf_clear(&buf);
     return -1;
 }
 

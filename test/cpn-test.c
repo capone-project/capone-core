@@ -24,6 +24,7 @@
 #include "test.h"
 
 extern int acl_test_run_suite(void);
+extern int buf_test_run_suite(void);
 extern int caps_test_run_suite(void);
 extern int cfg_test_run_suite(void);
 extern int channel_test_run_suite(void);
@@ -47,6 +48,7 @@ static struct cpn_opt opts[] = {
 
 static int (*suite_fns[])(void) = {
     acl_test_run_suite,
+    buf_test_run_suite,
     caps_test_run_suite,
     cfg_test_run_suite,
     channel_test_run_suite,
