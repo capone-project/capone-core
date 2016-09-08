@@ -265,6 +265,7 @@ static void whitelisted_query_succeeds()
 
 static void request_constructs_session()
 {
+    ProtobufCMessage *parsed;
     const char *params[] = { "text" };
     struct await_request_args args = {
         { &remote, &remote_keys }, &service, &local_keys.pk, NULL, 0
@@ -277,29 +278,8 @@ static void request_constructs_session()
     cpn_spawn(&t, await_request, &args);
     assert_success(cpn_proto_initiate_encryption(&local, &local_keys,
                 &remote_keys.pk));
-    assert_success(cpn_proto_send_request(&sessionid, &cap, &local, test_service, ARRAY_SIZE(params), params));
-    cpn_join(&t, NULL);
-
-    assert_success(cpn_sessions_remove(&added, sessionid));
-    assert_int_equal(sessionid, added->identifier);
-
-    cpn_session_free(added);
-    cpn_cap_free(cap);
-}
-
-static void request_without_params_succeeds()
-{
-    struct await_request_args args = {
-        { &remote, &remote_keys }, &service, &local_keys.pk, NULL, 0
-    };
-    struct cpn_cap *cap = NULL;
-    struct cpn_session *added;
-    struct cpn_thread t;
-    uint32_t sessionid;
-
-    cpn_spawn(&t, await_request, &args);
-    assert_success(cpn_proto_initiate_encryption(&local, &local_keys, &remote_keys.pk));
-    assert_success(cpn_proto_send_request(&sessionid, &cap, &local, test_service, 0, NULL));
+    assert_success(test_service->parse_fn(&parsed, ARRAY_SIZE(params), params));
+    assert_success(cpn_proto_send_request(&sessionid, &cap, &local, parsed));
     cpn_join(&t, NULL);
 
     assert_success(cpn_sessions_remove(&added, sessionid));
@@ -311,6 +291,7 @@ static void request_without_params_succeeds()
 
 static void whitlisted_request_constructs_session()
 {
+    ProtobufCMessage *parsed;
     const char *params[] = { "testdata" };
     struct await_request_args args = {
         { &remote, &remote_keys }, &service, &local_keys.pk, &local_keys.pk, 1
@@ -323,8 +304,8 @@ static void whitlisted_request_constructs_session()
     cpn_spawn(&t, await_request, &args);
     assert_success(cpn_proto_initiate_encryption(&local, &local_keys,
                 &remote_keys.pk));
-    assert_success(cpn_proto_send_request(&sessionid, &cap, &local, test_service,
-                ARRAY_SIZE(params), params));
+    assert_success(test_service->parse_fn(&parsed, ARRAY_SIZE(params), params));
+    assert_success(cpn_proto_send_request(&sessionid, &cap, &local, parsed));
     cpn_join(&t, NULL);
 
     assert_success(cpn_sessions_remove(&added, sessionid));
@@ -332,6 +313,7 @@ static void whitlisted_request_constructs_session()
 
     cpn_session_free(added);
     cpn_cap_free(cap);
+    protobuf_c_message_free_unpacked(parsed, NULL);
 }
 
 static void service_connects()
@@ -439,7 +421,6 @@ int proto_test_run_suite(void)
         test(whitelisted_query_succeeds),
 
         test(request_constructs_session),
-        test(request_without_params_succeeds),
         test(whitlisted_request_constructs_session),
 
         test(service_connects),

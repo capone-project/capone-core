@@ -7,3 +7,43 @@ message TestParams {
 message TestMessage {
     required string value = 1;
 }
+
+message TestNested {
+    required TestParams params = 1;
+    required TestMultiple mult = 2;
+    optional TestMessage msg = 3;
+}
+
+enum TestEnum {
+    ONE = 1;
+    TWO = 2;
+}
+
+message TestTypes {
+    required bytes b = 1;
+    required string s = 2;
+    required uint32 u32 = 3;
+    required uint64 u64 = 4;
+    required sint32 s32 = 5;
+    required sint64 s64 = 6;
+    required float f = 7;
+    required double d = 8;
+    required TestEnum e = 9;
+}
+
+message TestArrays {
+    repeated bytes b = 1;
+    repeated string s = 2;
+    repeated uint32 u32 = 3;
+    repeated uint64 u64 = 4;
+    repeated sint32 s32 = 5;
+    repeated sint64 s64 = 6;
+    repeated float f = 7;
+    repeated double d = 8;
+    repeated TestEnum e = 9;
+}
+
+message TestMultiple {
+    required string s = 1;
+    required int32 i = 2;
+}
