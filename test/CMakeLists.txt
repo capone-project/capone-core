@@ -24,6 +24,7 @@ IF(CMOCKA_FOUND)
 
     ADD_EXECUTABLE(cpn-test cpn-test.c
         lib/acl.c
+        lib/buf.c
         lib/caps.c
         lib/cfg.c
         lib/channel.c
