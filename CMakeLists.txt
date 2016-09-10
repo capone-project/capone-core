@@ -51,18 +51,19 @@ ADD_LIBRARY(capone SHARED
     lib/caps.c
     lib/cfg.c
     lib/channel.c
+    lib/client.c
     lib/common.c
     lib/global.c
     lib/keys.c
     lib/list.c
     lib/log.c
     lib/opts.c
+    lib/proto-enc.c
     lib/proto.c
     lib/protobuf.c
-    lib/proto-enc.c
-    lib/socket.c
-    lib/session.c
     lib/service.c
+    lib/session.c
+    lib/socket.c
     lib/services/capabilities.c
     lib/services/exec.c
     lib/services/invoke.c
