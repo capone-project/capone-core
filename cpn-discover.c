@@ -26,13 +26,13 @@
 #include <sys/wait.h>
 
 #include "capone/cfg.h"
+#include "capone/client.h"
 #include "capone/common.h"
 #include "capone/global.h"
 #include "capone/list.h"
 #include "capone/log.h"
 #include "capone/opts.h"
-#include "capone/proto.h"
-#include "capone/server.h"
+#include "capone/socket.h"
 
 #include "capone/proto/discovery.pb-c.h"
 
@@ -167,7 +167,7 @@ out:
 
 static void undirected_discovery()
 {
-    struct cpn_server server;
+    struct cpn_socket socket;
     struct cpn_channel channel;
     struct cpn_thread t;
 
@@ -175,17 +175,17 @@ static void undirected_discovery()
 
     cpn_spawn(&t, probe, NULL);
 
-    if (cpn_server_init(&server, NULL, "6668", CPN_CHANNEL_TYPE_UDP) < 0) {
+    if (cpn_socket_init(&socket, NULL, "6668", CPN_CHANNEL_TYPE_UDP) < 0) {
         puts("Unable to init listening channel");
         goto out;
     }
 
-    if (cpn_server_enable_broadcast(&server) < 0) {
+    if (cpn_socket_enable_broadcast(&socket) < 0) {
         puts("Unable to enable broadcasting");
         goto out;
     }
 
-    if (cpn_server_accept(&server, &channel) < 0) {
+    if (cpn_socket_accept(&socket, &channel) < 0) {
         puts("Unable to accept connection");
         goto out;
     }
@@ -206,19 +206,8 @@ static void directed_discovery(const struct cpn_sign_key_public *remote_key,
 {
     struct cpn_channel channel;
 
-    if (cpn_channel_init_from_host(&channel, host, port, CPN_CHANNEL_TYPE_TCP) < 0) {
-        puts("Unable to initiate channel");
-        goto out;
-    }
-
-    if (cpn_channel_connect(&channel) < 0) {
+    if (cpn_client_connect(&channel, host, port, &local_keys, remote_key) < 0) {
         puts("Unable to connect");
-        goto out;
-    }
-
-    if (cpn_proto_initiate_encryption(&channel, &local_keys, remote_key) < 0) {
-        puts("Unable to initiate encryption");
-        goto out;
     }
 
     if (send_discover(&channel) < 0) {

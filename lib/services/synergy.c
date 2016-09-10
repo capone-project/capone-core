@@ -21,8 +21,8 @@
 
 #include "capone/common.h"
 #include "capone/log.h"
-#include "capone/server.h"
 #include "capone/service.h"
+#include "capone/socket.h"
 
 #include "capone/services/synergy.h"
 
@@ -64,7 +64,7 @@ static int invoke(struct cpn_channel *channel, int argc, const char **argv,
         sleep(1);
 
         if ((err = cpn_channel_connect(&synergy_channel)) < 0) {
-            cpn_log(LOG_LEVEL_ERROR, "Could not connect to local synergy server");
+            cpn_log(LOG_LEVEL_ERROR, "Could not connect to local synergy socket");
             goto out;
         }
 
@@ -89,7 +89,7 @@ static int handle(struct cpn_channel *channel,
         const struct cpn_session *session,
         const struct cpn_cfg *cfg)
 {
-    struct cpn_server server;
+    struct cpn_socket socket;
     struct cpn_channel synergy_channel;
     char port[10], *args[] = {
         "synergyc",
@@ -106,17 +106,17 @@ static int handle(struct cpn_channel *channel,
     UNUSED(session);
     UNUSED(invoker);
 
-    if (cpn_server_init(&server, "127.0.0.1", NULL, CPN_CHANNEL_TYPE_TCP) < 0) {
+    if (cpn_socket_init(&socket, "127.0.0.1", NULL, CPN_CHANNEL_TYPE_TCP) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not initialize synergy relay socket");
         return -1;
     }
 
-    if (cpn_server_listen(&server) < 0) {
+    if (cpn_socket_listen(&socket) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not listen on synergy relay socket");
         return -1;
     }
 
-    if (cpn_server_get_address(&server, NULL, 0, port, sizeof(port)) < 0) {
+    if (cpn_socket_get_address(&socket, NULL, 0, port, sizeof(port)) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not retrieve address of synergy relay socket");
         return -1;
     }
@@ -134,7 +134,7 @@ static int handle(struct cpn_channel *channel,
 
         _exit(0);
     } else if (pid > 0) {
-        if (cpn_server_accept(&server, &synergy_channel) < 0) {
+        if (cpn_socket_accept(&socket, &synergy_channel) < 0) {
             cpn_log(LOG_LEVEL_ERROR, "Could not accept synergy relay socket connection");
             return -1;
         }
@@ -147,7 +147,7 @@ static int handle(struct cpn_channel *channel,
         return -1;
     }
 
-    cpn_server_close(&server);
+    cpn_socket_close(&socket);
     cpn_channel_close(&synergy_channel);
 
     kill(pid, SIGKILL);

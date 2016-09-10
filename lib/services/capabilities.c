@@ -26,14 +26,15 @@
 #include "capone/buf.h"
 #include "capone/cfg.h"
 #include "capone/channel.h"
+#include "capone/client.h"
 #include "capone/common.h"
 #include "capone/keys.h"
-#include "capone/proto.h"
-#include "capone/protobuf.h"
-#include "capone/service.h"
 #include "capone/list.h"
 #include "capone/log.h"
 #include "capone/opts.h"
+#include "capone/protobuf.h"
+#include "capone/server.h"
+#include "capone/service.h"
 
 #include "capone/proto/capabilities.pb-c.h"
 #include "capone/services/capabilities.h"
@@ -182,14 +183,14 @@ static int relay_capability_request(struct cpn_channel *channel,
 
     cpn_sign_key_public_from_proto(&service_key, request->service_identity);
 
-    if ((ret = cpn_proto_initiate_connection(&service_channel,
+    if ((ret = cpn_client_connect(&service_channel,
                     request->service_address, request->service_port,
-                    &local_keys, &service_key, CPN_CONNECTION_TYPE_REQUEST)) < 0) {
+                    &local_keys, &service_key)) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to initiate connection type to remote service");
         goto out;
     }
 
-    if ((ret = cpn_proto_send_request(&sessionid, &root_cap, &service_channel, params)) < 0)
+    if ((ret = cpn_client_request_session(&sessionid, &root_cap, &service_channel, params)) < 0)
     {
         cpn_log(LOG_LEVEL_ERROR, "Unable to send request to remote service");
         goto out;

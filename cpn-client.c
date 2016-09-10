@@ -21,11 +21,11 @@
 #include <sodium.h>
 #include <inttypes.h>
 
+#include "capone/client.h"
 #include "capone/common.h"
 #include "capone/channel.h"
 #include "capone/global.h"
 #include "capone/opts.h"
-#include "capone/proto.h"
 #include "capone/service.h"
 
 static struct cpn_opt request_opts[] = {
@@ -80,13 +80,14 @@ static int cmd_query(void)
     struct cpn_query_results results;
     struct cpn_channel channel;
 
-    if (cpn_proto_initiate_connection(&channel, remote_host, remote_port,
-                &local_keys, &remote_key, CPN_CONNECTION_TYPE_QUERY) < 0) {
+    if (cpn_client_connect(&channel, remote_host, remote_port,
+                &local_keys, &remote_key) < 0)
+    {
         puts("Could not establish connection");
         return -1;
     }
 
-    if (cpn_proto_send_query(&results, &channel) < 0) {
+    if (cpn_client_query_service(&results, &channel) < 0) {
         puts("Could not query service");
         return -1;
     }
@@ -135,13 +136,14 @@ static int cmd_request(const char *service_type, const struct cpn_opts_stringlis
         goto out_err;
     }
 
-    if (cpn_proto_initiate_connection(&channel, remote_host, remote_port,
-                &local_keys, &remote_key, CPN_CONNECTION_TYPE_REQUEST) < 0) {
+    if (cpn_client_connect(&channel, remote_host, remote_port,
+                &local_keys, &remote_key) < 0)
+    {
         puts("Could not establish connection");
         goto out_err;
     }
 
-    if (cpn_proto_send_request(&sessionid, &cap, &channel, params) < 0) {
+    if (cpn_client_request_session(&sessionid, &cap, &channel, params) < 0) {
         puts("Unable to request session");
         goto out_err;
     }
@@ -189,13 +191,14 @@ static int cmd_connect(const char *service_type, uint32_t sessionid,
         goto out;
     }
 
-    if (cpn_proto_initiate_connection(&channel, remote_host, remote_port,
-                &local_keys, &remote_key, CPN_CONNECTION_TYPE_CONNECT) < 0) {
+    if (cpn_client_connect(&channel, remote_host, remote_port,
+                &local_keys, &remote_key) < 0)
+    {
         puts("Could not start connection");
         goto out;
     }
 
-    if (cpn_proto_initiate_session(&channel, sessionid, cap) < 0) {
+    if (cpn_client_start_session(&channel, sessionid, cap) < 0) {
         puts("Could not connect to session");
         goto out;
     }
@@ -225,13 +228,14 @@ static int cmd_terminate(uint32_t sessionid, const char *capability)
         goto out;
     }
 
-    if (cpn_proto_initiate_connection(&channel, remote_host, remote_port,
-                &local_keys, &remote_key, CPN_CONNECTION_TYPE_TERMINATE) < 0) {
+    if (cpn_client_connect(&channel, remote_host, remote_port,
+                &local_keys, &remote_key) < 0)
+    {
         puts("Could not start connection");
         goto out;
     }
 
-    if (cpn_proto_initiate_termination(&channel, sessionid, cap) < 0) {
+    if (cpn_client_terminate_session(&channel, sessionid, cap) < 0) {
         puts("Could not initiate termination");
         goto out;
     }

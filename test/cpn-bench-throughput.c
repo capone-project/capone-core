@@ -24,7 +24,7 @@
 #include "capone/common.h"
 #include "capone/keys.h"
 #include "capone/opts.h"
-#include "capone/server.h"
+#include "capone/socket.h"
 
 #define PORT "43281"
 
@@ -55,7 +55,7 @@ static void *client(void *payload)
         goto out;
     }
     if (cpn_channel_connect(&channel) < 0) {
-        puts("Unable to connect to server");
+        puts("Unable to connect to socket");
         goto out;
     }
 
@@ -92,7 +92,7 @@ int main(int argc, const char *argv[])
     };
     struct client_args args;
     struct cpn_thread t;
-    struct cpn_server server;
+    struct cpn_socket socket;
     struct cpn_channel channel;
     uint8_t *data;
     uint64_t start, end;
@@ -115,12 +115,12 @@ int main(int argc, const char *argv[])
         return -1;
     }
 
-    if (cpn_server_init(&server, NULL, PORT, CPN_CHANNEL_TYPE_TCP) < 0) {
-        puts("Unable to init server");
+    if (cpn_socket_init(&socket, NULL, PORT, CPN_CHANNEL_TYPE_TCP) < 0) {
+        puts("Unable to init socket");
         return -1;
     }
 
-    if (cpn_server_listen(&server) < 0) {
+    if (cpn_socket_listen(&socket) < 0) {
         puts("Unable to listen");
         return -1;
     }
@@ -130,7 +130,7 @@ int main(int argc, const char *argv[])
         return -1;
     }
 
-    if (cpn_server_accept(&server, &channel) < 0) {
+    if (cpn_socket_accept(&socket, &channel) < 0) {
         puts("Unable to accept connection");
         return -1;
     }

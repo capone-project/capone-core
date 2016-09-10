@@ -16,114 +16,148 @@
  */
 
 /**
- * \defgroup cpn-server Server
+ * \defgroup cpn-proto Protocols
  * \ingroup cpn-lib
  *
- * @brief Module providing networked servers
+ * @brief Module handling protocols
  *
- * This module provides functions handling incoming network
- * traffic. One can create a new server socket and accept
- * incoming connections.
- *
- * The module provides UDP and TCP server sockets.
+ * This module provides functions for using the protocols.
+ * There currently exist four different protocol end points
+ * handled by the server:
+ *  - query: Query a service. This will return info like its
+ *    type, version, location and available parameters.
+ *  - request: Request a new session with a set of parameters.
+ *    The session can later be connected to to start it.
+ *  - connect: Connect to an already established session and
+ *    invoke the associated service to start using its
+ *    functionality. This consumes the session.
+ *  - terminate: Terminate an established session. This can only
+ *    be invoked by the session issuer.
  *
  * @{
  */
 
-#ifndef CPN_LIB_SERVER_H
-#define CPN_LIB_SERVER_H
+#ifndef CPN_LIB_PROTO_H
+#define CPN_LIB_PROTO_H
 
+#include "capone/caps.h"
 #include "capone/channel.h"
+#include "capone/service.h"
 
-/** @brief Server struct bundling data for a server socket
+/** @brief Connection types specifying the end point
  *
- * This struct bundles together data required for accepting
- * connections on a server socket.
+ * These types specify the different protocol end points of a
+ * server. They are used to distinguish what to do on the server
+ * side and how to handle the incoming request.
  */
-struct cpn_server {
-    /** File descriptor to listen on */
-    int fd;
-    /** Local address of the socket */
-    struct sockaddr_storage addr;
-    /** Type of the socket, either UDP or TCP. */
-    enum cpn_channel_type type;
+enum cpn_command {
+    /** @brief Query a service */
+    CPN_COMMAND_QUERY,
+    /** @brief Connect to an established session */
+    CPN_COMMAND_CONNECT,
+    /** @brief Request a new session */
+    CPN_COMMAND_REQUEST,
+    /** @brief Terminate an established session */
+    CPN_COMMAND_TERMINATE
 };
 
-/** Initialize a server socket with host and port
+/** @brief Receive connection type on an established connection
  *
- * Initialize a server struct to set up a server socket listening
- * on the give naddress and port. The socket will be bound, but
- * not be in listening state for the TCP network protocol.
+ * This function will receive the client's connection type on an
+ * already established and encrypted channel.
  *
- * @param[out] server Server struct to initialize.
- * @param[in] host Host to bind to.
- * @param[in] port Port to bind to.
- * @param[in] type Type of the socket, either UDP or TCP.
- * @return <code>0</code> on success, <code>1</code> otherwise
+ * @param[out] out Connection type requested by the client
+ * @param[in] channel Channel connected to the client
+ * @return <code>0</code> on success, <code>-1</code> otherwise
  */
-int cpn_server_init(struct cpn_server *server,
-        const char *host, const char *port, enum cpn_channel_type type);
+int cpn_server_await_command(enum cpn_command *out,
+        struct cpn_channel *channel);
 
-/** Close a server socket
+/** @brief Await encryption initiated by the client
  *
- * @param[in] server Server to close
- * @return <code>0</code> on success, <code>1</code> otherwise
+ * Wait for the client to start the encryption protocol. This
+ * will calculate a shared secret with the client.
+ *
+ * @param[in] channel Channel connected to the client
+ * @param[in] sign_keys Local long-term signature keys
+ * @param[in] remote_sign_key Remote long-term signature key
+ * @return <code>0</code> on success, <code>-1</code> otherwise
+ *
+ * \see cpn_proto_initiate_encryption
  */
-int cpn_server_close(struct cpn_server *server);
+int cpn_server_await_encryption(struct cpn_channel *channel,
+        const struct cpn_sign_key_pair *sign_keys,
+        struct cpn_sign_key_public *remote_sign_key);
 
-/** Enable broadcasting on the server socket
+/** @brief Answer a query from a client
  *
- * To send messages to the broadcast address, one needs to enable
- * broadcasting for the socket. This function provides the
- * functionality to do so.
+ * This function will answer a query received from the client
+ * associated with the channel. It will send over parameters
+ * specified by the service.
  *
- * @param[in] server Server to enable broadcasting for.
- * @return <code>0</code> on success, <code>1</code> otherwise
+ * @param[in] channel Channel connected to the client
+ * @param[in] service Service to send query results for
+ * @return <code>0</code> on success, <code>-1</code> otherwise
+ *
+ * \see cpn_client_query_service
  */
-int cpn_server_enable_broadcast(struct cpn_server *server);
+int cpn_server_handle_query(struct cpn_channel *channel,
+        const struct cpn_service *service);
 
-/** Set server socket into listening state
+/** @brief Handle a session request
  *
- * Set the server socket into listening state. This is require
- * for TCP sockets, where one needs to set the socket into
- * listening mode in order to enable accepting connections.
+ * Handle a session request issued by a client. This function
+ * will create a new capability for the invoker specified in the
+ * request if the cilent is actually allowed to create sessions
+ * on the server.
  *
- * @param[in] server Server to enable listening for.
- * @return <code>0</code> on success, <code>1</code> otherwise
+ * @pram[in] channel Channel connected to the client
+ * @param[in] remote_key Long term signature key of the client
+ * @return <code>0</code> on success, <code>-1</code> otherwise
+ *
+ * \see cpn_client_request_session
  */
-int cpn_server_listen(struct cpn_server *server);
+int cpn_server_handle_request(struct cpn_channel *channel,
+        const struct cpn_sign_key_public *remote_key,
+        const struct cpn_service_plugin *plugin);
 
-/** Accept a new connection
+/** @brief Handle incoming session invocation
  *
- * Accept a new connection for servers in listening mode. This
- * will wait for clients to connect to the socket and then create
- * a new channel of the same network mode as the server socket.
- * This new channel can then be used to communicate with the
- * connected client.
+ * This function will receive an incomming session initiation
+ * request and start the service handler when the session
+ * initiation and remote identity match a local capability.
  *
- * @param[in] server Server to accept connections on.
- * @param[out] out Channel connected to the connecting client.
- * @return <code>0</code> on success, <code>1</code> otherwise
+ * @param[in] channel Channel connected to the client
+ * @param[in] remote_key Long term signature key of the client
+ * @param[in] service Service which is being invoked
+ * @param[in] cfg Configuration of the server
+ * @return <code>0</code> on success, <code>-1</code> otherwise
+ *
+ * \see cpn_client_start_session
  */
-int cpn_server_accept(struct cpn_server *server, struct cpn_channel *out);
+int cpn_server_handle_session(struct cpn_channel *channel,
+        const struct cpn_sign_key_public *remote_key,
+        const struct cpn_service *service,
+        const struct cpn_cfg *cfg);
 
-/** Get the address of a bound socket
+/** @brief Handle incoming session termination
  *
- * Get the address the server socket is bound to. It is possible
- * to set retrieve only host or port, but one of both has to be
- * set.
+ * This function handles incoming requests for session
+ * termination issued by a client. It will check if a capability
+ * is present for the given session identifier and invoker and if
+ * so, check if the client's identity matches the capability's
+ * issuer.
  *
- * @param[in] s Server to get address for.
- * @param[out] host Caller-allocated buffer for the host name.
- *             May be <code>NULL</code> if port is not.
- * @param[in] hostlen Maximum length of the host buffer.
- * @param[out] port Caller-allocated buffer for the port name.
- *             May be <code>NULL</code> if host is not.
- * @param[in] portlen Maximum length of the port buffer.
- * @return <code>0</code> on success, <code>1</code> otherwise
+ * If so, it will remove the capability.
+ *
+ * @param[in] channel Channel connected to the client
+ * @param[in] remote_key Long term signature key of the client
+ * @return <code>0</code> on success, <code>-1</code> otherwise
+ *
+ * \see cpn_client_terminate_session
  */
-int cpn_server_get_address(struct cpn_server *s,
-        char *host, size_t hostlen, char *port, size_t portlen);
+int cpn_server_handle_termination(struct cpn_channel *channel,
+        const struct cpn_sign_key_public *remote_key);
 
 #endif
 

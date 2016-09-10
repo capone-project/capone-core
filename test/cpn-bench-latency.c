@@ -21,16 +21,14 @@
 #include "bench.h"
 
 #include "capone/channel.h"
+#include "capone/client.h"
 #include "capone/common.h"
 #include "capone/keys.h"
 #include "capone/opts.h"
-#include "capone/proto.h"
-#include "capone/server.h"
+#include "capone/socket.h"
 
 #define PORT "43281"
 #define REPEATS 1000
-
-static uint32_t blocklen;
 
 struct client_args {
     struct cpn_sign_key_pair client_keys;
@@ -60,18 +58,10 @@ static void *client(void *payload)
         }
 
         start = cpn_bench_nsecs();
-        if (cpn_channel_connect(&channel) < 0) {
+        if (cpn_client_connect(&channel, "127.0.0.1", PORT,
+                    &args->server_keys, &args->client_keys.pk) < 0)
+        {
             puts("Unable to connect to server");
-            return NULL;
-        }
-
-        if (cpn_channel_set_blocklen(&channel, blocklen) < 0) {
-            puts("Unable to set block length");
-            return NULL;
-        }
-
-        if (cpn_proto_initiate_encryption(&channel, &args->client_keys, &args->server_keys.pk) < 0) {
-            puts("Unable to initiate encryption");
             return NULL;
         }
         end = cpn_bench_nsecs();
@@ -90,21 +80,15 @@ static void *client(void *payload)
 
 int main(int argc, const char *argv[])
 {
-    struct cpn_opt opts[] = {
-        CPN_OPTS_OPT_UINT32('l', "--block-length", NULL, NULL, false),
-        CPN_OPTS_OPT_END
-    };
     struct cpn_thread t;
     struct client_args args;
-    struct cpn_server server;
+    struct cpn_socket socket;
     struct cpn_channel channel;
     uint64_t start, end, time;
     int i;
 
-    if (cpn_opts_parse_cmd(opts, argc, argv) < 0)
-        return -1;
-
-    blocklen = opts[0].value.uint32;
+    UNUSED(argc);
+    UNUSED(argv);
 
     if (cpn_bench_set_affinity(3) < 0) {
         puts("Unable to set sched affinity");
@@ -120,12 +104,12 @@ int main(int argc, const char *argv[])
         return -1;
     }
 
-    if (cpn_server_init(&server, NULL, PORT, CPN_CHANNEL_TYPE_TCP) < 0) {
-        puts("Unable to init server");
+    if (cpn_socket_init(&socket, NULL, PORT, CPN_CHANNEL_TYPE_TCP) < 0) {
+        puts("Unable to init socket");
         return -1;
     }
 
-    if (cpn_server_listen(&server) < 0) {
+    if (cpn_socket_listen(&socket) < 0) {
         puts("Unable to listen");
         return -1;
     }
@@ -138,18 +122,13 @@ int main(int argc, const char *argv[])
     time = 0;
 
     for (i = 0; i < REPEATS; i++) {
-        if (cpn_server_accept(&server, &channel) < 0) {
+        if (cpn_socket_accept(&socket, &channel) < 0) {
             puts("Unable to accept connection");
             return -1;
         }
 
-        if (cpn_channel_set_blocklen(&channel, blocklen) < 0) {
-            puts("Unable to set block length");
-            return -1;
-        }
-
         start = cpn_bench_nsecs();
-        if (cpn_proto_await_encryption(&channel, &args.server_keys, &args.client_keys.pk) < 0) {
+        if (cpn_server_await_encryption(&channel, &args.server_keys, &args.client_keys.pk) < 0) {
             puts("Unable to await encryption");
             return -1;
         }

@@ -19,10 +19,10 @@
 
 #include "capone/channel.h"
 #include "capone/common.h"
-#include "capone/service.h"
 #include "capone/server.h"
+#include "capone/service.h"
+#include "capone/socket.h"
 
-#include "capone/proto.h"
 #include "capone/proto/connect.pb-c.h"
 #include "capone/proto/invoke.pb-c.h"
 
@@ -81,13 +81,13 @@ static void invoking_succeeds()
     SessionResult result = SESSION_RESULT__INIT;
     SessionInitiationMessage *msg;
     struct invoker_opts opts;
-    struct cpn_server server;
+    struct cpn_socket socket;
     struct cpn_channel c;
     struct cpn_thread t;
-    enum cpn_connection_type type;
+    enum cpn_command type;
 
-    assert_success(cpn_server_init(&server, "127.0.0.1", "8080", CPN_CHANNEL_TYPE_TCP));
-    assert_success(cpn_server_listen(&server));
+    assert_success(cpn_socket_init(&socket, "127.0.0.1", "8080", CPN_CHANNEL_TYPE_TCP));
+    assert_success(cpn_socket_listen(&socket));
 
     params.sessionid = 12345;
     params.service_address = "127.0.0.1";
@@ -100,10 +100,10 @@ static void invoking_succeeds()
 
     assert_success(cpn_spawn(&t, invoker, &opts));
 
-    assert_success(cpn_server_accept(&server, &c));
-    assert_success(cpn_proto_await_encryption(&c, &keys, &keys.pk));
-    assert_success(cpn_proto_receive_connection_type(&type, &c));
-    assert_int_equal(type, CPN_CONNECTION_TYPE_CONNECT);
+    assert_success(cpn_socket_accept(&socket, &c));
+    assert_success(cpn_server_await_encryption(&c, &keys, &keys.pk));
+    assert_success(cpn_server_await_command(&type, &c));
+    assert_int_equal(type, CPN_COMMAND_CONNECT);
     assert_success(cpn_channel_receive_protobuf(&c, &session_initiation_message__descriptor,
                 (ProtobufCMessage **) &msg));
     result.result = 0;
@@ -124,7 +124,7 @@ static void invoking_succeeds()
 
     session_initiation_message__free_unpacked(msg, NULL);
 
-    cpn_server_close(&server);
+    cpn_socket_close(&socket);
 }
 
 static void invoking_fails_with_invalid_service_type()

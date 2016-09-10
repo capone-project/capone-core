@@ -34,9 +34,9 @@ IF(CMOCKA_FOUND)
         lib/opts.c
         lib/proto.c
         lib/protobuf.c
-        lib/server.c
         lib/service.c
         lib/session.c
+        lib/socket.c
         lib/test-service.c
         lib/service/capabilities.c
         lib/service/exec.c
