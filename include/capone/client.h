@@ -71,31 +71,11 @@ struct cpn_query_results {
  * @param[in] type Connection type to initialize
  * @return <code>0</code> on success, <code>-1</code> otherwise
  */
-int cpn_proto_initiate_connection(struct cpn_channel *channel,
+int cpn_client_connect(struct cpn_channel *channel,
         const char *host,
         const char *port,
         const struct cpn_sign_key_pair *local_keys,
-        const struct cpn_sign_key_public *remote_key,
-        enum cpn_connection_type type);
-
-/** @brief Initiate an encrypted connection
- *
- * This function will initiate the encryption protocol on a
- * connected channel. It will invoke the key exchange to generate
- * a new shared secret which while verifying the remote server
- * has knowledge about the secret signature key belonging to the
- * remote public signature key.
- *
- * @param[in] channel Channel connected to the server
- * @param[in] sign_keys Local long-term signature keys
- * @param[in] remote_sign_key Remote long-term signature key
- * @return <code>0</code> on success, <code>-1</code> otherwise
- *
- * \see cpn_proto_await_encryption
- */
-int cpn_proto_initiate_encryption(struct cpn_channel *channel,
-        const struct cpn_sign_key_pair *sign_keys,
-        const struct cpn_sign_key_public *remote_sign_key);
+        const struct cpn_sign_key_public *remote_key);
 
 /** @brief Query a remote service for its parameters
  *

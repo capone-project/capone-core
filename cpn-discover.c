@@ -206,19 +206,8 @@ static void directed_discovery(const struct cpn_sign_key_public *remote_key,
 {
     struct cpn_channel channel;
 
-    if (cpn_channel_init_from_host(&channel, host, port, CPN_CHANNEL_TYPE_TCP) < 0) {
-        puts("Unable to initiate channel");
-        goto out;
-    }
-
-    if (cpn_channel_connect(&channel) < 0) {
+    if (cpn_client_connect(&channel, host, port, &local_keys, remote_key) < 0) {
         puts("Unable to connect");
-        goto out;
-    }
-
-    if (cpn_proto_initiate_encryption(&channel, &local_keys, remote_key) < 0) {
-        puts("Unable to initiate encryption");
-        goto out;
     }
 
     if (send_discover(&channel) < 0) {

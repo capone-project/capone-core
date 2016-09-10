@@ -183,9 +183,9 @@ static int relay_capability_request(struct cpn_channel *channel,
 
     cpn_sign_key_public_from_proto(&service_key, request->service_identity);
 
-    if ((ret = cpn_proto_initiate_connection(&service_channel,
+    if ((ret = cpn_client_connect(&service_channel,
                     request->service_address, request->service_port,
-                    &local_keys, &service_key, CPN_CONNECTION_TYPE_REQUEST)) < 0) {
+                    &local_keys, &service_key)) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to initiate connection type to remote service");
         goto out;
     }

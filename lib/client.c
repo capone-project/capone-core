@@ -24,15 +24,31 @@
 #include "capone/proto/connect.pb-c.h"
 #include "capone/proto/encryption.pb-c.h"
 
-int cpn_proto_initiate_connection(struct cpn_channel *channel,
+static int initiate_encryption(struct cpn_channel *channel,
+        const struct cpn_sign_key_pair *sign_keys,
+        const struct cpn_sign_key_public *remote_sign_key);
+
+static int initiate_connection_type(struct cpn_channel *channel,
+        ConnectionInitiationMessage__Type type)
+{
+    ConnectionInitiationMessage msg = CONNECTION_INITIATION_MESSAGE__INIT;
+
+    msg.type = type;
+
+    if (cpn_channel_write_protobuf(channel, &msg.base) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Could not send connection type");
+        return -1;
+    }
+
+    return 0;
+}
+
+int cpn_client_connect(struct cpn_channel *channel,
         const char *host,
         const char *port,
         const struct cpn_sign_key_pair *local_keys,
-        const struct cpn_sign_key_public *remote_key,
-        enum cpn_connection_type type)
+        const struct cpn_sign_key_public *remote_key)
 {
-    ConnectionInitiationMessage conntype = CONNECTION_INITIATION_MESSAGE__INIT;
-
     if (cpn_channel_init_from_host(channel, host, port, CPN_CHANNEL_TYPE_TCP) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not initialize channel");
         return -1;
@@ -43,31 +59,8 @@ int cpn_proto_initiate_connection(struct cpn_channel *channel,
         return -1;
     }
 
-    if (cpn_proto_initiate_encryption(channel, local_keys, remote_key) < 0) {
+    if (initiate_encryption(channel, local_keys, remote_key) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to initiate encryption");
-        return -1;
-    }
-
-    switch (type) {
-        case CPN_CONNECTION_TYPE_CONNECT:
-            conntype.type = CONNECTION_INITIATION_MESSAGE__TYPE__CONNECT;
-            break;
-        case CPN_CONNECTION_TYPE_REQUEST:
-            conntype.type = CONNECTION_INITIATION_MESSAGE__TYPE__REQUEST;
-            break;
-        case CPN_CONNECTION_TYPE_QUERY:
-            conntype.type = CONNECTION_INITIATION_MESSAGE__TYPE__QUERY;
-            break;
-        case CPN_CONNECTION_TYPE_TERMINATE:
-            conntype.type = CONNECTION_INITIATION_MESSAGE__TYPE__TERMINATE;
-            break;
-        default:
-            cpn_log(LOG_LEVEL_ERROR, "Unknown connection type");
-            return -1;
-    }
-
-    if (cpn_channel_write_protobuf(channel, &conntype.base) < 0) {
-        cpn_log(LOG_LEVEL_ERROR, "Could not send connection type");
         return -1;
     }
 
@@ -80,18 +73,21 @@ int cpn_proto_initiate_session(struct cpn_channel *channel,
 {
     SessionInitiationMessage initiation = SESSION_INITIATION_MESSAGE__INIT;
     SessionResult *result = NULL;
-    int ret = 0;
+    int err = -1;
+
+    if (initiate_connection_type(channel, CONNECTION_INITIATION_MESSAGE__TYPE__CONNECT) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Could not initiate connection type");
+        goto out;
+    }
 
     initiation.identifier = sessionid;
     if (cpn_cap_to_protobuf(&initiation.capability, cap) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not read capability");
-        ret = -1;
         goto out;
     }
 
     if (cpn_channel_write_protobuf(channel, &initiation.base) < 0 ) {
         cpn_log(LOG_LEVEL_ERROR, "Could not initiate session");
-        ret = -1;
         goto out;
     }
 
@@ -100,14 +96,14 @@ int cpn_proto_initiate_session(struct cpn_channel *channel,
                 (ProtobufCMessage **) &result) < 0)
     {
         cpn_log(LOG_LEVEL_ERROR, "Could not receive session OK");
-        ret = -1;
         goto out;
     }
 
     if (result->result != 0) {
-        ret = -1;
         goto out;
     }
+
+    err = 0;
 
 out:
     if (initiation.capability)
@@ -115,7 +111,7 @@ out:
     if (result)
         session_result__free_unpacked(result, NULL);
 
-    return ret;
+    return err;
 }
 
 int cpn_proto_send_request(uint32_t *sessionid,
@@ -126,6 +122,11 @@ int cpn_proto_send_request(uint32_t *sessionid,
     SessionRequestMessage request = SESSION_REQUEST_MESSAGE__INIT;
     SessionMessage *session = NULL;
     int err = -1;
+
+    if (initiate_connection_type(channel, CONNECTION_INITIATION_MESSAGE__TYPE__REQUEST) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Could not initiate connection type");
+        goto out;
+    }
 
     if (params) {
         int len = protobuf_c_message_get_packed_size(params);
@@ -168,6 +169,11 @@ int cpn_proto_send_query(struct cpn_query_results *out,
 {
     ServiceDescription *msg;
     struct cpn_query_results results;
+
+    if (initiate_connection_type(channel, CONNECTION_INITIATION_MESSAGE__TYPE__QUERY) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Could not initiate connection type");
+        return -1;
+    }
 
     memset(out, 0, sizeof(struct cpn_query_results));
 
@@ -221,6 +227,11 @@ int cpn_proto_initiate_termination(struct cpn_channel *channel,
 {
     SessionTerminationMessage msg = SESSION_TERMINATION_MESSAGE__INIT;
     int err = 0;
+
+    if (initiate_connection_type(channel, CONNECTION_INITIATION_MESSAGE__TYPE__TERMINATE) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Could not initiate connection type");
+        goto out;
+    }
 
     msg.identifier = sessionid;
     if ((err = cpn_cap_to_protobuf(&msg.capability, cap)) < 0) {
@@ -373,7 +384,7 @@ out:
     return err;
 }
 
-int cpn_proto_initiate_encryption(struct cpn_channel *channel,
+static int initiate_encryption(struct cpn_channel *channel,
         const struct cpn_sign_key_pair *sign_keys,
         const struct cpn_sign_key_public *remote_sign_key)
 {

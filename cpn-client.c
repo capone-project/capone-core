@@ -80,8 +80,9 @@ static int cmd_query(void)
     struct cpn_query_results results;
     struct cpn_channel channel;
 
-    if (cpn_proto_initiate_connection(&channel, remote_host, remote_port,
-                &local_keys, &remote_key, CPN_CONNECTION_TYPE_QUERY) < 0) {
+    if (cpn_client_connect(&channel, remote_host, remote_port,
+                &local_keys, &remote_key) < 0)
+    {
         puts("Could not establish connection");
         return -1;
     }
@@ -135,8 +136,9 @@ static int cmd_request(const char *service_type, const struct cpn_opts_stringlis
         goto out_err;
     }
 
-    if (cpn_proto_initiate_connection(&channel, remote_host, remote_port,
-                &local_keys, &remote_key, CPN_CONNECTION_TYPE_REQUEST) < 0) {
+    if (cpn_client_connect(&channel, remote_host, remote_port,
+                &local_keys, &remote_key) < 0)
+    {
         puts("Could not establish connection");
         goto out_err;
     }
@@ -189,8 +191,9 @@ static int cmd_connect(const char *service_type, uint32_t sessionid,
         goto out;
     }
 
-    if (cpn_proto_initiate_connection(&channel, remote_host, remote_port,
-                &local_keys, &remote_key, CPN_CONNECTION_TYPE_CONNECT) < 0) {
+    if (cpn_client_connect(&channel, remote_host, remote_port,
+                &local_keys, &remote_key) < 0)
+    {
         puts("Could not start connection");
         goto out;
     }
@@ -225,8 +228,9 @@ static int cmd_terminate(uint32_t sessionid, const char *capability)
         goto out;
     }
 
-    if (cpn_proto_initiate_connection(&channel, remote_host, remote_port,
-                &local_keys, &remote_key, CPN_CONNECTION_TYPE_TERMINATE) < 0) {
+    if (cpn_client_connect(&channel, remote_host, remote_port,
+                &local_keys, &remote_key) < 0)
+    {
         puts("Could not start connection");
         goto out;
     }

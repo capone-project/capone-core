@@ -30,8 +30,6 @@
 #define PORT "43281"
 #define REPEATS 1000
 
-static uint32_t blocklen;
-
 struct client_args {
     struct cpn_sign_key_pair client_keys;
     struct cpn_sign_key_pair server_keys;
@@ -60,18 +58,10 @@ static void *client(void *payload)
         }
 
         start = cpn_bench_nsecs();
-        if (cpn_channel_connect(&channel) < 0) {
+        if (cpn_client_connect(&channel, "127.0.0.1", PORT,
+                    &args->server_keys, &args->client_keys.pk) < 0)
+        {
             puts("Unable to connect to server");
-            return NULL;
-        }
-
-        if (cpn_channel_set_blocklen(&channel, blocklen) < 0) {
-            puts("Unable to set block length");
-            return NULL;
-        }
-
-        if (cpn_proto_initiate_encryption(&channel, &args->client_keys, &args->server_keys.pk) < 0) {
-            puts("Unable to initiate encryption");
             return NULL;
         }
         end = cpn_bench_nsecs();
@@ -90,10 +80,6 @@ static void *client(void *payload)
 
 int main(int argc, const char *argv[])
 {
-    struct cpn_opt opts[] = {
-        CPN_OPTS_OPT_UINT32('l', "--block-length", NULL, NULL, false),
-        CPN_OPTS_OPT_END
-    };
     struct cpn_thread t;
     struct client_args args;
     struct cpn_socket socket;
@@ -101,10 +87,8 @@ int main(int argc, const char *argv[])
     uint64_t start, end, time;
     int i;
 
-    if (cpn_opts_parse_cmd(opts, argc, argv) < 0)
-        return -1;
-
-    blocklen = opts[0].value.uint32;
+    UNUSED(argc);
+    UNUSED(argv);
 
     if (cpn_bench_set_affinity(3) < 0) {
         puts("Unable to set sched affinity");
@@ -140,11 +124,6 @@ int main(int argc, const char *argv[])
     for (i = 0; i < REPEATS; i++) {
         if (cpn_socket_accept(&socket, &channel) < 0) {
             puts("Unable to accept connection");
-            return -1;
-        }
-
-        if (cpn_channel_set_blocklen(&channel, blocklen) < 0) {
-            puts("Unable to set block length");
             return -1;
         }
 
