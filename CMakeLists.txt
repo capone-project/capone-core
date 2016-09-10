@@ -59,8 +59,8 @@ ADD_LIBRARY(capone SHARED
     lib/log.c
     lib/opts.c
     lib/proto-enc.c
-    lib/proto.c
     lib/protobuf.c
+    lib/server.c
     lib/service.c
     lib/session.c
     lib/socket.c
