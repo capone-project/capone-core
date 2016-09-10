@@ -21,10 +21,10 @@
 #include "bench.h"
 
 #include "capone/channel.h"
+#include "capone/client.h"
 #include "capone/common.h"
 #include "capone/keys.h"
 #include "capone/opts.h"
-#include "capone/proto.h"
 #include "capone/socket.h"
 
 #define PORT "43281"

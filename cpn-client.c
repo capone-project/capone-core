@@ -21,11 +21,11 @@
 #include <sodium.h>
 #include <inttypes.h>
 
+#include "capone/client.h"
 #include "capone/common.h"
 #include "capone/channel.h"
 #include "capone/global.h"
 #include "capone/opts.h"
-#include "capone/proto.h"
 #include "capone/service.h"
 
 static struct cpn_opt request_opts[] = {

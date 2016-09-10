@@ -30,9 +30,9 @@
 #include "capone/global.h"
 #include "capone/log.h"
 #include "capone/opts.h"
-#include "capone/proto.h"
-#include "capone/socket.h"
+#include "capone/server.h"
 #include "capone/service.h"
+#include "capone/socket.h"
 
 #include "capone/proto/discovery.pb-c.h"
 

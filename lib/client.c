@@ -18,8 +18,8 @@
 #include <string.h>
 
 #include "capone/buf.h"
+#include "capone/client.h"
 #include "capone/log.h"
-#include "capone/proto.h"
 
 #include "capone/proto/connect.pb-c.h"
 #include "capone/proto/encryption.pb-c.h"

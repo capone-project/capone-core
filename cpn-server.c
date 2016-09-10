@@ -26,9 +26,9 @@
 #include "capone/global.h"
 #include "capone/log.h"
 #include "capone/opts.h"
-#include "capone/proto.h"
-#include "capone/socket.h"
+#include "capone/server.h"
 #include "capone/service.h"
+#include "capone/socket.h"
 
 struct handle_connection_args {
     const struct cpn_cfg *cfg;

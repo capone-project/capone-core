@@ -26,12 +26,12 @@
 #include <sys/wait.h>
 
 #include "capone/cfg.h"
+#include "capone/client.h"
 #include "capone/common.h"
 #include "capone/global.h"
 #include "capone/list.h"
 #include "capone/log.h"
 #include "capone/opts.h"
-#include "capone/proto.h"
 #include "capone/socket.h"
 
 #include "capone/proto/discovery.pb-c.h"

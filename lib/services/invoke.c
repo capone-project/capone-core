@@ -18,10 +18,11 @@
 #include <string.h>
 
 #include "capone/channel.h"
+#include "capone/client.h"
 #include "capone/common.h"
 #include "capone/log.h"
 #include "capone/opts.h"
-#include "capone/proto.h"
+#include "capone/server.h"
 #include "capone/service.h"
 
 #include "capone/services/invoke.h"

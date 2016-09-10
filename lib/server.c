@@ -21,7 +21,7 @@
 #include "capone/channel.h"
 #include "capone/log.h"
 #include "capone/session.h"
-#include "capone/proto.h"
+#include "capone/server.h"
 
 #include "capone/proto/connect.pb-c.h"
 #include "capone/proto/encryption.pb-c.h"

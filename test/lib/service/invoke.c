@@ -19,10 +19,10 @@
 
 #include "capone/channel.h"
 #include "capone/common.h"
+#include "capone/server.h"
 #include "capone/service.h"
 #include "capone/socket.h"
 
-#include "capone/proto.h"
 #include "capone/proto/connect.pb-c.h"
 #include "capone/proto/invoke.pb-c.h"
 
