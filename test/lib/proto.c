@@ -186,7 +186,7 @@ static void query_succeeds()
     struct cpn_query_results results;
 
     cpn_spawn(&t, await_query, &args);
-    assert_success(cpn_proto_send_query(&results, &local));
+    assert_success(cpn_client_query_service(&results, &local));
     cpn_join(&t, NULL);
 
     assert_string_equal(results.name, "Foo");
@@ -208,7 +208,7 @@ static void whitelisted_query_succeeds()
     struct cpn_query_results results;
 
     cpn_spawn(&t, await_query, &args);
-    assert_success(cpn_proto_send_query(&results, &local));
+    assert_success(cpn_client_query_service(&results, &local));
     cpn_join(&t, NULL);
 
     cpn_query_results_free(&results);
@@ -228,7 +228,7 @@ static void request_constructs_session()
 
     cpn_spawn(&t, await_request, &args);
     assert_success(test_service->parse_fn(&parsed, ARRAY_SIZE(params), params));
-    assert_success(cpn_proto_send_request(&sessionid, &cap, &local, parsed));
+    assert_success(cpn_client_request_session(&sessionid, &cap, &local, parsed));
     cpn_join(&t, NULL);
 
     assert_success(cpn_sessions_remove(&added, sessionid));
@@ -252,7 +252,7 @@ static void whitlisted_request_constructs_session()
 
     cpn_spawn(&t, await_request, &args);
     assert_success(test_service->parse_fn(&parsed, ARRAY_SIZE(params), params));
-    assert_success(cpn_proto_send_request(&sessionid, &cap, &local, parsed));
+    assert_success(cpn_client_request_session(&sessionid, &cap, &local, parsed));
     cpn_join(&t, NULL);
 
     assert_success(cpn_sessions_remove(&added, sessionid));
@@ -281,7 +281,7 @@ static void service_connects()
     assert_success(cpn_sessions_add(&session, params_proto, &remote_keys.pk));
     assert_success(cpn_cap_create_ref(&cap, session->cap, CPN_CAP_RIGHT_EXEC, &local_keys.pk));
 
-    assert_success(cpn_proto_initiate_session(&local, session->identifier, cap));
+    assert_success(cpn_client_start_session(&local, session->identifier, cap));
     assert_success(service.plugin->client_fn(&local, 0, NULL, &config) < 0);
 
     cpn_cap_free(cap);
@@ -303,7 +303,7 @@ static void connect_refuses_without_session()
 
     cpn_spawn(&t, handle_session, &args);
 
-    assert_failure(cpn_proto_initiate_session(&local, 1, &cap));
+    assert_failure(cpn_client_start_session(&local, 1, &cap));
 
     cpn_join(&t, NULL);
 }
@@ -324,7 +324,7 @@ static void termination_kills_session()
     assert_success(cpn_cap_create_ref(&cap, session->cap, CPN_CAP_RIGHT_TERM, &local_keys.pk));
 
     cpn_spawn(&t, handle_termination, &args);
-    assert_success(cpn_proto_initiate_termination(&local, sessionid, cap));
+    assert_success(cpn_client_terminate_session(&local, sessionid, cap));
 
     cpn_cap_free(cap);
     cpn_join(&t, NULL);
@@ -342,7 +342,7 @@ static void terminating_nonexistent_does_nothing()
     cap.chain_depth = 0;
 
     cpn_spawn(&t, handle_termination, &args);
-    assert_success(cpn_proto_initiate_termination(&local, 12345, &cap));
+    assert_success(cpn_client_terminate_session(&local, 12345, &cap));
     cpn_join(&t, NULL);
 }
 

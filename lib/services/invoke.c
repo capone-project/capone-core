@@ -86,7 +86,7 @@ static int handle(struct cpn_channel *channel,
         goto out;
     }
 
-    if (cpn_proto_initiate_session(&remote_channel, params->sessionid, cap) < 0) {
+    if (cpn_client_start_session(&remote_channel, params->sessionid, cap) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not connect to session");
         goto out;
     }

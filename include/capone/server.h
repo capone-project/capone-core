@@ -99,7 +99,7 @@ int cpn_proto_await_encryption(struct cpn_channel *channel,
  * @param[in] service Service to send query results for
  * @return <code>0</code> on success, <code>-1</code> otherwise
  *
- * \see cpn_proto_send_query
+ * \see cpn_client_query_service
  */
 int cpn_proto_answer_query(struct cpn_channel *channel,
         const struct cpn_service *service);
@@ -115,7 +115,7 @@ int cpn_proto_answer_query(struct cpn_channel *channel,
  * @param[in] remote_key Long term signature key of the client
  * @return <code>0</code> on success, <code>-1</code> otherwise
  *
- * \see cpn_proto_send_request
+ * \see cpn_client_request_session
  */
 int cpn_proto_answer_request(struct cpn_channel *channel,
         const struct cpn_sign_key_public *remote_key,
@@ -133,7 +133,7 @@ int cpn_proto_answer_request(struct cpn_channel *channel,
  * @param[in] cfg Configuration of the server
  * @return <code>0</code> on success, <code>-1</code> otherwise
  *
- * \see cpn_proto_initiate_session
+ * \see cpn_client_start_session
  */
 int cpn_proto_handle_session(struct cpn_channel *channel,
         const struct cpn_sign_key_public *remote_key,
@@ -154,7 +154,7 @@ int cpn_proto_handle_session(struct cpn_channel *channel,
  * @param[in] remote_key Long term signature key of the client
  * @return <code>0</code> on success, <code>-1</code> otherwise
  *
- * \see cpn_proto_initiate_termination
+ * \see cpn_client_terminate_session
  */
 int cpn_proto_handle_termination(struct cpn_channel *channel,
         const struct cpn_sign_key_public *remote_key);

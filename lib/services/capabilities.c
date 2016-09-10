@@ -190,7 +190,7 @@ static int relay_capability_request(struct cpn_channel *channel,
         goto out;
     }
 
-    if ((ret = cpn_proto_send_request(&sessionid, &root_cap, &service_channel, params)) < 0)
+    if ((ret = cpn_client_request_session(&sessionid, &root_cap, &service_channel, params)) < 0)
     {
         cpn_log(LOG_LEVEL_ERROR, "Unable to send request to remote service");
         goto out;

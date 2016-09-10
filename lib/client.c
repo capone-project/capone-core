@@ -67,7 +67,7 @@ int cpn_client_connect(struct cpn_channel *channel,
     return 0;
 }
 
-int cpn_proto_initiate_session(struct cpn_channel *channel,
+int cpn_client_start_session(struct cpn_channel *channel,
         uint32_t sessionid,
         const struct cpn_cap *cap)
 {
@@ -114,7 +114,7 @@ out:
     return err;
 }
 
-int cpn_proto_send_request(uint32_t *sessionid,
+int cpn_client_request_session(uint32_t *sessionid,
         struct cpn_cap **cap,
         struct cpn_channel *channel,
         const struct ProtobufCMessage *params)
@@ -164,7 +164,7 @@ out:
     return err;
 }
 
-int cpn_proto_send_query(struct cpn_query_results *out,
+int cpn_client_query_service(struct cpn_query_results *out,
         struct cpn_channel *channel)
 {
     ServiceDescription *msg;
@@ -222,7 +222,7 @@ void cpn_query_results_free(struct cpn_query_results *results)
     results->port = NULL;
 }
 
-int cpn_proto_initiate_termination(struct cpn_channel *channel,
+int cpn_client_terminate_session(struct cpn_channel *channel,
         uint32_t sessionid, const struct cpn_cap *cap)
 {
     SessionTerminationMessage msg = SESSION_TERMINATION_MESSAGE__INIT;

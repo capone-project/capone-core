@@ -87,7 +87,7 @@ static int cmd_query(void)
         return -1;
     }
 
-    if (cpn_proto_send_query(&results, &channel) < 0) {
+    if (cpn_client_query_service(&results, &channel) < 0) {
         puts("Could not query service");
         return -1;
     }
@@ -143,7 +143,7 @@ static int cmd_request(const char *service_type, const struct cpn_opts_stringlis
         goto out_err;
     }
 
-    if (cpn_proto_send_request(&sessionid, &cap, &channel, params) < 0) {
+    if (cpn_client_request_session(&sessionid, &cap, &channel, params) < 0) {
         puts("Unable to request session");
         goto out_err;
     }
@@ -198,7 +198,7 @@ static int cmd_connect(const char *service_type, uint32_t sessionid,
         goto out;
     }
 
-    if (cpn_proto_initiate_session(&channel, sessionid, cap) < 0) {
+    if (cpn_client_start_session(&channel, sessionid, cap) < 0) {
         puts("Could not connect to session");
         goto out;
     }
@@ -235,7 +235,7 @@ static int cmd_terminate(uint32_t sessionid, const char *capability)
         goto out;
     }
 
-    if (cpn_proto_initiate_termination(&channel, sessionid, cap) < 0) {
+    if (cpn_client_terminate_session(&channel, sessionid, cap) < 0) {
         puts("Could not initiate termination");
         goto out;
     }

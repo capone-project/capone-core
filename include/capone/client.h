@@ -89,7 +89,7 @@ int cpn_client_connect(struct cpn_channel *channel,
  *
  * \see cpn_proto_answer_query
  */
-int cpn_proto_send_query(struct cpn_query_results *out,
+int cpn_client_query_service(struct cpn_query_results *out,
         struct cpn_channel *channel);
 
 /** @brief Free query results
@@ -117,7 +117,7 @@ void cpn_query_results_free(struct cpn_query_results *results);
  *
  * \see cpn_proto_answer_request
  */
-int cpn_proto_send_request(uint32_t *sessionid,
+int cpn_client_request_session(uint32_t *sessionid,
         struct cpn_cap **cap,
         struct cpn_channel *channel,
         const struct ProtobufCMessage *params);
@@ -138,7 +138,7 @@ int cpn_proto_send_request(uint32_t *sessionid,
  *
  * \see cpn_proto_handle_session
  */
-int cpn_proto_initiate_session(struct cpn_channel *channel,
+int cpn_client_start_session(struct cpn_channel *channel,
         uint32_t sessionid, const struct cpn_cap *cap);
 
 /** @brief Initiate session termination
@@ -159,7 +159,7 @@ int cpn_proto_initiate_session(struct cpn_channel *channel,
  *
  * \see cpn_proto_handle_termination
  */
-int cpn_proto_initiate_termination(struct cpn_channel *channel,
+int cpn_client_terminate_session(struct cpn_channel *channel,
         uint32_t sessionid, const struct cpn_cap *cap);
 
 #endif
