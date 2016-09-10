@@ -32,7 +32,7 @@
 #include "capone/log.h"
 #include "capone/opts.h"
 #include "capone/proto.h"
-#include "capone/server.h"
+#include "capone/socket.h"
 
 #include "capone/proto/discovery.pb-c.h"
 
@@ -167,7 +167,7 @@ out:
 
 static void undirected_discovery()
 {
-    struct cpn_server server;
+    struct cpn_socket socket;
     struct cpn_channel channel;
     struct cpn_thread t;
 
@@ -175,17 +175,17 @@ static void undirected_discovery()
 
     cpn_spawn(&t, probe, NULL);
 
-    if (cpn_server_init(&server, NULL, "6668", CPN_CHANNEL_TYPE_UDP) < 0) {
+    if (cpn_socket_init(&socket, NULL, "6668", CPN_CHANNEL_TYPE_UDP) < 0) {
         puts("Unable to init listening channel");
         goto out;
     }
 
-    if (cpn_server_enable_broadcast(&server) < 0) {
+    if (cpn_socket_enable_broadcast(&socket) < 0) {
         puts("Unable to enable broadcasting");
         goto out;
     }
 
-    if (cpn_server_accept(&server, &channel) < 0) {
+    if (cpn_socket_accept(&socket, &channel) < 0) {
         puts("Unable to accept connection");
         goto out;
     }

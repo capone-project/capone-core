@@ -27,7 +27,7 @@
 #include "capone/log.h"
 #include "capone/opts.h"
 #include "capone/proto.h"
-#include "capone/server.h"
+#include "capone/socket.h"
 #include "capone/service.h"
 
 struct handle_connection_args {
@@ -262,7 +262,7 @@ out:
 
 int main(int argc, const char *argv[])
 {
-    struct cpn_server server;
+    struct cpn_socket socket;
     struct cpn_cfg cfg;
     int err;
 
@@ -270,13 +270,13 @@ int main(int argc, const char *argv[])
         return -1;
     }
 
-    if (cpn_server_init(&server, NULL, service.port, CPN_CHANNEL_TYPE_TCP) < 0) {
-        cpn_log(LOG_LEVEL_ERROR, "Could not set up server");
+    if (cpn_socket_init(&socket, NULL, service.port, CPN_CHANNEL_TYPE_TCP) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Could not set up socket");
         err = -1;
         goto out;
     }
 
-    if (cpn_server_listen(&server) < 0) {
+    if (cpn_socket_listen(&socket) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not start listening");
         err = -1;
         goto out;
@@ -285,7 +285,7 @@ int main(int argc, const char *argv[])
     while (1) {
         struct handle_connection_args *args = malloc(sizeof(*args));;
 
-        if (cpn_server_accept(&server, &args->channel) < 0) {
+        if (cpn_socket_accept(&socket, &args->channel) < 0) {
             cpn_log(LOG_LEVEL_ERROR, "Could not accept connection");
             err = -1;
             goto out;
@@ -297,7 +297,7 @@ int main(int argc, const char *argv[])
     }
 
 out:
-    cpn_server_close(&server);
+    cpn_socket_close(&socket);
     cpn_cfg_free(&cfg);
 
     return err;

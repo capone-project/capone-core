@@ -16,31 +16,31 @@
  */
 
 /**
- * \defgroup cpn-server Server
+ * \defgroup cpn-socket Socket
  * \ingroup cpn-lib
  *
- * @brief Module providing networked servers
+ * @brief Module providing networked sockets
  *
  * This module provides functions handling incoming network
- * traffic. One can create a new server socket and accept
- * incoming connections.
+ * traffic. One can create a new socket and accept incoming
+ * connections.
  *
- * The module provides UDP and TCP server sockets.
+ * The module provides UDP and TCP sockets.
  *
  * @{
  */
 
-#ifndef CPN_LIB_SERVER_H
-#define CPN_LIB_SERVER_H
+#ifndef CPN_LIB_SOCKET_H
+#define CPN_LIB_SOCKET_H
 
 #include "capone/channel.h"
 
-/** @brief Server struct bundling data for a server socket
+/** @brief Socket struct bundling data for a socket
  *
  * This struct bundles together data required for accepting
- * connections on a server socket.
+ * connections on a socket.
  */
-struct cpn_server {
+struct cpn_socket {
     /** File descriptor to listen on */
     int fd;
     /** Local address of the socket */
@@ -49,71 +49,71 @@ struct cpn_server {
     enum cpn_channel_type type;
 };
 
-/** Initialize a server socket with host and port
+/** Initialize a socket with host and port
  *
- * Initialize a server struct to set up a server socket listening
+ * Initialize a socket struct to set up a socket listening
  * on the give naddress and port. The socket will be bound, but
  * not be in listening state for the TCP network protocol.
  *
- * @param[out] server Server struct to initialize.
+ * @param[out] socket Socket struct to initialize.
  * @param[in] host Host to bind to.
  * @param[in] port Port to bind to.
  * @param[in] type Type of the socket, either UDP or TCP.
  * @return <code>0</code> on success, <code>1</code> otherwise
  */
-int cpn_server_init(struct cpn_server *server,
+int cpn_socket_init(struct cpn_socket *socket,
         const char *host, const char *port, enum cpn_channel_type type);
 
-/** Close a server socket
+/** Close a socket
  *
- * @param[in] server Server to close
+ * @param[in] socket Socket to close
  * @return <code>0</code> on success, <code>1</code> otherwise
  */
-int cpn_server_close(struct cpn_server *server);
+int cpn_socket_close(struct cpn_socket *socket);
 
-/** Enable broadcasting on the server socket
+/** Enable broadcasting on the socket
  *
  * To send messages to the broadcast address, one needs to enable
  * broadcasting for the socket. This function provides the
  * functionality to do so.
  *
- * @param[in] server Server to enable broadcasting for.
+ * @param[in] socket Socket to enable broadcasting for.
  * @return <code>0</code> on success, <code>1</code> otherwise
  */
-int cpn_server_enable_broadcast(struct cpn_server *server);
+int cpn_socket_enable_broadcast(struct cpn_socket *socket);
 
-/** Set server socket into listening state
+/** Set socket into listening state
  *
- * Set the server socket into listening state. This is require
+ * Set the socket into listening state. This is require
  * for TCP sockets, where one needs to set the socket into
  * listening mode in order to enable accepting connections.
  *
- * @param[in] server Server to enable listening for.
+ * @param[in] socket Socket to enable listening for.
  * @return <code>0</code> on success, <code>1</code> otherwise
  */
-int cpn_server_listen(struct cpn_server *server);
+int cpn_socket_listen(struct cpn_socket *socket);
 
 /** Accept a new connection
  *
- * Accept a new connection for servers in listening mode. This
+ * Accept a new connection for sockets in listening mode. This
  * will wait for clients to connect to the socket and then create
- * a new channel of the same network mode as the server socket.
+ * a new channel of the same network mode as the socket.
  * This new channel can then be used to communicate with the
  * connected client.
  *
- * @param[in] server Server to accept connections on.
+ * @param[in] socket Socket to accept connections on.
  * @param[out] out Channel connected to the connecting client.
  * @return <code>0</code> on success, <code>1</code> otherwise
  */
-int cpn_server_accept(struct cpn_server *server, struct cpn_channel *out);
+int cpn_socket_accept(struct cpn_socket *socket, struct cpn_channel *out);
 
 /** Get the address of a bound socket
  *
- * Get the address the server socket is bound to. It is possible
+ * Get the address the socket is bound to. It is possible
  * to set retrieve only host or port, but one of both has to be
  * set.
  *
- * @param[in] s Server to get address for.
+ * @param[in] s socket to get address for.
  * @param[out] host Caller-allocated buffer for the host name.
  *             May be <code>NULL</code> if port is not.
  * @param[in] hostlen Maximum length of the host buffer.
@@ -122,7 +122,7 @@ int cpn_server_accept(struct cpn_server *server, struct cpn_channel *out);
  * @param[in] portlen Maximum length of the port buffer.
  * @return <code>0</code> on success, <code>1</code> otherwise
  */
-int cpn_server_get_address(struct cpn_server *s,
+int cpn_socket_get_address(struct cpn_socket *s,
         char *host, size_t hostlen, char *port, size_t portlen);
 
 #endif

@@ -34,7 +34,7 @@ extern int keys_test_run_suite(void);
 extern int list_test_run_suite(void);
 extern int proto_test_run_suite(void);
 extern int protobuf_test_run_suite(void);
-extern int server_test_run_suite(void);
+extern int socket_test_run_suite(void);
 extern int service_test_run_suite(void);
 extern int session_test_run_suite(void);
 
@@ -57,7 +57,7 @@ static int (*suite_fns[])(void) = {
     common_test_run_suite,
     keys_test_run_suite,
     list_test_run_suite,
-    server_test_run_suite,
+    socket_test_run_suite,
     service_test_run_suite,
     session_test_run_suite,
     proto_test_run_suite,

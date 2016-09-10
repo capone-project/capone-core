@@ -1,3 +1,4 @@
 -Iinclude
 -Ibuild/include
 -Itest
+-I.

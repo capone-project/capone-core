@@ -25,9 +25,9 @@
 #include <netdb.h>
 
 #include "capone/log.h"
-#include "capone/server.h"
+#include "capone/socket.h"
 
-static int get_server_socket(struct sockaddr_storage *addr, const char *host,
+static int get_socket(struct sockaddr_storage *addr, const char *host,
         const char *port, enum cpn_channel_type type)
 {
     struct addrinfo hints, *servinfo, *hint;
@@ -93,43 +93,43 @@ static int get_server_socket(struct sockaddr_storage *addr, const char *host,
     return fd;
 }
 
-int cpn_server_init(struct cpn_server *server,
+int cpn_socket_init(struct cpn_socket *socket,
         const char *host, const char *port, enum cpn_channel_type type)
 {
     int fd;
     struct sockaddr_storage addr;
 
-    fd = get_server_socket(&addr, host, port, type);
+    fd = get_socket(&addr, host, port, type);
     if (fd < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to get socket: %s", strerror(errno));
         return -1;
     }
 
-    server->fd = fd;
-    server->type = type;
-    server->addr = addr;
+    socket->fd = fd;
+    socket->type = type;
+    socket->addr = addr;
 
     return 0;
 }
 
-int cpn_server_close(struct cpn_server *server)
+int cpn_socket_close(struct cpn_socket *socket)
 {
-    if (server->fd < 0) {
+    if (socket->fd < 0) {
         cpn_log(LOG_LEVEL_WARNING, "Closing channel with invalid fd");
         return -1;
     }
 
-    close(server->fd);
-    server->fd = -1;
+    close(socket->fd);
+    socket->fd = -1;
 
     return 0;
 }
 
-int cpn_server_enable_broadcast(struct cpn_server *server)
+int cpn_socket_enable_broadcast(struct cpn_socket *socket)
 {
     int val = 1;
 
-    if (setsockopt(server->fd, SOL_SOCKET, SO_BROADCAST, &val, sizeof(val)) < 0) {
+    if (setsockopt(socket->fd, SOL_SOCKET, SO_BROADCAST, &val, sizeof(val)) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to set option on socket: %s", strerror(errno));
         return -1;
     }
@@ -137,7 +137,7 @@ int cpn_server_enable_broadcast(struct cpn_server *server)
     return 0;
 }
 
-int cpn_server_listen(struct cpn_server *s)
+int cpn_socket_listen(struct cpn_socket *s)
 {
     int fd;
 
@@ -152,7 +152,7 @@ int cpn_server_listen(struct cpn_server *s)
     return 0;
 }
 
-int cpn_server_accept(struct cpn_server *s, struct cpn_channel *out)
+int cpn_socket_accept(struct cpn_socket *s, struct cpn_channel *out)
 {
     int fd;
     socklen_t addrsize;
@@ -194,7 +194,7 @@ int cpn_server_accept(struct cpn_server *s, struct cpn_channel *out)
     return cpn_channel_init_from_fd(out, fd, (struct sockaddr *) &addr, addrsize, s->type);
 }
 
-int cpn_server_get_address(struct cpn_server *s,
+int cpn_socket_get_address(struct cpn_socket *s,
         char *host, size_t hostlen, char *port, size_t portlen)
 {
     struct sockaddr_storage addr;

@@ -31,7 +31,6 @@
 #include "capone/channel.h"
 #include "capone/common.h"
 #include "capone/opts.h"
-#include "capone/server.h"
 
 #define PORT "43269"
 #define REPEATS 1000

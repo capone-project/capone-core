@@ -20,7 +20,7 @@
 #include "capone/channel.h"
 #include "capone/common.h"
 #include "capone/proto.h"
-#include "capone/server.h"
+#include "capone/socket.h"
 #include "capone/service.h"
 #include "capone/session.h"
 
@@ -156,7 +156,7 @@ static void *handle_termination(void *payload)
 static void connection_initiation_succeeds()
 {
     struct cpn_thread t;
-    struct cpn_server s;
+    struct cpn_socket s;
     struct cpn_channel c;
     struct initiate_connection_args args;
     struct cpn_sign_key_public key;
@@ -168,14 +168,14 @@ static void connection_initiation_succeeds()
     enum cpn_connection_type type;
     size_t i;
 
-    assert_success(cpn_server_init(&s, "127.0.0.1", "31248", CPN_CHANNEL_TYPE_TCP));
-    assert_success(cpn_server_listen(&s));
+    assert_success(cpn_socket_init(&s, "127.0.0.1", "31248", CPN_CHANNEL_TYPE_TCP));
+    assert_success(cpn_socket_listen(&s));
 
     for (i = 0; i < ARRAY_SIZE(types); i++) {
         args.type = types[i];
 
         assert_success(cpn_spawn(&t, initiate_connection, &args));
-        assert_success(cpn_server_accept(&s, &c));
+        assert_success(cpn_socket_accept(&s, &c));
         assert_success(cpn_proto_await_encryption(&c, &remote_keys, &key));
         assert_success(cpn_proto_receive_connection_type(&type, &c));
         assert_int_equal(type, args.type);
@@ -184,7 +184,7 @@ static void connection_initiation_succeeds()
         assert_success(cpn_join(&t, NULL));
     }
 
-    assert_success(cpn_server_close(&s));
+    assert_success(cpn_socket_close(&s));
 }
 
 static void encryption_initiation_succeeds()

@@ -31,7 +31,7 @@
 #include "capone/log.h"
 #include "capone/opts.h"
 #include "capone/proto.h"
-#include "capone/server.h"
+#include "capone/socket.h"
 #include "capone/service.h"
 
 #include "capone/proto/discovery.pb-c.h"
@@ -137,47 +137,47 @@ out:
 
 static void handle_connections()
 {
-    struct cpn_server udp_server, tcp_server;
+    struct cpn_socket udp_socket, tcp_socket;
     struct cpn_channel channel;
     fd_set fds;
     int nfds;
 
-    if (cpn_server_init(&udp_server, NULL, LISTEN_PORT, CPN_CHANNEL_TYPE_UDP) < 0) {
+    if (cpn_socket_init(&udp_socket, NULL, LISTEN_PORT, CPN_CHANNEL_TYPE_UDP) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to init listening channel");
         return;
     }
 
-    if (cpn_server_init(&tcp_server, NULL, LISTEN_PORT, CPN_CHANNEL_TYPE_TCP) < 0) {
+    if (cpn_socket_init(&tcp_socket, NULL, LISTEN_PORT, CPN_CHANNEL_TYPE_TCP) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to init listening channel");
         return;
     }
-    if (cpn_server_listen(&tcp_server) < 0) {
+    if (cpn_socket_listen(&tcp_socket) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to listen on TCP channel");
         return;
     }
 
-    nfds = MAX(udp_server.fd, tcp_server.fd) + 1;
+    nfds = MAX(udp_socket.fd, tcp_socket.fd) + 1;
 
     while (true) {
         FD_ZERO(&fds);
-        FD_SET(udp_server.fd, &fds);
-        FD_SET(tcp_server.fd, &fds);
+        FD_SET(udp_socket.fd, &fds);
+        FD_SET(tcp_socket.fd, &fds);
 
         if (select(nfds, &fds, NULL, NULL, NULL) < 0) {
             cpn_log(LOG_LEVEL_ERROR, "Unable to select on channels");
             continue;
         }
 
-        if (FD_ISSET(udp_server.fd, &fds)) {
-            if (cpn_server_accept(&udp_server, &channel) < 0) {
+        if (FD_ISSET(udp_socket.fd, &fds)) {
+            if (cpn_socket_accept(&udp_socket, &channel) < 0) {
                 cpn_log(LOG_LEVEL_ERROR, "Unable to accept UDP connection");
                 continue;
             }
             handle_udp(&channel);
         }
 
-        if (FD_ISSET(tcp_server.fd, &fds)) {
-            if (cpn_server_accept(&tcp_server, &channel) < 0) {
+        if (FD_ISSET(tcp_socket.fd, &fds)) {
+            if (cpn_socket_accept(&tcp_socket, &channel) < 0) {
                 cpn_log(LOG_LEVEL_ERROR, "Unable to accept TCP connection");
                 continue;
             }

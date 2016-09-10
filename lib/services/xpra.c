@@ -22,7 +22,7 @@
 #include "capone/common.h"
 #include "capone/log.h"
 #include "capone/opts.h"
-#include "capone/server.h"
+#include "capone/socket.h"
 #include "capone/service.h"
 
 #include "capone/services/xpra.h"
@@ -54,7 +54,7 @@ static int invoke(struct cpn_channel *channel, int argc, const char **argv,
      * remote side has already started the connection from the
      * xpra client. As such, we wait for the first byte to appear
      * and when it does, we do the actual connection to the xpra
-     * server.
+     * socket.
      */
     if (recv(channel->fd, buf, sizeof(buf), MSG_PEEK) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not await xpra connection");
@@ -62,7 +62,7 @@ static int invoke(struct cpn_channel *channel, int argc, const char **argv,
     }
 
     if (cpn_channel_connect(&xpra_channel) < 0) {
-        cpn_log(LOG_LEVEL_ERROR, "Could not connect to local xpra server");
+        cpn_log(LOG_LEVEL_ERROR, "Could not connect to local xpra socket");
         return -1;
     }
 
@@ -81,7 +81,7 @@ static int handle(struct cpn_channel *channel,
         const struct cpn_session *session,
         const struct cpn_cfg *cfg)
 {
-    struct cpn_server server;
+    struct cpn_socket socket;
     struct cpn_channel xpra_channel;
     char port[10], *args[] = {
         "xpra",
@@ -96,17 +96,17 @@ static int handle(struct cpn_channel *channel,
     UNUSED(invoker);
     UNUSED(session);
 
-    if (cpn_server_init(&server, "127.0.0.1", NULL, CPN_CHANNEL_TYPE_TCP) < 0) {
+    if (cpn_socket_init(&socket, "127.0.0.1", NULL, CPN_CHANNEL_TYPE_TCP) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not initialize xpra relay socket");
         return -1;
     }
 
-    if (cpn_server_listen(&server) < 0) {
+    if (cpn_socket_listen(&socket) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not listen on xpra relay socket");
         return -1;
     }
 
-    if (cpn_server_get_address(&server, NULL, 0, port, sizeof(port)) < 0) {
+    if (cpn_socket_get_address(&socket, NULL, 0, port, sizeof(port)) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not retrieve address of xpra relay socket");
         return -1;
     }
@@ -124,7 +124,7 @@ static int handle(struct cpn_channel *channel,
 
         _exit(0);
     } else if (pid > 0) {
-        if (cpn_server_accept(&server, &xpra_channel) < 0) {
+        if (cpn_socket_accept(&socket, &xpra_channel) < 0) {
             cpn_log(LOG_LEVEL_ERROR, "Could not accept xpra relay socket connection");
             return -1;
         }

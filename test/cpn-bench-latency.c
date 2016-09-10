@@ -25,7 +25,7 @@
 #include "capone/keys.h"
 #include "capone/opts.h"
 #include "capone/proto.h"
-#include "capone/server.h"
+#include "capone/socket.h"
 
 #define PORT "43281"
 #define REPEATS 1000
@@ -96,7 +96,7 @@ int main(int argc, const char *argv[])
     };
     struct cpn_thread t;
     struct client_args args;
-    struct cpn_server server;
+    struct cpn_socket socket;
     struct cpn_channel channel;
     uint64_t start, end, time;
     int i;
@@ -120,12 +120,12 @@ int main(int argc, const char *argv[])
         return -1;
     }
 
-    if (cpn_server_init(&server, NULL, PORT, CPN_CHANNEL_TYPE_TCP) < 0) {
-        puts("Unable to init server");
+    if (cpn_socket_init(&socket, NULL, PORT, CPN_CHANNEL_TYPE_TCP) < 0) {
+        puts("Unable to init socket");
         return -1;
     }
 
-    if (cpn_server_listen(&server) < 0) {
+    if (cpn_socket_listen(&socket) < 0) {
         puts("Unable to listen");
         return -1;
     }
@@ -138,7 +138,7 @@ int main(int argc, const char *argv[])
     time = 0;
 
     for (i = 0; i < REPEATS; i++) {
-        if (cpn_server_accept(&server, &channel) < 0) {
+        if (cpn_socket_accept(&socket, &channel) < 0) {
             puts("Unable to accept connection");
             return -1;
         }
