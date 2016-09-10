@@ -17,6 +17,7 @@
 
 #include <string.h>
 
+#include "capone/buf.h"
 #include "capone/channel.h"
 #include "capone/log.h"
 
@@ -75,37 +76,19 @@ static int receive_ephemeral_key(
     return 0;
 }
 
-static size_t fill_sign_buffer(uint8_t **out,
+static void fill_sign_buffer(struct cpn_buf *buf,
         uint32_t id,
         const struct cpn_sign_key_public *s1,
         const struct cpn_sign_key_public *s2,
         const struct cpn_encrypt_key_public *e1,
         const struct cpn_encrypt_key_public *e2)
 {
-    uint32_t offset = 0, len;
-    uint8_t *buf;
-
-    len = crypto_sign_PUBLICKEYBYTES * 2
-            + crypto_box_PUBLICKEYBYTES * 2
-            + sizeof(uint32_t);
-
-    buf = malloc(len);
-
-    memcpy(buf + offset, s1->data, crypto_sign_PUBLICKEYBYTES);
-    offset += crypto_sign_PUBLICKEYBYTES;
-    memcpy(buf + offset, &id, sizeof(id));
-    offset += sizeof(id);
-    memcpy(buf + offset, e1->data, crypto_box_PUBLICKEYBYTES);
-    offset += crypto_box_PUBLICKEYBYTES;
-    memcpy(buf + offset, e2->data, crypto_box_PUBLICKEYBYTES);
-    offset += crypto_box_PUBLICKEYBYTES;
-    memcpy(buf + offset, s2->data, crypto_sign_PUBLICKEYBYTES);
-
-    *out = buf;
-
-    return len;
+    cpn_buf_append_data(buf, s1->data, crypto_sign_PUBLICKEYBYTES);
+    cpn_buf_append_data(buf, (unsigned char *) &id, sizeof(id));
+    cpn_buf_append_data(buf, e1->data, crypto_box_PUBLICKEYBYTES);
+    cpn_buf_append_data(buf, e2->data, crypto_box_PUBLICKEYBYTES);
+    cpn_buf_append_data(buf, s2->data, crypto_box_PUBLICKEYBYTES);
 }
-
 
 static int send_signed_key(struct cpn_channel *channel,
         uint32_t id,
@@ -115,17 +98,18 @@ static int send_signed_key(struct cpn_channel *channel,
         const struct cpn_encrypt_key_public *remote_emph_key)
 {
     ResponderKey msg = RESPONDER_KEY__INIT;
-    uint8_t signature[crypto_sign_BYTES], *sign_data = NULL;
-    size_t sign_data_len;
+    uint8_t signature[crypto_sign_BYTES];
+    struct cpn_buf sign_buf = CPN_BUF_INIT;
     int err = 0;
 
-    sign_data_len = fill_sign_buffer(&sign_data, id,
+    fill_sign_buffer(&sign_buf, id,
             &sign_keys->pk, remote_sign_key,
             local_emph_key, remote_emph_key);
 
     memset(signature, 0, sizeof(signature));
-    if ((err = crypto_sign_detached(signature, NULL, sign_data, sign_data_len,
-                sign_keys->sk.data)) < 0)
+    if ((err = crypto_sign_detached(signature, NULL,
+                    (unsigned char *) sign_buf.data, sign_buf.length,
+                    sign_keys->sk.data)) < 0)
     {
         cpn_log(LOG_LEVEL_ERROR, "Unable to sign ephemeral key");
         goto out;
@@ -145,7 +129,7 @@ static int send_signed_key(struct cpn_channel *channel,
     }
 
 out:
-    free(sign_data);
+    cpn_buf_clear(&sign_buf);
 
     return 0;
 }
@@ -158,10 +142,9 @@ static int receive_signed_key(struct cpn_encrypt_key_public *out,
         const struct cpn_sign_key_public *remote_sign_key)
 {
     ResponderKey *msg;
+    struct cpn_buf sign_buf = CPN_BUF_INIT;
     struct cpn_sign_key_public msg_sign_key;
     struct cpn_encrypt_key_public msg_emph_key;
-    size_t sign_data_len;
-    uint8_t *sign_data = NULL;
     int ret = -1;
 
     if (cpn_channel_receive_protobuf(channel,
@@ -192,11 +175,12 @@ static int receive_signed_key(struct cpn_encrypt_key_public *out,
         goto out;
     }
 
-    sign_data_len = fill_sign_buffer(&sign_data, id,
+    fill_sign_buffer(&sign_buf, id,
             &msg_sign_key, local_sign_key,
             &msg_emph_key, local_emph_key);
 
-    if (crypto_sign_verify_detached(msg->signature.data, sign_data, sign_data_len,
+    if (crypto_sign_verify_detached(msg->signature.data,
+                (unsigned char *) sign_buf.data, sign_buf.length,
                 remote_sign_key->data) < 0)
     {
         cpn_log(LOG_LEVEL_ERROR, "Received invalid signature");
@@ -210,7 +194,7 @@ static int receive_signed_key(struct cpn_encrypt_key_public *out,
     ret = 0;
 
 out:
-    free(sign_data);
+    cpn_buf_clear(&sign_buf);
     if (msg)
         responder_key__free_unpacked(msg, NULL);
 
@@ -225,17 +209,18 @@ static int send_key_verification(struct cpn_channel *c,
         const struct cpn_encrypt_key_public *remote_emph_pk)
 {
     AcknowledgeKey msg = ACKNOWLEDGE_KEY__INIT;
+    struct cpn_buf sign_buf = CPN_BUF_INIT;
     uint8_t signature[crypto_sign_BYTES], *sign_data = NULL;
-    size_t sign_data_len;
     int err = 0;
 
-    sign_data_len = fill_sign_buffer(&sign_data, id,
+    fill_sign_buffer(&sign_buf, id,
             &sign_keys->pk, remote_pk,
             local_emph_key, remote_emph_pk);
 
     memset(signature, 0, sizeof(signature));
-    if ((err = crypto_sign_detached(signature, NULL, sign_data, sign_data_len,
-                sign_keys->sk.data)) < 0)
+    if ((err = crypto_sign_detached(signature, NULL,
+                    (unsigned char *) sign_buf.data, sign_buf.length,
+                    sign_keys->sk.data)) < 0)
     {
         cpn_log(LOG_LEVEL_ERROR, "Unable to sign key verification");
         goto out;
@@ -266,8 +251,8 @@ static int receive_key_verification(struct cpn_channel *c,
         const struct cpn_encrypt_key_public *remote_emph_key)
 {
     AcknowledgeKey *msg = NULL;
+    struct cpn_buf sign_buf = CPN_BUF_INIT;
     uint8_t *sign_data = NULL;
-    size_t sign_data_len;
     int err = -1;
 
     if (cpn_channel_receive_protobuf(c,
@@ -290,10 +275,11 @@ static int receive_key_verification(struct cpn_channel *c,
         goto out;
     }
 
-    sign_data_len = fill_sign_buffer(&sign_data, id,
+    fill_sign_buffer(&sign_buf, id,
             remote_pk, local_pk, remote_emph_key, local_emph_key);
 
-    if (crypto_sign_verify_detached(msg->signature.data, sign_data, sign_data_len,
+    if (crypto_sign_verify_detached(msg->signature.data,
+                (unsigned char *) sign_buf.data, sign_buf.length,
                 remote_pk->data) < 0)
     {
         cpn_log(LOG_LEVEL_ERROR, "Received invalid signature");
