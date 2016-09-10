@@ -63,6 +63,17 @@ int cpn_buf_append(struct cpn_buf *buf, const char *string)
     return 0;
 }
 
+int cpn_buf_append_data(struct cpn_buf *buf, const unsigned char *data, size_t len)
+{
+    if (ensure_allocated(buf, buf->length + len) < 0)
+        return -1;
+
+    memcpy(buf->data + buf->length, data, len);
+    buf->length = buf->length + len;
+
+    return 0;
+}
+
 int cpn_buf_printf(struct cpn_buf *buf, const char *format, ...)
 {
     char buffer[4096];

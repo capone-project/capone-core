@@ -47,6 +47,16 @@ int cpn_buf_set(struct cpn_buf *buf, const char *string);
  */
 int cpn_buf_append(struct cpn_buf *buf, const char *string);
 
+/** @brief Append string to current content
+ *
+ * Append the string to the currently contained string.
+ *
+ * @param[in] buf Buffer to append
+ * @param[in] data Data to append
+ * @param[in] len Length of data to append
+ */
+int cpn_buf_append_data(struct cpn_buf *buf, const unsigned char *data, size_t len);
+
 /** @brief Use printf-style formatting to append string
  *
  * Generate the format according to the formatter string and
