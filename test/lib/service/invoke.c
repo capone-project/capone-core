@@ -101,8 +101,8 @@ static void invoking_succeeds()
     assert_success(cpn_spawn(&t, invoker, &opts));
 
     assert_success(cpn_socket_accept(&socket, &c));
-    assert_success(cpn_proto_await_encryption(&c, &keys, &keys.pk));
-    assert_success(cpn_proto_receive_connection_type(&type, &c));
+    assert_success(cpn_server_await_encryption(&c, &keys, &keys.pk));
+    assert_success(cpn_server_await_command(&type, &c));
     assert_int_equal(type, CPN_COMMAND_CONNECT);
     assert_success(cpn_channel_receive_protobuf(&c, &session_initiation_message__descriptor,
                 (ProtobufCMessage **) &msg));

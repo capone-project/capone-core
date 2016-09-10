@@ -26,7 +26,7 @@
 #include "capone/proto/connect.pb-c.h"
 #include "capone/proto/encryption.pb-c.h"
 
-int cpn_proto_receive_connection_type(enum cpn_command *out,
+int cpn_server_await_command(enum cpn_command *out,
         struct cpn_channel *channel)
 {
     ConnectionInitiationMessage *initiation;
@@ -63,7 +63,7 @@ int cpn_proto_receive_connection_type(enum cpn_command *out,
     return ret;
 }
 
-int cpn_proto_handle_session(struct cpn_channel *channel,
+int cpn_server_handle_session(struct cpn_channel *channel,
         const struct cpn_sign_key_public *remote_key,
         const struct cpn_service *service,
         const struct cpn_cfg *cfg)
@@ -131,7 +131,7 @@ out:
     return 0;
 }
 
-int cpn_proto_answer_query(struct cpn_channel *channel,
+int cpn_server_handle_query(struct cpn_channel *channel,
         const struct cpn_service *service)
 {
     ServiceDescription results = SERVICE_DESCRIPTION__INIT;
@@ -174,7 +174,7 @@ out:
     return err;
 }
 
-int cpn_proto_answer_request(struct cpn_channel *channel,
+int cpn_server_handle_request(struct cpn_channel *channel,
         const struct cpn_sign_key_public *remote_key,
         const struct cpn_service_plugin *service)
 {
@@ -229,7 +229,7 @@ out:
     return err;
 }
 
-int cpn_proto_handle_termination(struct cpn_channel *channel,
+int cpn_server_handle_termination(struct cpn_channel *channel,
         const struct cpn_sign_key_public *remote_key)
 {
     SessionTerminationMessage *msg = NULL;
@@ -409,7 +409,7 @@ out:
     return err;
 }
 
-int cpn_proto_await_encryption(struct cpn_channel *channel,
+int cpn_server_await_encryption(struct cpn_channel *channel,
         const struct cpn_sign_key_pair *sign_keys,
         struct cpn_sign_key_public *remote_sign_key)
 {

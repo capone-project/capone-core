@@ -87,7 +87,7 @@ int cpn_client_connect(struct cpn_channel *channel,
  * @param[in] channel Channel connected to the remote server
  * @return <code>0</code> on success, <code>-1</code> otherwise
  *
- * \see cpn_proto_answer_query
+ * \see cpn_server_handle_query
  */
 int cpn_client_query_service(struct cpn_query_results *out,
         struct cpn_channel *channel);
@@ -115,7 +115,7 @@ void cpn_query_results_free(struct cpn_query_results *results);
  * @param[in] params protobuf containing service parameters
  * @return <code>0</code> on success, <code>-1</code> otherwise
  *
- * \see cpn_proto_answer_request
+ * \see cpn_server_handle_request
  */
 int cpn_client_request_session(uint32_t *sessionid,
         struct cpn_cap **cap,
@@ -136,7 +136,7 @@ int cpn_client_request_session(uint32_t *sessionid,
  * @param[in] cap Capability referencing the session
  * @return <code>0</code> on success, <code>-1</code> otherwise
  *
- * \see cpn_proto_handle_session
+ * \see cpn_server_handle_session
  */
 int cpn_client_start_session(struct cpn_channel *channel,
         uint32_t sessionid, const struct cpn_cap *cap);
@@ -157,7 +157,7 @@ int cpn_client_start_session(struct cpn_channel *channel,
  *            object
  * @return <code>0</code> on success, <code>-1</code> otherwise
  *
- * \see cpn_proto_handle_termination
+ * \see cpn_server_handle_termination
  */
 int cpn_client_terminate_session(struct cpn_channel *channel,
         uint32_t sessionid, const struct cpn_cap *cap);

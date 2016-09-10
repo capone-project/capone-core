@@ -119,7 +119,7 @@ static void *await_query(void *payload)
 
     await_type(args->channel, CONNECTION_INITIATION_MESSAGE__TYPE__QUERY);
 
-    UNUSED(cpn_proto_answer_query(args->channel, args->s));
+    UNUSED(cpn_server_handle_query(args->channel, args->s));
 
     return NULL;
 }
@@ -130,7 +130,7 @@ static void *await_request(void *payload)
 
     await_type(args->channel, CONNECTION_INITIATION_MESSAGE__TYPE__REQUEST);
 
-    UNUSED(cpn_proto_answer_request(args->channel, args->r, service.plugin));
+    UNUSED(cpn_server_handle_request(args->channel, args->r, service.plugin));
 
     return NULL;
 }
@@ -141,7 +141,7 @@ static void *handle_session(void *payload)
 
     await_type(args->channel, CONNECTION_INITIATION_MESSAGE__TYPE__CONNECT);
 
-    UNUSED(cpn_proto_handle_session(args->channel,
+    UNUSED(cpn_server_handle_session(args->channel,
                 args->remote_key, args->service, args->cfg));
 
     return NULL;
@@ -152,7 +152,7 @@ static void *handle_termination(void *payload)
     struct handle_termination_args *args = (struct handle_termination_args *) payload;
 
     await_type(args->channel, CONNECTION_INITIATION_MESSAGE__TYPE__TERMINATE);
-    UNUSED(cpn_proto_handle_termination(args->channel, args->terminator));
+    UNUSED(cpn_server_handle_termination(args->channel, args->terminator));
 
     return NULL;
 }
@@ -169,7 +169,7 @@ static void connection_initiation_succeeds()
 
     assert_success(cpn_spawn(&t, initiate_connection, NULL));
     assert_success(cpn_socket_accept(&s, &c));
-    assert_success(cpn_proto_await_encryption(&c, &remote_keys, &key));
+    assert_success(cpn_server_await_encryption(&c, &remote_keys, &key));
 
     assert_success(cpn_channel_close(&c));
     assert_success(cpn_join(&t, NULL));

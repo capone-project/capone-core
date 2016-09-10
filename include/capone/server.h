@@ -70,7 +70,7 @@ enum cpn_command {
  * @param[in] channel Channel connected to the client
  * @return <code>0</code> on success, <code>-1</code> otherwise
  */
-int cpn_proto_receive_connection_type(enum cpn_command *out,
+int cpn_server_await_command(enum cpn_command *out,
         struct cpn_channel *channel);
 
 /** @brief Await encryption initiated by the client
@@ -85,7 +85,7 @@ int cpn_proto_receive_connection_type(enum cpn_command *out,
  *
  * \see cpn_proto_initiate_encryption
  */
-int cpn_proto_await_encryption(struct cpn_channel *channel,
+int cpn_server_await_encryption(struct cpn_channel *channel,
         const struct cpn_sign_key_pair *sign_keys,
         struct cpn_sign_key_public *remote_sign_key);
 
@@ -101,7 +101,7 @@ int cpn_proto_await_encryption(struct cpn_channel *channel,
  *
  * \see cpn_client_query_service
  */
-int cpn_proto_answer_query(struct cpn_channel *channel,
+int cpn_server_handle_query(struct cpn_channel *channel,
         const struct cpn_service *service);
 
 /** @brief Handle a session request
@@ -117,7 +117,7 @@ int cpn_proto_answer_query(struct cpn_channel *channel,
  *
  * \see cpn_client_request_session
  */
-int cpn_proto_answer_request(struct cpn_channel *channel,
+int cpn_server_handle_request(struct cpn_channel *channel,
         const struct cpn_sign_key_public *remote_key,
         const struct cpn_service_plugin *plugin);
 
@@ -135,7 +135,7 @@ int cpn_proto_answer_request(struct cpn_channel *channel,
  *
  * \see cpn_client_start_session
  */
-int cpn_proto_handle_session(struct cpn_channel *channel,
+int cpn_server_handle_session(struct cpn_channel *channel,
         const struct cpn_sign_key_public *remote_key,
         const struct cpn_service *service,
         const struct cpn_cfg *cfg);
@@ -156,7 +156,7 @@ int cpn_proto_handle_session(struct cpn_channel *channel,
  *
  * \see cpn_client_terminate_session
  */
-int cpn_proto_handle_termination(struct cpn_channel *channel,
+int cpn_server_handle_termination(struct cpn_channel *channel,
         const struct cpn_sign_key_public *remote_key);
 
 #endif

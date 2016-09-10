@@ -128,7 +128,7 @@ int main(int argc, const char *argv[])
         }
 
         start = cpn_bench_nsecs();
-        if (cpn_proto_await_encryption(&channel, &args.server_keys, &args.client_keys.pk) < 0) {
+        if (cpn_server_await_encryption(&channel, &args.server_keys, &args.client_keys.pk) < 0) {
             puts("Unable to await encryption");
             return -1;
         }

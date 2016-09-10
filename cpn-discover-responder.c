@@ -114,7 +114,7 @@ static void handle_tcp(struct cpn_channel *channel)
     struct cpn_sign_key_public remote_sign_key;
     DiscoverMessage *msg = NULL;
 
-    if (cpn_proto_await_encryption(channel, &sign_keys, &remote_sign_key) < 0) {
+    if (cpn_server_await_encryption(channel, &sign_keys, &remote_sign_key) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to await encryption");
         goto out;
     }

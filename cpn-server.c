@@ -123,12 +123,12 @@ static void *handle_connection(void *payload)
     struct cpn_sign_key_public remote_key;
     enum cpn_command type;
 
-    if (cpn_proto_await_encryption(&args->channel, &local_keys, &remote_key) < 0) {
+    if (cpn_server_await_encryption(&args->channel, &local_keys, &remote_key) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to negotiate encryption");
         goto out;
     }
 
-    if (cpn_proto_receive_connection_type(&type, &args->channel) < 0) {
+    if (cpn_server_await_command(&type, &args->channel) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not receive connection type");
         goto out;
     }
@@ -142,7 +142,7 @@ static void *handle_connection(void *payload)
                 goto out;
             }
 
-            if (cpn_proto_answer_query(&args->channel, &service) < 0) {
+            if (cpn_server_handle_query(&args->channel, &service) < 0) {
                 cpn_log(LOG_LEVEL_ERROR, "Received invalid query");
                 goto out;
             }
@@ -156,7 +156,7 @@ static void *handle_connection(void *payload)
                 goto out;
             }
 
-            if (cpn_proto_answer_request(&args->channel, &remote_key, service.plugin) < 0) {
+            if (cpn_server_handle_request(&args->channel, &remote_key, service.plugin) < 0) {
                 cpn_log(LOG_LEVEL_ERROR, "Received invalid request");
                 goto out;
             }
@@ -165,7 +165,7 @@ static void *handle_connection(void *payload)
         case CPN_COMMAND_CONNECT:
             cpn_log(LOG_LEVEL_DEBUG, "Received connect");
 
-            if (cpn_proto_handle_session(&args->channel, &remote_key, &service, args->cfg) < 0)
+            if (cpn_server_handle_session(&args->channel, &remote_key, &service, args->cfg) < 0)
             {
                 cpn_log(LOG_LEVEL_ERROR, "Received invalid connect");
             }
@@ -174,7 +174,7 @@ static void *handle_connection(void *payload)
         case CPN_COMMAND_TERMINATE:
             cpn_log(LOG_LEVEL_DEBUG, "Received termination request");
 
-            if (cpn_proto_handle_termination(&args->channel, &remote_key) < 0) {
+            if (cpn_server_handle_termination(&args->channel, &remote_key) < 0) {
                 cpn_log(LOG_LEVEL_ERROR, "Received invalid termination request");
             }
 
