@@ -50,15 +50,15 @@
  * server. They are used to distinguish what to do on the server
  * side and how to handle the incoming request.
  */
-enum cpn_connection_type {
+enum cpn_command {
     /** @brief Query a service */
-    CPN_CONNECTION_TYPE_QUERY,
+    CPN_COMMAND_QUERY,
     /** @brief Connect to an established session */
-    CPN_CONNECTION_TYPE_CONNECT,
+    CPN_COMMAND_CONNECT,
     /** @brief Request a new session */
-    CPN_CONNECTION_TYPE_REQUEST,
+    CPN_COMMAND_REQUEST,
     /** @brief Terminate an established session */
-    CPN_CONNECTION_TYPE_TERMINATE
+    CPN_COMMAND_TERMINATE
 };
 
 /** @brief Receive connection type on an established connection
@@ -70,7 +70,7 @@ enum cpn_connection_type {
  * @param[in] channel Channel connected to the client
  * @return <code>0</code> on success, <code>-1</code> otherwise
  */
-int cpn_proto_receive_connection_type(enum cpn_connection_type *out,
+int cpn_proto_receive_connection_type(enum cpn_command *out,
         struct cpn_channel *channel);
 
 /** @brief Await encryption initiated by the client

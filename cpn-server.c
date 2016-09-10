@@ -121,7 +121,7 @@ static void *handle_connection(void *payload)
 {
     struct handle_connection_args *args = (struct handle_connection_args *) payload;
     struct cpn_sign_key_public remote_key;
-    enum cpn_connection_type type;
+    enum cpn_command type;
 
     if (cpn_proto_await_encryption(&args->channel, &local_keys, &remote_key) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to negotiate encryption");
@@ -134,7 +134,7 @@ static void *handle_connection(void *payload)
     }
 
     switch (type) {
-        case CPN_CONNECTION_TYPE_QUERY:
+        case CPN_COMMAND_QUERY:
             cpn_log(LOG_LEVEL_DEBUG, "Received query");
 
             if (!cpn_acl_is_allowed(&query_acl, &remote_key, CPN_ACL_RIGHT_EXEC)) {
@@ -148,7 +148,7 @@ static void *handle_connection(void *payload)
             }
 
             goto out;
-        case CPN_CONNECTION_TYPE_REQUEST:
+        case CPN_COMMAND_REQUEST:
             cpn_log(LOG_LEVEL_DEBUG, "Received request");
 
             if (!cpn_acl_is_allowed(&request_acl, &remote_key, CPN_ACL_RIGHT_EXEC)) {
@@ -162,7 +162,7 @@ static void *handle_connection(void *payload)
             }
 
             goto out;
-        case CPN_CONNECTION_TYPE_CONNECT:
+        case CPN_COMMAND_CONNECT:
             cpn_log(LOG_LEVEL_DEBUG, "Received connect");
 
             if (cpn_proto_handle_session(&args->channel, &remote_key, &service, args->cfg) < 0)
@@ -171,7 +171,7 @@ static void *handle_connection(void *payload)
             }
 
             goto out;
-        case CPN_CONNECTION_TYPE_TERMINATE:
+        case CPN_COMMAND_TERMINATE:
             cpn_log(LOG_LEVEL_DEBUG, "Received termination request");
 
             if (cpn_proto_handle_termination(&args->channel, &remote_key) < 0) {

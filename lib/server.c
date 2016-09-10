@@ -26,7 +26,7 @@
 #include "capone/proto/connect.pb-c.h"
 #include "capone/proto/encryption.pb-c.h"
 
-int cpn_proto_receive_connection_type(enum cpn_connection_type *out,
+int cpn_proto_receive_connection_type(enum cpn_command *out,
         struct cpn_channel *channel)
 {
     ConnectionInitiationMessage *initiation;
@@ -41,16 +41,16 @@ int cpn_proto_receive_connection_type(enum cpn_connection_type *out,
 
     switch (initiation->type) {
         case CONNECTION_INITIATION_MESSAGE__TYPE__QUERY:
-            *out = CPN_CONNECTION_TYPE_QUERY;
+            *out = CPN_COMMAND_QUERY;
             break;
         case CONNECTION_INITIATION_MESSAGE__TYPE__REQUEST:
-            *out = CPN_CONNECTION_TYPE_REQUEST;
+            *out = CPN_COMMAND_REQUEST;
             break;
         case CONNECTION_INITIATION_MESSAGE__TYPE__CONNECT:
-            *out = CPN_CONNECTION_TYPE_CONNECT;
+            *out = CPN_COMMAND_CONNECT;
             break;
         case CONNECTION_INITIATION_MESSAGE__TYPE__TERMINATE:
-            *out = CPN_CONNECTION_TYPE_TERMINATE;
+            *out = CPN_COMMAND_TERMINATE;
             break;
         case _CONNECTION_INITIATION_MESSAGE__TYPE_IS_INT_SIZE:
         default:

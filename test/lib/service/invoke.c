@@ -84,7 +84,7 @@ static void invoking_succeeds()
     struct cpn_socket socket;
     struct cpn_channel c;
     struct cpn_thread t;
-    enum cpn_connection_type type;
+    enum cpn_command type;
 
     assert_success(cpn_socket_init(&socket, "127.0.0.1", "8080", CPN_CHANNEL_TYPE_TCP));
     assert_success(cpn_socket_listen(&socket));
@@ -103,7 +103,7 @@ static void invoking_succeeds()
     assert_success(cpn_socket_accept(&socket, &c));
     assert_success(cpn_proto_await_encryption(&c, &keys, &keys.pk));
     assert_success(cpn_proto_receive_connection_type(&type, &c));
-    assert_int_equal(type, CPN_CONNECTION_TYPE_CONNECT);
+    assert_int_equal(type, CPN_COMMAND_CONNECT);
     assert_success(cpn_channel_receive_protobuf(&c, &session_initiation_message__descriptor,
                 (ProtobufCMessage **) &msg));
     result.result = 0;
