@@ -29,6 +29,7 @@ IF(CMOCKA_FOUND)
         lib/cfg.c
         lib/channel.c
         lib/common.c
+        lib/global.c
         lib/keys.c
         lib/list.c
         lib/opts.c

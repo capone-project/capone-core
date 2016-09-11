@@ -30,6 +30,7 @@ extern int cfg_test_run_suite(void);
 extern int channel_test_run_suite(void);
 extern int cmdparse_test_run_suite(void);
 extern int common_test_run_suite(void);
+extern int global_test_run_suite(void);
 extern int keys_test_run_suite(void);
 extern int list_test_run_suite(void);
 extern int proto_test_run_suite(void);
@@ -55,6 +56,7 @@ static int (*suite_fns[])(void) = {
     channel_test_run_suite,
     cmdparse_test_run_suite,
     common_test_run_suite,
+    global_test_run_suite,
     keys_test_run_suite,
     list_test_run_suite,
     socket_test_run_suite,
