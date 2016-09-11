@@ -35,6 +35,8 @@ int cpn_sessions_add(const struct cpn_session **out, ProtobufCMessage *params,
 {
     struct cpn_session *session;
 
+    *out = NULL;
+
     session = malloc(sizeof(struct cpn_session));
     session->parameters = params;
 
@@ -59,6 +61,9 @@ int cpn_sessions_remove(struct cpn_session **out, uint32_t sessionid)
 {
     struct cpn_list_entry *it;
     struct cpn_session *s;
+
+    if (out)
+        *out = NULL;
 
     pthread_mutex_lock(&mutex);
     cpn_list_foreach(&sessions, it, s) {
