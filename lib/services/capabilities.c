@@ -88,6 +88,7 @@ static void relay_capability_for_registrant(struct registrant *r)
             cpn_channel_close(&c->channel);
             cpn_list_remove(&registrants, it);
             free(c);
+            c = NULL;
         }
         pthread_mutex_unlock(&clients_mutex);
 
