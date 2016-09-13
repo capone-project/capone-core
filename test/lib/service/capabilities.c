@@ -50,6 +50,7 @@ static int teardown()
 {
     cpn_channel_close(&client);
     cpn_channel_close(&server);
+    cpn_cfg_free(&cfg);
     return 0;
 }
 
