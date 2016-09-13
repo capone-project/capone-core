@@ -236,6 +236,7 @@ static void request_constructs_session()
 
     cpn_session_free(added);
     cpn_cap_free(cap);
+    protobuf_c_message_free_unpacked(parsed, NULL);
 }
 
 static void whitlisted_request_constructs_session()

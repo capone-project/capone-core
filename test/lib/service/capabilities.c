@@ -129,6 +129,10 @@ static void forwarding_request_succeeds()
     assert_string_equal(cmd->request->service_type, requestParams.service_type);
     assert_memory_equal(cmd->request->service_identity->data.data, pk.data, sizeof(pk.data));
     assert_memory_equal(cmd->request->requester_identity->data.data, pk.data, sizeof(pk.data));
+
+    protobuf_c_message_free_unpacked(&cmd->base, NULL);
+    protobuf_c_message_free_unpacked(&requestParams.requested_identity->base, NULL);
+    protobuf_c_message_free_unpacked(&requestParams.service_identity->base, NULL);
 }
 
 static void parsing_register_succeeds()
@@ -140,6 +144,8 @@ static void parsing_register_succeeds()
     assert_true(protobuf_c_message_check(&params->base));
     assert_null(params->request_params);
     assert_int_equal(params->type, CAPABILITIES_PARAMS__TYPE__REGISTER);
+
+    protobuf_c_message_free_unpacked(&params->base, NULL);
 }
 
 static void parsing_request_succeeds()
