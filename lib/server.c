@@ -403,6 +403,7 @@ static int receive_key_verification(struct cpn_channel *c,
 
 out:
     free(sign_data);
+    cpn_buf_clear(&sign_buf);
     if (msg)
         acknowledge_key__free_unpacked(msg, NULL);
 
