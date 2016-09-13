@@ -165,6 +165,27 @@ out_err:
     return -1;
 }
 
+struct cpn_cap *cpn_cap_dup(const struct cpn_cap *cap)
+{
+    uint32_t i;
+    struct cpn_cap *dup;
+
+    dup = malloc(sizeof(struct cpn_cap));
+    dup->chain_depth = cap->chain_depth;
+    memcpy(dup->secret, cap->secret, sizeof(dup->secret));
+
+    if (dup->chain_depth) {
+        dup->chain = malloc(sizeof(*dup->chain) * cap->chain_depth);
+        for (i = 0; i < cap->chain_depth; i++) {
+            memcpy(&dup->chain[i], &cap->chain[i], sizeof(dup->chain[i]));
+        }
+    } else {
+        dup->chain = NULL;
+    }
+
+    return dup;
+}
+
 int cpn_cap_from_protobuf(struct cpn_cap **out, const CapabilityMessage *msg)
 {
     struct cpn_cap *cap = NULL;

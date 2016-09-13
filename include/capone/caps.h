@@ -55,6 +55,9 @@ int cpn_cap_from_string(struct cpn_cap **out, const char *string);
 /** @brief Parse a capability from strings */
 int cpn_cap_to_string(char **out, const struct cpn_cap *cap);
 
+/** @brief Duplicate memory associated with a capability */
+struct cpn_cap *cpn_cap_dup(const struct cpn_cap *cap);
+
 /** @brief Create capability from Protobuf */
 int cpn_cap_from_protobuf(struct cpn_cap **out, const CapabilityMessage *msg);
 
