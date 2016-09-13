@@ -561,6 +561,9 @@ int parse(ProtobufCMessage **out, int argc, const char *argv[])
 
         params->request_params = rparams;
         params->type = CAPABILITIES_PARAMS__TYPE__REQUEST;
+
+        if (service_params)
+            protobuf_c_message_free_unpacked(service_params, NULL);
     }
 
     *out = &params->base;
