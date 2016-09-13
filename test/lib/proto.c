@@ -285,7 +285,7 @@ static void service_connects()
     sessionid = session->identifier;
 
     assert_success(cpn_client_start_session(&received_session, &local, session->identifier, cap, service.plugin));
-    assert_success(service.plugin->client_fn(&local, 0, NULL, &config) < 0);
+    assert_success(service.plugin->client_fn(&local, NULL, &config) < 0);
 
     cpn_cap_free(cap);
     cpn_join(&t, NULL);

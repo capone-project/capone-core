@@ -40,7 +40,6 @@ static struct cpn_opt connect_opts[] = {
             "Type of service which is to be invoked", "TYPE", false),
     CPN_OPTS_OPT_UINT32(0, "--session-id", NULL, "ID", false),
     CPN_OPTS_OPT_STRING('c', "--session-cap", NULL, "CAP", false),
-    CPN_OPTS_OPT_STRINGLIST(0, "--parameters", NULL, "PARAMETER", false),
     CPN_OPTS_OPT_END
 };
 
@@ -171,8 +170,7 @@ out_err:
 }
 
 static int cmd_connect(const char *service_type, uint32_t sessionid,
-        const char *capability,
-        const struct cpn_opts_stringlist *parameters)
+        const char *capability)
 {
     const struct cpn_service_plugin *plugin;
     struct cpn_channel channel;
@@ -204,7 +202,7 @@ static int cmd_connect(const char *service_type, uint32_t sessionid,
         goto out;
     }
 
-    if (plugin->client_fn(&channel, parameters->argc, parameters->argv, &cfg) < 0) {
+    if (plugin->client_fn(&channel, session, &cfg) < 0) {
         puts("Could not invoke service");
         goto out;
     }
@@ -279,8 +277,7 @@ int main(int argc, const char *argv[])
     else if (opts[6].set)
         return cmd_connect(connect_opts[0].value.string,
                connect_opts[1].value.uint32,
-               connect_opts[2].value.string,
-               &connect_opts[3].value.stringlist);
+               connect_opts[2].value.string);
     else if (opts[7].set)
         return cmd_terminate(terminate_opts[0].value.uint32,
                 terminate_opts[1].value.string);

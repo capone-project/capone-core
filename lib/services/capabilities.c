@@ -380,25 +380,19 @@ out:
 }
 
 static int invoke(struct cpn_channel *channel,
-        int argc, const char **argv,
+        const struct cpn_session *session,
         const struct cpn_cfg *cfg)
 {
-    struct cpn_opt opts[] = {
-        CPN_OPTS_OPT_ACTION("register", NULL, NULL),
-        CPN_OPTS_OPT_ACTION("request", NULL, NULL),
-        CPN_OPTS_OPT_END
-    };
+    CapabilitiesParams *params = (CapabilitiesParams *) session->parameters;
 
-    if (cpn_opts_parse(opts, argc, argv) < 0)
-        return -1;
-
-    if (opts[0].set)
-        return invoke_register(channel, cfg);
-    else if (opts[1].set)
-        return invoke_request(channel);
-    else {
-        cpn_log(LOG_LEVEL_ERROR, "Unknown parameter '%s'", argv[0]);
-        return -1;
+    switch (params->type) {
+        case CAPABILITIES_PARAMS__TYPE__REGISTER:
+            return invoke_register(channel, cfg);
+        case CAPABILITIES_PARAMS__TYPE__REQUEST:
+            return invoke_request(channel);
+        default:
+            cpn_log(LOG_LEVEL_ERROR, "Unknown parameter");
+            return -1;
     }
 }
 

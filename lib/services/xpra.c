@@ -27,15 +27,15 @@
 
 #include "capone/services/xpra.h"
 
-static int invoke(struct cpn_channel *channel, int argc, const char **argv,
+static int invoke(struct cpn_channel *channel,
+        const struct cpn_session *session,
         const struct cpn_cfg *cfg)
 {
     struct cpn_channel xpra_channel;
     char *port = NULL;
     char buf[1];
 
-    UNUSED(argc);
-    UNUSED(argv);
+    UNUSED(session);
 
     if ((port = cpn_cfg_get_str_value(cfg, "xpra", "port")) == NULL) {
         cpn_log(LOG_LEVEL_ERROR, "No port for xpra specified in 'xpra.port'");
