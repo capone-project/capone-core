@@ -273,19 +273,25 @@ static void service_connects()
     struct cpn_cap *cap;
     struct cpn_thread t;
     const struct cpn_session *session;
+    struct cpn_session *received_session = NULL;
     uint8_t *received;
+    uint32_t sessionid;
 
     cpn_spawn(&t, handle_session, &args);
 
     assert_success(service.plugin->parse_fn(&params_proto, ARRAY_SIZE(params), params));
     assert_success(cpn_sessions_add(&session, params_proto, &remote_keys.pk));
     assert_success(cpn_cap_create_ref(&cap, session->cap, CPN_CAP_RIGHT_EXEC, &local_keys.pk));
+    sessionid = session->identifier;
 
-    assert_success(cpn_client_start_session(&local, session->identifier, cap));
+    assert_success(cpn_client_start_session(&received_session, &local, session->identifier, cap, service.plugin));
     assert_success(service.plugin->client_fn(&local, 0, NULL, &config) < 0);
 
     cpn_cap_free(cap);
     cpn_join(&t, NULL);
+
+    assert_non_null(received_session);
+    assert_int_equal(received_session->identifier, sessionid);
 
     received = cpn_test_service_get_data();
     assert_string_equal(params[0], received);
@@ -298,14 +304,18 @@ static void connect_refuses_without_session()
     };
     struct cpn_thread t;
     struct cpn_cap cap;
+    struct cpn_session *session = NULL;
 
     cap.chain_depth = 0;
 
     cpn_spawn(&t, handle_session, &args);
 
-    assert_failure(cpn_client_start_session(&local, 1, &cap));
+    assert_failure(cpn_client_start_session(&session, &local, 1, &cap, service.plugin));
 
     cpn_join(&t, NULL);
+
+    assert_null(session);
+    cpn_session_free(session);
 }
 
 static void termination_kills_session()

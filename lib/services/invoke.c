@@ -49,6 +49,7 @@ static int handle(struct cpn_channel *channel,
     struct cpn_sign_key_pair local_keys;
     struct cpn_sign_key_public service_key;
     struct cpn_channel remote_channel;
+    struct cpn_session *remote_session = NULL;
     struct cpn_cap *cap = NULL;
     int err = -1;
 
@@ -86,7 +87,7 @@ static int handle(struct cpn_channel *channel,
         goto out;
     }
 
-    if (cpn_client_start_session(&remote_channel, params->sessionid, cap) < 0) {
+    if (cpn_client_start_session(&remote_session, &remote_channel, params->sessionid, cap, plugin) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not connect to session");
         goto out;
     }
@@ -102,6 +103,7 @@ static int handle(struct cpn_channel *channel,
 
 out:
     cpn_cap_free(cap);
+    cpn_session_free(remote_session);
 
     return err;
 }

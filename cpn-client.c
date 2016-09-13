@@ -176,6 +176,7 @@ static int cmd_connect(const char *service_type, uint32_t sessionid,
 {
     const struct cpn_service_plugin *plugin;
     struct cpn_channel channel;
+    struct cpn_session *session = NULL;
     struct cpn_cap *cap = NULL;
     int err = -1;
 
@@ -198,7 +199,7 @@ static int cmd_connect(const char *service_type, uint32_t sessionid,
         goto out;
     }
 
-    if (cpn_client_start_session(&channel, sessionid, cap) < 0) {
+    if (cpn_client_start_session(&session, &channel, sessionid, cap, plugin) < 0) {
         puts("Could not connect to session");
         goto out;
     }
@@ -213,6 +214,7 @@ static int cmd_connect(const char *service_type, uint32_t sessionid,
 out:
     cpn_channel_close(&channel);
     cpn_cap_free(cap);
+    cpn_session_free(session);
 
     return err;
 }
