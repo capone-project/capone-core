@@ -69,11 +69,11 @@ static void creating_nested_refs_succeeds()
     struct cpn_cap *nested;
 
     assert_success(cpn_cap_create_root(&root));
-    assert_success(cpn_cap_create_ref(&ref, root, CPN_CAP_RIGHT_EXEC, &pk));
+    assert_success(cpn_cap_create_ref(&ref, root, CPN_CAP_RIGHT_EXEC|CPN_CAP_RIGHT_DISTRIBUTE, &pk));
     assert_success(cpn_cap_create_ref(&nested, ref, CPN_CAP_RIGHT_EXEC, &other_pk));
 
     assert_int_equal(nested->chain_depth, 2);
-    assert_int_equal(nested->chain[0].rights, CPN_CAP_RIGHT_EXEC);
+    assert_int_equal(nested->chain[0].rights, CPN_CAP_RIGHT_EXEC|CPN_CAP_RIGHT_DISTRIBUTE);
     assert_memory_equal(&nested->chain[0].identity, &pk, sizeof(pk));
     assert_int_equal(nested->chain[1].rights, CPN_CAP_RIGHT_EXEC);
     assert_memory_equal(&nested->chain[1].identity, &other_pk, sizeof(other_pk));
@@ -86,9 +86,16 @@ static void creating_nested_refs_with_additional_rights_fails()
     struct cpn_cap *nested;
 
     assert_success(cpn_cap_create_root(&root));
-    assert_success(cpn_cap_create_ref(&ref, root, CPN_CAP_RIGHT_EXEC, &pk));
+    assert_success(cpn_cap_create_ref(&ref, root, CPN_CAP_RIGHT_EXEC|CPN_CAP_RIGHT_DISTRIBUTE, &pk));
     assert_failure(cpn_cap_create_ref(&nested, ref, CPN_CAP_RIGHT_EXEC|CPN_CAP_RIGHT_TERM, &other_pk));
     assert_null(nested);
+}
+
+static void creating_ref_without_distribution_right_fails()
+{
+    assert_success(cpn_cap_create_root(&root));
+    assert_success(cpn_cap_create_ref(&ref, root, CPN_CAP_RIGHT_EXEC, &pk));
+    assert_failure(cpn_cap_create_ref(&ref, ref, CPN_CAP_RIGHT_EXEC, &pk));
 }
 
 static void verifying_valid_ref_succeeds()
@@ -270,6 +277,7 @@ int caps_test_run_suite(void)
         test(creating_ref_succeeds),
         test(creating_nested_refs_succeeds),
         test(creating_nested_refs_with_additional_rights_fails),
+        test(creating_ref_without_distribution_right_fails),
 
         test(verifying_valid_ref_succeeds),
         test(verifying_valid_ref_with_different_pk_fails),
