@@ -131,15 +131,20 @@ int cpn_client_request_session(uint32_t *sessionid,
  * The channel has to be initialized with the connect connection
  * type.
  *
+ * @param[out] out Session that was started
  * @param[in] channel Channel connected to the server
  * @param[in] sessionid Identifier of the session to be invoked
  * @param[in] cap Capability referencing the session
+ * @param[in] plugin Plugin to handle session
  * @return <code>0</code> on success, <code>-1</code> otherwise
  *
  * \see cpn_server_handle_session
  */
-int cpn_client_start_session(struct cpn_channel *channel,
-        uint32_t sessionid, const struct cpn_cap *cap);
+int cpn_client_start_session(struct cpn_session **out,
+        struct cpn_channel *channel,
+        uint32_t sessionid,
+        const struct cpn_cap *cap,
+        const struct cpn_service_plugin *plugin);
 
 /** @brief Initiate session termination
  *

@@ -29,10 +29,10 @@
 #include "capone/proto/exec.pb-c.h"
 
 static int invoke(struct cpn_channel *channel,
-        int argc, const char **argv, const struct cpn_cfg *cfg)
+        const struct cpn_session *session,
+        const struct cpn_cfg *cfg)
 {
-    UNUSED(argc);
-    UNUSED(argv);
+    UNUSED(session);
     UNUSED(cfg);
 
     if (cpn_channel_relay(channel, 1, STDOUT_FILENO) < 0) {

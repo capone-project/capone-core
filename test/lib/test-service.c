@@ -27,11 +27,11 @@
 
 static uint8_t buf[1024];
 
-static int invoke(struct cpn_channel *channel, int argc, const char **argv,
+static int invoke(struct cpn_channel *channel,
+        const struct cpn_session *session,
         const struct cpn_cfg *cfg)
 {
-    UNUSED(argc);
-    UNUSED(argv);
+    UNUSED(session);
     UNUSED(cfg);
     return cpn_channel_receive_data(channel, buf, sizeof(buf));
 }

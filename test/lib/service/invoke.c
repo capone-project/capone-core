@@ -110,7 +110,7 @@ static void invoking_succeeds()
     assert_success(cpn_channel_write_protobuf(&c, &result.base));
     assert_success(cpn_channel_write_data(&c, (uint8_t *) "test", 5));
 
-    assert_success(service->client_fn(&c, 0, NULL, &cfg));
+    assert_success(service->client_fn(&c, NULL, &cfg));
 
     assert_success(cpn_join(&t, NULL));
     cpn_channel_close(&c);
@@ -207,8 +207,6 @@ static void parsing_command_succeeds_without_parameters()
     assert_string_equal(params->service_address, "localhost");
     assert_string_equal(params->service_port, "12345");
     assert_string_equal(params->service_type, "type");
-    assert_int_equal(params->n_service_parameters, 0);
-    assert_null(params->service_parameters);
 
     invoke_params__free_unpacked(params, NULL);
 }
@@ -221,8 +219,7 @@ static void parsing_command_succeeds_with_parameters()
         "--service-identity", PK,
         "--service-address", "localhost",
         "--service-port", "12345",
-        "--service-type", "type",
-        "--service-parameters", "a", "b", "c"
+        "--service-type", "type"
     };
     InvokeParams *params;
 
@@ -232,10 +229,6 @@ static void parsing_command_succeeds_with_parameters()
     assert_string_equal(params->service_address, "localhost");
     assert_string_equal(params->service_port, "12345");
     assert_string_equal(params->service_type, "type");
-    assert_int_equal(params->n_service_parameters, 3);
-    assert_string_equal(params->service_parameters[0], "a");
-    assert_string_equal(params->service_parameters[1], "b");
-    assert_string_equal(params->service_parameters[2], "c");
 
     invoke_params__free_unpacked(params, NULL);
 }

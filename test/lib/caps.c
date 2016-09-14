@@ -229,6 +229,37 @@ static void reference_to_string_fails_without_rights()
     assert_failure(cpn_cap_to_string(&string, ref));
 }
 
+static void dup_of_root_cap_succeeds()
+{
+    struct cpn_cap *dup;
+
+    assert_success(cpn_cap_create_root(&root));
+    dup = cpn_cap_dup(root);
+
+    assert_non_null(dup);
+    assert_memory_equal(dup->secret, root->secret, sizeof(dup->secret));
+    assert_int_equal(dup->chain_depth, 0);
+    assert_null(dup->chain);
+
+    cpn_cap_free(dup);
+}
+
+static void dup_of_reference_cap_succeeds()
+{
+    struct cpn_cap *dup;
+
+    assert_success(cpn_cap_create_root(&root));
+    assert_success(cpn_cap_create_ref(&ref, root, 0, &pk));
+
+    dup = cpn_cap_dup(ref);
+
+    assert_non_null(dup);
+    assert_int_equal(dup->chain_depth, 1);
+    assert_memory_equal(dup->chain, ref->chain, sizeof(dup->chain) * dup->chain_depth);
+
+    cpn_cap_free(dup);
+}
+
 int caps_test_run_suite(void)
 {
     const struct CMUnitTest tests[] = {
@@ -255,7 +286,10 @@ int caps_test_run_suite(void)
 
         test(cap_to_string_succeeds_with_root_ref),
         test(cap_to_string_succeeds_with_reference),
-        test(reference_to_string_fails_without_rights)
+        test(reference_to_string_fails_without_rights),
+
+        test(dup_of_root_cap_succeeds),
+        test(dup_of_reference_cap_succeeds)
     };
 
     return execute_test_suite("caps", tests, NULL, NULL);

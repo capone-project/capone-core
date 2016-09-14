@@ -45,13 +45,12 @@ struct cpn_channel;
  * This function is invoked on the client-side.
  *
  * @param[in] channel Channel to the remote service
- * @param[in] argc Count of arguments specified by the client
- * @param[in] argv Array of arguments specified by the client
+ * @param[in] session Session that is being handled
  * @param[in] cfg Configuration for the client
  * @return <code>0</code> on success, <code>-1</code> otherwise
  */
 typedef int (*cpn_service_client_fn)(struct cpn_channel *channel,
-        int argc, const char **argv,
+        const struct cpn_session *session,
         const struct cpn_cfg *cfg);
 
 /** @brief Function executed when a service is started by a client

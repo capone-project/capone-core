@@ -55,9 +55,15 @@ static int teardown()
 
 static void *registrant(void *ignored)
 {
-    const char *args[] = { "register" };
+    CapabilitiesParams params = CAPABILITIES_PARAMS__INIT;
+    struct cpn_session session;
+
     UNUSED(ignored);
-    service->client_fn(&client, ARRAY_SIZE(args), args, &cfg);
+
+    params.type = CAPABILITIES_PARAMS__TYPE__REGISTER;
+    session.parameters = &params.base;
+
+    service->client_fn(&client, &session, &cfg);
     return NULL;
 }
 

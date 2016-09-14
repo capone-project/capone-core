@@ -27,26 +27,26 @@
 
 #include "capone/services/xpra.h"
 
-static int invoke(struct cpn_channel *channel, int argc, const char **argv,
+static int invoke(struct cpn_channel *channel,
+        const struct cpn_session *session,
         const struct cpn_cfg *cfg)
 {
-    struct cpn_opt opts[] = {
-        CPN_OPTS_OPT_STRING(0, "--port", NULL, NULL, false),
-        CPN_OPTS_OPT_END
-    };
     struct cpn_channel xpra_channel;
+    char *port = NULL;
     char buf[1];
 
-    UNUSED(cfg);
+    UNUSED(session);
 
-    if (cpn_opts_parse(opts, argc, argv) < 0)
-        return -1;
+    if ((port = cpn_cfg_get_str_value(cfg, "xpra", "port")) == NULL) {
+        cpn_log(LOG_LEVEL_ERROR, "No port for xpra specified in 'xpra.port'");
+        goto out;
+    }
 
     if (cpn_channel_init_from_host(&xpra_channel, "127.0.0.1",
-                opts[0].value.string, CPN_CHANNEL_TYPE_TCP) < 0)
+                port, CPN_CHANNEL_TYPE_TCP) < 0)
     {
         cpn_log(LOG_LEVEL_ERROR, "Could not initialize local xpra channel");
-        return -1;
+        goto out;
     }
 
     /* As xpra uses a timeout waiting for initial data when
@@ -58,19 +58,21 @@ static int invoke(struct cpn_channel *channel, int argc, const char **argv,
      */
     if (recv(channel->fd, buf, sizeof(buf), MSG_PEEK) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not await xpra connection");
-        return -1;
+        goto out;
     }
 
     if (cpn_channel_connect(&xpra_channel) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not connect to local xpra socket");
-        return -1;
+        goto out;
     }
 
     if (cpn_channel_relay(channel, 1, xpra_channel.fd) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not relay data from xpra connection");
-        return -1;
+        goto out;
     }
 
+out:
+    free(port);
     cpn_channel_close(&xpra_channel);
 
     return 0;

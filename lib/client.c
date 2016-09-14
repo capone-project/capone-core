@@ -67,12 +67,16 @@ int cpn_client_connect(struct cpn_channel *channel,
     return 0;
 }
 
-int cpn_client_start_session(struct cpn_channel *channel,
+int cpn_client_start_session(struct cpn_session **out,
+        struct cpn_channel *channel,
         uint32_t sessionid,
-        const struct cpn_cap *cap)
+        const struct cpn_cap *cap,
+        const struct cpn_service_plugin *plugin)
 {
     SessionInitiationMessage initiation = SESSION_INITIATION_MESSAGE__INIT;
     SessionResult *result = NULL;
+    ProtobufCMessage *params = NULL;
+    struct cpn_session *session;
     int err = -1;
 
     if (initiate_connection_type(channel, CONNECTION_INITIATION_MESSAGE__TYPE__CONNECT) < 0) {
@@ -102,6 +106,16 @@ int cpn_client_start_session(struct cpn_channel *channel,
     if (result->result != 0) {
         goto out;
     }
+
+    params = protobuf_c_message_unpack(plugin->params_desc, NULL,
+            result->parameters.len, result->parameters.data);
+
+    session = malloc(sizeof(struct cpn_session));
+    session->parameters = params;
+    session->identifier = sessionid;
+    session->cap = cpn_cap_dup(cap);
+
+    *out = session;
 
     err = 0;
 

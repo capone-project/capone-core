@@ -28,11 +28,11 @@
 #include "capone/services/invoke.h"
 #include "capone/proto/invoke.pb-c.h"
 
-static int invoke(struct cpn_channel *channel, int argc, const char **argv,
+static int invoke(struct cpn_channel *channel,
+        const struct cpn_session *session,
         const struct cpn_cfg *cfg)
 {
-    UNUSED(argc);
-    UNUSED(argv);
+    UNUSED(session);
     UNUSED(channel);
     UNUSED(cfg);
 
@@ -49,6 +49,7 @@ static int handle(struct cpn_channel *channel,
     struct cpn_sign_key_pair local_keys;
     struct cpn_sign_key_public service_key;
     struct cpn_channel remote_channel;
+    struct cpn_session *remote_session = NULL;
     struct cpn_cap *cap = NULL;
     int err = -1;
 
@@ -86,14 +87,12 @@ static int handle(struct cpn_channel *channel,
         goto out;
     }
 
-    if (cpn_client_start_session(&remote_channel, params->sessionid, cap) < 0) {
+    if (cpn_client_start_session(&remote_session, &remote_channel, params->sessionid, cap, plugin) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not connect to session");
         goto out;
     }
 
-    if (plugin->client_fn(&remote_channel,
-                params->n_service_parameters, (const char **) params->service_parameters, cfg) < 0)
-    {
+    if (plugin->client_fn(&remote_channel, remote_session, cfg) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not invoke service");
         goto out;
     }
@@ -102,6 +101,7 @@ static int handle(struct cpn_channel *channel,
 
 out:
     cpn_cap_free(cap);
+    cpn_session_free(remote_session);
 
     return err;
 }
@@ -115,12 +115,10 @@ static int parse(ProtobufCMessage **out, int argc, const char *argv[])
         CPN_OPTS_OPT_STRING(0, "--service-address", NULL, NULL, false),
         CPN_OPTS_OPT_STRING(0, "--service-port", NULL, NULL, false),
         CPN_OPTS_OPT_STRING(0, "--service-type", NULL, NULL, false),
-        CPN_OPTS_OPT_STRINGLIST(0, "--service-parameters", NULL, NULL, true),
         CPN_OPTS_OPT_END
     };
     InvokeParams *params = NULL;
     struct cpn_cap *cap = NULL;
-    uint32_t i;
     int err = -1;
 
     if (cpn_opts_parse(opts, argc, argv) < 0)
@@ -138,17 +136,6 @@ static int parse(ProtobufCMessage **out, int argc, const char *argv[])
     params->service_address = strdup(opts[3].value.string);
     params->service_port = strdup(opts[4].value.string);
     params->service_type = strdup(opts[5].value.string);
-
-    if (opts[6].set) {
-        params->n_service_parameters = opts[6].value.stringlist.argc;
-        params->service_parameters = malloc(sizeof(char *) * params->n_service_parameters);
-        for (i = 0; i < params->n_service_parameters; i++) {
-            params->service_parameters[i] = strdup(opts[6].value.stringlist.argv[i]);
-        }
-    } else {
-        params->n_service_parameters = 0;
-        params->service_parameters = NULL;
-    }
 
     *out = &params->base;
     err = 0;
