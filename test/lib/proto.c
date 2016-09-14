@@ -236,6 +236,7 @@ static void request_constructs_session()
 
     cpn_session_free(added);
     cpn_cap_free(cap);
+    protobuf_c_message_free_unpacked(parsed, NULL);
 }
 
 static void whitlisted_request_constructs_session()
@@ -295,6 +296,8 @@ static void service_connects()
 
     received = cpn_test_service_get_data();
     assert_string_equal(params[0], received);
+
+    cpn_session_free(received_session);
 }
 
 static void connect_refuses_without_session()

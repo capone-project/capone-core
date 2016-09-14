@@ -394,6 +394,7 @@ static int send_key_verification(struct cpn_channel *c,
 
 out:
     free(sign_data);
+    cpn_buf_clear(&sign_buf);
 
     return err;
 }

@@ -464,8 +464,11 @@ static int handle_request(struct cpn_channel *channel,
 
     if (cpn_channel_write_protobuf(&reg->channel, &cmd.base) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to request capability request");
+        protobuf_c_message_free_unpacked(&request.requester_identity->base, NULL);
         return -1;
     }
+
+    protobuf_c_message_free_unpacked(&request.requester_identity->base, NULL);
 
     client = malloc(sizeof(struct client));
     client->requestid = request.requestid;
@@ -558,6 +561,9 @@ int parse(ProtobufCMessage **out, int argc, const char *argv[])
 
         params->request_params = rparams;
         params->type = CAPABILITIES_PARAMS__TYPE__REQUEST;
+
+        if (service_params)
+            protobuf_c_message_free_unpacked(service_params, NULL);
     }
 
     *out = &params->base;

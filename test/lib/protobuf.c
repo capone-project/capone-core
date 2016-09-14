@@ -177,6 +177,8 @@ static void arrays_to_string_succeeds()
             "d: 6.5\n"
             "e: ONE\n"
             "e: TWO\n");
+
+    free(arrays.b);
 }
 
 static void special_chars_to_string_succeeds()
