@@ -296,6 +296,8 @@ static void service_connects()
 
     received = cpn_test_service_get_data();
     assert_string_equal(params[0], received);
+
+    cpn_session_free(received_session);
 }
 
 static void connect_refuses_without_session()
