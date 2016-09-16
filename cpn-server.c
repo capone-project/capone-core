@@ -40,7 +40,6 @@ static struct cpn_acl request_acl = CPN_ACL_INIT;
 static struct cpn_acl query_acl = CPN_ACL_INIT;
 
 static struct cpn_sign_key_pair local_keys;
-static struct cpn_service service;
 
 static int read_acl(struct cpn_acl *acl, const char *file)
 {
@@ -196,8 +195,6 @@ static int setup(struct cpn_cfg *cfg, int argc, const char *argv[])
     struct cpn_opt opts[] = {
         CPN_OPTS_OPT_STRING('c', "--config",
                 "Path to configuration file", "CFGFILE", false),
-        CPN_OPTS_OPT_STRING('s', "--service",
-                "Name of the service to host", "SERVICE", false),
         CPN_OPTS_OPT_STRING(0, "--request-acl",
                 "Path to file containing access control list for requests",
                 "FILE", true),
@@ -241,12 +238,6 @@ static int setup(struct cpn_cfg *cfg, int argc, const char *argv[])
         goto out;
     }
 
-    if (cpn_service_from_config(&service, cpn_opts_get(opts, 0, "--service")->string, cfg) < 0) {
-        cpn_log(LOG_LEVEL_ERROR, "Could not parse services");
-        err = -1;
-        goto out;
-    }
-
     if (cpn_sign_key_pair_from_config(&local_keys, cfg) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not parse config");
         err = -1;
@@ -263,40 +254,68 @@ out:
 
 int main(int argc, const char *argv[])
 {
-    struct cpn_socket socket;
+    struct cpn_service *services;
+    struct cpn_socket *sockets;
     struct cpn_cfg cfg;
+    uint32_t i, n;
 
     if (setup(&cfg, argc, argv) < 0) {
         return -1;
     }
 
-    if (cpn_socket_init(&socket, NULL, service.port, CPN_CHANNEL_TYPE_TCP) < 0) {
-        cpn_log(LOG_LEVEL_ERROR, "Could not set up socket");
-        goto out;
-    }
+    n = cpn_services_from_config(&services, &cfg);
+    sockets = malloc(sizeof(struct cpn_socket) * n);
 
-    if (cpn_socket_listen(&socket) < 0) {
-        cpn_log(LOG_LEVEL_ERROR, "Could not start listening");
-        goto out;
-    }
-
-    while (1) {
-        struct handle_connection_args *args = malloc(sizeof(*args));;
-
-        if (cpn_socket_accept(&socket, &args->channel) < 0) {
-            cpn_log(LOG_LEVEL_ERROR, "Could not accept connection");
+    for (i = 0; i < n; i++) {
+        if (cpn_socket_init(&sockets[i], NULL, services[i].port, CPN_CHANNEL_TYPE_TCP) < 0) {
+            cpn_log(LOG_LEVEL_ERROR, "Could not set up socket");
             goto out;
         }
 
-        args->cfg = &cfg;
-        args->service = &service;
+        if (cpn_socket_listen(&sockets[i]) < 0) {
+            cpn_log(LOG_LEVEL_ERROR, "Could not start listening");
+            goto out;
+        }
+    }
 
-        cpn_spawn(NULL, handle_connection, args);
+    while (1) {
+        fd_set fds = { 0 };
+        int maxfd = -1;
+
+        for (i = 0; i < n; i++) {
+            FD_SET(sockets[i].fd, &fds);
+            maxfd = MAX(maxfd, sockets[i].fd);
+        }
+
+        if (select(maxfd + 1, &fds, NULL, NULL, NULL) == -1)
+            continue;
+
+        for (i = 0; i < n; i++) {
+            struct handle_connection_args *args;
+
+            if (!FD_ISSET(sockets[i].fd, &fds))
+                continue;
+
+            args = malloc(sizeof(*args));;
+
+            if (cpn_socket_accept(&sockets[i], &args->channel) < 0) {
+                cpn_log(LOG_LEVEL_ERROR, "Could not accept connection");
+                goto out;
+            }
+
+            args->cfg = &cfg;
+            args->service = &services[i];
+
+            cpn_spawn(NULL, handle_connection, args);
+        }
     }
 
 out:
-    cpn_socket_close(&socket);
+    for (i = 0; i < n; i++)
+        cpn_socket_close(&sockets[i]);
     cpn_cfg_free(&cfg);
+    free(services);
+    free(sockets);
 
     return -1;
 }
