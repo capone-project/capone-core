@@ -17,6 +17,7 @@
 
 #include "capone/buf.h"
 
+#include <assert.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
@@ -42,6 +43,8 @@ int cpn_buf_set(struct cpn_buf *buf, const char *string)
     if (ensure_allocated(buf, len + 1) < 0)
         return -1;
 
+    assert(buf->data);
+
     memcpy(buf->data, string, len);
     buf->length = len;
     buf->data[buf->length] = '\0';
@@ -56,6 +59,8 @@ int cpn_buf_append(struct cpn_buf *buf, const char *string)
     if (ensure_allocated(buf, buf->length + len + 1) < 0)
         return -1;
 
+    assert(buf->data);
+
     memcpy(buf->data + buf->length, string, len);
     buf->length = buf->length + len;
     buf->data[buf->length] = '\0';
@@ -67,6 +72,8 @@ int cpn_buf_append_data(struct cpn_buf *buf, const unsigned char *data, size_t l
 {
     if (ensure_allocated(buf, buf->length + len) < 0)
         return -1;
+
+    assert(buf->data);
 
     memcpy(buf->data + buf->length, data, len);
     buf->length = buf->length + len;

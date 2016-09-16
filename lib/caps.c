@@ -260,6 +260,8 @@ int cpn_cap_create_root(struct cpn_cap **out)
 {
     struct cpn_cap *cap;
 
+    *out = NULL;
+
     cap = malloc(sizeof(struct cpn_cap));
     randombytes_buf(cap->secret, CPN_CAP_SECRET_LEN);
     cap->chain_depth = 0;
@@ -274,6 +276,8 @@ int cpn_cap_create_ref(struct cpn_cap **out, const struct cpn_cap *root,
         uint32_t rights, const struct cpn_sign_key_public *key)
 {
     struct cpn_cap *cap;
+
+    *out = NULL;
 
     if (root->chain_depth && rights & ~root->chain[root->chain_depth - 1].rights)
         return -1;

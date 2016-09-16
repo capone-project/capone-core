@@ -15,10 +15,30 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <sys/types.h>
+#include <sys/stat.h>
+
 #include "test.h"
 
 #include "capone/common.h"
 #include "capone/opts.h"
+
+static FILE *open_tmp(void)
+{
+    char file[] = "capone-opts.XXXXXX";
+    int fd;
+    FILE *out;
+    mode_t mode;
+
+    mode = umask(0600);
+    fd = mkstemp(file);
+    assert(fd >= 0);
+    out = fdopen(fd, "w+");
+    assert_non_null(out);
+    umask(mode);
+
+    return out;
+}
 
 static int setup()
 {
@@ -593,7 +613,7 @@ static void usage_with_no_opts_succeeds()
     struct cpn_opt opts[] = {
         CPN_OPTS_OPT_END
     };
-    FILE *out = tmpfile();
+    FILE *out = open_tmp();
 
     cpn_opts_usage(opts, "test", out);
 
@@ -606,7 +626,7 @@ static void usage_with_single_opt_succeeds()
         CPN_OPTS_OPT_STRING('s', "--string", "This is a string", "STRING", false),
         CPN_OPTS_OPT_END
     };
-    FILE *out = tmpfile();
+    FILE *out = open_tmp();
 
     cpn_opts_usage(opts, "test", out);
 
@@ -624,7 +644,7 @@ static void usage_with_multiple_opts_succeeds()
         CPN_OPTS_OPT_STRING('o', "--other", NULL, NULL, false),
         CPN_OPTS_OPT_END
     };
-    FILE *out = tmpfile();
+    FILE *out = open_tmp();
 
     cpn_opts_usage(opts, "test", out);
 
@@ -646,7 +666,7 @@ static void usage_with_all_option_types_succeeds()
         CPN_OPTS_OPT_UINT32('u', "--uint32", "Unsigned integer", "UINT32", false),
         CPN_OPTS_OPT_END
     };
-    FILE *out = tmpfile();
+    FILE *out = open_tmp();
 
     cpn_opts_usage(opts, "test", out);
 
@@ -672,7 +692,7 @@ static void usage_with_mixed_short_and_long_opts_succeeds()
         CPN_OPTS_OPT_STRING('o', NULL, NULL, NULL, false),
         CPN_OPTS_OPT_END
     };
-    FILE *out = tmpfile();
+    FILE *out = open_tmp();
 
     cpn_opts_usage(opts, "test", out);
 
@@ -690,7 +710,7 @@ static void usage_with_single_action_without_args_succeeds()
         CPN_OPTS_OPT_ACTION("action", "This is an action", NULL),
         CPN_OPTS_OPT_END
     };
-    FILE *out = tmpfile();
+    FILE *out = open_tmp();
 
     cpn_opts_usage(opts, "test", out);
 
@@ -710,7 +730,7 @@ static void usage_with_single_action_with_args_succeeds()
         CPN_OPTS_OPT_ACTION("action", "This is an action", action_opts),
         CPN_OPTS_OPT_END
     };
-    FILE *out = tmpfile();
+    FILE *out = open_tmp();
 
     cpn_opts_usage(opts, "test", out);
 
@@ -732,7 +752,7 @@ static void usage_with_single_action_and_global_args()
         CPN_OPTS_OPT_ACTION("action", "This is an action", action_opts),
         CPN_OPTS_OPT_END
     };
-    FILE *out = tmpfile();
+    FILE *out = open_tmp();
 
     cpn_opts_usage(opts, "test", out);
 
@@ -760,7 +780,7 @@ static void usage_with_multiple_actions_and_arguments()
         CPN_OPTS_OPT_ACTION("other", "This is another action", other_opts),
         CPN_OPTS_OPT_END
     };
-    FILE *out = tmpfile();
+    FILE *out = open_tmp();
 
     cpn_opts_usage(opts, "test", out);
 
@@ -791,7 +811,7 @@ static void usage_with_subsubactions()
         CPN_OPTS_OPT_ACTION("action", "This is an action", action_opts),
         CPN_OPTS_OPT_END
     };
-    FILE *out = tmpfile();
+    FILE *out = open_tmp();
 
     cpn_opts_usage(opts, "test", out);
 
@@ -809,7 +829,7 @@ static void usage_with_subsubactions()
 
 static void version_succeeds()
 {
-    FILE *out = tmpfile();
+    FILE *out = open_tmp();
 
     cpn_opts_version("test", out);
 

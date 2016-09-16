@@ -88,6 +88,7 @@ static void relay_capability_for_registrant(struct registrant *r)
             cpn_channel_close(&c->channel);
             cpn_list_remove(&registrants, it);
             free(c);
+            c = NULL;
         }
         pthread_mutex_unlock(&clients_mutex);
 
@@ -159,7 +160,6 @@ static int relay_capability_request(struct cpn_channel *channel,
         const struct cpn_cfg *cfg)
 {
     Capability cap_message = CAPABILITY__INIT;
-    char *host = NULL, *port = NULL;
     struct cpn_channel service_channel;
     struct cpn_sign_key_pair local_keys;
     struct cpn_sign_key_public service_key, invoker_key;
@@ -181,7 +181,17 @@ static int relay_capability_request(struct cpn_channel *channel,
         goto out;
     }
 
-    cpn_sign_key_public_from_proto(&service_key, request->service_identity);
+    if ((params = protobuf_c_message_unpack(service->params_desc, NULL,
+                request->parameters.len, request->parameters.data)) == NULL)
+    {
+        cpn_log(LOG_LEVEL_ERROR, "Unable to parse parameters");
+        goto out;
+    }
+
+    if (cpn_sign_key_public_from_proto(&service_key, request->service_identity) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Unable to parse service identity");
+        goto out;
+    }
 
     if ((ret = cpn_client_connect(&service_channel,
                     request->service_address, request->service_port,
@@ -220,9 +230,6 @@ out:
 
     cpn_cap_free(root_cap);
     cpn_cap_free(ref_cap);
-
-    free(host);
-    free(port);
 
     if (params)
         protobuf_c_message_free_unpacked(params, NULL);

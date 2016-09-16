@@ -88,6 +88,7 @@ static void creating_nested_refs_with_additional_rights_fails()
     assert_success(cpn_cap_create_root(&root));
     assert_success(cpn_cap_create_ref(&ref, root, CPN_CAP_RIGHT_EXEC, &pk));
     assert_failure(cpn_cap_create_ref(&nested, ref, CPN_CAP_RIGHT_EXEC|CPN_CAP_RIGHT_TERM, &other_pk));
+    assert_null(nested);
 }
 
 static void verifying_valid_ref_succeeds()
@@ -255,7 +256,7 @@ static void dup_of_reference_cap_succeeds()
 
     assert_non_null(dup);
     assert_int_equal(dup->chain_depth, 1);
-    assert_memory_equal(dup->chain, ref->chain, sizeof(dup->chain) * dup->chain_depth);
+    assert_memory_equal(dup->chain, ref->chain, sizeof(*dup->chain) * dup->chain_depth);
 
     cpn_cap_free(dup);
 }

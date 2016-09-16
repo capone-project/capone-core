@@ -125,7 +125,7 @@ static void removing_null_fails()
 
 static void removing_nonexistent_fails()
 {
-    struct cpn_list_entry e;
+    struct cpn_list_entry e = { NULL, NULL, NULL };
 
     assert_failure(cpn_list_remove(&list, &e));
 }
