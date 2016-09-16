@@ -265,7 +265,6 @@ int main(int argc, const char *argv[])
 {
     struct cpn_socket socket;
     struct cpn_cfg cfg;
-    int err;
 
     if (setup(&cfg, argc, argv) < 0) {
         return -1;
@@ -273,13 +272,11 @@ int main(int argc, const char *argv[])
 
     if (cpn_socket_init(&socket, NULL, service.port, CPN_CHANNEL_TYPE_TCP) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not set up socket");
-        err = -1;
         goto out;
     }
 
     if (cpn_socket_listen(&socket) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not start listening");
-        err = -1;
         goto out;
     }
 
@@ -288,7 +285,6 @@ int main(int argc, const char *argv[])
 
         if (cpn_socket_accept(&socket, &args->channel) < 0) {
             cpn_log(LOG_LEVEL_ERROR, "Could not accept connection");
-            err = -1;
             goto out;
         }
 
@@ -302,5 +298,5 @@ out:
     cpn_socket_close(&socket);
     cpn_cfg_free(&cfg);
 
-    return err;
+    return -1;
 }
