@@ -61,10 +61,10 @@ static int send_discover(struct cpn_channel *channel)
 
         i = 0;
         cpn_list_foreach(&known_keys, it, key) {
-            i++;
             msg.known_keys[i].len = sizeof(struct cpn_sign_key_public);
             msg.known_keys[i].data = malloc(sizeof(struct cpn_sign_key_public));
             memcpy(msg.known_keys[i].data, &key->data, sizeof(struct cpn_sign_key_public));
+            i++;
         }
     } else {
         msg.known_keys = NULL;
