@@ -36,14 +36,18 @@
 
 #include "capone/proto/discovery.pb-c.h"
 
-static AnnounceMessage announce_message;
-static struct cpn_sign_key_pair sign_keys;
+static struct cpn_service *services;
+static int numservices;
 
+static struct cpn_sign_key_pair sign_keys;
+static const char *name;
 #define LISTEN_PORT "6667"
 
 static int announce(struct cpn_channel *channel,
         DiscoverMessage *msg)
 {
+    AnnounceMessage announce_message = ANNOUNCE_MESSAGE__INIT;
+    AnnounceMessage__Service **service_messages = NULL;
     size_t i;
     int err = -1;
 
@@ -63,6 +67,22 @@ static int announce(struct cpn_channel *channel,
         goto out;
     }
 
+    announce_message.name = (char *) name;
+    announce_message.version = VERSION;
+    announce_message.sign_key.data = sign_keys.pk.data;
+    announce_message.sign_key.len = sizeof(sign_keys.pk.data);
+
+    service_messages = malloc(sizeof(AnnounceMessage__Service *) * numservices);
+    for (i = 0; i < (size_t) numservices; i++) {
+        service_messages[i] = malloc(sizeof(AnnounceMessage__Service));
+        announce_message__service__init(service_messages[i]);
+        service_messages[i]->name = services[i].name;
+        service_messages[i]->port = services[i].port;
+        service_messages[i]->category = (char *) services[i].plugin->category;
+    }
+    announce_message.services = service_messages;
+    announce_message.n_services = numservices;
+
     if (cpn_channel_write_protobuf(channel, &announce_message.base) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not write announce message");
         goto out;
@@ -72,6 +92,11 @@ static int announce(struct cpn_channel *channel,
     err = 0;
 
 out:
+    if (service_messages) {
+        for (i = 0; i < (size_t) numservices; i++)
+            free(service_messages[i]);
+        free(service_messages);
+    }
     return err;
 }
 
@@ -199,11 +224,7 @@ int main(int argc, const char *argv[])
                 "Path to configuration file", "CFGFILE", false),
         CPN_OPTS_OPT_END,
     };
-    AnnounceMessage__Service **service_messages;
-    struct cpn_service *services;
     struct cpn_cfg cfg;
-    char *name;
-    int i, numservices;
 
     if (cpn_global_init() < 0)
         return -1;
@@ -232,25 +253,6 @@ int main(int argc, const char *argv[])
         return -1;
     }
 
-    announce_message__init(&announce_message);
-    announce_message.name = name;
-    announce_message.version = VERSION;
-    announce_message.sign_key.data = sign_keys.pk.data;
-    announce_message.sign_key.len = sizeof(sign_keys.pk.data);
-
-    service_messages = malloc(sizeof(AnnounceMessage__Service *) * numservices);
-    for (i = 0; i < numservices; i++) {
-        AnnounceMessage__Service *service_message = malloc(sizeof(AnnounceMessage__Service));
-        announce_message__service__init(service_message);
-
-        service_message->name = services[i].name;
-        service_message->port = services[i].port;
-        service_message->category = (char *) services[i].plugin->category;
-
-        service_messages[i] = service_message;
-    }
-    announce_message.services = service_messages;
-    announce_message.n_services = numservices;
 
     handle_connections();
 
