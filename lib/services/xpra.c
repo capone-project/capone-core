@@ -37,6 +37,8 @@ static int invoke(struct cpn_channel *channel,
 
     UNUSED(session);
 
+    xpra_channel.fd = -1;
+
     if ((port = cpn_cfg_get_str_value(cfg, "xpra", "port")) == NULL) {
         cpn_log(LOG_LEVEL_ERROR, "No port for xpra specified in 'xpra.port'");
         goto out;
