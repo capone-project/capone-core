@@ -32,6 +32,7 @@
 
 struct handle_connection_args {
     const struct cpn_cfg *cfg;
+    const struct cpn_service *service;
     struct cpn_channel channel;
 };
 
@@ -142,7 +143,7 @@ static void *handle_connection(void *payload)
                 goto out;
             }
 
-            if (cpn_server_handle_query(&args->channel, &service) < 0) {
+            if (cpn_server_handle_query(&args->channel, args->service) < 0) {
                 cpn_log(LOG_LEVEL_ERROR, "Received invalid query");
                 goto out;
             }
@@ -156,7 +157,7 @@ static void *handle_connection(void *payload)
                 goto out;
             }
 
-            if (cpn_server_handle_request(&args->channel, &remote_key, service.plugin) < 0) {
+            if (cpn_server_handle_request(&args->channel, &remote_key, args->service->plugin) < 0) {
                 cpn_log(LOG_LEVEL_ERROR, "Received invalid request");
                 goto out;
             }
@@ -165,7 +166,7 @@ static void *handle_connection(void *payload)
         case CPN_COMMAND_CONNECT:
             cpn_log(LOG_LEVEL_DEBUG, "Received connect");
 
-            if (cpn_server_handle_session(&args->channel, &remote_key, &service, args->cfg) < 0)
+            if (cpn_server_handle_session(&args->channel, &remote_key, args->service, args->cfg) < 0)
             {
                 cpn_log(LOG_LEVEL_ERROR, "Received invalid connect");
             }
@@ -292,6 +293,7 @@ int main(int argc, const char *argv[])
         }
 
         args->cfg = &cfg;
+        args->service = &service;
 
         cpn_spawn(NULL, handle_connection, args);
     }
