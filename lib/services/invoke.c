@@ -138,11 +138,10 @@ static int parse(ProtobufCMessage **out, int argc, const char *argv[])
     params->service_type = strdup(opts[5].value.string);
 
     *out = &params->base;
+    params = NULL;
     err = 0;
 
 out:
-    if (err && params)
-        invoke_params__free_unpacked(params, NULL);
     cpn_cap_free(cap);
     return err;
 }
