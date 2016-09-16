@@ -407,10 +407,7 @@ int cpn_channel_receive_protobuf(struct cpn_channel *c, const ProtobufCMessageDe
     ret = 0;
 
 out:
-    if (ret < 0 && result)
-        protobuf_c_message_free_unpacked(result, NULL);
-    else
-        *msg = result;
+    *msg = result;
 
     return ret;
 }
