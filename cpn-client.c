@@ -281,6 +281,8 @@ int main(int argc, const char *argv[])
     else if (opts[7].set)
         return cmd_terminate(terminate_opts[0].value.uint32,
                 terminate_opts[1].value.string);
+    else
+        puts("No action specified");
 
     return 0;
 }
