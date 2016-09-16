@@ -256,7 +256,7 @@ static void dup_of_reference_cap_succeeds()
 
     assert_non_null(dup);
     assert_int_equal(dup->chain_depth, 1);
-    assert_memory_equal(dup->chain, ref->chain, sizeof(dup->chain) * dup->chain_depth);
+    assert_memory_equal(dup->chain, ref->chain, sizeof(*dup->chain) * dup->chain_depth);
 
     cpn_cap_free(dup);
 }
