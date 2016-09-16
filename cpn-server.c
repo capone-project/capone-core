@@ -200,10 +200,10 @@ static int setup(struct cpn_cfg *cfg, int argc, const char *argv[])
                 "Name of the service to host", "SERVICE", false),
         CPN_OPTS_OPT_STRING(0, "--request-acl",
                 "Path to file containing access control list for requests",
-                "FILE", false),
+                "FILE", true),
         CPN_OPTS_OPT_STRING(0, "--query-acl",
                 "Path to file containing access control list for queries",
-                "FILE", false),
+                "FILE", true),
         CPN_OPTS_OPT_END
     };
     int err;
