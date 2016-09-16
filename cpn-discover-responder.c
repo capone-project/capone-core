@@ -41,15 +41,16 @@ static struct cpn_sign_key_pair sign_keys;
 
 #define LISTEN_PORT "6667"
 
-static void announce(struct cpn_channel *channel,
+static int announce(struct cpn_channel *channel,
         DiscoverMessage *msg)
 {
     size_t i;
+    int err = -1;
 
     if (strcmp(msg->version, VERSION)) {
         cpn_log(LOG_LEVEL_ERROR, "Cannot handle announce message version %s",
                 msg->version);
-        return;
+        goto out;
     }
 
     for (i = 0; i < msg->n_known_keys; i++) {
@@ -58,15 +59,20 @@ static void announce(struct cpn_channel *channel,
         if (memcmp(msg->known_keys[i].data, sign_keys.pk.data, sizeof(struct cpn_sign_key_public)))
             continue;
         cpn_log(LOG_LEVEL_DEBUG, "Skipping announce due to alreay being known");
-        return;
+        err = 0;
+        goto out;
     }
 
     if (cpn_channel_write_protobuf(channel, &announce_message.base) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not write announce message");
-        return;
+        goto out;
     }
 
     cpn_log(LOG_LEVEL_DEBUG, "Sent announce");
+    err = 0;
+
+out:
+    return err;
 }
 
 static void handle_udp(struct cpn_channel *channel)
@@ -98,11 +104,11 @@ static void handle_udp(struct cpn_channel *channel)
         goto out;
     }
 
-    announce(&client_channel, msg);
+    if (announce(&client_channel, msg) < 0)
+        cpn_log(LOG_LEVEL_ERROR, "Could not announce message");
 
-    if (cpn_channel_close(&client_channel) < 0) {
+    if (cpn_channel_close(&client_channel) < 0)
         cpn_log(LOG_LEVEL_ERROR, "Could not close client channel");
-    }
 
 out:
     if (msg)
