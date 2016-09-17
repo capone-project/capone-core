@@ -83,9 +83,6 @@ TARGET_LINK_LIBRARIES(cpn-derive capone)
 ADD_EXECUTABLE(cpn-discover cpn-discover.c)
 TARGET_LINK_LIBRARIES(cpn-discover capone)
 
-ADD_EXECUTABLE(cpn-discover-responder cpn-discover-responder.c)
-TARGET_LINK_LIBRARIES(cpn-discover-responder capone)
-
 ADD_EXECUTABLE(cpn-genkey cpn-genkey.c)
 TARGET_LINK_LIBRARIES(cpn-genkey capone)
 
