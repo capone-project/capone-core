@@ -83,34 +83,6 @@ static int send_discover(struct cpn_channel *channel)
     return err;
 }
 
-static void *probe(void *payload)
-{
-    struct cpn_channel channel;
-
-    UNUSED(payload);
-
-    if (cpn_channel_init_from_host(&channel, "224.0.0.1", "6667", CPN_CHANNEL_TYPE_UDP) < 0) {
-        puts("Unable to initialize channel");
-        goto out;
-    }
-
-    while (true) {
-        if (send_discover(&channel) < 0) {
-            puts("Unable to write protobuf");
-            goto out;
-        }
-
-        cpn_log(LOG_LEVEL_DEBUG, "Sent probe message");
-
-        sleep(5);
-    }
-
-out:
-    cpn_channel_close(&channel);
-
-    return NULL;
-}
-
 static int handle_announce(struct cpn_channel *channel)
 {
     struct cpn_list_entry *it;
@@ -168,12 +140,18 @@ out:
 static void undirected_discovery()
 {
     struct cpn_socket socket;
+    struct cpn_channel client;
     struct cpn_channel channel;
-    struct cpn_thread t;
+    struct timeval tv;
+    fd_set fds;
 
     channel.fd = -1;
+    client.fd = -1;
 
-    cpn_spawn(&t, probe, NULL);
+    if (cpn_channel_init_from_host(&channel, "224.0.0.1", "6667", CPN_CHANNEL_TYPE_UDP) < 0) {
+        puts("Unable to initialize channel");
+        goto out;
+    }
 
     if (cpn_socket_init(&socket, NULL, "6668", CPN_CHANNEL_TYPE_UDP) < 0) {
         puts("Unable to init listening channel");
@@ -185,20 +163,39 @@ static void undirected_discovery()
         goto out;
     }
 
-    if (cpn_socket_accept(&socket, &channel) < 0) {
-        puts("Unable to accept connection");
-        goto out;
-    }
-
     while (true) {
-        if (handle_announce(&channel) < 0) {
-            puts("Unable to handle announce");
+        FD_ZERO(&fds);
+        FD_SET(socket.fd, &fds);
+        tv.tv_sec = 5;
+        tv.tv_usec = 0;
+
+        if (send_discover(&channel) < 0) {
+            puts("Unable to write protobuf");
             goto out;
+        } else {
+            cpn_log(LOG_LEVEL_DEBUG, "Sent probe message");
+        }
+
+        if (select(socket.fd + 1, &fds, NULL, NULL, &tv) < 0) {
+            printf("Unable to await announcement: %s", strerror(errno));
+            goto out;
+        }
+
+        if (FD_ISSET(socket.fd, &fds)) {
+            if (cpn_socket_accept(&socket, &client) < 0) {
+                puts("Unable to accept connection");
+                continue;
+            }
+
+            if (handle_announce(&client) < 0) {
+                puts("Unable to handle announce");
+                continue;
+            }
         }
     }
 
 out:
-    cpn_kill(&t);
+    cpn_channel_close(&channel);
 }
 
 static void directed_discovery(const struct cpn_sign_key_public *remote_key,

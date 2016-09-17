@@ -20,6 +20,7 @@
 #include <signal.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <sys/select.h>
 #include <netdb.h>
 
 #include "capone/acl.h"
