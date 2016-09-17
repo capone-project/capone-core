@@ -20,6 +20,8 @@
 #include <signal.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <sys/select.h>
+#include <netdb.h>
 
 #include "capone/acl.h"
 #include "capone/common.h"
@@ -30,16 +32,27 @@
 #include "capone/service.h"
 #include "capone/socket.h"
 
+#include "capone/proto/discovery.pb-c.h"
+
+#define LISTEN_PORT "6667"
+
 struct handle_connection_args {
     const struct cpn_cfg *cfg;
+    const struct cpn_service *service;
     struct cpn_channel channel;
+};
+
+struct handle_discovery_args {
+    struct cpn_channel channel;
+    int nservices;
+    struct cpn_service *services;
 };
 
 static struct cpn_acl request_acl = CPN_ACL_INIT;
 static struct cpn_acl query_acl = CPN_ACL_INIT;
 
 static struct cpn_sign_key_pair local_keys;
-static struct cpn_service service;
+static const char *name;
 
 static int read_acl(struct cpn_acl *acl, const char *file)
 {
@@ -117,6 +130,99 @@ static int setup_signals(void)
     return 0;
 }
 
+static int announce(struct cpn_channel *channel,
+        DiscoverMessage *msg,
+        int nservices, struct cpn_service *services)
+{
+    AnnounceMessage announce_message = ANNOUNCE_MESSAGE__INIT;
+    AnnounceMessage__Service **service_messages = NULL;
+    size_t i;
+    int err = -1;
+
+    if (strcmp(msg->version, VERSION)) {
+        cpn_log(LOG_LEVEL_ERROR, "Cannot handle announce message version %s",
+                msg->version);
+        goto out;
+    }
+
+    for (i = 0; i < msg->n_known_keys; i++) {
+        if (msg->known_keys[i].len != sizeof(struct cpn_sign_key_public))
+            continue;
+        if (memcmp(msg->known_keys[i].data, local_keys.pk.data, sizeof(struct cpn_sign_key_public)))
+            continue;
+        cpn_log(LOG_LEVEL_DEBUG, "Skipping announce due to alreay being known");
+        err = 0;
+        goto out;
+    }
+
+    announce_message.name = (char *) name;
+    announce_message.version = VERSION;
+    announce_message.sign_key.data = local_keys.pk.data;
+    announce_message.sign_key.len = sizeof(local_keys.pk.data);
+
+    service_messages = malloc(sizeof(AnnounceMessage__Service *) * nservices);
+    for (i = 0; i < (size_t) nservices; i++) {
+        service_messages[i] = malloc(sizeof(AnnounceMessage__Service));
+        announce_message__service__init(service_messages[i]);
+        service_messages[i]->name = services[i].name;
+        service_messages[i]->port = services[i].port;
+        service_messages[i]->category = (char *) services[i].plugin->category;
+    }
+    announce_message.services = service_messages;
+    announce_message.n_services = nservices;
+
+    if (cpn_channel_write_protobuf(channel, &announce_message.base) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Could not write announce message");
+        goto out;
+    }
+
+    cpn_log(LOG_LEVEL_DEBUG, "Sent announce");
+    err = 0;
+
+out:
+    if (service_messages) {
+        for (i = 0; i < (size_t) nservices; i++)
+            free(service_messages[i]);
+        free(service_messages);
+    }
+
+    return err;
+}
+
+static void *handle_discovery(void *payload)
+{
+    struct handle_discovery_args *args = (struct handle_discovery_args *) payload;
+    struct cpn_sign_key_public remote_sign_key;
+    DiscoverMessage *msg = NULL;
+
+    if (args->channel.type == CPN_CHANNEL_TYPE_TCP) {
+        if (cpn_server_await_encryption(&args->channel, &local_keys, &remote_sign_key) < 0) {
+            cpn_log(LOG_LEVEL_ERROR, "Unable to await encryption");
+            goto out;
+        }
+    }
+
+    if (cpn_channel_receive_protobuf(&args->channel, &discover_message__descriptor,
+            (ProtobufCMessage **) &msg) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Unable to receive envelope");
+        goto out;
+    }
+
+    cpn_log(LOG_LEVEL_DEBUG, "Received directed discovery");
+
+    if (announce(&args->channel, msg, args->nservices, args->services) < 0)
+        cpn_log(LOG_LEVEL_ERROR, "Could not announce message");
+
+out:
+    if (args->channel.type == CPN_CHANNEL_TYPE_TCP)
+        cpn_channel_close(&args->channel);
+    if (msg)
+        discover_message__free_unpacked(msg, NULL);
+    free(payload);
+
+    return NULL;
+}
+
 static void *handle_connection(void *payload)
 {
     struct handle_connection_args *args = (struct handle_connection_args *) payload;
@@ -142,7 +248,7 @@ static void *handle_connection(void *payload)
                 goto out;
             }
 
-            if (cpn_server_handle_query(&args->channel, &service) < 0) {
+            if (cpn_server_handle_query(&args->channel, args->service) < 0) {
                 cpn_log(LOG_LEVEL_ERROR, "Received invalid query");
                 goto out;
             }
@@ -156,7 +262,7 @@ static void *handle_connection(void *payload)
                 goto out;
             }
 
-            if (cpn_server_handle_request(&args->channel, &remote_key, service.plugin) < 0) {
+            if (cpn_server_handle_request(&args->channel, &remote_key, args->service->plugin) < 0) {
                 cpn_log(LOG_LEVEL_ERROR, "Received invalid request");
                 goto out;
             }
@@ -165,7 +271,7 @@ static void *handle_connection(void *payload)
         case CPN_COMMAND_CONNECT:
             cpn_log(LOG_LEVEL_DEBUG, "Received connect");
 
-            if (cpn_server_handle_session(&args->channel, &remote_key, &service, args->cfg) < 0)
+            if (cpn_server_handle_session(&args->channel, &remote_key, args->service, args->cfg) < 0)
             {
                 cpn_log(LOG_LEVEL_ERROR, "Received invalid connect");
             }
@@ -195,14 +301,13 @@ static int setup(struct cpn_cfg *cfg, int argc, const char *argv[])
     struct cpn_opt opts[] = {
         CPN_OPTS_OPT_STRING('c', "--config",
                 "Path to configuration file", "CFGFILE", false),
-        CPN_OPTS_OPT_STRING('s', "--service",
-                "Name of the service to host", "SERVICE", false),
         CPN_OPTS_OPT_STRING(0, "--request-acl",
                 "Path to file containing access control list for requests",
-                "FILE", false),
+                "FILE", true),
         CPN_OPTS_OPT_STRING(0, "--query-acl",
                 "Path to file containing access control list for queries",
-                "FILE", false),
+                "FILE", true),
+        CPN_OPTS_OPT_COUNTER('v', "--verbose", "Verbosity"),
         CPN_OPTS_OPT_END
     };
     int err;
@@ -220,6 +325,25 @@ static int setup(struct cpn_cfg *cfg, int argc, const char *argv[])
         puts("Could not parse config");
         err = -1;
         goto out;
+    }
+
+    if (cpn_opts_get(opts, 'v', NULL)) {
+        switch (cpn_opts_get(opts, 'v', NULL)->counter) {
+            case 0:
+                cpn_log_set_level(LOG_LEVEL_ERROR);
+                break;
+            case 1:
+                cpn_log_set_level(LOG_LEVEL_WARNING);
+                break;
+            case 2:
+                cpn_log_set_level(LOG_LEVEL_VERBOSE);
+                break;
+            case 3:
+                cpn_log_set_level(LOG_LEVEL_TRACE);
+                break;
+            default:
+                break;
+        }
     }
 
     if (cpn_opts_get(opts, 0, "--request-acl")) {
@@ -240,14 +364,14 @@ static int setup(struct cpn_cfg *cfg, int argc, const char *argv[])
         goto out;
     }
 
-    if (cpn_service_from_config(&service, cpn_opts_get(opts, 0, "--service")->string, cfg) < 0) {
-        cpn_log(LOG_LEVEL_ERROR, "Could not parse services");
+    if (cpn_sign_key_pair_from_config(&local_keys, cfg) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Could not parse config");
         err = -1;
         goto out;
     }
 
-    if (cpn_sign_key_pair_from_config(&local_keys, cfg) < 0) {
-        cpn_log(LOG_LEVEL_ERROR, "Could not parse config");
+    if ((name = cpn_cfg_get_str_value(cfg, "core", "name")) == NULL) {
+        cpn_log(LOG_LEVEL_ERROR, "Unable to read server name");
         err = -1;
         goto out;
     }
@@ -262,43 +386,111 @@ out:
 
 int main(int argc, const char *argv[])
 {
-    struct cpn_socket socket;
+    struct cpn_service *services;
+    struct cpn_socket *sockets;
+    struct cpn_socket udp_socket, tcp_socket;
     struct cpn_cfg cfg;
-    int err;
+    uint32_t i, n;
 
     if (setup(&cfg, argc, argv) < 0) {
         return -1;
     }
 
-    if (cpn_socket_init(&socket, NULL, service.port, CPN_CHANNEL_TYPE_TCP) < 0) {
-        cpn_log(LOG_LEVEL_ERROR, "Could not set up socket");
-        err = -1;
+    n = cpn_services_from_config(&services, &cfg);
+    sockets = malloc(sizeof(struct cpn_socket) * n);
+
+    if (cpn_socket_init(&udp_socket, NULL, LISTEN_PORT, CPN_CHANNEL_TYPE_UDP) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Unable to init listening channel");
         goto out;
     }
 
-    if (cpn_socket_listen(&socket) < 0) {
-        cpn_log(LOG_LEVEL_ERROR, "Could not start listening");
-        err = -1;
+    if (cpn_socket_init(&tcp_socket, NULL, LISTEN_PORT, CPN_CHANNEL_TYPE_TCP) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Unable to init listening channel");
+        goto out;
+    }
+    if (cpn_socket_listen(&tcp_socket) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Unable to listen on TCP channel");
         goto out;
     }
 
-    while (1) {
-        struct handle_connection_args *args = malloc(sizeof(*args));;
-
-        if (cpn_socket_accept(&socket, &args->channel) < 0) {
-            cpn_log(LOG_LEVEL_ERROR, "Could not accept connection");
-            err = -1;
+    for (i = 0; i < n; i++) {
+        if (cpn_socket_init(&sockets[i], NULL, services[i].port, CPN_CHANNEL_TYPE_TCP) < 0) {
+            cpn_log(LOG_LEVEL_ERROR, "Could not set up socket");
             goto out;
         }
 
-        args->cfg = &cfg;
+        if (cpn_socket_listen(&sockets[i]) < 0) {
+            cpn_log(LOG_LEVEL_ERROR, "Could not start listening");
+            goto out;
+        }
+    }
 
-        cpn_spawn(NULL, handle_connection, args);
+    while (1) {
+        fd_set fds;
+        int maxfd = -1;
+
+        FD_ZERO(&fds);
+        FD_SET(tcp_socket.fd, &fds);
+        maxfd = MAX(maxfd, tcp_socket.fd);
+        FD_SET(udp_socket.fd, &fds);
+        maxfd = MAX(maxfd, udp_socket.fd);
+
+        for (i = 0; i < n; i++) {
+            FD_SET(sockets[i].fd, &fds);
+            maxfd = MAX(maxfd, sockets[i].fd);
+        }
+
+        if (select(maxfd + 1, &fds, NULL, NULL, NULL) == -1)
+            continue;
+
+        if (FD_ISSET(tcp_socket.fd, &fds)) {
+            struct handle_discovery_args *args = malloc(sizeof(*args));
+            args->nservices = n;
+            args->services = services;
+            if (cpn_socket_accept(&tcp_socket, &args->channel) < 0) {
+                free(args);
+            } else {
+                cpn_spawn(NULL, handle_discovery, args);
+            }
+        }
+
+        if (FD_ISSET(udp_socket.fd, &fds)) {
+            struct handle_discovery_args *args = malloc(sizeof(*args));
+            args->nservices = n;
+            args->services = services;
+            if (cpn_socket_accept(&udp_socket, &args->channel) < 0) {
+                free(args);
+            } else {
+                cpn_spawn(NULL, handle_discovery, args);
+            }
+        }
+
+        for (i = 0; i < n; i++) {
+            struct handle_connection_args *args;
+
+            if (!FD_ISSET(sockets[i].fd, &fds))
+                continue;
+
+            args = malloc(sizeof(*args));;
+
+            if (cpn_socket_accept(&sockets[i], &args->channel) < 0) {
+                cpn_log(LOG_LEVEL_ERROR, "Could not accept connection");
+                goto out;
+            }
+
+            args->cfg = &cfg;
+            args->service = &services[i];
+
+            cpn_spawn(NULL, handle_connection, args);
+        }
     }
 
 out:
-    cpn_socket_close(&socket);
+    for (i = 0; i < n; i++)
+        cpn_socket_close(&sockets[i]);
     cpn_cfg_free(&cfg);
+    free(services);
+    free(sockets);
 
-    return err;
+    return -1;
 }

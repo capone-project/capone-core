@@ -313,7 +313,15 @@ static int receive_data(struct cpn_channel *c, uint8_t *out, size_t len)
     size_t received = 0;
 
     while (received != len) {
-        ret = recv(c->fd, out + received, len - received, 0);
+        switch (c->type) {
+            case CPN_CHANNEL_TYPE_TCP:
+                ret = recv(c->fd, out + received, len - received, 0);
+                break;
+            case CPN_CHANNEL_TYPE_UDP:
+                ret = recvfrom(c->fd, out + received, len - received, 0,
+                        (struct sockaddr *) &c->addr, &c->addrlen);
+                break;
+        }
 
         if (ret == 0) {
             cpn_log(LOG_LEVEL_VERBOSE, "Channel closed while receiving",

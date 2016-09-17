@@ -101,7 +101,7 @@ enum cpn_channel_nonce {
 struct cpn_channel {
     int fd;
     struct sockaddr_storage addr;
-    size_t addrlen;
+    socklen_t addrlen;
 
     size_t blocklen;
 

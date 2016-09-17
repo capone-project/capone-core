@@ -16,14 +16,11 @@
  */
 
 #include <errno.h>
-#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-
-#include <sys/types.h>
-#include <sys/wait.h>
+#include <poll.h>
 
 #include "capone/cfg.h"
 #include "capone/client.h"
@@ -51,7 +48,6 @@ static int send_discover(struct cpn_channel *channel)
     int err;
 
     msg.version = VERSION;
-    msg.port = LISTEN_PORT;
 
     keys = cpn_list_count(&known_keys);
 
@@ -61,10 +57,10 @@ static int send_discover(struct cpn_channel *channel)
 
         i = 0;
         cpn_list_foreach(&known_keys, it, key) {
-            i++;
             msg.known_keys[i].len = sizeof(struct cpn_sign_key_public);
             msg.known_keys[i].data = malloc(sizeof(struct cpn_sign_key_public));
             memcpy(msg.known_keys[i].data, &key->data, sizeof(struct cpn_sign_key_public));
+            i++;
         }
     } else {
         msg.known_keys = NULL;
@@ -81,34 +77,6 @@ static int send_discover(struct cpn_channel *channel)
         cpn_log(LOG_LEVEL_ERROR, "Unable to send discover: %s", strerror(errno));
 
     return err;
-}
-
-static void *probe(void *payload)
-{
-    struct cpn_channel channel;
-
-    UNUSED(payload);
-
-    if (cpn_channel_init_from_host(&channel, "224.0.0.1", "6667", CPN_CHANNEL_TYPE_UDP) < 0) {
-        puts("Unable to initialize channel");
-        goto out;
-    }
-
-    while (true) {
-        if (send_discover(&channel) < 0) {
-            puts("Unable to write protobuf");
-            goto out;
-        }
-
-        cpn_log(LOG_LEVEL_DEBUG, "Sent probe message");
-
-        sleep(5);
-    }
-
-out:
-    cpn_channel_close(&channel);
-
-    return NULL;
 }
 
 static int handle_announce(struct cpn_channel *channel)
@@ -167,38 +135,46 @@ out:
 
 static void undirected_discovery()
 {
-    struct cpn_socket socket;
     struct cpn_channel channel;
-    struct cpn_thread t;
 
     channel.fd = -1;
 
-    cpn_spawn(&t, probe, NULL);
-
-    if (cpn_socket_init(&socket, NULL, "6668", CPN_CHANNEL_TYPE_UDP) < 0) {
-        puts("Unable to init listening channel");
-        goto out;
-    }
-
-    if (cpn_socket_enable_broadcast(&socket) < 0) {
-        puts("Unable to enable broadcasting");
-        goto out;
-    }
-
-    if (cpn_socket_accept(&socket, &channel) < 0) {
-        puts("Unable to accept connection");
+    if (cpn_channel_init_from_host(&channel, "224.0.0.1", "6667", CPN_CHANNEL_TYPE_UDP) < 0) {
+        puts("Unable to initialize channel");
         goto out;
     }
 
     while (true) {
-        if (handle_announce(&channel) < 0) {
-            puts("Unable to handle announce");
+        if (send_discover(&channel) < 0) {
+            puts("Unable to write protobuf");
             goto out;
+        } else {
+            cpn_log(LOG_LEVEL_DEBUG, "Sent probe message");
+        }
+
+        while (true) {
+            struct pollfd pfd[1];
+            int err;
+
+            pfd[0].fd = channel.fd;
+            pfd[0].events = POLLIN;
+
+            err = poll(pfd, 1, 5000);
+
+            if (err < 0) {
+                printf("Unable to await announcement: %s", strerror(errno));
+                goto out;
+            } else if (err == 0) {
+                break;
+            } else if (handle_announce(&channel) < 0) {
+                puts("Unable to handle announce");
+                continue;
+            }
         }
     }
 
 out:
-    cpn_kill(&t);
+    cpn_channel_close(&channel);
 }
 
 static void directed_discovery(const struct cpn_sign_key_public *remote_key,
@@ -239,6 +215,7 @@ int main(int argc, const char *argv[])
         CPN_OPTS_OPT_STRING('c', "--config", "Configuration file", "FILE", false),
         CPN_OPTS_OPT_ACTION("broadcast", NULL, NULL),
         CPN_OPTS_OPT_ACTION("direct", NULL, directed_opts),
+        CPN_OPTS_OPT_COUNTER('v', "--verbose", "Verbosity"),
         CPN_OPTS_OPT_END
     };
 
@@ -247,6 +224,25 @@ int main(int argc, const char *argv[])
 
     if (cpn_opts_parse_cmd(opts, argc, argv) < 0)
         return -1;
+
+    if (opts[3].set) {
+        switch (opts[3].value.counter) {
+            case 0:
+                cpn_log_set_level(LOG_LEVEL_ERROR);
+                break;
+            case 1:
+                cpn_log_set_level(LOG_LEVEL_WARNING);
+                break;
+            case 2:
+                cpn_log_set_level(LOG_LEVEL_VERBOSE);
+                break;
+            case 3:
+                cpn_log_set_level(LOG_LEVEL_TRACE);
+                break;
+            default:
+                break;
+        }
+    }
 
     if (opts[1].set) {
         undirected_discovery();
