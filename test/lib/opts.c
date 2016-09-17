@@ -15,6 +15,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 
@@ -36,6 +37,7 @@ static FILE *open_tmp(void)
     out = fdopen(fd, "w+");
     assert_non_null(out);
     umask(mode);
+    assert_success(unlink(file));
 
     return out;
 }
