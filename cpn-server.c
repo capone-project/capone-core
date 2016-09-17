@@ -189,63 +189,17 @@ out:
     return err;
 }
 
-static void *handle_discovery_udp(void *payload)
-{
-    struct handle_discovery_args *args = (struct handle_discovery_args *) payload;
-    DiscoverMessage *msg = NULL;
-    struct cpn_channel client_channel;
-    char host[128], port[16];
-    int ret;
-
-    client_channel.fd = -1;
-
-    if (cpn_channel_receive_protobuf(&args->channel, &discover_message__descriptor,
-            (ProtobufCMessage **) &msg) < 0) {
-        cpn_log(LOG_LEVEL_ERROR, "Unable to receive envelope");
-        goto out;
-    }
-
-    cpn_log(LOG_LEVEL_DEBUG, "Received discovery message");
-
-    if ((ret = getnameinfo((struct sockaddr *) &args->channel.addr, args->channel.addrlen,
-                host, sizeof(host), NULL, 0, NI_NUMERICHOST)) != 0)
-    {
-        cpn_log(LOG_LEVEL_ERROR, "Could not extract address: %s",
-                gai_strerror(ret));
-        goto out;
-    }
-    snprintf(port, sizeof(port), "%u", msg->port);
-
-    if (cpn_channel_init_from_host(&client_channel, host, port, CPN_CHANNEL_TYPE_UDP) < 0) {
-        cpn_log(LOG_LEVEL_ERROR,"Could not initialize client channel");
-        goto out;
-    }
-
-    if (announce(&client_channel, msg, args->nservices, args->services) < 0)
-        cpn_log(LOG_LEVEL_ERROR, "Could not announce message");
-
-    if (cpn_channel_close(&client_channel) < 0)
-        cpn_log(LOG_LEVEL_ERROR, "Could not close client channel");
-
-out:
-    if (client_channel.fd >= 0)
-        cpn_channel_close(&client_channel);
-    if (msg)
-        discover_message__free_unpacked(msg, NULL);
-    free(payload);
-
-    return NULL;
-}
-
-static void *handle_discovery_tcp(void *payload)
+static void *handle_discovery(void *payload)
 {
     struct handle_discovery_args *args = (struct handle_discovery_args *) payload;
     struct cpn_sign_key_public remote_sign_key;
     DiscoverMessage *msg = NULL;
 
-    if (cpn_server_await_encryption(&args->channel, &local_keys, &remote_sign_key) < 0) {
-        cpn_log(LOG_LEVEL_ERROR, "Unable to await encryption");
-        goto out;
+    if (args->channel.type == CPN_CHANNEL_TYPE_TCP) {
+        if (cpn_server_await_encryption(&args->channel, &local_keys, &remote_sign_key) < 0) {
+            cpn_log(LOG_LEVEL_ERROR, "Unable to await encryption");
+            goto out;
+        }
     }
 
     if (cpn_channel_receive_protobuf(&args->channel, &discover_message__descriptor,
@@ -260,7 +214,8 @@ static void *handle_discovery_tcp(void *payload)
         cpn_log(LOG_LEVEL_ERROR, "Could not announce message");
 
 out:
-    cpn_channel_close(&args->channel);
+    if (args->channel.type == CPN_CHANNEL_TYPE_TCP)
+        cpn_channel_close(&args->channel);
     if (msg)
         discover_message__free_unpacked(msg, NULL);
     free(payload);
@@ -352,6 +307,7 @@ static int setup(struct cpn_cfg *cfg, int argc, const char *argv[])
         CPN_OPTS_OPT_STRING(0, "--query-acl",
                 "Path to file containing access control list for queries",
                 "FILE", true),
+        CPN_OPTS_OPT_COUNTER('v', "--verbose", "Verbosity"),
         CPN_OPTS_OPT_END
     };
     int err;
@@ -369,6 +325,25 @@ static int setup(struct cpn_cfg *cfg, int argc, const char *argv[])
         puts("Could not parse config");
         err = -1;
         goto out;
+    }
+
+    if (cpn_opts_get(opts, 'v', NULL)) {
+        switch (cpn_opts_get(opts, 'v', NULL)->counter) {
+            case 0:
+                cpn_log_set_level(LOG_LEVEL_ERROR);
+                break;
+            case 1:
+                cpn_log_set_level(LOG_LEVEL_WARNING);
+                break;
+            case 2:
+                cpn_log_set_level(LOG_LEVEL_VERBOSE);
+                break;
+            case 3:
+                cpn_log_set_level(LOG_LEVEL_TRACE);
+                break;
+            default:
+                break;
+        }
     }
 
     if (cpn_opts_get(opts, 0, "--request-acl")) {
@@ -451,9 +426,10 @@ int main(int argc, const char *argv[])
     }
 
     while (1) {
-        fd_set fds = { 0 };
+        fd_set fds;
         int maxfd = -1;
 
+        FD_ZERO(&fds);
         FD_SET(tcp_socket.fd, &fds);
         maxfd = MAX(maxfd, tcp_socket.fd);
         FD_SET(udp_socket.fd, &fds);
@@ -474,7 +450,7 @@ int main(int argc, const char *argv[])
             if (cpn_socket_accept(&tcp_socket, &args->channel) < 0) {
                 free(args);
             } else {
-                cpn_spawn(NULL, handle_discovery_tcp, args);
+                cpn_spawn(NULL, handle_discovery, args);
             }
         }
 
@@ -485,7 +461,7 @@ int main(int argc, const char *argv[])
             if (cpn_socket_accept(&udp_socket, &args->channel) < 0) {
                 free(args);
             } else {
-                cpn_spawn(NULL, handle_discovery_udp, args);
+                cpn_spawn(NULL, handle_discovery, args);
             }
         }
 
