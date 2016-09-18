@@ -89,6 +89,26 @@ int cpn_server_await_encryption(struct cpn_channel *channel,
         const struct cpn_sign_key_pair *sign_keys,
         struct cpn_sign_key_public *remote_sign_key);
 
+/** @brief Answer a discovery probe
+ *
+ * Receive a discovery probe and, if the server is not already
+ * known to the client, answer the probe with a new announcement
+ * message. The announcement will contain the server's name,
+ * identity and a list of services hosted on the server.
+ *
+ * @param[in] channel Channel to receive probe from and
+ *            write announcement to
+ * @param[in] name Name of the server
+ * @parma[in] nservices Number of services to announce
+ * @param[in] services Services to announce
+ * @param[in] local_key Identity of the server
+ */
+int cpn_server_handle_discovery(struct cpn_channel *channel,
+        const char *name,
+        uint32_t nservices,
+        const struct cpn_service *services,
+        const struct cpn_sign_key_public *local_key);
+
 /** @brief Answer a query from a client
  *
  * This function will answer a query received from the client

@@ -32,8 +32,6 @@
 #include "capone/service.h"
 #include "capone/socket.h"
 
-#include "capone/proto/discovery.pb-c.h"
-
 #define LISTEN_PORT "6667"
 
 struct handle_connection_args {
@@ -130,70 +128,10 @@ static int setup_signals(void)
     return 0;
 }
 
-static int announce(struct cpn_channel *channel,
-        DiscoverMessage *msg,
-        int nservices, struct cpn_service *services)
-{
-    AnnounceMessage announce_message = ANNOUNCE_MESSAGE__INIT;
-    AnnounceMessage__Service **service_messages = NULL;
-    size_t i;
-    int err = -1;
-
-    if (strcmp(msg->version, VERSION)) {
-        cpn_log(LOG_LEVEL_ERROR, "Cannot handle announce message version %s",
-                msg->version);
-        goto out;
-    }
-
-    for (i = 0; i < msg->n_known_keys; i++) {
-        if (msg->known_keys[i].len != sizeof(struct cpn_sign_key_public))
-            continue;
-        if (memcmp(msg->known_keys[i].data, local_keys.pk.data, sizeof(struct cpn_sign_key_public)))
-            continue;
-        cpn_log(LOG_LEVEL_DEBUG, "Skipping announce due to alreay being known");
-        err = 0;
-        goto out;
-    }
-
-    announce_message.name = (char *) name;
-    announce_message.version = VERSION;
-    announce_message.sign_key.data = local_keys.pk.data;
-    announce_message.sign_key.len = sizeof(local_keys.pk.data);
-
-    service_messages = malloc(sizeof(AnnounceMessage__Service *) * nservices);
-    for (i = 0; i < (size_t) nservices; i++) {
-        service_messages[i] = malloc(sizeof(AnnounceMessage__Service));
-        announce_message__service__init(service_messages[i]);
-        service_messages[i]->name = services[i].name;
-        service_messages[i]->port = services[i].port;
-        service_messages[i]->category = (char *) services[i].plugin->category;
-    }
-    announce_message.services = service_messages;
-    announce_message.n_services = nservices;
-
-    if (cpn_channel_write_protobuf(channel, &announce_message.base) < 0) {
-        cpn_log(LOG_LEVEL_ERROR, "Could not write announce message");
-        goto out;
-    }
-
-    cpn_log(LOG_LEVEL_DEBUG, "Sent announce");
-    err = 0;
-
-out:
-    if (service_messages) {
-        for (i = 0; i < (size_t) nservices; i++)
-            free(service_messages[i]);
-        free(service_messages);
-    }
-
-    return err;
-}
-
 static void *handle_discovery(void *payload)
 {
     struct handle_discovery_args *args = (struct handle_discovery_args *) payload;
     struct cpn_sign_key_public remote_sign_key;
-    DiscoverMessage *msg = NULL;
 
     if (args->channel.type == CPN_CHANNEL_TYPE_TCP) {
         if (cpn_server_await_encryption(&args->channel, &local_keys, &remote_sign_key) < 0) {
@@ -202,22 +140,13 @@ static void *handle_discovery(void *payload)
         }
     }
 
-    if (cpn_channel_receive_protobuf(&args->channel, &discover_message__descriptor,
-            (ProtobufCMessage **) &msg) < 0) {
-        cpn_log(LOG_LEVEL_ERROR, "Unable to receive envelope");
-        goto out;
-    }
-
-    cpn_log(LOG_LEVEL_DEBUG, "Received directed discovery");
-
-    if (announce(&args->channel, msg, args->nservices, args->services) < 0)
+    if (cpn_server_handle_discovery(&args->channel, name, args->nservices, args->services, &local_keys.pk) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not announce message");
+    }
 
 out:
     if (args->channel.type == CPN_CHANNEL_TYPE_TCP)
         cpn_channel_close(&args->channel);
-    if (msg)
-        discover_message__free_unpacked(msg, NULL);
     free(payload);
 
     return NULL;
