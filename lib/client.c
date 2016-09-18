@@ -15,6 +15,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <errno.h>
 #include <string.h>
 
 #include "capone/buf.h"
@@ -22,6 +23,7 @@
 #include "capone/log.h"
 
 #include "capone/proto/connect.pb-c.h"
+#include "capone/proto/discovery.pb-c.h"
 #include "capone/proto/encryption.pb-c.h"
 
 static int initiate_encryption(struct cpn_channel *channel,
@@ -41,6 +43,46 @@ static int initiate_connection_type(struct cpn_channel *channel,
     }
 
     return 0;
+}
+
+int cpn_client_discovery_probe(struct cpn_channel *channel, const struct cpn_list *known_keys)
+{
+    DiscoverMessage msg = DISCOVER_MESSAGE__INIT;
+    struct cpn_sign_key_public *key;
+    struct cpn_list_entry *it;
+    size_t i, keys;
+    int err;
+
+    msg.version = VERSION;
+
+    keys = cpn_list_count(known_keys);
+
+    msg.n_known_keys = keys;
+    if (keys > 0) {
+        msg.known_keys = calloc(keys, sizeof(ProtobufCBinaryData));
+
+        i = 0;
+        cpn_list_foreach(known_keys, it, key) {
+            msg.known_keys[i].len = sizeof(struct cpn_sign_key_public);
+            msg.known_keys[i].data = malloc(sizeof(struct cpn_sign_key_public));
+            memcpy(msg.known_keys[i].data, &key->data, sizeof(struct cpn_sign_key_public));
+            i++;
+        }
+    } else {
+        msg.known_keys = NULL;
+    }
+
+    err = cpn_channel_write_protobuf(channel, &msg.base);
+
+    for (i = 0; i < keys; i++) {
+        free(msg.known_keys[i].data);
+    }
+    free(msg.known_keys);
+
+    if (err)
+        cpn_log(LOG_LEVEL_ERROR, "Unable to send discover: %s", strerror(errno));
+
+    return err;
 }
 
 int cpn_client_connect(struct cpn_channel *channel,

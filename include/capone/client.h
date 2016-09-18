@@ -20,6 +20,7 @@
 
 #include "capone/caps.h"
 #include "capone/channel.h"
+#include "capone/list.h"
 #include "capone/server.h"
 
 /** @brief Results of a service query
@@ -54,6 +55,18 @@ struct cpn_query_results {
      */
     char *port;
 };
+
+/** @brief Send a discovery message to query available services
+ *
+ * Send a new discovery mesasge to the channel. The list of known
+ * keys is used in order to tell available servers if they are
+ * known to the client already - if so, these servers will not
+ * send a new announcement again.
+ *
+ * @param[in] channel Channel to send discovery to
+ * @param[in] known_keys List of keys already known to the client
+ */
+int cpn_client_discovery_probe(struct cpn_channel *channel, const struct cpn_list *known_keys);
 
 /** @brief Initiate a new connection to a service
  *

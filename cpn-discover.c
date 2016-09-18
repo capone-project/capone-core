@@ -36,48 +36,7 @@
 #define LISTEN_PORT 6668
 
 static struct cpn_sign_key_pair local_keys;
-
 static struct cpn_list known_keys;
-
-static int send_discover(struct cpn_channel *channel)
-{
-    DiscoverMessage msg = DISCOVER_MESSAGE__INIT;
-    struct cpn_sign_key_public *key;
-    struct cpn_list_entry *it;
-    size_t i, keys;
-    int err;
-
-    msg.version = VERSION;
-
-    keys = cpn_list_count(&known_keys);
-
-    msg.n_known_keys = keys;
-    if (keys > 0) {
-        msg.known_keys = calloc(keys, sizeof(ProtobufCBinaryData));
-
-        i = 0;
-        cpn_list_foreach(&known_keys, it, key) {
-            msg.known_keys[i].len = sizeof(struct cpn_sign_key_public);
-            msg.known_keys[i].data = malloc(sizeof(struct cpn_sign_key_public));
-            memcpy(msg.known_keys[i].data, &key->data, sizeof(struct cpn_sign_key_public));
-            i++;
-        }
-    } else {
-        msg.known_keys = NULL;
-    }
-
-    err = cpn_channel_write_protobuf(channel, &msg.base);
-
-    for (i = 0; i < keys; i++) {
-        free(msg.known_keys[i].data);
-    }
-    free(msg.known_keys);
-
-    if (err)
-        cpn_log(LOG_LEVEL_ERROR, "Unable to send discover: %s", strerror(errno));
-
-    return err;
-}
 
 static int handle_announce(struct cpn_channel *channel)
 {
@@ -145,7 +104,7 @@ static void undirected_discovery()
     }
 
     while (true) {
-        if (send_discover(&channel) < 0) {
+        if (cpn_client_discovery_probe(&channel, &known_keys) < 0) {
             puts("Unable to write protobuf");
             goto out;
         } else {
@@ -186,7 +145,7 @@ static void directed_discovery(const struct cpn_sign_key_public *remote_key,
         puts("Unable to connect");
     }
 
-    if (send_discover(&channel) < 0) {
+    if (cpn_client_discovery_probe(&channel, &known_keys) < 0) {
         puts("Unable to send directed discover");
         goto out;
     }
