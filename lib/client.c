@@ -85,6 +85,85 @@ int cpn_client_discovery_probe(struct cpn_channel *channel, const struct cpn_lis
     return err;
 }
 
+int cpn_client_discovery_handle_announce(struct cpn_discovery_results *out,
+        struct cpn_channel *channel)
+{
+    struct cpn_discovery_results results;
+    struct cpn_sign_key_hex remote_key;
+    AnnounceMessage *announce = NULL;
+    int err = -1;
+    uint32_t i;
+
+    if (cpn_channel_receive_protobuf(channel,
+                (ProtobufCMessageDescriptor *) &announce_message__descriptor,
+                (ProtobufCMessage **) &announce) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Unable to receive protobuf");
+        goto out;
+    }
+
+    if (cpn_sign_key_hex_from_bin(&remote_key,
+                announce->sign_key.data, announce->sign_key.len) < 0)
+    {
+        cpn_log(LOG_LEVEL_ERROR, "Unable to retrieve remote sign key");
+        goto out;
+    }
+
+    if (cpn_sign_key_public_from_bin(&results.identity,
+                announce->sign_key.data, announce->sign_key.len) < 0)
+    {
+        cpn_log(LOG_LEVEL_ERROR, "Invalid identity");
+        goto out;
+    }
+
+    results.name = announce->name;
+    announce->name = NULL;
+    results.version = announce->version;
+    announce->version = NULL;
+
+    results.nservices = announce->n_services;
+    if (results.nservices) {
+        results.services = malloc(sizeof(struct cpn_service) * results.nservices);
+        for (i = 0; i < results.nservices; i++) {
+            results.services[i].name = announce->services[i]->name;
+            announce->services[i]->name = NULL;
+            results.services[i].category = announce->services[i]->category;
+            announce->services[i]->category = NULL;
+            results.services[i].port = announce->services[i]->port;
+            announce->services[i]->port = NULL;;
+        }
+    } else {
+        results.services = NULL;
+    }
+
+    memcpy(out, &results, sizeof(struct cpn_discovery_results));
+
+    err = 0;
+
+out:
+    if (announce)
+        announce_message__free_unpacked(announce, NULL);
+
+    return err;
+}
+
+void cpn_discovery_results_clear(struct cpn_discovery_results *results)
+{
+    uint32_t i;
+
+    if (results == NULL)
+        return;
+
+    for (i = 0; i < results->nservices; i++) {
+        free(results->services[i].name);
+        free(results->services[i].category);
+        free(results->services[i].port);
+    }
+
+    free(results->name);
+    free(results->version);
+    free(results->services);
+}
+
 int cpn_client_connect(struct cpn_channel *channel,
         const char *host,
         const char *port,
