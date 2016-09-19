@@ -206,7 +206,22 @@ out:
 int cpn_server_handle_query(struct cpn_channel *channel,
         const struct cpn_service *service)
 {
-    ServiceDescription results = SERVICE_DESCRIPTION__INIT;
+    ServiceQueryResult results = SERVICE_QUERY_RESULT__INIT;
+    ServiceQueryMessage *msg = NULL;
+    int err = -1;
+
+    if (cpn_channel_receive_protobuf(channel, &service_query_message__descriptor,
+            (ProtobufCMessage **) &msg) < 0)
+    {
+        cpn_log(LOG_LEVEL_ERROR, "Could not receive query");
+        goto out;
+    }
+
+    if (strcmp(msg->version, VERSION)) {
+        cpn_log(LOG_LEVEL_ERROR, "Cannot handle query message version %s",
+                msg->version);
+        goto out;
+    }
 
     results.name = service->name;
     results.location = service->location;
@@ -217,10 +232,16 @@ int cpn_server_handle_query(struct cpn_channel *channel,
 
     if (cpn_channel_write_protobuf(channel, (ProtobufCMessage *) &results) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not send query results");
-        return -1;
+        goto out;
     }
 
-    return 0;
+    err = 0;
+
+out:
+    if (msg)
+        service_query_message__free_unpacked(msg, NULL);
+
+    return err;
 }
 
 static int create_cap(CapabilityMessage **out, const struct cpn_cap *root, uint32_t rights, const struct cpn_sign_key_public *key)

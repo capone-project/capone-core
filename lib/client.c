@@ -294,7 +294,8 @@ out:
 int cpn_client_query_service(struct cpn_query_results *out,
         struct cpn_channel *channel)
 {
-    ServiceDescription *msg;
+    ServiceQueryMessage query = SERVICE_QUERY_MESSAGE__INIT;
+    ServiceQueryResult *msg;
     struct cpn_query_results results;
 
     if (initiate_connection_type(channel, CONNECTION_INITIATION_MESSAGE__TYPE__QUERY) < 0) {
@@ -304,7 +305,13 @@ int cpn_client_query_service(struct cpn_query_results *out,
 
     memset(out, 0, sizeof(struct cpn_query_results));
 
-    if (cpn_channel_receive_protobuf(channel, &service_description__descriptor,
+    query.version = VERSION;
+    if (cpn_channel_write_protobuf(channel, &query.base) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Could not send query");
+        return -1;
+    }
+
+    if (cpn_channel_receive_protobuf(channel, &service_query_result__descriptor,
             (ProtobufCMessage **) &msg) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not receive query results");
         return -1;
@@ -323,7 +330,7 @@ int cpn_client_query_service(struct cpn_query_results *out,
     results.port = msg->port;
     msg->port = NULL;
 
-    service_description__free_unpacked(msg, NULL);
+    service_query_result__free_unpacked(msg, NULL);
 
     memcpy(out, &results, sizeof(*out));
 
