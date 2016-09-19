@@ -273,7 +273,7 @@ int cpn_server_handle_request(struct cpn_channel *channel,
 {
     SessionRequestMessage *request = NULL;
     ProtobufCMessage *parameters = NULL;
-    SessionMessage session_message = SESSION_MESSAGE__INIT;
+    SessionRequestResult session_message = SESSION_REQUEST_RESULT__INIT;
     const struct cpn_session *session;
     int err = -1;
 

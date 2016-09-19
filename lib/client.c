@@ -247,7 +247,7 @@ int cpn_client_request_session(uint32_t *sessionid,
         const struct ProtobufCMessage *params)
 {
     SessionRequestMessage request = SESSION_REQUEST_MESSAGE__INIT;
-    SessionMessage *session = NULL;
+    SessionRequestResult *session = NULL;
     int err = -1;
 
     if (initiate_connection_type(channel, CONNECTION_INITIATION_MESSAGE__TYPE__REQUEST) < 0) {
@@ -268,7 +268,7 @@ int cpn_client_request_session(uint32_t *sessionid,
     }
 
     if (cpn_channel_receive_protobuf(channel,
-            &session_message__descriptor,
+            &session_request_result__descriptor,
             (ProtobufCMessage **) &session) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to receive session");
         goto out;
@@ -285,7 +285,7 @@ int cpn_client_request_session(uint32_t *sessionid,
 
 out:
     if (session)
-        session_message__free_unpacked(session, NULL);
+        session_request_result__free_unpacked(session, NULL);
     free(request.parameters.data);
 
     return err;
