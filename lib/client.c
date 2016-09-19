@@ -89,7 +89,6 @@ int cpn_client_discovery_handle_announce(struct cpn_discovery_results *out,
         struct cpn_channel *channel)
 {
     struct cpn_discovery_results results;
-    struct cpn_sign_key_hex remote_key;
     AnnounceMessage *announce = NULL;
     int err = -1;
     uint32_t i;
@@ -101,15 +100,8 @@ int cpn_client_discovery_handle_announce(struct cpn_discovery_results *out,
         goto out;
     }
 
-    if (cpn_sign_key_hex_from_bin(&remote_key,
-                announce->sign_key.data, announce->sign_key.len) < 0)
-    {
-        cpn_log(LOG_LEVEL_ERROR, "Unable to retrieve remote sign key");
-        goto out;
-    }
-
-    if (cpn_sign_key_public_from_bin(&results.identity,
-                announce->sign_key.data, announce->sign_key.len) < 0)
+    if (cpn_sign_key_public_from_proto(&results.identity,
+                announce->sign_key) < 0)
     {
         cpn_log(LOG_LEVEL_ERROR, "Invalid identity");
         goto out;

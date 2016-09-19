@@ -100,8 +100,7 @@ int cpn_server_handle_discovery(struct cpn_channel *channel,
 
     announce_message.name = (char *) name;
     announce_message.version = VERSION;
-    announce_message.sign_key.data = (uint8_t *) local_key->data;
-    announce_message.sign_key.len = sizeof(local_key->data);
+    cpn_sign_key_public_to_proto(&announce_message.sign_key, local_key);
 
     service_messages = malloc(sizeof(AnnounceMessage__Service *) * nservices);
     for (i = 0; i < (size_t) nservices; i++) {
@@ -130,6 +129,8 @@ out:
             free(service_messages[i]);
         free(service_messages);
     }
+    if (announce_message.sign_key)
+        signature_key_message__free_unpacked(announce_message.sign_key, NULL);
 
     return err;
 }
