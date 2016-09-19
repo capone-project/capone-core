@@ -186,8 +186,8 @@ int cpn_client_start_session(struct cpn_session **out,
         const struct cpn_cap *cap,
         const struct cpn_service_plugin *plugin)
 {
-    SessionInitiationMessage initiation = SESSION_INITIATION_MESSAGE__INIT;
-    SessionResult *result = NULL;
+    SessionConnectMessage connect = SESSION_CONNECT_MESSAGE__INIT;
+    SessionConnectResult *result = NULL;
     ProtobufCMessage *params = NULL;
     struct cpn_session *session;
     int err = -1;
@@ -197,19 +197,19 @@ int cpn_client_start_session(struct cpn_session **out,
         goto out;
     }
 
-    initiation.identifier = sessionid;
-    if (cpn_cap_to_protobuf(&initiation.capability, cap) < 0) {
+    connect.identifier = sessionid;
+    if (cpn_cap_to_protobuf(&connect.capability, cap) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not read capability");
         goto out;
     }
 
-    if (cpn_channel_write_protobuf(channel, &initiation.base) < 0 ) {
+    if (cpn_channel_write_protobuf(channel, &connect.base) < 0 ) {
         cpn_log(LOG_LEVEL_ERROR, "Could not initiate session");
         goto out;
     }
 
     if (cpn_channel_receive_protobuf(channel,
-                &session_result__descriptor,
+                &session_connect_result__descriptor,
                 (ProtobufCMessage **) &result) < 0)
     {
         cpn_log(LOG_LEVEL_ERROR, "Could not receive session OK");
@@ -233,10 +233,10 @@ int cpn_client_start_session(struct cpn_session **out,
     err = 0;
 
 out:
-    if (initiation.capability)
-        capability_message__free_unpacked(initiation.capability, NULL);
+    if (connect.capability)
+        capability_message__free_unpacked(connect.capability, NULL);
     if (result)
-        session_result__free_unpacked(result, NULL);
+        session_connect_result__free_unpacked(result, NULL);
 
     return err;
 }
@@ -300,6 +300,13 @@ int cpn_client_query_service(struct cpn_query_results *out,
 
     if (initiate_connection_type(channel, CONNECTION_INITIATION_MESSAGE__TYPE__QUERY) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not initiate connection type");
+        return -1;
+    }
+
+    query.version = VERSION;
+
+    if (cpn_channel_write_protobuf(channel, &query.base) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Unable to send query message");
         return -1;
     }
 

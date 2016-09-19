@@ -140,39 +140,39 @@ int cpn_server_handle_session(struct cpn_channel *channel,
         const struct cpn_service *service,
         const struct cpn_cfg *cfg)
 {
-    SessionInitiationMessage *initiation = NULL;
-    SessionResult msg = SESSION_RESULT__INIT;
+    SessionConnectMessage *connect = NULL;
+    SessionConnectResult msg = SESSION_CONNECT_RESULT__INIT;
     struct cpn_session *session = NULL;
     struct cpn_cap *cap = NULL;
     int err;
 
     if ((err = cpn_channel_receive_protobuf(channel,
-                &session_initiation_message__descriptor,
-                (ProtobufCMessage **) &initiation)) < 0)
+                &session_connect_message__descriptor,
+                (ProtobufCMessage **) &connect)) < 0)
     {
-        cpn_log(LOG_LEVEL_ERROR, "Could not receive connection initiation");
+        cpn_log(LOG_LEVEL_ERROR, "Could not receive connect");
         goto out;
     }
 
-    if (cpn_cap_from_protobuf(&cap, initiation->capability) < 0) {
+    if (cpn_cap_from_protobuf(&cap, connect->capability) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not read capability");
         err = -1;
         goto out_notify;
     }
 
-    if (cpn_sessions_find((const struct cpn_session **) &session, initiation->identifier) < 0) {
+    if (cpn_sessions_find((const struct cpn_session **) &session, connect->identifier) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not find session for client");
         err = -1;
         goto out_notify;
     }
 
     if (cpn_caps_verify(cap, session->cap, remote_key, CPN_CAP_RIGHT_EXEC) < 0) {
-        cpn_log(LOG_LEVEL_ERROR, "Could not authorize session initiation");
+        cpn_log(LOG_LEVEL_ERROR, "Could not authorize session connect");
         err = -1;
         goto out_notify;
     }
 
-    if ((err = cpn_sessions_remove(&session, initiation->identifier)) < 0) {
+    if ((err = cpn_sessions_remove(&session, connect->identifier)) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not find session for client");
         goto out_notify;
     }
@@ -193,8 +193,8 @@ out_notify:
     }
 
 out:
-    if (initiation) {
-        session_initiation_message__free_unpacked(initiation, NULL);
+    if (connect) {
+        session_connect_message__free_unpacked(connect, NULL);
         cpn_session_free(session);
     }
 
