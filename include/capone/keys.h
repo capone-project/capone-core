@@ -212,9 +212,9 @@ int cpn_symmetric_key_hex_from_bin(struct cpn_symmetric_key_hex *out, const uint
  */
 void cpn_symmetric_key_hex_from_key(struct cpn_symmetric_key_hex *out, const struct cpn_symmetric_key *key);
 
-int cpn_sign_key_public_from_proto(struct cpn_sign_key_public *out, const SignatureKey *hex);
+int cpn_sign_key_public_from_proto(struct cpn_sign_key_public *out, const SignatureKeyMessage *hex);
 
-int cpn_sign_key_public_to_proto(SignatureKey **out, const struct cpn_sign_key_public *key);
+int cpn_sign_key_public_to_proto(SignatureKeyMessage **out, const struct cpn_sign_key_public *key);
 
 #endif
 

@@ -39,7 +39,7 @@ struct invoker_opts {
 static struct cpn_cfg cfg;
 
 static struct cpn_sign_key_pair keys;
-static SignatureKey *key_proto;
+static SignatureKeyMessage *key_proto;
 
 static struct cpn_cap cap;
 static CapabilityMessage *cap_proto;
@@ -62,7 +62,7 @@ static int teardown()
 {
     cpn_cfg_free(&cfg);
 
-    signature_key__free_unpacked(key_proto, NULL);
+    signature_key_message__free_unpacked(key_proto, NULL);
     capability_message__free_unpacked(cap_proto, NULL);
 
     return 0;
