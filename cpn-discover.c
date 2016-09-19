@@ -37,104 +37,24 @@
 
 static struct cpn_sign_key_pair local_keys;
 
-static struct cpn_list known_keys;
-
-static int send_discover(struct cpn_channel *channel)
+static void print_announcement(struct cpn_discovery_results *announce)
 {
-    DiscoverMessage msg = DISCOVER_MESSAGE__INIT;
-    struct cpn_sign_key_public *key;
-    struct cpn_list_entry *it;
-    size_t i, keys;
-    int err;
+    struct cpn_sign_key_hex hex;
+    uint32_t i;
 
-    msg.version = VERSION;
+    cpn_sign_key_hex_from_key(&hex, &announce->identity);
 
-    keys = cpn_list_count(&known_keys);
+    printf("%s - %s (v%s)\n", announce->name, hex.data, announce->version);
 
-    msg.n_known_keys = keys;
-    if (keys > 0) {
-        msg.known_keys = calloc(keys, sizeof(ProtobufCBinaryData));
-
-        i = 0;
-        cpn_list_foreach(&known_keys, it, key) {
-            msg.known_keys[i].len = sizeof(struct cpn_sign_key_public);
-            msg.known_keys[i].data = malloc(sizeof(struct cpn_sign_key_public));
-            memcpy(msg.known_keys[i].data, &key->data, sizeof(struct cpn_sign_key_public));
-            i++;
-        }
-    } else {
-        msg.known_keys = NULL;
+    for (i = 0; i < announce->nservices; i++) {
+        printf("\t%s -> %s (%s)\n", announce->services[i].port,
+                announce->services[i].name, announce->services[i].category);
     }
-
-    err = cpn_channel_write_protobuf(channel, &msg.base);
-
-    for (i = 0; i < keys; i++) {
-        free(msg.known_keys[i].data);
-    }
-    free(msg.known_keys);
-
-    if (err)
-        cpn_log(LOG_LEVEL_ERROR, "Unable to send discover: %s", strerror(errno));
-
-    return err;
-}
-
-static int handle_announce(struct cpn_channel *channel)
-{
-    struct cpn_list_entry *it;
-    struct cpn_sign_key_public *key;
-    struct cpn_sign_key_hex remote_key;
-    AnnounceMessage *announce = NULL;
-    unsigned i = 0;
-    int err = -1;
-
-    if (cpn_channel_receive_protobuf(channel,
-                (ProtobufCMessageDescriptor *) &announce_message__descriptor,
-                (ProtobufCMessage **) &announce) < 0) {
-        puts("Unable to receive protobuf");
-        goto out;
-    }
-
-    if (cpn_sign_key_hex_from_bin(&remote_key,
-                announce->sign_key.data, announce->sign_key.len) < 0)
-    {
-        puts("Unable to retrieve remote sign key");
-        goto out;
-    }
-
-    cpn_list_foreach(&known_keys, it, key) {
-        if (!memcmp(key->data, announce->sign_key.data,
-                    sizeof(struct cpn_sign_key_public)))
-        {
-            cpn_log(LOG_LEVEL_DEBUG, "Ignoring known key %s", remote_key.data);
-            err = 0;
-            goto out;
-        }
-    }
-
-    key = malloc(sizeof(struct cpn_sign_key_public));
-    memcpy(key, announce->sign_key.data, sizeof(struct cpn_sign_key_public));
-    cpn_list_append(&known_keys, key);
-
-    printf("%s - %s (v%s)\n", announce->name, remote_key.data, announce->version);
-
-    for (i = 0; i < announce->n_services; i++) {
-        AnnounceMessage__Service *service = announce->services[i];
-
-        printf("\t%s -> %s (%s)\n", service->port, service->name, service->category);
-    }
-
-    err = 0;
-
-out:
-    if (announce)
-        announce_message__free_unpacked(announce, NULL);
-
-    return err;
 }
 
 static void undirected_discovery()
 {
+    struct cpn_list known_keys = CPN_LIST_INIT;
     struct cpn_channel channel;
 
     channel.fd = -1;
@@ -145,7 +65,7 @@ static void undirected_discovery()
     }
 
     while (true) {
-        if (send_discover(&channel) < 0) {
+        if (cpn_client_discovery_probe(&channel, &known_keys) < 0) {
             puts("Unable to write protobuf");
             goto out;
         } else {
@@ -153,6 +73,9 @@ static void undirected_discovery()
         }
 
         while (true) {
+            struct cpn_discovery_results results;
+            struct cpn_sign_key_public *key;
+            struct cpn_list_entry *it;
             struct pollfd pfd[1];
             int err;
 
@@ -166,10 +89,28 @@ static void undirected_discovery()
                 goto out;
             } else if (err == 0) {
                 break;
-            } else if (handle_announce(&channel) < 0) {
+            } else if (cpn_client_discovery_handle_announce(&results, &channel) < 0) {
                 puts("Unable to handle announce");
                 continue;
             }
+
+            cpn_list_foreach(&known_keys, it, key) {
+                if (!memcmp(key->data, results.identity.data,
+                            sizeof(struct cpn_sign_key_public)))
+                {
+                    struct cpn_sign_key_hex hex;
+                    cpn_sign_key_hex_from_key(&hex, &results.identity);
+                    cpn_log(LOG_LEVEL_DEBUG, "Ignoring known key %s", hex.data);
+                    continue;
+                }
+            }
+
+            key = malloc(sizeof(struct cpn_sign_key_public));
+            memcpy(key, results.identity.data, sizeof(struct cpn_sign_key_public));
+            cpn_list_append(&known_keys, key);
+
+            print_announcement(&results);
+            cpn_discovery_results_clear(&results);
         }
     }
 
@@ -180,22 +121,25 @@ out:
 static void directed_discovery(const struct cpn_sign_key_public *remote_key,
         const char *host, const char *port)
 {
+    struct cpn_discovery_results results;
     struct cpn_channel channel;
 
     if (cpn_client_connect(&channel, host, port, &local_keys, remote_key) < 0) {
         puts("Unable to connect");
     }
 
-    if (send_discover(&channel) < 0) {
+    if (cpn_client_discovery_probe(&channel, NULL) < 0) {
         puts("Unable to send directed discover");
         goto out;
     }
 
-    if (handle_announce(&channel) < 0) {
+    if (cpn_client_discovery_handle_announce(&results, &channel) < 0) {
         puts("Unable to handle announce");
         goto out;
     }
 
+    print_announcement(&results);
+    cpn_discovery_results_clear(&results);
 out:
     cpn_channel_close(&channel);
 }

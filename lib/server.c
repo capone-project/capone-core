@@ -24,6 +24,7 @@
 #include "capone/server.h"
 
 #include "capone/proto/connect.pb-c.h"
+#include "capone/proto/discovery.pb-c.h"
 #include "capone/proto/encryption.pb-c.h"
 
 int cpn_server_await_command(enum cpn_command *out,
@@ -61,6 +62,76 @@ int cpn_server_await_command(enum cpn_command *out,
     connection_initiation_message__free_unpacked(initiation, NULL);
 
     return ret;
+}
+
+int cpn_server_handle_discovery(struct cpn_channel *channel,
+        const char *name,
+        uint32_t nservices,
+        const struct cpn_service *services,
+        const struct cpn_sign_key_public *local_key)
+{
+    DiscoverMessage *msg = NULL;
+    AnnounceMessage announce_message = ANNOUNCE_MESSAGE__INIT;
+    AnnounceMessage__Service **service_messages = NULL;
+    size_t i;
+    int err = -1;
+
+    if (cpn_channel_receive_protobuf(channel, &discover_message__descriptor,
+            (ProtobufCMessage **) &msg) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Unable to receive envelope");
+        goto out;
+    }
+
+    if (strcmp(msg->version, VERSION)) {
+        cpn_log(LOG_LEVEL_ERROR, "Cannot handle announce message version %s",
+                msg->version);
+        goto out;
+    }
+
+    for (i = 0; i < msg->n_known_keys; i++) {
+        if (msg->known_keys[i].len != sizeof(struct cpn_sign_key_public))
+            continue;
+        if (memcmp(msg->known_keys[i].data, local_key->data, sizeof(struct cpn_sign_key_public)))
+            continue;
+        cpn_log(LOG_LEVEL_DEBUG, "Skipping announce due to alreay being known");
+        err = 0;
+        goto out;
+    }
+
+    announce_message.name = (char *) name;
+    announce_message.version = VERSION;
+    announce_message.sign_key.data = (uint8_t *) local_key->data;
+    announce_message.sign_key.len = sizeof(local_key->data);
+
+    service_messages = malloc(sizeof(AnnounceMessage__Service *) * nservices);
+    for (i = 0; i < (size_t) nservices; i++) {
+        service_messages[i] = malloc(sizeof(AnnounceMessage__Service));
+        announce_message__service__init(service_messages[i]);
+        service_messages[i]->name = services[i].name;
+        service_messages[i]->port = services[i].port;
+        service_messages[i]->category = (char *) services[i].plugin->category;
+    }
+    announce_message.services = service_messages;
+    announce_message.n_services = nservices;
+
+    if (cpn_channel_write_protobuf(channel, &announce_message.base) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Could not write announce message");
+        goto out;
+    }
+
+    cpn_log(LOG_LEVEL_DEBUG, "Sent announce");
+    err = 0;
+
+out:
+    if (msg)
+        discover_message__free_unpacked(msg, NULL);
+    if (service_messages) {
+        for (i = 0; i < (size_t) nservices; i++)
+            free(service_messages[i]);
+        free(service_messages);
+    }
+
+    return err;
 }
 
 int cpn_server_handle_session(struct cpn_channel *channel,

@@ -28,6 +28,14 @@
 #include "test.h"
 #include "test-service.h"
 
+struct await_discovery_args {
+    struct cpn_channel *channel;
+    const char *name;
+    int nservices;
+    struct cpn_service *services;
+    struct cpn_sign_key_public *identity;
+};
+
 struct await_query_args {
     struct cpn_channel *channel;
     struct cpn_service *s;
@@ -113,6 +121,14 @@ static void *initiate_connection(void *payload)
     return NULL;
 }
 
+static void *await_discovery(void *payload)
+{
+    struct await_discovery_args *args = (struct await_discovery_args *) payload;
+    cpn_server_handle_discovery(args->channel, args->name,
+            args->nservices, args->services, args->identity);
+    return NULL;
+}
+
 static void *await_query(void *payload)
 {
     struct await_query_args *args = (struct await_query_args *) payload;
@@ -175,6 +191,105 @@ static void connection_initiation_succeeds()
     assert_success(cpn_join(&t, NULL));
 
     assert_success(cpn_socket_close(&s));
+}
+
+static void discovery_without_services_succeeds()
+{
+    struct await_discovery_args args;
+    struct cpn_discovery_results results;
+    struct cpn_thread t;
+
+    args.channel = &remote;
+    args.identity = &remote_keys.pk;
+    args.name = "test";
+    args.nservices = 0;
+    args.services = NULL;
+
+    assert_success(cpn_spawn(&t, await_discovery, &args));
+    assert_success(cpn_client_discovery_probe(&local, NULL));
+    assert_success(cpn_client_discovery_handle_announce(&results, &local));
+    assert_success(cpn_join(&t, NULL));
+
+    assert_string_equal(results.name, args.name);
+    assert_string_equal(results.version, VERSION);
+    assert_memory_equal(&results.identity, &remote_keys.pk, sizeof(struct cpn_sign_key_public));
+    assert_int_equal(results.nservices, args.nservices);
+    assert_null(results.services);
+
+    cpn_discovery_results_clear(&results);
+}
+
+static void discovery_with_services_succeeds()
+{
+    struct await_discovery_args args;
+    struct cpn_discovery_results results;
+    struct cpn_thread t;
+
+    args.channel = &remote;
+    args.identity = &remote_keys.pk;
+    args.name = "test";
+    args.nservices = 1;
+    args.services = &service;
+
+    assert_success(cpn_spawn(&t, await_discovery, &args));
+    assert_success(cpn_client_discovery_probe(&local, NULL));
+    assert_success(cpn_client_discovery_handle_announce(&results, &local));
+    assert_success(cpn_join(&t, NULL));
+
+    assert_string_equal(results.name, args.name);
+    assert_string_equal(results.version, VERSION);
+    assert_memory_equal(&results.identity, &remote_keys.pk, sizeof(struct cpn_sign_key_public));
+    assert_int_equal(results.nservices, args.nservices);
+    assert_string_equal(results.services[0].category, service.plugin->category);
+    assert_string_equal(results.services[0].name, service.name);
+    assert_string_equal(results.services[0].port, service.port);
+
+    cpn_discovery_results_clear(&results);
+}
+
+static void discovery_with_unknown_keys_sends_announce()
+{
+    struct cpn_list known_keys = CPN_LIST_INIT;
+    struct cpn_discovery_results results;
+    struct await_discovery_args args;
+    struct cpn_thread t;
+
+    args.channel = &remote;
+    args.identity = &remote_keys.pk;
+    args.name = "test";
+    args.nservices = 1;
+    args.services = &service;
+
+    assert_success(cpn_list_append(&known_keys, &local_keys.pk));
+
+    assert_success(cpn_spawn(&t, await_discovery, &args));
+    assert_success(cpn_client_discovery_probe(&local, &known_keys));
+    assert_success(cpn_client_discovery_handle_announce(&results, &local));
+    assert_success(cpn_join(&t, NULL));
+
+    cpn_list_clear(&known_keys);
+    cpn_discovery_results_clear(&results);
+}
+
+static void discovery_with_known_keys_succeeds()
+{
+    struct cpn_list known_keys = CPN_LIST_INIT;
+    struct await_discovery_args args;
+    struct cpn_thread t;
+
+    args.channel = &remote;
+    args.identity = &remote_keys.pk;
+    args.name = "test";
+    args.nservices = 1;
+    args.services = &service;
+
+    assert_success(cpn_list_append(&known_keys, &remote_keys.pk));
+
+    assert_success(cpn_spawn(&t, await_discovery, &args));
+    assert_success(cpn_client_discovery_probe(&local, &known_keys));
+    assert_success(cpn_join(&t, NULL));
+
+    cpn_list_clear(&known_keys);
 }
 
 static void query_succeeds()
@@ -370,6 +485,11 @@ int proto_test_run_suite(void)
 
     const struct CMUnitTest tests[] = {
         test(connection_initiation_succeeds),
+
+        test(discovery_without_services_succeeds),
+        test(discovery_with_services_succeeds),
+        test(discovery_with_known_keys_succeeds),
+        test(discovery_with_unknown_keys_sends_announce),
 
         test(query_succeeds),
         test(whitelisted_query_succeeds),

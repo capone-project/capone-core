@@ -20,7 +20,27 @@
 
 #include "capone/caps.h"
 #include "capone/channel.h"
+#include "capone/keys.h"
+#include "capone/list.h"
 #include "capone/server.h"
+
+/** @brief Results of a single announce message
+ *
+ * This struct represents the results sent by a single server in
+ * response to a probing discovery message.
+ */
+struct cpn_discovery_results {
+    char *name;
+    char *version;
+    struct cpn_sign_key_public identity;
+
+    struct {
+        char *name;
+        char *category;
+        char *port;
+    } *services;
+    uint32_t nservices;
+};
 
 /** @brief Results of a service query
  *
@@ -54,6 +74,33 @@ struct cpn_query_results {
      */
     char *port;
 };
+
+/** @brief Send a discovery message to query available services
+ *
+ * Send a new discovery mesasge to the channel. The list of known
+ * keys is used in order to tell available servers if they are
+ * known to the client already - if so, these servers will not
+ * send a new announcement again.
+ *
+ * @param[in] channel Channel to send discovery to
+ * @param[in] known_keys List of keys already known to the client
+ */
+int cpn_client_discovery_probe(struct cpn_channel *channel, const struct cpn_list *known_keys);
+
+/** @brief Receive discovery announcement and return results
+ *
+ * @param[out] out Structure to fill with the announcement. Needs
+ *             to be cleared with `cpn_discovery_results_clear`.
+ * @param[in] channel Channel to read announcement from.
+ */
+int cpn_client_discovery_handle_announce(struct cpn_discovery_results *out, struct cpn_channel *channel);
+
+/** @brief Clear discovery results
+ *
+ * Free all memory associated with the results structure. The
+ * structure itself will not be free'd.
+ */
+void cpn_discovery_results_clear(struct cpn_discovery_results *results);
 
 /** @brief Initiate a new connection to a service
  *

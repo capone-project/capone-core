@@ -97,10 +97,13 @@ struct cpn_list_entry *cpn_list_get(struct cpn_list *list, uint32_t i)
     return it;
 }
 
-uint32_t cpn_list_count(struct cpn_list *list)
+uint32_t cpn_list_count(const struct cpn_list *list)
 {
     uint32_t count = 0;
     struct cpn_list_entry *it;
+
+    if (!list)
+        return 0;
 
     cpn_list_foreach_entry(list, it)
         count++;

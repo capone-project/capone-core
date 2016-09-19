@@ -106,7 +106,7 @@ int cpn_list_clear(struct cpn_list *list);
 struct cpn_list_entry *cpn_list_get(struct cpn_list *list, uint32_t i);
 
 /** @brief Get number of list entries */
-uint32_t cpn_list_count(struct cpn_list *list);
+uint32_t cpn_list_count(const struct cpn_list *list);
 
 #define cpn_list_foreach_entry(l, it) \
     for ((it) = (l)->head; (it); (it) = (it)->next)
