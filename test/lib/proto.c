@@ -25,6 +25,8 @@
 #include "capone/service.h"
 #include "capone/session.h"
 
+#include "capone/proto/capone.pb-c.h"
+
 #include "test.h"
 #include "test-service.h"
 

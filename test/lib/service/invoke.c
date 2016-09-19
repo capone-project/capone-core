@@ -23,7 +23,7 @@
 #include "capone/service.h"
 #include "capone/socket.h"
 
-#include "capone/proto/connect.pb-c.h"
+#include "capone/proto/capone.pb-c.h"
 #include "capone/proto/invoke.pb-c.h"
 
 #include "test.h"

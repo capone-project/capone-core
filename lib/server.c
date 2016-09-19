@@ -23,7 +23,7 @@
 #include "capone/session.h"
 #include "capone/server.h"
 
-#include "capone/proto/connect.pb-c.h"
+#include "capone/proto/capone.pb-c.h"
 #include "capone/proto/discovery.pb-c.h"
 #include "capone/proto/encryption.pb-c.h"
 
