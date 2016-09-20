@@ -43,10 +43,11 @@
 #define MAX_BLOCKLEN 4096
 
 int getsock(struct sockaddr_storage *addr, size_t *addrlen,
-        const char *host, const char *port,
+        const char *host, uint32_t port,
         enum cpn_channel_type type)
 {
     struct addrinfo hints, *servinfo, *hint;
+    char cport[16];
     int ret, fd;
 
     memset(&hints, 0, sizeof(hints));
@@ -66,7 +67,9 @@ int getsock(struct sockaddr_storage *addr, size_t *addrlen,
             return -1;
     }
 
-    ret = getaddrinfo(host, port, &hints, &servinfo);
+    sprintf(cport, "%"PRIu32, port);
+
+    ret = getaddrinfo(host, port ? cport : NULL, &hints, &servinfo);
     if (ret != 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not get addrinfo for address %s:%s",
                 host, port);
@@ -102,7 +105,7 @@ int getsock(struct sockaddr_storage *addr, size_t *addrlen,
 }
 
 int cpn_channel_init_from_host(struct cpn_channel *c, const char *host,
-        const char *port, enum cpn_channel_type type)
+        uint32_t port, enum cpn_channel_type type)
 {
     int fd;
     struct sockaddr_storage addr;

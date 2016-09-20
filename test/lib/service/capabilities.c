@@ -111,7 +111,7 @@ static void forwarding_request_succeeds()
     assert_success(cpn_join(&t, NULL));
 
     requestParams.service_address = "localhost";
-    requestParams.service_port = "12345";
+    requestParams.service_port = 12345;
     requestParams.service_type = "test";
     assert_success(cpn_sign_key_public_to_proto(&requestParams.requested_identity, &pk));
     assert_success(cpn_sign_key_public_to_proto(&requestParams.service_identity, &pk));
@@ -125,7 +125,7 @@ static void forwarding_request_succeeds()
 
     assert_int_equal(cmd->cmd, CAPABILITIES_COMMAND__COMMAND__REQUEST);
     assert_string_equal(cmd->request->service_address, requestParams.service_address);
-    assert_string_equal(cmd->request->service_port, requestParams.service_port);
+    assert_int_equal(cmd->request->service_port, requestParams.service_port);
     assert_string_equal(cmd->request->service_type, requestParams.service_type);
     assert_memory_equal(cmd->request->service_identity->data.data, pk.data, sizeof(pk.data));
     assert_memory_equal(cmd->request->requester_identity->data.data, pk.data, sizeof(pk.data));
@@ -170,7 +170,7 @@ static void parsing_request_succeeds()
     assert_memory_equal(params->request_params->requested_identity->data.data, pk.data, sizeof(pk.data));
     assert_memory_equal(params->request_params->service_identity->data.data, pk.data, sizeof(pk.data));
     assert_string_equal(params->request_params->service_address, "localhost");
-    assert_string_equal(params->request_params->service_port, "12345");
+    assert_int_equal(params->request_params->service_port, 12345);
     assert_string_equal(params->request_params->service_type, "test");
 
 

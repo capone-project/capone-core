@@ -27,7 +27,7 @@
 #include "capone/opts.h"
 #include "capone/socket.h"
 
-#define PORT "43281"
+#define PORT 43281
 #define REPEATS 1000
 
 struct client_args {

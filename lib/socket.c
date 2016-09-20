@@ -19,18 +19,21 @@
 #include <errno.h>
 #include <string.h>
 #include <unistd.h>
+#include <inttypes.h>
 
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
 
+#include "capone/common.h"
 #include "capone/log.h"
 #include "capone/socket.h"
 
 static int get_socket(struct sockaddr_storage *addr, const char *host,
-        const char *port, enum cpn_channel_type type)
+        uint32_t port, enum cpn_channel_type type)
 {
     struct addrinfo hints, *servinfo, *hint;
+    char cport[16];
     int ret, fd, opt;
 
     memset(&hints, 0, sizeof(hints));
@@ -50,7 +53,9 @@ static int get_socket(struct sockaddr_storage *addr, const char *host,
     }
     hints.ai_flags = AI_PASSIVE;
 
-    ret = getaddrinfo(host, port, &hints, &servinfo);
+    sprintf(cport, "%"PRIu32, port);
+
+    ret = getaddrinfo(host, port ? cport : NULL, &hints, &servinfo);
     if (ret != 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not get addrinfo for address %s:%s",
                 host, port);
@@ -94,7 +99,7 @@ static int get_socket(struct sockaddr_storage *addr, const char *host,
 }
 
 int cpn_socket_init(struct cpn_socket *socket,
-        const char *host, const char *port, enum cpn_channel_type type)
+        const char *host, uint32_t port, enum cpn_channel_type type)
 {
     int fd;
     struct sockaddr_storage addr;
@@ -195,10 +200,11 @@ int cpn_socket_accept(struct cpn_socket *s, struct cpn_channel *out)
 }
 
 int cpn_socket_get_address(struct cpn_socket *s,
-        char *host, size_t hostlen, char *port, size_t portlen)
+        char *host, size_t hostlen, uint32_t *port)
 {
     struct sockaddr_storage addr;
     socklen_t addrlen;
+    char cport[16];
 
     addrlen = sizeof(addr);
     if (getsockname(s->fd, (struct sockaddr *)&addr, &addrlen) < 0) {
@@ -207,10 +213,15 @@ int cpn_socket_get_address(struct cpn_socket *s,
     }
 
     if (getnameinfo((struct sockaddr *) &addr,
-                addrlen, host, hostlen, port, portlen,
+                addrlen, host, hostlen, cport, sizeof(cport),
                 NI_NUMERICHOST | NI_NUMERICSERV) != 0)
     {
         cpn_log(LOG_LEVEL_ERROR, "Could not resolve name info: %s", strerror(errno));
+        return -1;
+    }
+
+    if (port && parse_uint32t(port, cport) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Got invalid port '%s'", cport);
         return -1;
     }
 

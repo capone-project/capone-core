@@ -46,7 +46,7 @@ static int invoke(struct cpn_channel *channel,
     UNUSED(session);
     UNUSED(cfg);
 
-    if (cpn_channel_init_from_host(&synergy_channel, "127.0.0.1", "34589", CPN_CHANNEL_TYPE_TCP) < 0) {
+    if (cpn_channel_init_from_host(&synergy_channel, "127.0.0.1", 34589, CPN_CHANNEL_TYPE_TCP) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not initialize local synergy channel");
         return -1;
     }
@@ -91,7 +91,7 @@ static int handle(struct cpn_channel *channel,
 {
     struct cpn_socket socket;
     struct cpn_channel synergy_channel;
-    char port[10], *args[] = {
+    char *args[] = {
         "synergyc",
         "--no-daemon",
         "--no-restart",
@@ -100,13 +100,14 @@ static int handle(struct cpn_channel *channel,
         NULL,
         NULL
     };
+    uint32_t port;
     int len, pid;
 
     UNUSED(cfg);
     UNUSED(session);
     UNUSED(invoker);
 
-    if (cpn_socket_init(&socket, "127.0.0.1", NULL, CPN_CHANNEL_TYPE_TCP) < 0) {
+    if (cpn_socket_init(&socket, "127.0.0.1", 0, CPN_CHANNEL_TYPE_TCP) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not initialize synergy relay socket");
         return -1;
     }
@@ -116,14 +117,14 @@ static int handle(struct cpn_channel *channel,
         return -1;
     }
 
-    if (cpn_socket_get_address(&socket, NULL, 0, port, sizeof(port)) < 0) {
+    if (cpn_socket_get_address(&socket, NULL, 0, &port) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not retrieve address of synergy relay socket");
         return -1;
     }
 
-    len = snprintf(NULL, 0, "127.0.0.1:%5s", port) + 1;
+    len = snprintf(NULL, 0, "127.0.0.1:%"PRIu32, port) + 1;
     args[5] = malloc(len);
-    len = snprintf(args[5], len, "127.0.0.1:%5s", port);
+    len = snprintf(args[5], len, "127.0.0.1:%"PRIu32, port);
 
     pid = fork();
     if (pid == 0) {

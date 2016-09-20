@@ -205,8 +205,19 @@ int cpn_service_from_section(struct cpn_service *out, const struct cpn_cfg_secti
 
         MAYBE_ADD_ENTRY("type", type, entry, value);
         MAYBE_ADD_ENTRY("name", service.name, entry, value);
-        MAYBE_ADD_ENTRY("port", service.port, entry, value);
         MAYBE_ADD_ENTRY("location", service.location, entry, value);
+
+        if (!strcmp("port", entry)) {
+            if (service.port) {
+                cpn_log(LOG_LEVEL_ERROR, "Service config has been specified twice");
+                goto out_err;
+            }
+            if (parse_uint32t(&service.port, value)) {
+                cpn_log(LOG_LEVEL_ERROR, "Service config has invalid port");
+                goto out_err;
+            }
+            continue;
+        }
 
         cpn_log(LOG_LEVEL_ERROR, "Unknown service config '%s'", entry);
         goto out_err;
@@ -216,7 +227,7 @@ int cpn_service_from_section(struct cpn_service *out, const struct cpn_cfg_secti
 
     if (type == NULL ||
             service.name == NULL ||
-            service.port == NULL ||
+            service.port == 0 ||
             service.location == NULL)
     {
         cpn_log(LOG_LEVEL_ERROR, "Not all service parameters were set");
@@ -243,7 +254,6 @@ out_err:
 void cpn_service_free(struct cpn_service *service)
 {
     free(service->name);
-    free(service->port);
     free(service->location);
 
     memset(service, 0, sizeof(struct cpn_service));

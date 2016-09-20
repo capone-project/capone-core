@@ -52,7 +52,7 @@ static void test_service_from_config()
     /* Assert values */
     assert_string_equal(service.name, "foo");
     assert_string_equal(service.location, "space");
-    assert_string_equal(service.port, "7777");
+    assert_int_equal(service.port, 7777);
 
     /* Check plugin pointers */
     assert_string_equal(service.plugin->type, "exec");

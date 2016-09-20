@@ -122,7 +122,6 @@ int cpn_client_discovery_handle_announce(struct cpn_discovery_results *out,
             results.services[i].category = announce->services[i]->category;
             announce->services[i]->category = NULL;
             results.services[i].port = announce->services[i]->port;
-            announce->services[i]->port = NULL;;
         }
     } else {
         results.services = NULL;
@@ -149,7 +148,6 @@ void cpn_discovery_results_clear(struct cpn_discovery_results *results)
     for (i = 0; i < results->nservices; i++) {
         free(results->services[i].name);
         free(results->services[i].category);
-        free(results->services[i].port);
     }
 
     free(results->name);
@@ -158,7 +156,7 @@ void cpn_discovery_results_clear(struct cpn_discovery_results *results)
 
 int cpn_client_connect(struct cpn_channel *channel,
         const char *host,
-        const char *port,
+        uint32_t port,
         const struct cpn_sign_key_pair *local_keys,
         const struct cpn_sign_key_public *remote_key)
 {
@@ -336,7 +334,6 @@ int cpn_client_query_service(struct cpn_query_results *out,
     results.location = msg->location;
     msg->location = NULL;
     results.port = msg->port;
-    msg->port = NULL;
 
     service_query_result__free_unpacked(msg, NULL);
 
@@ -360,8 +357,6 @@ void cpn_query_results_free(struct cpn_query_results *results)
     results->version = NULL;
     free(results->location);
     results->location = NULL;
-    free(results->port);
-    results->port = NULL;
 }
 
 int cpn_client_terminate_session(struct cpn_channel *channel,

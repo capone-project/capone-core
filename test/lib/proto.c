@@ -115,7 +115,7 @@ static void *initiate_connection(void *payload)
 
     UNUSED(payload);
 
-    UNUSED(cpn_client_connect(&c, "127.0.0.1", "31248",
+    UNUSED(cpn_client_connect(&c, "127.0.0.1", 31248,
                 &local_keys, &remote_keys.pk));
 
     UNUSED(cpn_channel_close(&c));
@@ -182,7 +182,7 @@ static void connection_initiation_succeeds()
     struct cpn_channel c;
     struct cpn_sign_key_public key;
 
-    assert_success(cpn_socket_init(&s, "127.0.0.1", "31248", CPN_CHANNEL_TYPE_TCP));
+    assert_success(cpn_socket_init(&s, "127.0.0.1", 31248, CPN_CHANNEL_TYPE_TCP));
     assert_success(cpn_socket_listen(&s));
 
     assert_success(cpn_spawn(&t, initiate_connection, NULL));
@@ -244,7 +244,7 @@ static void discovery_with_services_succeeds()
     assert_int_equal(results.nservices, args.nservices);
     assert_string_equal(results.services[0].category, service.plugin->category);
     assert_string_equal(results.services[0].name, service.name);
-    assert_string_equal(results.services[0].port, service.port);
+    assert_int_equal(results.services[0].port, service.port);
 
     cpn_discovery_results_clear(&results);
 }
@@ -310,7 +310,7 @@ static void query_succeeds()
     assert_string_equal(results.type, "test");
     assert_string_equal(results.category, "Test");
     assert_string_equal(results.location, "Dunno");
-    assert_string_equal(results.port, "1234");
+    assert_int_equal(results.port, 1234);
     assert_string_equal(results.version, CPN_VERSION);
 
     cpn_query_results_free(&results);

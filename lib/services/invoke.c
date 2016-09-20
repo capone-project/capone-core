@@ -113,7 +113,7 @@ static int parse(ProtobufCMessage **out, int argc, const char *argv[])
         CPN_OPTS_OPT_STRING(0, "--capability", NULL, NULL, false),
         CPN_OPTS_OPT_SIGKEY(0, "--service-identity", NULL, NULL, false),
         CPN_OPTS_OPT_STRING(0, "--service-address", NULL, NULL, false),
-        CPN_OPTS_OPT_STRING(0, "--service-port", NULL, NULL, false),
+        CPN_OPTS_OPT_UINT32(0, "--service-port", NULL, NULL, false),
         CPN_OPTS_OPT_STRING(0, "--service-type", NULL, NULL, false),
         CPN_OPTS_OPT_END
     };
@@ -134,7 +134,7 @@ static int parse(ProtobufCMessage **out, int argc, const char *argv[])
 
     cpn_sign_key_public_to_proto(&params->service_identity, &opts[2].value.sigkey);
     params->service_address = strdup(opts[3].value.string);
-    params->service_port = strdup(opts[4].value.string);
+    params->service_port = opts[4].value.uint32;
     params->service_type = strdup(opts[5].value.string);
 
     *out = &params->base;

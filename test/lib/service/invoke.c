@@ -29,7 +29,7 @@
 #include "test.h"
 #include "../test-service.h"
 
-#define PORT "23489"
+#define PORT 23489
 
 struct invoker_opts {
     struct cpn_session session;
@@ -86,12 +86,12 @@ static void invoking_succeeds()
     struct cpn_thread t;
     enum cpn_command type;
 
-    assert_success(cpn_socket_init(&socket, "127.0.0.1", "8080", CPN_CHANNEL_TYPE_TCP));
+    assert_success(cpn_socket_init(&socket, "127.0.0.1", 8080, CPN_CHANNEL_TYPE_TCP));
     assert_success(cpn_socket_listen(&socket));
 
     params.sessionid = 12345;
     params.service_address = "127.0.0.1";
-    params.service_port = "8080";
+    params.service_port = 8080;
     params.service_type = "test";
     params.service_identity = key_proto;
     params.cap = cap_proto;
@@ -205,7 +205,7 @@ static void parsing_command_succeeds_without_parameters()
     assert_true(protobuf_c_message_check(&params->base));
     assert_int_equal(params->sessionid, 12345);
     assert_string_equal(params->service_address, "localhost");
-    assert_string_equal(params->service_port, "12345");
+    assert_int_equal(params->service_port, 12345);
     assert_string_equal(params->service_type, "type");
 
     invoke_params__free_unpacked(params, NULL);
@@ -227,7 +227,7 @@ static void parsing_command_succeeds_with_parameters()
     assert_true(protobuf_c_message_check(&params->base));
     assert_int_equal(params->sessionid, 12345);
     assert_string_equal(params->service_address, "localhost");
-    assert_string_equal(params->service_port, "12345");
+    assert_int_equal(params->service_port, 12345);
     assert_string_equal(params->service_type, "type");
 
     invoke_params__free_unpacked(params, NULL);

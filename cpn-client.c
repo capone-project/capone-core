@@ -56,7 +56,7 @@ static struct cpn_opt opts[] = {
             "Public signature key of the host to query", "KEY", false),
     CPN_OPTS_OPT_STRING(0, "--remote-host",
             "Network address of the host to query", "ADDRESS", false),
-    CPN_OPTS_OPT_STRING(0, "--remote-port",
+    CPN_OPTS_OPT_UINT32(0, "--remote-port",
             "Port of the host to query", "PORT", false),
     CPN_OPTS_OPT_ACTION("query", NULL, NULL),
     CPN_OPTS_OPT_ACTION("request", NULL, request_opts),
@@ -71,7 +71,7 @@ static struct cpn_sign_key_pair local_keys;
 
 static struct cpn_sign_key_public remote_key;
 static const char *remote_host;
-static const char *remote_port;
+static uint32_t remote_port;
 
 static int cmd_query(void)
 {
@@ -99,7 +99,7 @@ static int cmd_query(void)
             "\ttype:     %s\n"
             "\tversion:  %s\n"
             "\tlocation: %s\n"
-            "\tport:     %s\n",
+            "\tport:     %"PRIu32"\n",
             hex.data,
             results.name,
             results.category,
@@ -268,7 +268,7 @@ int main(int argc, const char *argv[])
 
     memcpy(&remote_key, &opts[1].value.sigkey, sizeof(struct cpn_sign_key_public));
     remote_host = opts[2].value.string;
-    remote_port = opts[3].value.string;
+    remote_port = opts[3].value.uint32;
 
     if (opts[4].set)
         return cmd_query();

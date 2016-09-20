@@ -32,7 +32,7 @@
 #include "capone/service.h"
 #include "capone/socket.h"
 
-#define LISTEN_PORT "6667"
+#define LISTEN_PORT 6667
 
 struct handle_connection_args {
     const struct cpn_cfg *cfg;

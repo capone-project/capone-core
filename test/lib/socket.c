@@ -38,25 +38,25 @@ static int teardown()
 
 static void set_local_address_to_localhost()
 {
-    assert_success(cpn_socket_init(&remote, "localhost", "8080", type));
+    assert_success(cpn_socket_init(&remote, "localhost", 8080, type));
     assert_true(remote.fd >= 0);
 }
 
 static void set_local_address_to_127001()
 {
-    assert_success(cpn_socket_init(&remote, "127.0.0.1", "8080", type));
+    assert_success(cpn_socket_init(&remote, "127.0.0.1", 8080, type));
     assert_true(remote.fd >= 0);
 }
 
 static void set_local_address_to_empty_address()
 {
-    assert_success(cpn_socket_init(&remote, NULL, "8080", type));
+    assert_success(cpn_socket_init(&remote, NULL, 8080, type));
     assert_true(remote.fd >= 0);
 }
 
 static void set_local_address_to_invalid_address()
 {
-    assert_failure(cpn_socket_init(&remote, "999.999.999.999", "8080", type));
+    assert_failure(cpn_socket_init(&remote, "999.999.999.999", 8080, type));
     assert_true(remote.fd < 0);
 }
 
@@ -65,11 +65,11 @@ static void connect_to_localhost_succeeds()
     struct cpn_channel connected;
     uint8_t data[] = "test";
 
-    assert_success(cpn_socket_init(&remote, "127.0.0.1", "8080", type));
+    assert_success(cpn_socket_init(&remote, "127.0.0.1", 8080, type));
     if (type == CPN_CHANNEL_TYPE_TCP)
         assert_success(cpn_socket_listen(&remote));
 
-    assert_success(cpn_channel_init_from_host(&channel, "127.0.0.1", "8080", type));
+    assert_success(cpn_channel_init_from_host(&channel, "127.0.0.1", 8080, type));
     assert_success(cpn_channel_connect(&channel));
 
     assert_success(cpn_socket_accept(&remote, &connected));
@@ -81,13 +81,14 @@ static void connect_to_localhost_succeeds()
 
 static void getting_address_succeeds()
 {
-    char host[20], port[10];
+    char host[20];
+    uint32_t port;
 
-    assert_success(cpn_socket_init(&remote, "127.0.0.1", "12345", type));
-    assert_success(cpn_socket_get_address(&remote, host, sizeof(host), port, sizeof(port)));
+    assert_success(cpn_socket_init(&remote, "127.0.0.1", 12345, type));
+    assert_success(cpn_socket_get_address(&remote, host, sizeof(host), &port));
 
     assert_string_equal(host, "127.0.0.1");
-    assert_string_equal(port, "12345");
+    assert_int_equal(port, 12345);
 }
 
 int socket_test_run_suite(void)

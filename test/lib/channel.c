@@ -61,7 +61,7 @@ static void initialization_sets_socket()
 static void initialization_sets_type()
 {
     channel.type = -1;
-    assert_success(cpn_channel_init_from_host(&channel, NULL, "12345", CPN_CHANNEL_TYPE_TCP));
+    assert_success(cpn_channel_init_from_host(&channel, NULL, 12345, CPN_CHANNEL_TYPE_TCP));
     assert_int_equal(channel.type, CPN_CHANNEL_TYPE_TCP);
 }
 
@@ -76,25 +76,25 @@ static void close_resets_sockets_to_invalid_values()
 
 static void init_address_to_localhost()
 {
-    assert_success(cpn_channel_init_from_host(&channel, "localhost", "8080", CPN_CHANNEL_TYPE_TCP));
+    assert_success(cpn_channel_init_from_host(&channel, "localhost", 8080, CPN_CHANNEL_TYPE_TCP));
     assert_true(channel.fd >= 0);
 }
 
 static void init_address_to_127001()
 {
-    assert_success(cpn_channel_init_from_host(&channel, "127.0.0.1", "8080", CPN_CHANNEL_TYPE_TCP));
+    assert_success(cpn_channel_init_from_host(&channel, "127.0.0.1", 8080, CPN_CHANNEL_TYPE_TCP));
     assert_true(channel.fd >= 0);
 }
 
 static void init_address_to_empty_address()
 {
-    assert_success(cpn_channel_init_from_host(&channel, NULL, "8080", CPN_CHANNEL_TYPE_TCP));
+    assert_success(cpn_channel_init_from_host(&channel, NULL, 8080, CPN_CHANNEL_TYPE_TCP));
     assert_true(channel.fd >= 0);
 }
 
 static void init_address_to_invalid_address()
 {
-    assert_failure(cpn_channel_init_from_host(&channel, "999.999.999.999", "8080", CPN_CHANNEL_TYPE_TCP));
+    assert_failure(cpn_channel_init_from_host(&channel, "999.999.999.999", 8080, CPN_CHANNEL_TYPE_TCP));
     assert_true(channel.fd < 0);
 }
 
@@ -365,7 +365,7 @@ static void write_encrypted_message_with_invalid_nonces_fails()
 
 static void connect_fails_without_other_side()
 {
-    assert_success(cpn_channel_init_from_host(&channel, "127.0.0.1", "8080", CPN_CHANNEL_TYPE_TCP));
+    assert_success(cpn_channel_init_from_host(&channel, "127.0.0.1", 8080, CPN_CHANNEL_TYPE_TCP));
     assert_failure(cpn_channel_connect(&channel));
 }
 

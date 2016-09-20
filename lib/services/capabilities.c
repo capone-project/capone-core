@@ -262,7 +262,7 @@ static int answer_request(struct cpn_channel *channel,
            "     service: %s\n"
            "        type: %s\n"
            "     address: %s\n"
-           "        port: %s\n"
+           "        port: %"PRIu32"\n"
            "      params: %s\n",
            requester_hex.data, service_hex.data, request->service_type,
            request->service_address, request->service_port);
@@ -517,7 +517,7 @@ int parse(ProtobufCMessage **out, int argc, const char *argv[])
         CPN_OPTS_OPT_SIGKEY(0, "--requested-identity", NULL, NULL, false),
         CPN_OPTS_OPT_SIGKEY(0, "--service-identity", NULL, NULL, false),
         CPN_OPTS_OPT_STRING(0, "--service-address", NULL, NULL, false),
-        CPN_OPTS_OPT_STRING(0, "--service-port", NULL, NULL, false),
+        CPN_OPTS_OPT_UINT32(0, "--service-port", NULL, NULL, false),
         CPN_OPTS_OPT_STRING(0, "--service-type", NULL, NULL, false),
         CPN_OPTS_OPT_STRINGLIST(0, "--service-parameters", NULL, NULL, false),
         CPN_OPTS_OPT_END
@@ -558,7 +558,7 @@ int parse(ProtobufCMessage **out, int argc, const char *argv[])
         cpn_sign_key_public_to_proto(&rparams->requested_identity, &request_opts[0].value.sigkey);
         cpn_sign_key_public_to_proto(&rparams->service_identity, &request_opts[1].value.sigkey);
         rparams->service_address = strdup(request_opts[2].value.string);
-        rparams->service_port = strdup(request_opts[3].value.string);
+        rparams->service_port = request_opts[3].value.uint32;
         rparams->service_type = strdup(request_opts[4].value.string);
         if ((size = protobuf_c_message_get_packed_size(service_params)) > 0) {
             rparams->parameters.len = size;
