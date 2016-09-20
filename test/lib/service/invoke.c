@@ -106,7 +106,7 @@ static void invoking_succeeds()
     assert_int_equal(type, CPN_COMMAND_CONNECT);
     assert_success(cpn_channel_receive_protobuf(&c, &session_connect_message__descriptor,
                 (ProtobufCMessage **) &msg));
-    result.result = 0;
+    result.error = NULL;
     assert_success(cpn_channel_write_protobuf(&c, &result.base));
     assert_success(cpn_channel_write_data(&c, (uint8_t *) "test", 5));
 

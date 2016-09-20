@@ -142,11 +142,12 @@ int cpn_server_handle_session(struct cpn_channel *channel,
 {
     SessionConnectMessage *connect = NULL;
     SessionConnectResult msg = SESSION_CONNECT_RESULT__INIT;
+    ErrorMessage error = ERROR_MESSAGE__INIT;
     struct cpn_session *session = NULL;
     struct cpn_cap *cap = NULL;
-    int err;
+    int err = -1;
 
-    if ((err = cpn_channel_receive_protobuf(channel,
+    if ((cpn_channel_receive_protobuf(channel,
                 &session_connect_message__descriptor,
                 (ProtobufCMessage **) &connect)) < 0)
     {
@@ -156,31 +157,37 @@ int cpn_server_handle_session(struct cpn_channel *channel,
 
     if (cpn_cap_from_protobuf(&cap, connect->capability) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not read capability");
-        err = -1;
+        error.code = ERROR_MESSAGE__ERROR_CODE__EACCESS;
         goto out_notify;
     }
 
     if (cpn_sessions_find((const struct cpn_session **) &session, connect->identifier) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not find session for client");
-        err = -1;
+        error.code = ERROR_MESSAGE__ERROR_CODE__ENOTFOUND;
         goto out_notify;
     }
 
     if (cpn_caps_verify(cap, session->cap, remote_key, CPN_CAP_RIGHT_EXEC) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not authorize session connect");
-        err = -1;
+        error.code = ERROR_MESSAGE__ERROR_CODE__EPERM;
         goto out_notify;
     }
 
     if ((err = cpn_sessions_remove(&session, connect->identifier)) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not find session for client");
+        error.code = ERROR_MESSAGE__ERROR_CODE__EUNKNOWN;
         goto out_notify;
     }
 
+    err = 0;
+
 out_notify:
-    msg.result = err;
+    if (err)
+        msg.error = &error;
+
     if (cpn_channel_write_protobuf(channel, &msg.base) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not send session ack");
+        err = -1;
         goto out;
     }
 
@@ -200,7 +207,7 @@ out:
 
     cpn_cap_free(cap);
 
-    return 0;
+    return err;
 }
 
 int cpn_server_handle_query(struct cpn_channel *channel,

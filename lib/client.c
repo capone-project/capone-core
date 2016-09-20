@@ -216,9 +216,8 @@ int cpn_client_start_session(struct cpn_session **out,
         goto out;
     }
 
-    if (result->result != 0) {
+    if (result->error)
         goto out;
-    }
 
     params = protobuf_c_message_unpack(plugin->params_desc, NULL,
             result->parameters.len, result->parameters.data);
