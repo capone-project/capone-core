@@ -89,12 +89,12 @@ int cpn_client_discovery_handle_announce(struct cpn_discovery_results *out,
         struct cpn_channel *channel)
 {
     struct cpn_discovery_results results;
-    AnnounceMessage *announce = NULL;
+    DiscoverResult *announce = NULL;
     int err = -1;
     uint32_t i;
 
     if (cpn_channel_receive_protobuf(channel,
-                (ProtobufCMessageDescriptor *) &announce_message__descriptor,
+                (ProtobufCMessageDescriptor *) &discover_result__descriptor,
                 (ProtobufCMessage **) &announce) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to receive protobuf");
         goto out;
@@ -133,7 +133,7 @@ int cpn_client_discovery_handle_announce(struct cpn_discovery_results *out,
 
 out:
     if (announce)
-        announce_message__free_unpacked(announce, NULL);
+        discover_result__free_unpacked(announce, NULL);
 
     return err;
 }

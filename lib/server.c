@@ -71,8 +71,8 @@ int cpn_server_handle_discovery(struct cpn_channel *channel,
         const struct cpn_sign_key_public *local_key)
 {
     DiscoverMessage *msg = NULL;
-    AnnounceMessage announce_message = ANNOUNCE_MESSAGE__INIT;
-    AnnounceMessage__Service **service_messages = NULL;
+    DiscoverResult result = DISCOVER_RESULT__INIT;
+    DiscoverResult__Service **service_messages = NULL;
     size_t i;
     int err = -1;
 
@@ -98,22 +98,22 @@ int cpn_server_handle_discovery(struct cpn_channel *channel,
         goto out;
     }
 
-    announce_message.name = (char *) name;
-    announce_message.version = VERSION;
-    cpn_sign_key_public_to_proto(&announce_message.sign_key, local_key);
+    result.name = (char *) name;
+    result.version = VERSION;
+    cpn_sign_key_public_to_proto(&result.sign_key, local_key);
 
-    service_messages = malloc(sizeof(AnnounceMessage__Service *) * nservices);
+    service_messages = malloc(sizeof(DiscoverResult__Service *) * nservices);
     for (i = 0; i < (size_t) nservices; i++) {
-        service_messages[i] = malloc(sizeof(AnnounceMessage__Service));
-        announce_message__service__init(service_messages[i]);
+        service_messages[i] = malloc(sizeof(DiscoverResult__Service));
+        discover_result__service__init(service_messages[i]);
         service_messages[i]->name = services[i].name;
         service_messages[i]->port = services[i].port;
         service_messages[i]->category = (char *) services[i].plugin->category;
     }
-    announce_message.services = service_messages;
-    announce_message.n_services = nservices;
+    result.services = service_messages;
+    result.n_services = nservices;
 
-    if (cpn_channel_write_protobuf(channel, &announce_message.base) < 0) {
+    if (cpn_channel_write_protobuf(channel, &result.base) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not write announce message");
         goto out;
     }
@@ -129,8 +129,8 @@ out:
             free(service_messages[i]);
         free(service_messages);
     }
-    if (announce_message.sign_key)
-        signature_key_message__free_unpacked(announce_message.sign_key, NULL);
+    if (result.sign_key)
+        signature_key_message__free_unpacked(result.sign_key, NULL);
 
     return err;
 }
