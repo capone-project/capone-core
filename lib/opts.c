@@ -17,6 +17,8 @@
 
 #include <string.h>
 
+#include "config.h"
+
 #include "capone/common.h"
 #include "capone/log.h"
 #include "capone/opts.h"
@@ -306,5 +308,5 @@ void cpn_opts_version(const char *executable, FILE *out)
             "License GPLv3: GNU GPL version 3 <http://gnu.org/licenses/gpl.html>.\n"
             "This is free software; you are free to change and redistribute it.\n"
             "There is NO WARRANTY, to the extent permitted by the law.\n",
-            executable, VERSION);
+            executable, CPN_VERSION);
 }

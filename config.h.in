@@ -15,5 +15,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#define CPN_VERSION "@CPN_VERSION@"
+#define CPN_PROTOCOL_VERSION @CPN_PROTOCOL_VERSION@
+
 #cmakedefine HAVE_SCHED 1
 #cmakedefine HAVE_CLOCK_GETTIME 1

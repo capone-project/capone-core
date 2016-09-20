@@ -31,7 +31,7 @@
  */
 struct cpn_discovery_results {
     char *name;
-    char *version;
+    uint32_t version;
     struct cpn_sign_key_public identity;
 
     struct {

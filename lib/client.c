@@ -18,11 +18,13 @@
 #include <errno.h>
 #include <string.h>
 
+#include "config.h"
+
 #include "capone/buf.h"
 #include "capone/client.h"
 #include "capone/log.h"
 
-#include "capone/proto/connect.pb-c.h"
+#include "capone/proto/capone.pb-c.h"
 #include "capone/proto/discovery.pb-c.h"
 #include "capone/proto/encryption.pb-c.h"
 
@@ -53,7 +55,7 @@ int cpn_client_discovery_probe(struct cpn_channel *channel, const struct cpn_lis
     size_t i, keys;
     int err;
 
-    msg.version = VERSION;
+    msg.version = CPN_PROTOCOL_VERSION;
 
     keys = cpn_list_count(known_keys);
 
@@ -89,27 +91,19 @@ int cpn_client_discovery_handle_announce(struct cpn_discovery_results *out,
         struct cpn_channel *channel)
 {
     struct cpn_discovery_results results;
-    struct cpn_sign_key_hex remote_key;
-    AnnounceMessage *announce = NULL;
+    DiscoverResult *announce = NULL;
     int err = -1;
     uint32_t i;
 
     if (cpn_channel_receive_protobuf(channel,
-                (ProtobufCMessageDescriptor *) &announce_message__descriptor,
+                (ProtobufCMessageDescriptor *) &discover_result__descriptor,
                 (ProtobufCMessage **) &announce) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to receive protobuf");
         goto out;
     }
 
-    if (cpn_sign_key_hex_from_bin(&remote_key,
-                announce->sign_key.data, announce->sign_key.len) < 0)
-    {
-        cpn_log(LOG_LEVEL_ERROR, "Unable to retrieve remote sign key");
-        goto out;
-    }
-
-    if (cpn_sign_key_public_from_bin(&results.identity,
-                announce->sign_key.data, announce->sign_key.len) < 0)
+    if (cpn_sign_key_public_from_proto(&results.identity,
+                announce->sign_key) < 0)
     {
         cpn_log(LOG_LEVEL_ERROR, "Invalid identity");
         goto out;
@@ -118,7 +112,6 @@ int cpn_client_discovery_handle_announce(struct cpn_discovery_results *out,
     results.name = announce->name;
     announce->name = NULL;
     results.version = announce->version;
-    announce->version = NULL;
 
     results.nservices = announce->n_services;
     if (results.nservices) {
@@ -141,7 +134,7 @@ int cpn_client_discovery_handle_announce(struct cpn_discovery_results *out,
 
 out:
     if (announce)
-        announce_message__free_unpacked(announce, NULL);
+        discover_result__free_unpacked(announce, NULL);
 
     return err;
 }
@@ -160,7 +153,6 @@ void cpn_discovery_results_clear(struct cpn_discovery_results *results)
     }
 
     free(results->name);
-    free(results->version);
     free(results->services);
 }
 
@@ -194,8 +186,8 @@ int cpn_client_start_session(struct cpn_session **out,
         const struct cpn_cap *cap,
         const struct cpn_service_plugin *plugin)
 {
-    SessionInitiationMessage initiation = SESSION_INITIATION_MESSAGE__INIT;
-    SessionResult *result = NULL;
+    SessionConnectMessage connect = SESSION_CONNECT_MESSAGE__INIT;
+    SessionConnectResult *result = NULL;
     ProtobufCMessage *params = NULL;
     struct cpn_session *session;
     int err = -1;
@@ -205,28 +197,28 @@ int cpn_client_start_session(struct cpn_session **out,
         goto out;
     }
 
-    initiation.identifier = sessionid;
-    if (cpn_cap_to_protobuf(&initiation.capability, cap) < 0) {
+    connect.version = CPN_PROTOCOL_VERSION;
+    connect.identifier = sessionid;
+    if (cpn_cap_to_protobuf(&connect.capability, cap) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not read capability");
         goto out;
     }
 
-    if (cpn_channel_write_protobuf(channel, &initiation.base) < 0 ) {
+    if (cpn_channel_write_protobuf(channel, &connect.base) < 0 ) {
         cpn_log(LOG_LEVEL_ERROR, "Could not initiate session");
         goto out;
     }
 
     if (cpn_channel_receive_protobuf(channel,
-                &session_result__descriptor,
+                &session_connect_result__descriptor,
                 (ProtobufCMessage **) &result) < 0)
     {
         cpn_log(LOG_LEVEL_ERROR, "Could not receive session OK");
         goto out;
     }
 
-    if (result->result != 0) {
+    if (result->error)
         goto out;
-    }
 
     params = protobuf_c_message_unpack(plugin->params_desc, NULL,
             result->parameters.len, result->parameters.data);
@@ -241,10 +233,10 @@ int cpn_client_start_session(struct cpn_session **out,
     err = 0;
 
 out:
-    if (initiation.capability)
-        capability_message__free_unpacked(initiation.capability, NULL);
+    if (connect.capability)
+        capability_message__free_unpacked(connect.capability, NULL);
     if (result)
-        session_result__free_unpacked(result, NULL);
+        session_connect_result__free_unpacked(result, NULL);
 
     return err;
 }
@@ -255,7 +247,7 @@ int cpn_client_request_session(uint32_t *sessionid,
         const struct ProtobufCMessage *params)
 {
     SessionRequestMessage request = SESSION_REQUEST_MESSAGE__INIT;
-    SessionMessage *session = NULL;
+    SessionRequestResult *session = NULL;
     int err = -1;
 
     if (initiate_connection_type(channel, CONNECTION_INITIATION_MESSAGE__TYPE__REQUEST) < 0) {
@@ -263,6 +255,7 @@ int cpn_client_request_session(uint32_t *sessionid,
         goto out;
     }
 
+    request.version = CPN_PROTOCOL_VERSION;
     if (params) {
         int len = protobuf_c_message_get_packed_size(params);
         request.parameters.data = malloc(len);
@@ -276,11 +269,14 @@ int cpn_client_request_session(uint32_t *sessionid,
     }
 
     if (cpn_channel_receive_protobuf(channel,
-            &session_message__descriptor,
+            &session_request_result__descriptor,
             (ProtobufCMessage **) &session) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to receive session");
         goto out;
     }
+
+    if (session->error)
+        goto out;
 
     if (cpn_cap_from_protobuf(cap, session->cap) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to read capabilities");
@@ -293,7 +289,7 @@ int cpn_client_request_session(uint32_t *sessionid,
 
 out:
     if (session)
-        session_message__free_unpacked(session, NULL);
+        session_request_result__free_unpacked(session, NULL);
     free(request.parameters.data);
 
     return err;
@@ -302,7 +298,8 @@ out:
 int cpn_client_query_service(struct cpn_query_results *out,
         struct cpn_channel *channel)
 {
-    ServiceDescription *msg;
+    ServiceQueryMessage query = SERVICE_QUERY_MESSAGE__INIT;
+    ServiceQueryResult *msg;
     struct cpn_query_results results;
 
     if (initiate_connection_type(channel, CONNECTION_INITIATION_MESSAGE__TYPE__QUERY) < 0) {
@@ -310,11 +307,21 @@ int cpn_client_query_service(struct cpn_query_results *out,
         return -1;
     }
 
-    memset(out, 0, sizeof(struct cpn_query_results));
+    query.version = CPN_PROTOCOL_VERSION;
 
-    if (cpn_channel_receive_protobuf(channel, &service_description__descriptor,
+    if (cpn_channel_write_protobuf(channel, &query.base) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Could not send query");
+        return -1;
+    }
+
+    if (cpn_channel_receive_protobuf(channel, &service_query_result__descriptor,
             (ProtobufCMessage **) &msg) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not receive query results");
+        return -1;
+    }
+
+    if (msg->error) {
+        cpn_log(LOG_LEVEL_ERROR, "Query failed");
         return -1;
     }
 
@@ -331,7 +338,7 @@ int cpn_client_query_service(struct cpn_query_results *out,
     results.port = msg->port;
     msg->port = NULL;
 
-    service_description__free_unpacked(msg, NULL);
+    service_query_result__free_unpacked(msg, NULL);
 
     memcpy(out, &results, sizeof(*out));
 
@@ -361,13 +368,15 @@ int cpn_client_terminate_session(struct cpn_channel *channel,
         uint32_t sessionid, const struct cpn_cap *cap)
 {
     SessionTerminationMessage msg = SESSION_TERMINATION_MESSAGE__INIT;
-    int err = 0;
+    SessionTerminationResult *result = NULL;
+    int err = -1;
 
     if (initiate_connection_type(channel, CONNECTION_INITIATION_MESSAGE__TYPE__TERMINATE) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not initiate connection type");
         goto out;
     }
 
+    msg.version = CPN_PROTOCOL_VERSION;
     msg.identifier = sessionid;
     if ((err = cpn_cap_to_protobuf(&msg.capability, cap)) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to write termination message");
@@ -379,7 +388,22 @@ int cpn_client_terminate_session(struct cpn_channel *channel,
         goto out;
     }
 
+    if ((err = cpn_channel_receive_protobuf(channel, &session_termination_result__descriptor,
+                    (ProtobufCMessage **) &result)) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Unable to write termination message");
+        goto out;
+    }
+
+    if (result->error) {
+        cpn_log(LOG_LEVEL_ERROR, "Termination failed");
+        goto out;
+    }
+
+    err = 0;
+
 out:
+    if (result)
+        session_termination_result__free_unpacked(result, NULL);
     capability_message__free_unpacked(msg.capability, NULL);
 
     return err;

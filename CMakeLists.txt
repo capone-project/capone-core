@@ -5,6 +5,9 @@ SET(CMAKE_MACOSX_RPATH ON)
 
 PROJECT(capone C)
 
+SET(CPN_VERSION "0.0.1")
+SET(CPN_PROTOCOL_VERSION "1")
+
 SET(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 SET(CMAKE_MODULE_PATH
@@ -31,7 +34,6 @@ INCLUDE_DIRECTORIES(SYSTEM
     ${SODIUM_INCLUDE_DIRS})
 LINK_DIRECTORIES(${SODIUM_LIBRARY_DIRS})
 
-ADD_DEFINITIONS(-DVERSION="0.0.1")
 ADD_DEFINITIONS(-D_POSIX_C_SOURCE=200809L)
 ADD_DEFINITIONS(-D_DEFAULT_SOURCE)
 
@@ -39,7 +41,8 @@ SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Werror -pedantic -std=c89")
 
 PROTOBUF_GENERATE_C(PROTO_SOURCES PROTO_HEADERS
     include/capone/proto/capabilities.proto
-    include/capone/proto/connect.proto
+    include/capone/proto/capone.proto
+    include/capone/proto/core.proto
     include/capone/proto/discovery.proto
     include/capone/proto/encryption.proto
     include/capone/proto/exec.proto

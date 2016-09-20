@@ -20,6 +20,7 @@
 #include <sys/stat.h>
 
 #include "test.h"
+#include "config.h"
 
 #include "capone/common.h"
 #include "capone/opts.h"
@@ -836,7 +837,7 @@ static void version_succeeds()
     cpn_opts_version("test", out);
 
     assert_file_equal(out,
-            "test " VERSION "\n"
+            "test " CPN_VERSION "\n"
             "Copyright (C) 2016 Patrick Steinhardt\n"
             "License GPLv3: GNU GPL version 3 <http://gnu.org/licenses/gpl.html>.\n"
             "This is free software; you are free to change and redistribute it.\n"

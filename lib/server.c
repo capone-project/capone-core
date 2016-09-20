@@ -17,13 +17,15 @@
 
 #include <string.h>
 
+#include "config.h"
+
 #include "capone/buf.h"
 #include "capone/channel.h"
 #include "capone/log.h"
 #include "capone/session.h"
 #include "capone/server.h"
 
-#include "capone/proto/connect.pb-c.h"
+#include "capone/proto/capone.pb-c.h"
 #include "capone/proto/discovery.pb-c.h"
 #include "capone/proto/encryption.pb-c.h"
 
@@ -71,8 +73,8 @@ int cpn_server_handle_discovery(struct cpn_channel *channel,
         const struct cpn_sign_key_public *local_key)
 {
     DiscoverMessage *msg = NULL;
-    AnnounceMessage announce_message = ANNOUNCE_MESSAGE__INIT;
-    AnnounceMessage__Service **service_messages = NULL;
+    DiscoverResult result = DISCOVER_RESULT__INIT;
+    DiscoverResult__Service **service_messages = NULL;
     size_t i;
     int err = -1;
 
@@ -82,8 +84,8 @@ int cpn_server_handle_discovery(struct cpn_channel *channel,
         goto out;
     }
 
-    if (strcmp(msg->version, VERSION)) {
-        cpn_log(LOG_LEVEL_ERROR, "Cannot handle announce message version %s",
+    if (msg->version != CPN_PROTOCOL_VERSION) {
+        cpn_log(LOG_LEVEL_ERROR, "Cannot handle discovery protocol version %"PRIu32,
                 msg->version);
         goto out;
     }
@@ -98,23 +100,22 @@ int cpn_server_handle_discovery(struct cpn_channel *channel,
         goto out;
     }
 
-    announce_message.name = (char *) name;
-    announce_message.version = VERSION;
-    announce_message.sign_key.data = (uint8_t *) local_key->data;
-    announce_message.sign_key.len = sizeof(local_key->data);
+    result.name = (char *) name;
+    result.version = CPN_PROTOCOL_VERSION;
+    cpn_sign_key_public_to_proto(&result.sign_key, local_key);
 
-    service_messages = malloc(sizeof(AnnounceMessage__Service *) * nservices);
+    service_messages = malloc(sizeof(DiscoverResult__Service *) * nservices);
     for (i = 0; i < (size_t) nservices; i++) {
-        service_messages[i] = malloc(sizeof(AnnounceMessage__Service));
-        announce_message__service__init(service_messages[i]);
+        service_messages[i] = malloc(sizeof(DiscoverResult__Service));
+        discover_result__service__init(service_messages[i]);
         service_messages[i]->name = services[i].name;
         service_messages[i]->port = services[i].port;
         service_messages[i]->category = (char *) services[i].plugin->category;
     }
-    announce_message.services = service_messages;
-    announce_message.n_services = nservices;
+    result.services = service_messages;
+    result.n_services = nservices;
 
-    if (cpn_channel_write_protobuf(channel, &announce_message.base) < 0) {
+    if (cpn_channel_write_protobuf(channel, &result.base) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not write announce message");
         goto out;
     }
@@ -130,6 +131,8 @@ out:
             free(service_messages[i]);
         free(service_messages);
     }
+    if (result.sign_key)
+        signature_key_message__free_unpacked(result.sign_key, NULL);
 
     return err;
 }
@@ -139,47 +142,61 @@ int cpn_server_handle_session(struct cpn_channel *channel,
         const struct cpn_service *service,
         const struct cpn_cfg *cfg)
 {
-    SessionInitiationMessage *initiation = NULL;
-    SessionResult msg = SESSION_RESULT__INIT;
+    SessionConnectMessage *connect = NULL;
+    SessionConnectResult msg = SESSION_CONNECT_RESULT__INIT;
+    ErrorMessage error = ERROR_MESSAGE__INIT;
     struct cpn_session *session = NULL;
     struct cpn_cap *cap = NULL;
-    int err;
+    int err = -1;
 
-    if ((err = cpn_channel_receive_protobuf(channel,
-                &session_initiation_message__descriptor,
-                (ProtobufCMessage **) &initiation)) < 0)
+    if ((cpn_channel_receive_protobuf(channel,
+                &session_connect_message__descriptor,
+                (ProtobufCMessage **) &connect)) < 0)
     {
-        cpn_log(LOG_LEVEL_ERROR, "Could not receive connection initiation");
+        cpn_log(LOG_LEVEL_ERROR, "Could not receive connect");
         goto out;
     }
 
-    if (cpn_cap_from_protobuf(&cap, initiation->capability) < 0) {
-        cpn_log(LOG_LEVEL_ERROR, "Could not read capability");
-        err = -1;
+    if (connect->version != CPN_PROTOCOL_VERSION) {
+        cpn_log(LOG_LEVEL_ERROR, "Cannot handle connect protocol version %"PRIu32,
+                connect->version);
+        error.code = ERROR_MESSAGE__ERROR_CODE__EVERSION;
         goto out_notify;
     }
 
-    if (cpn_sessions_find((const struct cpn_session **) &session, initiation->identifier) < 0) {
+    if (cpn_cap_from_protobuf(&cap, connect->capability) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Could not read capability");
+        error.code = ERROR_MESSAGE__ERROR_CODE__EACCESS;
+        goto out_notify;
+    }
+
+    if (cpn_sessions_find((const struct cpn_session **) &session, connect->identifier) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not find session for client");
-        err = -1;
+        error.code = ERROR_MESSAGE__ERROR_CODE__ENOTFOUND;
         goto out_notify;
     }
 
     if (cpn_caps_verify(cap, session->cap, remote_key, CPN_CAP_RIGHT_EXEC) < 0) {
-        cpn_log(LOG_LEVEL_ERROR, "Could not authorize session initiation");
-        err = -1;
+        cpn_log(LOG_LEVEL_ERROR, "Could not authorize session connect");
+        error.code = ERROR_MESSAGE__ERROR_CODE__EPERM;
         goto out_notify;
     }
 
-    if ((err = cpn_sessions_remove(&session, initiation->identifier)) < 0) {
+    if ((err = cpn_sessions_remove(&session, connect->identifier)) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not find session for client");
+        error.code = ERROR_MESSAGE__ERROR_CODE__EUNKNOWN;
         goto out_notify;
     }
+
+    err = 0;
 
 out_notify:
-    msg.result = err;
+    if (err)
+        msg.error = &error;
+
     if (cpn_channel_write_protobuf(channel, &msg.base) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not send session ack");
+        err = -1;
         goto out;
     }
 
@@ -192,20 +209,37 @@ out_notify:
     }
 
 out:
-    if (initiation) {
-        session_initiation_message__free_unpacked(initiation, NULL);
+    if (connect) {
+        session_connect_message__free_unpacked(connect, NULL);
         cpn_session_free(session);
     }
 
     cpn_cap_free(cap);
 
-    return 0;
+    return err;
 }
 
 int cpn_server_handle_query(struct cpn_channel *channel,
         const struct cpn_service *service)
 {
-    ServiceDescription results = SERVICE_DESCRIPTION__INIT;
+    ServiceQueryResult results = SERVICE_QUERY_RESULT__INIT;
+    ErrorMessage error = ERROR_MESSAGE__INIT;
+    ServiceQueryMessage *msg = NULL;
+    int err = -1;
+
+    if (cpn_channel_receive_protobuf(channel, &service_query_message__descriptor,
+            (ProtobufCMessage **) &msg) < 0)
+    {
+        cpn_log(LOG_LEVEL_ERROR, "Could not receive query");
+        goto out;
+    }
+
+    if (msg->version != CPN_PROTOCOL_VERSION) {
+        cpn_log(LOG_LEVEL_ERROR, "Cannot handle query protocol version %"PRIu32,
+                msg->version);
+        error.code = ERROR_MESSAGE__ERROR_CODE__EVERSION;
+        goto out_notify;
+    }
 
     results.name = service->name;
     results.location = service->location;
@@ -214,12 +248,23 @@ int cpn_server_handle_query(struct cpn_channel *channel,
     results.type = (char *) service->plugin->type;
     results.version = (char *) service->plugin->version;
 
+    err = 0;
+
+out_notify:
+    if (err)
+        results.error = &error;
+
     if (cpn_channel_write_protobuf(channel, (ProtobufCMessage *) &results) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not send query results");
-        return -1;
+        err = -1;
+        goto out;
     }
 
-    return 0;
+out:
+    if (msg)
+        service_query_message__free_unpacked(msg, NULL);
+
+    return err;
 }
 
 static int create_cap(CapabilityMessage **out, const struct cpn_cap *root, uint32_t rights, const struct cpn_sign_key_public *key)
@@ -251,7 +296,8 @@ int cpn_server_handle_request(struct cpn_channel *channel,
 {
     SessionRequestMessage *request = NULL;
     ProtobufCMessage *parameters = NULL;
-    SessionMessage session_message = SESSION_MESSAGE__INIT;
+    SessionRequestResult result = SESSION_REQUEST_RESULT__INIT;
+    ErrorMessage error = ERROR_MESSAGE__INIT;
     const struct cpn_session *session;
     int err = -1;
 
@@ -263,37 +309,53 @@ int cpn_server_handle_request(struct cpn_channel *channel,
         goto out;
     }
 
+    if (request->version != CPN_PROTOCOL_VERSION) {
+        cpn_log(LOG_LEVEL_ERROR, "Cannot handle request protocol version %"PRIu32,
+                request->version);
+        error.code = ERROR_MESSAGE__ERROR_CODE__EVERSION;
+        goto out_notify;
+    }
+
     if (service->params_desc) {
         if ((parameters = protobuf_c_message_unpack(service->params_desc, NULL,
-                request->parameters.len, request->parameters.data)) == NULL)
-            goto out;
+                        request->parameters.len, request->parameters.data)) == NULL) {
+            error.code = ERROR_MESSAGE__ERROR_CODE__EINVAL;
+            goto out_notify;
+        }
     }
 
     if (cpn_sessions_add(&session, parameters, remote_key) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to add session");
-        goto out;
+        error.code = ERROR_MESSAGE__ERROR_CODE__EUNKNOWN;
+        goto out_notify;
     }
 
-    session_message.identifier = session->identifier;
-
-    if (create_cap(&session_message.cap, session->cap,
+    if (create_cap(&result.cap, session->cap,
                 CPN_CAP_RIGHT_EXEC | CPN_CAP_RIGHT_TERM, remote_key) < 0)
     {
         cpn_log(LOG_LEVEL_ERROR, "Unable to add invoker capability");
-        goto out;
+        error.code = ERROR_MESSAGE__ERROR_CODE__EUNKNOWN;
+        goto out_notify;
     }
 
-    if (cpn_channel_write_protobuf(channel, &session_message.base) < 0) {
-        cpn_log(LOG_LEVEL_ERROR, "Unable to send connection session");
-        cpn_sessions_remove(NULL, session->identifier);
-        goto out;
-    }
+    result.identifier = session->identifier;
 
     err = 0;
 
+out_notify:
+    if (err)
+        result.error = &error;
+
+    if (cpn_channel_write_protobuf(channel, &result.base) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Unable to send connection session");
+        cpn_sessions_remove(NULL, session->identifier);
+        err = -1;
+        goto out;
+    }
+
 out:
-    if (session_message.cap)
-        capability_message__free_unpacked(session_message.cap, NULL);
+    if (result.cap)
+        capability_message__free_unpacked(result.cap, NULL);
     if (request)
         session_request_message__free_unpacked(request, NULL);
 
@@ -304,6 +366,8 @@ int cpn_server_handle_termination(struct cpn_channel *channel,
         const struct cpn_sign_key_public *remote_key)
 {
     SessionTerminationMessage *msg = NULL;
+    SessionTerminationResult result = SESSION_TERMINATION_RESULT__INIT;
+    ErrorMessage error = ERROR_MESSAGE__INIT;
     const struct cpn_session *session;
     struct cpn_cap *cap = NULL;
     int err = -1;
@@ -316,27 +380,48 @@ int cpn_server_handle_termination(struct cpn_channel *channel,
         goto out;
     }
 
+    if (msg->version != CPN_PROTOCOL_VERSION) {
+        cpn_log(LOG_LEVEL_ERROR, "Cannot handle termination protocol version %"PRIu32,
+                msg->version);
+        error.code = ERROR_MESSAGE__ERROR_CODE__EVERSION;
+        goto out_notify;
+    }
+
     /* If session could not be found we have nothing to do */
     if (cpn_sessions_find(&session, msg->identifier) < 0) {
-        goto out;
+        error.code = ERROR_MESSAGE__ERROR_CODE__ENOTFOUND;
+        goto out_notify;
     }
 
     if (cpn_cap_from_protobuf(&cap, msg->capability) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Received invalid capability");
-        goto out;
+        error.code = ERROR_MESSAGE__ERROR_CODE__EINVAL;
+        goto out_notify;
     }
 
     if (cpn_caps_verify(cap, session->cap, remote_key, CPN_CAP_RIGHT_TERM) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Received unauthorized request");
-        goto out;
+        error.code = ERROR_MESSAGE__ERROR_CODE__EPERM;
+        goto out_notify;
     }
 
     if (cpn_sessions_remove(NULL, msg->identifier) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to terminate session");
-        goto out;
+        error.code = ERROR_MESSAGE__ERROR_CODE__EUNKNOWN;
+        goto out_notify;
     }
 
     err = 0;
+
+out_notify:
+    if (err)
+        result.error = &error;
+
+    if (cpn_channel_write_protobuf(channel, &result.base) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Unable to send termination result");
+        err = -1;
+        goto out;
+    }
 
 out:
     if (msg)

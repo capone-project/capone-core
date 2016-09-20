@@ -23,7 +23,7 @@
 #include "capone/service.h"
 #include "capone/socket.h"
 
-#include "capone/proto/connect.pb-c.h"
+#include "capone/proto/capone.pb-c.h"
 #include "capone/proto/invoke.pb-c.h"
 
 #include "test.h"
@@ -39,7 +39,7 @@ struct invoker_opts {
 static struct cpn_cfg cfg;
 
 static struct cpn_sign_key_pair keys;
-static SignatureKey *key_proto;
+static SignatureKeyMessage *key_proto;
 
 static struct cpn_cap cap;
 static CapabilityMessage *cap_proto;
@@ -62,7 +62,7 @@ static int teardown()
 {
     cpn_cfg_free(&cfg);
 
-    signature_key__free_unpacked(key_proto, NULL);
+    signature_key_message__free_unpacked(key_proto, NULL);
     capability_message__free_unpacked(cap_proto, NULL);
 
     return 0;
@@ -78,8 +78,8 @@ static void *invoker(void *payload)
 static void invoking_succeeds()
 {
     InvokeParams params = INVOKE_PARAMS__INIT;
-    SessionResult result = SESSION_RESULT__INIT;
-    SessionInitiationMessage *msg;
+    SessionConnectResult result = SESSION_CONNECT_RESULT__INIT;
+    SessionConnectMessage *msg;
     struct invoker_opts opts;
     struct cpn_socket socket;
     struct cpn_channel c;
@@ -104,9 +104,9 @@ static void invoking_succeeds()
     assert_success(cpn_server_await_encryption(&c, &keys, &keys.pk));
     assert_success(cpn_server_await_command(&type, &c));
     assert_int_equal(type, CPN_COMMAND_CONNECT);
-    assert_success(cpn_channel_receive_protobuf(&c, &session_initiation_message__descriptor,
+    assert_success(cpn_channel_receive_protobuf(&c, &session_connect_message__descriptor,
                 (ProtobufCMessage **) &msg));
-    result.result = 0;
+    result.error = NULL;
     assert_success(cpn_channel_write_protobuf(&c, &result.base));
     assert_success(cpn_channel_write_data(&c, (uint8_t *) "test", 5));
 
@@ -122,7 +122,7 @@ static void invoking_succeeds()
     assert_int_equal(msg->capability->secret.len, sizeof(cap.secret));
     assert_memory_equal(msg->capability->secret.data, cap.secret, sizeof(cap.secret));
 
-    session_initiation_message__free_unpacked(msg, NULL);
+    session_connect_message__free_unpacked(msg, NULL);
 
     cpn_socket_close(&socket);
 }

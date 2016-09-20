@@ -30,7 +30,7 @@
 #include <stdbool.h>
 
 #include "capone/keys.h"
-#include "capone/proto/connect.pb-c.h"
+#include "capone/proto/core.pb-c.h"
 
 #define CPN_CAP_SECRET_LEN 32
 
