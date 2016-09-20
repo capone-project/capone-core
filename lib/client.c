@@ -374,7 +374,8 @@ int cpn_client_terminate_session(struct cpn_channel *channel,
         uint32_t sessionid, const struct cpn_cap *cap)
 {
     SessionTerminationMessage msg = SESSION_TERMINATION_MESSAGE__INIT;
-    int err = 0;
+    SessionTerminationResult *result = NULL;
+    int err = -1;
 
     if (initiate_connection_type(channel, CONNECTION_INITIATION_MESSAGE__TYPE__TERMINATE) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not initiate connection type");
@@ -392,7 +393,22 @@ int cpn_client_terminate_session(struct cpn_channel *channel,
         goto out;
     }
 
+    if ((err = cpn_channel_receive_protobuf(channel, &session_termination_result__descriptor,
+                    (ProtobufCMessage **) &result)) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Unable to write termination message");
+        goto out;
+    }
+
+    if (result->error) {
+        cpn_log(LOG_LEVEL_ERROR, "Termination failed");
+        goto out;
+    }
+
+    err = 0;
+
 out:
+    if (result)
+        session_termination_result__free_unpacked(result, NULL);
     capability_message__free_unpacked(msg.capability, NULL);
 
     return err;

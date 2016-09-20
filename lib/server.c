@@ -350,6 +350,8 @@ int cpn_server_handle_termination(struct cpn_channel *channel,
         const struct cpn_sign_key_public *remote_key)
 {
     SessionTerminationMessage *msg = NULL;
+    SessionTerminationResult result = SESSION_TERMINATION_RESULT__INIT;
+    ErrorMessage error = ERROR_MESSAGE__INIT;
     const struct cpn_session *session;
     struct cpn_cap *cap = NULL;
     int err = -1;
@@ -364,25 +366,39 @@ int cpn_server_handle_termination(struct cpn_channel *channel,
 
     /* If session could not be found we have nothing to do */
     if (cpn_sessions_find(&session, msg->identifier) < 0) {
-        goto out;
+        error.code = ERROR_MESSAGE__ERROR_CODE__ENOTFOUND;
+        goto out_notify;
     }
 
     if (cpn_cap_from_protobuf(&cap, msg->capability) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Received invalid capability");
-        goto out;
+        error.code = ERROR_MESSAGE__ERROR_CODE__EINVAL;
+        goto out_notify;
     }
 
     if (cpn_caps_verify(cap, session->cap, remote_key, CPN_CAP_RIGHT_TERM) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Received unauthorized request");
-        goto out;
+        error.code = ERROR_MESSAGE__ERROR_CODE__EPERM;
+        goto out_notify;
     }
 
     if (cpn_sessions_remove(NULL, msg->identifier) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to terminate session");
-        goto out;
+        error.code = ERROR_MESSAGE__ERROR_CODE__EUNKNOWN;
+        goto out_notify;
     }
 
     err = 0;
+
+out_notify:
+    if (err)
+        result.error = &error;
+
+    if (cpn_channel_write_protobuf(channel, &result.base) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Unable to send termination result");
+        err = -1;
+        goto out;
+    }
 
 out:
     if (msg)
