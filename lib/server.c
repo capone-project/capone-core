@@ -214,6 +214,7 @@ int cpn_server_handle_query(struct cpn_channel *channel,
         const struct cpn_service *service)
 {
     ServiceQueryResult results = SERVICE_QUERY_RESULT__INIT;
+    ErrorMessage error = ERROR_MESSAGE__INIT;
     ServiceQueryMessage *msg = NULL;
     int err = -1;
 
@@ -227,7 +228,8 @@ int cpn_server_handle_query(struct cpn_channel *channel,
     if (strcmp(msg->version, VERSION)) {
         cpn_log(LOG_LEVEL_ERROR, "Cannot handle query message version %s",
                 msg->version);
-        goto out;
+        error.code = ERROR_MESSAGE__ERROR_CODE__EVERSION;
+        goto out_notify;
     }
 
     results.name = service->name;
@@ -237,12 +239,17 @@ int cpn_server_handle_query(struct cpn_channel *channel,
     results.type = (char *) service->plugin->type;
     results.version = (char *) service->plugin->version;
 
+    err = 0;
+
+out_notify:
+    if (err)
+        results.error = &error;
+
     if (cpn_channel_write_protobuf(channel, (ProtobufCMessage *) &results) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not send query results");
+        err = -1;
         goto out;
     }
-
-    err = 0;
 
 out:
     if (msg)

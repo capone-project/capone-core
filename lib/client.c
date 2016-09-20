@@ -326,6 +326,11 @@ int cpn_client_query_service(struct cpn_query_results *out,
         return -1;
     }
 
+    if (msg->error) {
+        cpn_log(LOG_LEVEL_ERROR, "Query failed");
+        return -1;
+    }
+
     results.name = msg->name;
     msg->name = NULL;
     results.category = msg->category;
