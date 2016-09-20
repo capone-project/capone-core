@@ -280,7 +280,8 @@ int cpn_server_handle_request(struct cpn_channel *channel,
 {
     SessionRequestMessage *request = NULL;
     ProtobufCMessage *parameters = NULL;
-    SessionRequestResult session_message = SESSION_REQUEST_RESULT__INIT;
+    SessionRequestResult result = SESSION_REQUEST_RESULT__INIT;
+    ErrorMessage error = ERROR_MESSAGE__INIT;
     const struct cpn_session *session;
     int err = -1;
 
@@ -294,35 +295,44 @@ int cpn_server_handle_request(struct cpn_channel *channel,
 
     if (service->params_desc) {
         if ((parameters = protobuf_c_message_unpack(service->params_desc, NULL,
-                request->parameters.len, request->parameters.data)) == NULL)
-            goto out;
+                        request->parameters.len, request->parameters.data)) == NULL) {
+            error.code = ERROR_MESSAGE__ERROR_CODE__EINVAL;
+            goto out_notify;
+        }
     }
 
     if (cpn_sessions_add(&session, parameters, remote_key) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to add session");
-        goto out;
+        error.code = ERROR_MESSAGE__ERROR_CODE__EUNKNOWN;
+        goto out_notify;
     }
 
-    session_message.identifier = session->identifier;
-
-    if (create_cap(&session_message.cap, session->cap,
+    if (create_cap(&result.cap, session->cap,
                 CPN_CAP_RIGHT_EXEC | CPN_CAP_RIGHT_TERM, remote_key) < 0)
     {
         cpn_log(LOG_LEVEL_ERROR, "Unable to add invoker capability");
-        goto out;
+        error.code = ERROR_MESSAGE__ERROR_CODE__EUNKNOWN;
+        goto out_notify;
     }
 
-    if (cpn_channel_write_protobuf(channel, &session_message.base) < 0) {
-        cpn_log(LOG_LEVEL_ERROR, "Unable to send connection session");
-        cpn_sessions_remove(NULL, session->identifier);
-        goto out;
-    }
+    result.identifier = session->identifier;
 
     err = 0;
 
+out_notify:
+    if (err)
+        result.error = &error;
+
+    if (cpn_channel_write_protobuf(channel, &result.base) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Unable to send connection session");
+        cpn_sessions_remove(NULL, session->identifier);
+        err = -1;
+        goto out;
+    }
+
 out:
-    if (session_message.cap)
-        capability_message__free_unpacked(session_message.cap, NULL);
+    if (result.cap)
+        capability_message__free_unpacked(result.cap, NULL);
     if (request)
         session_request_message__free_unpacked(request, NULL);
 

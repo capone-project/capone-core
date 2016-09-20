@@ -273,6 +273,9 @@ int cpn_client_request_session(uint32_t *sessionid,
         goto out;
     }
 
+    if (session->error)
+        goto out;
+
     if (cpn_cap_from_protobuf(cap, session->cap) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to read capabilities");
         goto out;
