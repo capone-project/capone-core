@@ -8,7 +8,7 @@ cache:
     - C:\msys64\home\appveyor\local -> scripts\deps.sh
 
 install:
-    - C:\msys64\usr\bin\pacman.exe -Sy --noconfirm cmake
+    - C:\msys64\usr\bin\pacman.exe -Syu --noconfirm cmake
     - C:\msys64\usr\bin\sh.exe --login /c/projects/capone-core/scripts/deps.sh
 
 build_script:
