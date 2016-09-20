@@ -84,8 +84,8 @@ int cpn_server_handle_discovery(struct cpn_channel *channel,
         goto out;
     }
 
-    if (strcmp(msg->version, CPN_VERSION)) {
-        cpn_log(LOG_LEVEL_ERROR, "Cannot handle announce message version %s",
+    if (msg->version != CPN_PROTOCOL_VERSION) {
+        cpn_log(LOG_LEVEL_ERROR, "Cannot handle discovery protocol version %"PRIu32,
                 msg->version);
         goto out;
     }
@@ -101,7 +101,7 @@ int cpn_server_handle_discovery(struct cpn_channel *channel,
     }
 
     result.name = (char *) name;
-    result.version = CPN_VERSION;
+    result.version = CPN_PROTOCOL_VERSION;
     cpn_sign_key_public_to_proto(&result.sign_key, local_key);
 
     service_messages = malloc(sizeof(DiscoverResult__Service *) * nservices);
@@ -155,6 +155,13 @@ int cpn_server_handle_session(struct cpn_channel *channel,
     {
         cpn_log(LOG_LEVEL_ERROR, "Could not receive connect");
         goto out;
+    }
+
+    if (connect->version != CPN_PROTOCOL_VERSION) {
+        cpn_log(LOG_LEVEL_ERROR, "Cannot handle connect protocol version %"PRIu32,
+                connect->version);
+        error.code = ERROR_MESSAGE__ERROR_CODE__EVERSION;
+        goto out_notify;
     }
 
     if (cpn_cap_from_protobuf(&cap, connect->capability) < 0) {
@@ -227,8 +234,8 @@ int cpn_server_handle_query(struct cpn_channel *channel,
         goto out;
     }
 
-    if (strcmp(msg->version, CPN_VERSION)) {
-        cpn_log(LOG_LEVEL_ERROR, "Cannot handle query message version %s",
+    if (msg->version != CPN_PROTOCOL_VERSION) {
+        cpn_log(LOG_LEVEL_ERROR, "Cannot handle query protocol version %"PRIu32,
                 msg->version);
         error.code = ERROR_MESSAGE__ERROR_CODE__EVERSION;
         goto out_notify;
@@ -302,6 +309,13 @@ int cpn_server_handle_request(struct cpn_channel *channel,
         goto out;
     }
 
+    if (request->version != CPN_PROTOCOL_VERSION) {
+        cpn_log(LOG_LEVEL_ERROR, "Cannot handle request protocol version %"PRIu32,
+                request->version);
+        error.code = ERROR_MESSAGE__ERROR_CODE__EVERSION;
+        goto out_notify;
+    }
+
     if (service->params_desc) {
         if ((parameters = protobuf_c_message_unpack(service->params_desc, NULL,
                         request->parameters.len, request->parameters.data)) == NULL) {
@@ -364,6 +378,13 @@ int cpn_server_handle_termination(struct cpn_channel *channel,
     {
         cpn_log(LOG_LEVEL_ERROR, "Unable to receive termination protobuf");
         goto out;
+    }
+
+    if (msg->version != CPN_PROTOCOL_VERSION) {
+        cpn_log(LOG_LEVEL_ERROR, "Cannot handle termination protocol version %"PRIu32,
+                msg->version);
+        error.code = ERROR_MESSAGE__ERROR_CODE__EVERSION;
+        goto out_notify;
     }
 
     /* If session could not be found we have nothing to do */

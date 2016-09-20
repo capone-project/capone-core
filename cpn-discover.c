@@ -44,7 +44,7 @@ static void print_announcement(struct cpn_discovery_results *announce)
 
     cpn_sign_key_hex_from_key(&hex, &announce->identity);
 
-    printf("%s - %s (v%s)\n", announce->name, hex.data, announce->version);
+    printf("%s - %s (v%"PRIu32")\n", announce->name, hex.data, announce->version);
 
     for (i = 0; i < announce->nservices; i++) {
         printf("\t%s -> %s (%s)\n", announce->services[i].port,

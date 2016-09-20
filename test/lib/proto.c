@@ -213,7 +213,7 @@ static void discovery_without_services_succeeds()
     assert_success(cpn_join(&t, NULL));
 
     assert_string_equal(results.name, args.name);
-    assert_string_equal(results.version, CPN_VERSION);
+    assert_int_equal(results.version, CPN_PROTOCOL_VERSION);
     assert_memory_equal(&results.identity, &remote_keys.pk, sizeof(struct cpn_sign_key_public));
     assert_int_equal(results.nservices, args.nservices);
     assert_null(results.services);
@@ -239,7 +239,7 @@ static void discovery_with_services_succeeds()
     assert_success(cpn_join(&t, NULL));
 
     assert_string_equal(results.name, args.name);
-    assert_string_equal(results.version, CPN_VERSION);
+    assert_int_equal(results.version, CPN_PROTOCOL_VERSION);
     assert_memory_equal(&results.identity, &remote_keys.pk, sizeof(struct cpn_sign_key_public));
     assert_int_equal(results.nservices, args.nservices);
     assert_string_equal(results.services[0].category, service.plugin->category);

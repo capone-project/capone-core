@@ -55,7 +55,7 @@ int cpn_client_discovery_probe(struct cpn_channel *channel, const struct cpn_lis
     size_t i, keys;
     int err;
 
-    msg.version = CPN_VERSION;
+    msg.version = CPN_PROTOCOL_VERSION;
 
     keys = cpn_list_count(known_keys);
 
@@ -112,7 +112,6 @@ int cpn_client_discovery_handle_announce(struct cpn_discovery_results *out,
     results.name = announce->name;
     announce->name = NULL;
     results.version = announce->version;
-    announce->version = NULL;
 
     results.nservices = announce->n_services;
     if (results.nservices) {
@@ -154,7 +153,6 @@ void cpn_discovery_results_clear(struct cpn_discovery_results *results)
     }
 
     free(results->name);
-    free(results->version);
     free(results->services);
 }
 
@@ -199,6 +197,7 @@ int cpn_client_start_session(struct cpn_session **out,
         goto out;
     }
 
+    connect.version = CPN_PROTOCOL_VERSION;
     connect.identifier = sessionid;
     if (cpn_cap_to_protobuf(&connect.capability, cap) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not read capability");
@@ -256,6 +255,7 @@ int cpn_client_request_session(uint32_t *sessionid,
         goto out;
     }
 
+    request.version = CPN_PROTOCOL_VERSION;
     if (params) {
         int len = protobuf_c_message_get_packed_size(params);
         request.parameters.data = malloc(len);
@@ -307,16 +307,8 @@ int cpn_client_query_service(struct cpn_query_results *out,
         return -1;
     }
 
-    query.version = CPN_VERSION;
+    query.version = CPN_PROTOCOL_VERSION;
 
-    if (cpn_channel_write_protobuf(channel, &query.base) < 0) {
-        cpn_log(LOG_LEVEL_ERROR, "Unable to send query message");
-        return -1;
-    }
-
-    memset(out, 0, sizeof(struct cpn_query_results));
-
-    query.version = CPN_VERSION;
     if (cpn_channel_write_protobuf(channel, &query.base) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not send query");
         return -1;
@@ -384,6 +376,7 @@ int cpn_client_terminate_session(struct cpn_channel *channel,
         goto out;
     }
 
+    msg.version = CPN_PROTOCOL_VERSION;
     msg.identifier = sessionid;
     if ((err = cpn_cap_to_protobuf(&msg.capability, cap)) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to write termination message");

@@ -16,6 +16,7 @@
  */
 
 #define CPN_VERSION "@CPN_VERSION@"
+#define CPN_PROTOCOL_VERSION @CPN_PROTOCOL_VERSION@
 
 #cmakedefine HAVE_SCHED 1
 #cmakedefine HAVE_CLOCK_GETTIME 1
