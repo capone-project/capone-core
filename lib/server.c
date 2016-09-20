@@ -17,6 +17,8 @@
 
 #include <string.h>
 
+#include "config.h"
+
 #include "capone/buf.h"
 #include "capone/channel.h"
 #include "capone/log.h"
@@ -82,7 +84,7 @@ int cpn_server_handle_discovery(struct cpn_channel *channel,
         goto out;
     }
 
-    if (strcmp(msg->version, VERSION)) {
+    if (strcmp(msg->version, CPN_VERSION)) {
         cpn_log(LOG_LEVEL_ERROR, "Cannot handle announce message version %s",
                 msg->version);
         goto out;
@@ -99,7 +101,7 @@ int cpn_server_handle_discovery(struct cpn_channel *channel,
     }
 
     result.name = (char *) name;
-    result.version = VERSION;
+    result.version = CPN_VERSION;
     cpn_sign_key_public_to_proto(&result.sign_key, local_key);
 
     service_messages = malloc(sizeof(DiscoverResult__Service *) * nservices);
@@ -225,7 +227,7 @@ int cpn_server_handle_query(struct cpn_channel *channel,
         goto out;
     }
 
-    if (strcmp(msg->version, VERSION)) {
+    if (strcmp(msg->version, CPN_VERSION)) {
         cpn_log(LOG_LEVEL_ERROR, "Cannot handle query message version %s",
                 msg->version);
         error.code = ERROR_MESSAGE__ERROR_CODE__EVERSION;

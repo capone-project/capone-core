@@ -15,5 +15,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "include/config.h"
+
 #define TEST_HELPER_EXECUTABLE "@TEST_HELPER_EXECUTABLE@"
 #cmakedefine MSYS

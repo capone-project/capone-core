@@ -18,6 +18,8 @@
 #include <errno.h>
 #include <string.h>
 
+#include "config.h"
+
 #include "capone/buf.h"
 #include "capone/client.h"
 #include "capone/log.h"
@@ -53,7 +55,7 @@ int cpn_client_discovery_probe(struct cpn_channel *channel, const struct cpn_lis
     size_t i, keys;
     int err;
 
-    msg.version = VERSION;
+    msg.version = CPN_VERSION;
 
     keys = cpn_list_count(known_keys);
 
@@ -305,7 +307,7 @@ int cpn_client_query_service(struct cpn_query_results *out,
         return -1;
     }
 
-    query.version = VERSION;
+    query.version = CPN_VERSION;
 
     if (cpn_channel_write_protobuf(channel, &query.base) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to send query message");
@@ -314,7 +316,7 @@ int cpn_client_query_service(struct cpn_query_results *out,
 
     memset(out, 0, sizeof(struct cpn_query_results));
 
-    query.version = VERSION;
+    query.version = CPN_VERSION;
     if (cpn_channel_write_protobuf(channel, &query.base) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not send query");
         return -1;
