@@ -325,6 +325,28 @@ static void query_succeeds()
     cpn_query_results_free(&results);
 }
 
+static void query_refuses_with_invalid_version()
+{
+    ConnectionInitiationMessage initialization = CONNECTION_INITIATION_MESSAGE__INIT;
+    ServiceQueryMessage query = SERVICE_QUERY_MESSAGE__INIT;
+    struct await_query_args args = {
+        &remote, &service, 0
+    };
+    struct cpn_thread t;
+
+    initialization.type = CONNECTION_INITIATION_MESSAGE__TYPE__QUERY;
+    query.version = -1;
+
+    cpn_spawn(&t, await_query, &args);
+
+    assert_success(cpn_channel_write_protobuf(&local, &initialization.base));
+    assert_success(cpn_channel_write_protobuf(&local, &query.base));
+
+    cpn_join(&t, NULL);
+
+    assert_failure(args.result);
+}
+
 static void whitelisted_query_succeeds()
 {
     struct await_query_args args = {
@@ -365,6 +387,28 @@ static void request_constructs_session()
     cpn_session_free(added);
     cpn_cap_free(cap);
     protobuf_c_message_free_unpacked(parsed, NULL);
+}
+
+static void request_refuses_with_invalid_version()
+{
+    ConnectionInitiationMessage initialization = CONNECTION_INITIATION_MESSAGE__INIT;
+    SessionRequestMessage request = SESSION_REQUEST_MESSAGE__INIT;
+    struct await_request_args args = {
+        &remote, &service, &local_keys.pk, NULL, 0, 0
+    };
+    struct cpn_thread t;
+
+    initialization.type = CONNECTION_INITIATION_MESSAGE__TYPE__REQUEST;
+    request.version = -1;
+
+    cpn_spawn(&t, await_request, &args);
+
+    assert_success(cpn_channel_write_protobuf(&local, &initialization.base));
+    assert_success(cpn_channel_write_protobuf(&local, &request.base));
+
+    cpn_join(&t, NULL);
+
+    assert_failure(args.result);
 }
 
 static void whitlisted_request_constructs_session()
@@ -430,6 +474,30 @@ static void service_connects()
     cpn_session_free(received_session);
 }
 
+static void connect_refuses_with_invalid_version()
+{
+    ConnectionInitiationMessage initialization = CONNECTION_INITIATION_MESSAGE__INIT;
+    SessionConnectMessage connect = SESSION_CONNECT_MESSAGE__INIT;
+    CapabilityMessage cap = CAPABILITY_MESSAGE__INIT;
+    struct handle_session_args args = {
+        &remote, &local_keys.pk, &service, &config, 0
+    };
+    struct cpn_thread t;
+
+    initialization.type = CONNECTION_INITIATION_MESSAGE__TYPE__CONNECT;
+    connect.version = -1;
+    connect.capability = &cap;
+
+    cpn_spawn(&t, handle_session, &args);
+
+    assert_success(cpn_channel_write_protobuf(&local, &initialization.base));
+    assert_success(cpn_channel_write_protobuf(&local, &connect.base));
+
+    cpn_join(&t, NULL);
+
+    assert_failure(args.result);
+}
+
 static void connect_refuses_without_session()
 {
     struct handle_session_args args = {
@@ -477,6 +545,30 @@ static void termination_kills_session()
     assert_failure(cpn_sessions_find(NULL, sessionid));
 }
 
+static void termination_refuses_with_invalid_version()
+{
+    ConnectionInitiationMessage initialization = CONNECTION_INITIATION_MESSAGE__INIT;
+    SessionTerminationMessage term = SESSION_TERMINATION_MESSAGE__INIT;
+    CapabilityMessage cap = CAPABILITY_MESSAGE__INIT;
+    struct await_query_args args = {
+        &remote, &service, 0
+    };
+    struct cpn_thread t;
+
+    initialization.type = CONNECTION_INITIATION_MESSAGE__TYPE__TERMINATE;
+    term.capability = &cap;
+    term.version = -1;
+
+    cpn_spawn(&t, handle_termination, &args);
+
+    assert_success(cpn_channel_write_protobuf(&local, &initialization.base));
+    assert_success(cpn_channel_write_protobuf(&local, &term.base));
+
+    cpn_join(&t, NULL);
+
+    assert_failure(args.result);
+}
+
 static void terminating_nonexistent_does_nothing()
 {
     struct handle_termination_args args = {
@@ -511,15 +603,19 @@ int proto_test_run_suite(void)
         test(discovery_with_unknown_keys_sends_announce),
 
         test(query_succeeds),
+        test(query_refuses_with_invalid_version),
         test(whitelisted_query_succeeds),
 
         test(request_constructs_session),
+        test(request_refuses_with_invalid_version),
         test(whitlisted_request_constructs_session),
 
         test(service_connects),
+        test(connect_refuses_with_invalid_version),
         test(connect_refuses_without_session),
 
         test(termination_kills_session),
+        test(termination_refuses_with_invalid_version),
         test(terminating_nonexistent_does_nothing)
     };
 
