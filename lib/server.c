@@ -225,7 +225,8 @@ out:
 int cpn_server_handle_query(struct cpn_channel *channel,
         const struct cpn_service *service)
 {
-    ServiceQueryResult results = SERVICE_QUERY_RESULT__INIT;
+    ServiceQueryResult response = SERVICE_QUERY_RESULT__INIT;
+    ServiceQueryResult__Result result = SERVICE_QUERY_RESULT__RESULT__INIT;
     ErrorMessage error = ERROR_MESSAGE__INIT;
     ServiceQueryMessage *msg = NULL;
     int err = -1;
@@ -244,20 +245,22 @@ int cpn_server_handle_query(struct cpn_channel *channel,
         goto out_notify;
     }
 
-    results.name = service->name;
-    results.location = service->location;
-    results.port = service->port;
-    results.category = (char *) service->plugin->category;
-    results.type = (char *) service->plugin->type;
-    results.version = (char *) service->plugin->version;
+    result.name = service->name;
+    result.location = service->location;
+    result.port = service->port;
+    result.category = (char *) service->plugin->category;
+    result.type = (char *) service->plugin->type;
+    result.version = (char *) service->plugin->version;
+
+    response.result = &result;
 
     err = 0;
 
 out_notify:
     if (err)
-        results.error = &error;
+        response.error = &error;
 
-    if (cpn_channel_write_protobuf(channel, (ProtobufCMessage *) &results) < 0) {
+    if (cpn_channel_write_protobuf(channel, (ProtobufCMessage *) &response) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not send query results");
         err = -1;
         goto out;

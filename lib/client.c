@@ -322,22 +322,22 @@ int cpn_client_query_service(struct cpn_query_results *out,
         return -1;
     }
 
-    if (msg->error) {
+    if (msg->error || !msg->result) {
         cpn_log(LOG_LEVEL_ERROR, "Query failed");
         return -1;
     }
 
-    results.name = msg->name;
-    msg->name = NULL;
-    results.category = msg->category;
-    msg->category = NULL;
-    results.type = msg->type;
-    msg->type = NULL;
-    results.version = msg->version;
-    msg->version = NULL;
-    results.location = msg->location;
-    msg->location = NULL;
-    results.port = msg->port;
+    results.name = msg->result->name;
+    msg->result->name = NULL;
+    results.category = msg->result->category;
+    msg->result->category = NULL;
+    results.type = msg->result->type;
+    msg->result->type = NULL;
+    results.version = msg->result->version;
+    msg->result->version = NULL;
+    results.location = msg->result->location;
+    msg->result->location = NULL;
+    results.port = msg->result->port;
 
     service_query_result__free_unpacked(msg, NULL);
 
