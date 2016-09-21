@@ -47,7 +47,7 @@ static void print_announcement(struct cpn_discovery_results *announce)
     printf("%s - %s (v%"PRIu32")\n", announce->name, hex.data, announce->version);
 
     for (i = 0; i < announce->nservices; i++) {
-        printf("\t%s -> %s (%s)\n", announce->services[i].port,
+        printf("\t%"PRIu32" -> %s (%s)\n", announce->services[i].port,
                 announce->services[i].name, announce->services[i].category);
     }
 }
@@ -59,7 +59,7 @@ static void undirected_discovery()
 
     channel.fd = -1;
 
-    if (cpn_channel_init_from_host(&channel, "224.0.0.1", "6667", CPN_CHANNEL_TYPE_UDP) < 0) {
+    if (cpn_channel_init_from_host(&channel, "224.0.0.1", 6667, CPN_CHANNEL_TYPE_UDP) < 0) {
         puts("Unable to initialize channel");
         goto out;
     }
@@ -119,7 +119,7 @@ out:
 }
 
 static void directed_discovery(const struct cpn_sign_key_public *remote_key,
-        const char *host, const char *port)
+        const char *host, uint32_t port)
 {
     struct cpn_discovery_results results;
     struct cpn_channel channel;
@@ -151,7 +151,7 @@ int main(int argc, const char *argv[])
                 "Public signature key of the host to query", "KEY", false),
         CPN_OPTS_OPT_STRING(0, "--remote-host",
                 "Network address of the host to query", "ADDRESS", false),
-        CPN_OPTS_OPT_STRING(0, "--remote-port",
+        CPN_OPTS_OPT_UINT32(0, "--remote-port",
                 "Port of the host to query", "PORT", false),
         CPN_OPTS_OPT_END
     };
@@ -193,7 +193,7 @@ int main(int argc, const char *argv[])
     } else if (opts[2].set) {
         directed_discovery(&directed_opts[0].value.sigkey,
                 directed_opts[1].value.string,
-                directed_opts[1].value.string);
+                directed_opts[2].value.uint32);
     } else {
         puts("No action specified");
     }

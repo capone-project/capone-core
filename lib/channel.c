@@ -42,16 +42,17 @@
 #define DEFAULT_BLOCKLEN 512
 #define MAX_BLOCKLEN 4096
 
-int getsock(struct sockaddr_storage *addr, size_t *addrlen,
-        const char *host, const char *port,
+int getsock(struct sockaddr_storage *addr, socklen_t *addrlen,
+        const char *host, uint32_t port,
         enum cpn_channel_type type)
 {
     struct addrinfo hints, *servinfo, *hint;
-    int ret, fd;
+    char cport[16];
+    int fd;
 
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_UNSPEC;
-    hints.ai_flags = AI_ADDRCONFIG;
+    hints.ai_flags = AI_ADDRCONFIG | AI_NUMERICSERV;
     switch (type) {
         case CPN_CHANNEL_TYPE_TCP:
             hints.ai_socktype = SOCK_STREAM;
@@ -66,9 +67,10 @@ int getsock(struct sockaddr_storage *addr, size_t *addrlen,
             return -1;
     }
 
-    ret = getaddrinfo(host, port, &hints, &servinfo);
-    if (ret != 0) {
-        cpn_log(LOG_LEVEL_ERROR, "Could not get addrinfo for address %s:%s",
+    sprintf(cport, "%"PRIu32, port);
+
+    if (getaddrinfo(host, port ? cport : NULL, &hints, &servinfo) != 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Could not get addrinfo for address %s:%"PRIu32,
                 host, port);
         return -1;
     }
@@ -87,7 +89,7 @@ int getsock(struct sockaddr_storage *addr, size_t *addrlen,
         return -1;
     }
 
-    if ((unsigned int) hint->ai_addrlen > sizeof(struct sockaddr_storage)) {
+    if ((size_t) hint->ai_addrlen > sizeof(struct sockaddr_storage)) {
         cpn_log(LOG_LEVEL_ERROR, "Hint's addrlen is greater than sockaddr_storage length");
         freeaddrinfo(servinfo);
         close(fd);
@@ -102,11 +104,11 @@ int getsock(struct sockaddr_storage *addr, size_t *addrlen,
 }
 
 int cpn_channel_init_from_host(struct cpn_channel *c, const char *host,
-        const char *port, enum cpn_channel_type type)
+        uint32_t port, enum cpn_channel_type type)
 {
     int fd;
     struct sockaddr_storage addr;
-    size_t addrlen;
+    socklen_t addrlen;
 
     fd = getsock(&addr, &addrlen, host, port, type);
     if (fd < 0) {

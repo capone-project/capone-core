@@ -32,14 +32,14 @@ static int invoke(struct cpn_channel *channel,
         const struct cpn_cfg *cfg)
 {
     struct cpn_channel xpra_channel;
-    char *port = NULL;
+    int port;
     char buf[1];
 
     UNUSED(session);
 
     xpra_channel.fd = -1;
 
-    if ((port = cpn_cfg_get_str_value(cfg, "xpra", "port")) == NULL) {
+    if ((port = cpn_cfg_get_int_value(cfg, "xpra", "port")) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "No port for xpra specified in 'xpra.port'");
         goto out;
     }
@@ -74,7 +74,6 @@ static int invoke(struct cpn_channel *channel,
     }
 
 out:
-    free(port);
     cpn_channel_close(&xpra_channel);
 
     return 0;
@@ -87,20 +86,21 @@ static int handle(struct cpn_channel *channel,
 {
     struct cpn_socket socket;
     struct cpn_channel xpra_channel;
-    char port[10], *args[] = {
+    char *args[] = {
         "xpra",
         "attach",
         NULL,
         "--no-notifications",
         NULL
     };
+    uint32_t port;
     int len, pid;
 
     UNUSED(cfg);
     UNUSED(invoker);
     UNUSED(session);
 
-    if (cpn_socket_init(&socket, "127.0.0.1", NULL, CPN_CHANNEL_TYPE_TCP) < 0) {
+    if (cpn_socket_init(&socket, "127.0.0.1", 0, CPN_CHANNEL_TYPE_TCP) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not initialize xpra relay socket");
         return -1;
     }
@@ -110,14 +110,14 @@ static int handle(struct cpn_channel *channel,
         return -1;
     }
 
-    if (cpn_socket_get_address(&socket, NULL, 0, port, sizeof(port)) < 0) {
+    if (cpn_socket_get_address(&socket, NULL, 0, &port) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not retrieve address of xpra relay socket");
         return -1;
     }
 
-    len = snprintf(NULL, 0, "tcp:localhost:%5s:100", port) + 1;
+    len = snprintf(NULL, 0, "tcp:localhost:%"PRIu32":100", port) + 1;
     args[2] = malloc(len);
-    len = snprintf(args[2], len, "tcp:localhost:%5s:100", port);
+    len = snprintf(args[2], len, "tcp:localhost:%"PRIu32":100", port);
 
     pid = fork();
     if (pid == 0) {

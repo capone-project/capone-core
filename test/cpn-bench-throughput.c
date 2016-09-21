@@ -26,7 +26,7 @@
 #include "capone/opts.h"
 #include "capone/socket.h"
 
-#define PORT "43281"
+#define PORT 43281
 
 struct client_args {
     uint32_t datalen;

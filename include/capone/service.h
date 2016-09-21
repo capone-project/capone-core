@@ -126,7 +126,7 @@ struct cpn_service {
      * This may be chosen freely by the user specifying the
      * server's configuraiton.
      */
-    char *port;
+    uint32_t port;
 
     /** @brief Location of the service
      *

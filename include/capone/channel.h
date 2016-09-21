@@ -131,7 +131,7 @@ struct cpn_channel {
  * @return <code>0</code> on success, <code>-1</code> otherwise
  */
 int cpn_channel_init_from_host(struct cpn_channel *c,
-        const char *host, const char *port, enum cpn_channel_type type);
+        const char *host, uint32_t port, enum cpn_channel_type type);
 
 /** @brief Initialize a channel from a file descriptor
  *

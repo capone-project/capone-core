@@ -37,7 +37,7 @@ struct cpn_discovery_results {
     struct {
         char *name;
         char *category;
-        char *port;
+        uint32_t port;
     } *services;
     uint32_t nservices;
 };
@@ -72,7 +72,7 @@ struct cpn_query_results {
     /** @brief Port of the service
      * \see cpn_service::port
      */
-    char *port;
+    uint32_t port;
 };
 
 /** @brief Send a discovery message to query available services
@@ -120,7 +120,7 @@ void cpn_discovery_results_clear(struct cpn_discovery_results *results);
  */
 int cpn_client_connect(struct cpn_channel *channel,
         const char *host,
-        const char *port,
+        uint32_t port,
         const struct cpn_sign_key_pair *local_keys,
         const struct cpn_sign_key_public *remote_key);
 

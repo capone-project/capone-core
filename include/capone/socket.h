@@ -45,6 +45,8 @@ struct cpn_socket {
     int fd;
     /** Local address of the socket */
     struct sockaddr_storage addr;
+    /** Length of sockaddr struct */
+    socklen_t addrlen;
     /** Type of the socket, either UDP or TCP. */
     enum cpn_channel_type type;
 };
@@ -62,7 +64,7 @@ struct cpn_socket {
  * @return <code>0</code> on success, <code>1</code> otherwise
  */
 int cpn_socket_init(struct cpn_socket *socket,
-        const char *host, const char *port, enum cpn_channel_type type);
+        const char *host, uint32_t port, enum cpn_channel_type type);
 
 /** Close a socket
  *
@@ -119,11 +121,10 @@ int cpn_socket_accept(struct cpn_socket *socket, struct cpn_channel *out);
  * @param[in] hostlen Maximum length of the host buffer.
  * @param[out] port Caller-allocated buffer for the port name.
  *             May be <code>NULL</code> if host is not.
- * @param[in] portlen Maximum length of the port buffer.
  * @return <code>0</code> on success, <code>1</code> otherwise
  */
 int cpn_socket_get_address(struct cpn_socket *s,
-        char *host, size_t hostlen, char *port, size_t portlen);
+        char *host, size_t hostlen, uint32_t *port);
 
 #endif
 
