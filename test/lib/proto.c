@@ -29,6 +29,7 @@
 
 #include "test.h"
 #include "test-service.h"
+#include "lib/test.pb-c.h"
 
 struct await_discovery_args {
     struct cpn_channel *channel;
@@ -439,7 +440,7 @@ static void whitlisted_request_constructs_session()
 
 static void service_connects()
 {
-    ProtobufCMessage *params_proto;
+    TestParams *params_proto;
     const char *params[] = { "parameter-data" };
     struct handle_session_args args = {
         &remote, &local_keys.pk, &service, &config, 0
@@ -453,13 +454,15 @@ static void service_connects()
 
     cpn_spawn(&t, handle_session, &args);
 
-    assert_success(service.plugin->parse_fn(&params_proto, ARRAY_SIZE(params), params));
-    assert_success(cpn_sessions_add(&session, params_proto, &remote_keys.pk));
+    assert_success(service.plugin->parse_fn((ProtobufCMessage **) &params_proto, ARRAY_SIZE(params), params));
+    assert_success(cpn_sessions_add(&session, (ProtobufCMessage *) params_proto, &remote_keys.pk));
     assert_success(cpn_cap_create_ref(&cap, session->cap, CPN_CAP_RIGHT_EXEC, &local_keys.pk));
     sessionid = session->identifier;
 
     assert_success(cpn_client_start_session(&received_session, &local, session->identifier, cap, service.plugin));
     assert_success(service.plugin->client_fn(&local, NULL, &config) < 0);
+
+    assert_string_equal("parameter-data", ((TestParams *) received_session->parameters)->msg);
 
     cpn_cap_free(cap);
     cpn_join(&t, NULL);

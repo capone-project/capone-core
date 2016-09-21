@@ -189,6 +189,14 @@ int cpn_server_handle_session(struct cpn_channel *channel,
         goto out_notify;
     }
 
+    if (session->parameters) {
+        size_t len = protobuf_c_message_get_packed_size(session->parameters);
+
+        result.parameters.len = len;
+        result.parameters.data = malloc(len);
+        protobuf_c_message_pack(session->parameters, result.parameters.data);
+    }
+
     msg.result = &result;
 
     err = 0;
@@ -217,6 +225,7 @@ out:
         cpn_session_free(session);
     }
 
+    free(result.parameters.data);
     cpn_cap_free(cap);
 
     return err;
