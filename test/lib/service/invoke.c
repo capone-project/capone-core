@@ -78,7 +78,8 @@ static void *invoker(void *payload)
 static void invoking_succeeds()
 {
     InvokeParams params = INVOKE_PARAMS__INIT;
-    SessionConnectResult result = SESSION_CONNECT_RESULT__INIT;
+    SessionConnectResult response = SESSION_CONNECT_RESULT__INIT;
+    SessionConnectResult__Result result = SESSION_CONNECT_RESULT__RESULT__INIT;
     SessionConnectMessage *msg;
     struct invoker_opts opts;
     struct cpn_socket socket;
@@ -106,8 +107,9 @@ static void invoking_succeeds()
     assert_int_equal(type, CPN_COMMAND_CONNECT);
     assert_success(cpn_channel_receive_protobuf(&c, &session_connect_message__descriptor,
                 (ProtobufCMessage **) &msg));
-    result.error = NULL;
-    assert_success(cpn_channel_write_protobuf(&c, &result.base));
+    response.error = NULL;
+    response.result = &result;
+    assert_success(cpn_channel_write_protobuf(&c, &response.base));
     assert_success(cpn_channel_write_data(&c, (uint8_t *) "test", 5));
 
     assert_success(service->client_fn(&c, NULL, &cfg));
