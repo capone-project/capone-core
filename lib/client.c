@@ -273,15 +273,17 @@ int cpn_client_request_session(uint32_t *sessionid,
         goto out;
     }
 
-    if (session->error)
+    if (session->error || !session->result) {
+        cpn_log(LOG_LEVEL_ERROR, "Server error while requesting session");
         goto out;
+    }
 
-    if (cpn_cap_from_protobuf(cap, session->cap) < 0) {
+    if (cpn_cap_from_protobuf(cap, session->result->cap) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to read capabilities");
         goto out;
     }
 
-    *sessionid = session->identifier;
+    *sessionid = session->result->identifier;
 
     err = 0;
 

@@ -296,7 +296,8 @@ int cpn_server_handle_request(struct cpn_channel *channel,
 {
     SessionRequestMessage *request = NULL;
     ProtobufCMessage *parameters = NULL;
-    SessionRequestResult result = SESSION_REQUEST_RESULT__INIT;
+    SessionRequestResult response = SESSION_REQUEST_RESULT__INIT;
+    SessionRequestResult__Result result = SESSION_REQUEST_RESULT__RESULT__INIT;
     ErrorMessage error = ERROR_MESSAGE__INIT;
     const struct cpn_session *session = NULL;
     int err = -1;
@@ -339,14 +340,15 @@ int cpn_server_handle_request(struct cpn_channel *channel,
     }
 
     result.identifier = session->identifier;
+    response.result = &result;
 
     err = 0;
 
 out_notify:
     if (err)
-        result.error = &error;
+        response.error = &error;
 
-    if (cpn_channel_write_protobuf(channel, &result.base) < 0) {
+    if (cpn_channel_write_protobuf(channel, &response.base) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to send connection session");
         if (session)
             cpn_sessions_remove(NULL, session->identifier);
