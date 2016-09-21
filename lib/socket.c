@@ -35,10 +35,11 @@ static int get_socket(struct sockaddr_storage *addr, socklen_t *addrlen,
 {
     struct addrinfo hints, *servinfo, *hint;
     char cport[16];
-    int ret, fd, opt;
+    int fd, opt;
 
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_UNSPEC;
+    hints.ai_flags = AI_ADDRCONFIG | AI_NUMERICSERV | AI_PASSIVE;
     switch (type) {
         case CPN_CHANNEL_TYPE_TCP:
             hints.ai_socktype = SOCK_STREAM;
@@ -52,13 +53,11 @@ static int get_socket(struct sockaddr_storage *addr, socklen_t *addrlen,
             cpn_log(LOG_LEVEL_ERROR, "Unknown channel type");
             return -1;
     }
-    hints.ai_flags = AI_PASSIVE;
 
     sprintf(cport, "%"PRIu32, port);
 
-    ret = getaddrinfo(host, port ? cport : NULL, &hints, &servinfo);
-    if (ret != 0) {
-        cpn_log(LOG_LEVEL_ERROR, "Could not get addrinfo for address %s:%s",
+    if (getaddrinfo(host, port ? cport : NULL, &hints, &servinfo)!= 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Could not get addrinfo for address %s:%"PRIu32,
                 host, port);
         return -1;
     }
@@ -210,14 +209,15 @@ int cpn_socket_get_address(struct cpn_socket *s,
     socklen_t addrlen;
     char cport[16];
 
-    addrlen = sizeof(addr);
+    addrlen = s->addrlen;
     if (getsockname(s->fd, (struct sockaddr *)&addr, &addrlen) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not get socket name: %s", strerror(errno));
         return -1;
     }
 
     if (getnameinfo((struct sockaddr *) &addr,
-                addrlen, host, hostlen, cport, sizeof(cport),
+                addrlen, host, hostlen,
+                port ? cport : NULL, port ? ARRAY_SIZE(cport) : 0,
                 NI_NUMERICHOST | NI_NUMERICSERV) != 0)
     {
         cpn_log(LOG_LEVEL_ERROR, "Could not resolve name info: %s", strerror(errno));
