@@ -29,8 +29,9 @@
 #include "capone/log.h"
 #include "capone/socket.h"
 
-static int get_socket(struct sockaddr_storage *addr, const char *host,
-        uint32_t port, enum cpn_channel_type type)
+static int get_socket(struct sockaddr_storage *addr, socklen_t *addrlen,
+        const char *host, uint32_t port,
+        enum cpn_channel_type type)
 {
     struct addrinfo hints, *servinfo, *hint;
     char cport[16];
@@ -93,6 +94,7 @@ static int get_socket(struct sockaddr_storage *addr, const char *host,
     }
 
     memcpy(addr, hint->ai_addr, hint->ai_addrlen);
+    *addrlen = hint->ai_addrlen;
     freeaddrinfo(servinfo);
 
     return fd;
@@ -103,8 +105,9 @@ int cpn_socket_init(struct cpn_socket *socket,
 {
     int fd;
     struct sockaddr_storage addr;
+    socklen_t addrlen;
 
-    fd = get_socket(&addr, host, port, type);
+    fd = get_socket(&addr, &addrlen, host, port, type);
     if (fd < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to get socket: %s", strerror(errno));
         return -1;
@@ -113,6 +116,7 @@ int cpn_socket_init(struct cpn_socket *socket,
     socket->fd = fd;
     socket->type = type;
     socket->addr = addr;
+    socket->addrlen = addrlen;
 
     return 0;
 }
@@ -165,7 +169,7 @@ int cpn_socket_accept(struct cpn_socket *s, struct cpn_channel *out)
 
     assert(s->fd >= 0);
 
-    addrsize = sizeof(addr);
+    addrsize = s->addrlen;
 
     switch (s->type) {
         case CPN_CHANNEL_TYPE_TCP:

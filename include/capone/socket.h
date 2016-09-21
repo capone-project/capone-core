@@ -45,6 +45,8 @@ struct cpn_socket {
     int fd;
     /** Local address of the socket */
     struct sockaddr_storage addr;
+    /** Length of sockaddr struct */
+    socklen_t addrlen;
     /** Type of the socket, either UDP or TCP. */
     enum cpn_channel_type type;
 };
