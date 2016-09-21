@@ -298,7 +298,7 @@ int cpn_server_handle_request(struct cpn_channel *channel,
     ProtobufCMessage *parameters = NULL;
     SessionRequestResult result = SESSION_REQUEST_RESULT__INIT;
     ErrorMessage error = ERROR_MESSAGE__INIT;
-    const struct cpn_session *session;
+    const struct cpn_session *session = NULL;
     int err = -1;
 
     if (cpn_channel_receive_protobuf(channel,
@@ -348,7 +348,8 @@ out_notify:
 
     if (cpn_channel_write_protobuf(channel, &result.base) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to send connection session");
-        cpn_sessions_remove(NULL, session->identifier);
+        if (session)
+            cpn_sessions_remove(NULL, session->identifier);
         err = -1;
         goto out;
     }
