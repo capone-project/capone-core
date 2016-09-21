@@ -25,6 +25,7 @@
 #include "capone/common.h"
 #include "capone/channel.h"
 #include "capone/global.h"
+#include "capone/log.h"
 #include "capone/opts.h"
 #include "capone/service.h"
 
@@ -58,6 +59,7 @@ static struct cpn_opt opts[] = {
             "Network address of the host to query", "ADDRESS", false),
     CPN_OPTS_OPT_UINT32(0, "--remote-port",
             "Port of the host to query", "PORT", false),
+    CPN_OPTS_OPT_COUNTER('v', "--verbose", "Control logging verbosity"),
     CPN_OPTS_OPT_ACTION("query", NULL, NULL),
     CPN_OPTS_OPT_ACTION("request", NULL, request_opts),
     CPN_OPTS_OPT_ACTION("connect", NULL, connect_opts),
@@ -256,8 +258,25 @@ int main(int argc, const char *argv[])
         return -1;
     }
 
-    if (cpn_cfg_parse(&cfg, opts[0].value.string) < 0) {
-        printf("Could not parse config '%s", opts[0].value.string);
+    switch (cpn_opts_get(opts, 'v', NULL)->counter) {
+        case 0:
+            cpn_log_set_level(LOG_LEVEL_ERROR);
+            break;
+        case 1:
+            cpn_log_set_level(LOG_LEVEL_WARNING);
+            break;
+        case 2:
+            cpn_log_set_level(LOG_LEVEL_VERBOSE);
+            break;
+        case 3:
+            cpn_log_set_level(LOG_LEVEL_TRACE);
+            break;
+        default:
+            break;
+    }
+
+    if (cpn_cfg_parse(&cfg, cpn_opts_get(opts, 'c', NULL)->string) < 0) {
+        printf("Could not parse config '%s", cpn_opts_get(opts, 'c', NULL)->string);
         return -1;
     }
 
@@ -266,21 +285,22 @@ int main(int argc, const char *argv[])
         return -1;
     }
 
-    memcpy(&remote_key, &opts[1].value.sigkey, sizeof(struct cpn_sign_key_public));
-    remote_host = opts[2].value.string;
-    remote_port = opts[3].value.uint32;
+    memcpy(&remote_key, &cpn_opts_get(opts, 0, "--remote-key")->sigkey, sizeof(struct cpn_sign_key_public));
+    remote_host = cpn_opts_get(opts, 0, "--remote-host")->string;
+    remote_port = cpn_opts_get(opts, 0, "--remote-port")->uint32;
 
-    if (opts[4].set)
+    if (cpn_opts_get(opts, 0, "query"))
         return cmd_query();
-    else if (opts[5].set)
-        return cmd_request(request_opts[2].value.string, &request_opts[1].value.stringlist);
-    else if (opts[6].set)
-        return cmd_connect(connect_opts[0].value.string,
-               connect_opts[1].value.uint32,
-               connect_opts[2].value.string);
-    else if (opts[7].set)
-        return cmd_terminate(terminate_opts[0].value.uint32,
-                terminate_opts[1].value.string);
+    else if (cpn_opts_get(opts, 0, "request"))
+        return cmd_request(cpn_opts_get(request_opts, 0, "--service-type")->string,
+                &cpn_opts_get(request_opts, 0, "--parameters")->stringlist);
+    else if (cpn_opts_get(opts, 0, "connect"))
+        return cmd_connect(cpn_opts_get(connect_opts, 0, "--service-type")->string,
+               cpn_opts_get(connect_opts, 0, "--session-id")->uint32,
+               cpn_opts_get(connect_opts, 0, "--session-cap")->string);
+    else if (cpn_opts_get(opts, 0, "terminate"))
+        return cmd_terminate(cpn_opts_get(terminate_opts, 0, "--session-id")->uint32,
+                cpn_opts_get(terminate_opts, 0, "--session-cap")->string);
     else
         puts("No action specified");
 
