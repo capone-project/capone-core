@@ -215,11 +215,13 @@ int cpn_client_start_session(struct cpn_session **out,
         goto out;
     }
 
-    if (result->error)
+    if (result->error || !result->result) {
+        cpn_log(LOG_LEVEL_ERROR, "Server error while starting session");
         goto out;
+    }
 
     params = protobuf_c_message_unpack(plugin->params_desc, NULL,
-            result->parameters.len, result->parameters.data);
+            result->result->parameters.len, result->result->parameters.data);
 
     session = malloc(sizeof(struct cpn_session));
     session->parameters = params;

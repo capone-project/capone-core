@@ -144,6 +144,7 @@ int cpn_server_handle_session(struct cpn_channel *channel,
 {
     SessionConnectMessage *connect = NULL;
     SessionConnectResult msg = SESSION_CONNECT_RESULT__INIT;
+    SessionConnectResult__Result result = SESSION_CONNECT_RESULT__RESULT__INIT;
     ErrorMessage error = ERROR_MESSAGE__INIT;
     struct cpn_session *session = NULL;
     struct cpn_cap *cap = NULL;
@@ -187,6 +188,8 @@ int cpn_server_handle_session(struct cpn_channel *channel,
         error.code = ERROR_MESSAGE__ERROR_CODE__EUNKNOWN;
         goto out_notify;
     }
+
+    msg.result = &result;
 
     err = 0;
 
