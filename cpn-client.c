@@ -25,6 +25,7 @@
 #include "capone/common.h"
 #include "capone/channel.h"
 #include "capone/global.h"
+#include "capone/log.h"
 #include "capone/opts.h"
 #include "capone/service.h"
 
@@ -58,6 +59,7 @@ static struct cpn_opt opts[] = {
             "Network address of the host to query", "ADDRESS", false),
     CPN_OPTS_OPT_UINT32(0, "--remote-port",
             "Port of the host to query", "PORT", false),
+    CPN_OPTS_OPT_COUNTER('v', "--verbose", "Control logging verbosity"),
     CPN_OPTS_OPT_ACTION("query", NULL, NULL),
     CPN_OPTS_OPT_ACTION("request", NULL, request_opts),
     CPN_OPTS_OPT_ACTION("connect", NULL, connect_opts),
@@ -254,6 +256,23 @@ int main(int argc, const char *argv[])
 
     if (cpn_opts_parse_cmd(opts, argc, argv) < 0) {
         return -1;
+    }
+
+    switch (cpn_opts_get(opts, 'v', NULL)->counter) {
+        case 0:
+            cpn_log_set_level(LOG_LEVEL_ERROR);
+            break;
+        case 1:
+            cpn_log_set_level(LOG_LEVEL_WARNING);
+            break;
+        case 2:
+            cpn_log_set_level(LOG_LEVEL_VERBOSE);
+            break;
+        case 3:
+            cpn_log_set_level(LOG_LEVEL_TRACE);
+            break;
+        default:
+            break;
     }
 
     if (cpn_cfg_parse(&cfg, cpn_opts_get(opts, 'c', NULL)->string) < 0) {
