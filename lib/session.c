@@ -50,7 +50,7 @@ int cpn_sessions_add(const struct cpn_session **out, ProtobufCMessage *params,
     cpn_list_append(&sessions, session);
     pthread_mutex_unlock(&mutex);
 
-    cpn_log(LOG_LEVEL_DEBUG, "Created session %"PRIu32, *out);
+    cpn_log(LOG_LEVEL_DEBUG, "Created session %"PRIu32, session->identifier);
 
     *out = session;
 

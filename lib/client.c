@@ -220,8 +220,10 @@ int cpn_client_start_session(struct cpn_session **out,
         goto out;
     }
 
-    params = protobuf_c_message_unpack(plugin->params_desc, NULL,
-            result->result->parameters.len, result->result->parameters.data);
+    if (plugin->params_desc) {
+        params = protobuf_c_message_unpack(plugin->params_desc, NULL,
+                result->result->parameters.len, result->result->parameters.data);
+    }
 
     session = malloc(sizeof(struct cpn_session));
     session->parameters = params;

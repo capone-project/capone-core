@@ -148,8 +148,8 @@ static void *relay_capabilities()
         cpn_list_foreach(&registrants, it, r) {
             if (FD_ISSET(r->channel.fd, &fds))
                 relay_capability_for_registrant((struct registrant *) it->data);
-        pthread_mutex_unlock(&registrants_mutex);
         }
+        pthread_mutex_unlock(&registrants_mutex);
     }
 
     return NULL;
@@ -289,7 +289,7 @@ static int answer_request(struct cpn_channel *channel,
             if (relay_capability_request(channel, request, cfg) < 0)
                 cpn_log(LOG_LEVEL_ERROR, "Unable to relay capability");
             else
-                printf("Accepted capability request from %s\n", requester.data);
+                printf("Accepted capability request from %s\n", requester_hex.data);
 
             break;
         } else if (c == 'n') {
