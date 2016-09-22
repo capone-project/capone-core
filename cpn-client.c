@@ -30,7 +30,7 @@
 #include "capone/service.h"
 
 static struct cpn_opt request_opts[] = {
-    CPN_OPTS_OPT_STRINGLIST(0, "--parameters", NULL, "PARAMETER", false),
+    CPN_OPTS_OPT_STRINGLIST(0, "--parameters", NULL, "PARAMETER", true),
     CPN_OPTS_OPT_STRING('c', "--service-type",
             "Type of service which is to be invoked", "TYPE", false),
     CPN_OPTS_OPT_END
