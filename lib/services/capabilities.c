@@ -148,8 +148,8 @@ static void *relay_capabilities()
         cpn_list_foreach(&registrants, it, r) {
             if (FD_ISSET(r->channel.fd, &fds))
                 relay_capability_for_registrant((struct registrant *) it->data);
-        pthread_mutex_unlock(&registrants_mutex);
         }
+        pthread_mutex_unlock(&registrants_mutex);
     }
 
     return NULL;
