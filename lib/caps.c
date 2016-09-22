@@ -15,6 +15,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <arpa/inet.h>
+
 #include <sodium.h>
 #include <string.h>
 #include <pthread.h>
@@ -32,11 +34,12 @@ static int hash(uint8_t *out,
 {
     crypto_generichash_state state;
     uint8_t hash[CPN_CAP_SECRET_LEN];
+    uint32_t nlrights = htonl(rights);
 
     crypto_generichash_init(&state, NULL, 0, sizeof(secret));
 
     crypto_generichash_update(&state, key->data, sizeof(key->data));
-    crypto_generichash_update(&state, (unsigned char *) &rights, sizeof(rights));
+    crypto_generichash_update(&state, (unsigned char *) &nlrights, sizeof(nlrights));
     crypto_generichash_update(&state, (unsigned char *) secret, CPN_CAP_SECRET_LEN);
 
     crypto_generichash_final(&state, hash, sizeof(hash));

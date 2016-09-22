@@ -217,8 +217,9 @@ static void cap_to_string_succeeds_with_reference()
     assert_success(cpn_cap_create_ref(&ref, &cap, CPN_CAP_RIGHT_EXEC | CPN_CAP_RIGHT_TERM, &pk));
 
     assert_success(cpn_cap_to_string(&string, ref));
-    assert_string_equal(string, "95e7f7564ccaa61a45f684873b1b0b9b"
-                                "36f01a08ba59f8038bd26f6a510c0aab"
+
+    assert_string_equal(string, "fd443f97785fd3de57e3f9328f57a04f"
+                                "478026ab5d5d4655ce18049420a2b0c2"
                                 "|" PK ":xt");
 }
 
