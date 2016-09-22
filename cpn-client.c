@@ -37,7 +37,7 @@ static struct cpn_opt request_opts[] = {
 };
 
 static struct cpn_opt connect_opts[] = {
-    CPN_OPTS_OPT_STRING('c', "--service-type",
+    CPN_OPTS_OPT_STRING(0, "--service-type",
             "Type of service which is to be invoked", "TYPE", false),
     CPN_OPTS_OPT_UINT32(0, "--session-id", NULL, "ID", false),
     CPN_OPTS_OPT_STRING('c', "--session-cap", NULL, "CAP", false),
