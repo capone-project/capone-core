@@ -79,7 +79,7 @@ enum cpn_opts_type {
 #define CPN_OPTS_OPT_ACTION(action, desc, opts) \
     { 0, (action), (desc), NULL, CPN_OPTS_TYPE_ACTION, {(opts)}, true, false }
 #define CPN_OPTS_OPT_COUNTER(s, l, desc) \
-    { (s), (l), (desc), NULL, CPN_OPTS_TYPE_COUNTER, {NULL}, true, false }
+    { (s), (l), (desc), NULL, CPN_OPTS_TYPE_COUNTER, {NULL}, true, true }
 #define CPN_OPTS_OPT_SIGKEY(s, l, desc, arg, optional) \
     { (s), (l), (desc), (arg), CPN_OPTS_TYPE_SIGKEY, {NULL}, (optional), false }
 #define CPN_OPTS_OPT_STRING(s, l, desc, arg, optional) \
