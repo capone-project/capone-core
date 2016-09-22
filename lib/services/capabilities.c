@@ -289,7 +289,7 @@ static int answer_request(struct cpn_channel *channel,
             if (relay_capability_request(channel, request, cfg) < 0)
                 cpn_log(LOG_LEVEL_ERROR, "Unable to relay capability");
             else
-                printf("Accepted capability request from %s\n", requester.data);
+                printf("Accepted capability request from %s\n", requester_hex.data);
 
             break;
         } else if (c == 'n') {
