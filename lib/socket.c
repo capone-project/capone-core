@@ -29,9 +29,10 @@
 #include "capone/log.h"
 #include "capone/socket.h"
 
-static int get_socket(struct sockaddr_storage *addr, socklen_t *addrlen,
+int get_socket(struct sockaddr_storage *addr, socklen_t *addrlen,
         const char *host, uint32_t port,
-        enum cpn_channel_type type)
+        enum cpn_channel_type type,
+        bool serverside)
 {
     struct addrinfo hints, *servinfo, *hint;
     char cport[16];
@@ -39,7 +40,12 @@ static int get_socket(struct sockaddr_storage *addr, socklen_t *addrlen,
 
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_UNSPEC;
-    hints.ai_flags = AI_ADDRCONFIG | AI_NUMERICSERV | AI_PASSIVE;
+
+    hints.ai_flags |= AI_ADDRCONFIG;
+    hints.ai_flags |= AI_NUMERICSERV;
+    if (serverside)
+        hints.ai_flags |= AI_PASSIVE;
+
     switch (type) {
         case CPN_CHANNEL_TYPE_TCP:
             hints.ai_socktype = SOCK_STREAM;
@@ -56,7 +62,7 @@ static int get_socket(struct sockaddr_storage *addr, socklen_t *addrlen,
 
     sprintf(cport, "%"PRIu32, port);
 
-    if (getaddrinfo(host, port ? cport : NULL, &hints, &servinfo)!= 0) {
+    if (getaddrinfo(host, port ? cport : NULL, &hints, &servinfo) != 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not get addrinfo for address %s:%"PRIu32,
                 host, port);
         return -1;
@@ -67,13 +73,19 @@ static int get_socket(struct sockaddr_storage *addr, socklen_t *addrlen,
         if (fd < 0)
             continue;
 
-        opt = 1;
-        if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0 ||
-                bind(fd, hint->ai_addr, hint->ai_addrlen) < 0)
-        {
-            cpn_log(LOG_LEVEL_DEBUG, "Unsuitable socket: %s", strerror(errno));
-            close(fd);
-            continue;
+        if (serverside) {
+            opt = 1;
+            if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
+                cpn_log(LOG_LEVEL_DEBUG, "Unable to enable address reuse: %s", strerror(errno));
+                close(fd);
+                continue;
+            }
+
+            if (bind(fd, hint->ai_addr, hint->ai_addrlen) < 0) {
+                cpn_log(LOG_LEVEL_DEBUG, "Unable to bind socket: %s", strerror(errno));
+                close(fd);
+                continue;
+            }
         }
 
         break;
@@ -106,7 +118,7 @@ int cpn_socket_init(struct cpn_socket *socket,
     struct sockaddr_storage addr;
     socklen_t addrlen;
 
-    fd = get_socket(&addr, &addrlen, host, port, type);
+    fd = get_socket(&addr, &addrlen, host, port, type, true);
     if (fd < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to get socket: %s", strerror(errno));
         return -1;

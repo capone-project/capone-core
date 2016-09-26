@@ -42,66 +42,10 @@
 #define DEFAULT_BLOCKLEN 512
 #define MAX_BLOCKLEN 4096
 
-int getsock(struct sockaddr_storage *addr, socklen_t *addrlen,
+extern int get_socket(struct sockaddr_storage *addr, socklen_t *addrlen,
         const char *host, uint32_t port,
-        enum cpn_channel_type type)
-{
-    struct addrinfo hints, *servinfo, *hint;
-    char cport[16];
-    int fd;
-
-    memset(&hints, 0, sizeof(hints));
-    hints.ai_family = AF_UNSPEC;
-    hints.ai_flags = AI_ADDRCONFIG | AI_NUMERICSERV;
-    switch (type) {
-        case CPN_CHANNEL_TYPE_TCP:
-            hints.ai_socktype = SOCK_STREAM;
-            hints.ai_protocol = IPPROTO_TCP;
-            break;
-        case CPN_CHANNEL_TYPE_UDP:
-            hints.ai_socktype = SOCK_DGRAM;
-            hints.ai_protocol = IPPROTO_UDP;
-            break;
-        default:
-            cpn_log(LOG_LEVEL_ERROR, "Unknown channel type");
-            return -1;
-    }
-
-    sprintf(cport, "%"PRIu32, port);
-
-    if (getaddrinfo(host, port ? cport : NULL, &hints, &servinfo) != 0) {
-        cpn_log(LOG_LEVEL_ERROR, "Could not get addrinfo for address %s:%"PRIu32,
-                host, port);
-        return -1;
-    }
-
-    for (hint = servinfo; hint != NULL; hint = hint->ai_next) {
-        fd = socket(hint->ai_family, hint->ai_socktype, hint->ai_protocol);
-        if (fd < 0)
-            continue;
-
-        break;
-    }
-
-    if (hint == NULL) {
-        cpn_log(LOG_LEVEL_ERROR, "Unable to resolve address");
-        freeaddrinfo(servinfo);
-        return -1;
-    }
-
-    if ((size_t) hint->ai_addrlen > sizeof(struct sockaddr_storage)) {
-        cpn_log(LOG_LEVEL_ERROR, "Hint's addrlen is greater than sockaddr_storage length");
-        freeaddrinfo(servinfo);
-        close(fd);
-        return -1;
-    }
-
-    memcpy(addr, hint->ai_addr, hint->ai_addrlen);
-    *addrlen = hint->ai_addrlen;
-    freeaddrinfo(servinfo);
-
-    return fd;
-}
+        enum cpn_channel_type type,
+        bool serverside);
 
 int cpn_channel_init_from_host(struct cpn_channel *c, const char *host,
         uint32_t port, enum cpn_channel_type type)
@@ -110,7 +54,7 @@ int cpn_channel_init_from_host(struct cpn_channel *c, const char *host,
     struct sockaddr_storage addr;
     socklen_t addrlen;
 
-    fd = getsock(&addr, &addrlen, host, port, type);
+    fd = get_socket(&addr, &addrlen, host, port, type, false);
     if (fd < 0) {
         return -1;
     }
