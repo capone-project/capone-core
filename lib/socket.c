@@ -88,6 +88,13 @@ int get_socket(struct sockaddr_storage *addr, socklen_t *addrlen,
             }
         }
 
+        opt = 1;
+        if (setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &opt, sizeof(opt)) < 0) {
+            cpn_log(LOG_LEVEL_DEBUG, "Unable to enable keepalive : %s", strerror(errno));
+            close(fd);
+            continue;
+        }
+
         break;
     }
 
