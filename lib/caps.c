@@ -36,7 +36,7 @@ static int hash(uint8_t *out,
     uint8_t hash[CPN_CAP_SECRET_LEN];
     uint32_t nlrights = htonl(rights);
 
-    crypto_generichash_init(&state, NULL, 0, sizeof(secret));
+    crypto_generichash_init(&state, NULL, 0, sizeof(hash));
 
     crypto_generichash_update(&state, key->data, sizeof(key->data));
     crypto_generichash_update(&state, (unsigned char *) &nlrights, sizeof(nlrights));
@@ -44,7 +44,7 @@ static int hash(uint8_t *out,
 
     crypto_generichash_final(&state, hash, sizeof(hash));
 
-    memcpy(out, hash, CPN_CAP_SECRET_LEN);
+    memcpy(out, hash, sizeof(hash));
 
     return 0;
 }
