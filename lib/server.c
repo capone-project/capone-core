@@ -102,7 +102,7 @@ int cpn_server_handle_discovery(struct cpn_channel *channel,
 
     result.name = (char *) name;
     result.version = CPN_PROTOCOL_VERSION;
-    cpn_sign_key_public_to_proto(&result.sign_key, local_key);
+    cpn_sign_key_public_to_proto(&result.identity, local_key);
 
     service_messages = malloc(sizeof(DiscoverResult__Service *) * nservices);
     for (i = 0; i < (size_t) nservices; i++) {
@@ -131,8 +131,8 @@ out:
             free(service_messages[i]);
         free(service_messages);
     }
-    if (result.sign_key)
-        signature_key_message__free_unpacked(result.sign_key, NULL);
+    if (result.identity)
+        identity_message__free_unpacked(result.identity, NULL);
 
     return err;
 }

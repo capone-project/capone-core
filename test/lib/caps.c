@@ -61,7 +61,7 @@ static void creating_ref_succeeds()
 
     assert_int_equal(ref->chain_depth, 1);
     assert_int_equal(ref->chain[0].rights, CPN_CAP_RIGHT_EXEC);
-    assert_memory_equal(&ref->chain[0].entity, &pk, sizeof(pk));
+    assert_memory_equal(&ref->chain[0].identity, &pk, sizeof(pk));
 }
 
 static void creating_nested_refs_succeeds()
@@ -74,9 +74,9 @@ static void creating_nested_refs_succeeds()
 
     assert_int_equal(nested->chain_depth, 2);
     assert_int_equal(nested->chain[0].rights, CPN_CAP_RIGHT_EXEC);
-    assert_memory_equal(&nested->chain[0].entity, &pk, sizeof(pk));
+    assert_memory_equal(&nested->chain[0].identity, &pk, sizeof(pk));
     assert_int_equal(nested->chain[1].rights, CPN_CAP_RIGHT_EXEC);
-    assert_memory_equal(&nested->chain[1].entity, &other_pk, sizeof(other_pk));
+    assert_memory_equal(&nested->chain[1].identity, &other_pk, sizeof(other_pk));
 
     cpn_cap_free(nested);
 }
@@ -171,7 +171,7 @@ static void parsing_cap_with_single_chain_succeeds()
 
     assert_int_equal(ref->chain_depth, 1);
     assert_int_equal(ref->chain[0].rights, CPN_CAP_RIGHT_TERM);
-    assert_memory_equal(&ref->chain[0].entity, &pk, sizeof(pk));
+    assert_memory_equal(&ref->chain[0].identity, &pk, sizeof(pk));
 }
 
 static void parsing_cap_with_multiple_chain_elements_succeeds()
@@ -180,9 +180,9 @@ static void parsing_cap_with_multiple_chain_elements_succeeds()
     assert_success(cpn_cap_from_string(&ref, secret));
 
     assert_int_equal(ref->chain_depth, 2);
-    assert_memory_equal(&ref->chain[0].entity, &pk, sizeof(pk));
+    assert_memory_equal(&ref->chain[0].identity, &pk, sizeof(pk));
     assert_int_equal(ref->chain[0].rights, CPN_CAP_RIGHT_TERM);
-    assert_memory_equal(&ref->chain[1].entity, &other_pk, sizeof(other_pk));
+    assert_memory_equal(&ref->chain[1].identity, &other_pk, sizeof(other_pk));
     assert_int_equal(ref->chain[1].rights, CPN_CAP_RIGHT_TERM);
 }
 
