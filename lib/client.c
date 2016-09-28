@@ -103,7 +103,7 @@ int cpn_client_discovery_handle_announce(struct cpn_discovery_results *out,
     }
 
     if (cpn_sign_key_public_from_proto(&results.identity,
-                announce->sign_key) < 0)
+                announce->identity) < 0)
     {
         cpn_log(LOG_LEVEL_ERROR, "Invalid identity");
         goto out;

@@ -201,18 +201,18 @@ void cpn_symmetric_key_hex_from_key(struct cpn_symmetric_key_hex *out, const str
     sodium_bin2hex(out->data, sizeof(out->data), key->data, sizeof(key->data));
 }
 
-int cpn_sign_key_public_from_proto(struct cpn_sign_key_public *out, const SignatureKeyMessage *hex)
+int cpn_sign_key_public_from_proto(struct cpn_sign_key_public *out, const IdentityMessage *msg)
 {
-    if (hex->data.len != sizeof(out->data))
+    if (msg->data.len != sizeof(out->data))
         return -1;
-    memcpy(out->data, hex->data.data, hex->data.len);
+    memcpy(out->data, msg->data.data, msg->data.len);
     return 0;
 }
 
-int cpn_sign_key_public_to_proto(SignatureKeyMessage **out, const struct cpn_sign_key_public *key)
+int cpn_sign_key_public_to_proto(IdentityMessage **out, const struct cpn_sign_key_public *key)
 {
-    SignatureKeyMessage *result = malloc(sizeof(SignatureKeyMessage));
-    signature_key_message__init(result);
+    IdentityMessage *result = malloc(sizeof(IdentityMessage));
+    identity_message__init(result);
 
     result->data.len = sizeof(key->data);
     result->data.data = malloc(sizeof(key->data));

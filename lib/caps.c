@@ -93,10 +93,10 @@ int cpn_cap_from_string(struct cpn_cap **out, const char *string)
                 goto out;
             }
 
-            if (parse_hex(cap->chain[i].entity.data, sizeof(struct cpn_sign_key_public),
+            if (parse_hex(cap->chain[i].identity.data, sizeof(struct cpn_sign_key_public),
                         string, ptr - string) < 0)
             {
-                cpn_log(LOG_LEVEL_ERROR, "Capability chain entry invalid entity");
+                cpn_log(LOG_LEVEL_ERROR, "Capability chain entry invalid identity");
                 goto out;
             }
 
@@ -149,7 +149,7 @@ int cpn_cap_to_string(char **out, const struct cpn_cap *cap)
             if (!cap->chain[i].rights)
                 goto out_err;
 
-            cpn_sign_key_hex_from_key(&hex, &cap->chain[i].entity);
+            cpn_sign_key_hex_from_key(&hex, &cap->chain[i].identity);
             cpn_buf_printf(&buf, "|%s:", hex.data);
 
             if (cap->chain[i].rights & CPN_CAP_RIGHT_EXEC)
@@ -206,7 +206,7 @@ int cpn_cap_from_protobuf(struct cpn_cap **out, const CapabilityMessage *msg)
 
         for (i = 0; i < msg->n_chain; i++) {
             cap->chain[i].rights = msg->chain[i]->rights;
-            if (cpn_sign_key_public_from_proto(&cap->chain[i].entity, msg->chain[i]->entity) < 0)
+            if (cpn_sign_key_public_from_proto(&cap->chain[i].identity, msg->chain[i]->identity) < 0)
                 goto out_err;
         }
     } else {
@@ -245,7 +245,7 @@ int cpn_cap_to_protobuf(CapabilityMessage **out, const struct cpn_cap *cap)
             CapabilityMessage__Chain *chain = malloc(sizeof(*chain));
             capability_message__chain__init(chain);
             chain->rights = cap->chain[i].rights;
-            cpn_sign_key_public_to_proto(&chain->entity, &cap->chain[i].entity);
+            cpn_sign_key_public_to_proto(&chain->identity, &cap->chain[i].identity);
             msg->chain[i] = chain;
         }
     } else {
@@ -290,7 +290,7 @@ int cpn_cap_create_ref(struct cpn_cap **out, const struct cpn_cap *root,
     cap->chain_depth = root->chain_depth + 1;
     cap->chain = malloc(sizeof(*cap->chain) * cap->chain_depth);
     memcpy(cap->chain, root->chain, sizeof(*root->chain) * root->chain_depth);
-    memcpy(&cap->chain[root->chain_depth].entity, key, sizeof(struct cpn_sign_key_public));
+    memcpy(&cap->chain[root->chain_depth].identity, key, sizeof(struct cpn_sign_key_public));
     cap->chain[root->chain_depth].rights = rights;
 
     *out = cap;
@@ -315,7 +315,7 @@ int cpn_caps_verify(const struct cpn_cap *ref, const struct cpn_cap *root,
 
     if (ref->chain_depth == 0)
         return -1;
-    if (memcmp(key, &ref->chain[ref->chain_depth - 1].entity, sizeof(struct cpn_sign_key_public)))
+    if (memcmp(key, &ref->chain[ref->chain_depth - 1].identity, sizeof(struct cpn_sign_key_public)))
         return -1;
     if (!(ref->chain[ref->chain_depth - 1].rights & right))
         return -1;
@@ -326,7 +326,7 @@ int cpn_caps_verify(const struct cpn_cap *ref, const struct cpn_cap *root,
     for (i = 0; i < ref->chain_depth; i++) {
         if (ref->chain[i].rights & ~rights)
             return -1;
-        if (hash(secret, ref->chain[i].rights, secret, &ref->chain[i].entity) < 0)
+        if (hash(secret, ref->chain[i].rights, secret, &ref->chain[i].identity) < 0)
             return -1;
         rights = ref->chain[i].rights;
     }

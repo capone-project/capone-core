@@ -39,7 +39,7 @@ struct invoker_opts {
 static struct cpn_cfg cfg;
 
 static struct cpn_sign_key_pair keys;
-static SignatureKeyMessage *key_proto;
+static IdentityMessage *identity_msg;
 
 static struct cpn_cap cap;
 static CapabilityMessage *cap_proto;
@@ -52,7 +52,7 @@ static int setup()
     assert_success(cpn_sign_key_pair_from_config(&keys, &cfg));
     assert_success(cpn_service_plugin_for_type(&service, "invoke"));
 
-    assert_success(cpn_sign_key_public_to_proto(&key_proto, &keys.pk));
+    assert_success(cpn_sign_key_public_to_proto(&identity_msg, &keys.pk));
     assert_success(cpn_cap_to_protobuf(&cap_proto, &cap));
 
     return 0;
@@ -62,7 +62,7 @@ static int teardown()
 {
     cpn_cfg_free(&cfg);
 
-    signature_key_message__free_unpacked(key_proto, NULL);
+    identity_message__free_unpacked(identity_msg, NULL);
     capability_message__free_unpacked(cap_proto, NULL);
 
     return 0;
@@ -94,7 +94,7 @@ static void invoking_succeeds()
     params.service_address = "127.0.0.1";
     params.service_port = 8080;
     params.service_type = "test";
-    params.service_identity = key_proto;
+    params.service_identity = identity_msg;
     params.cap = cap_proto;
 
     opts.session.parameters = &params.base;
@@ -139,7 +139,7 @@ static void invoking_fails_with_invalid_service_type()
     params.service_address = "localhost";
     params.service_port = PORT;
     params.service_type = "INVALID";
-    params.service_identity = key_proto;
+    params.service_identity = identity_msg;
     params.cap = cap_proto;
 
     session.cap = &cap;
@@ -159,7 +159,7 @@ static void invoking_fails_with_invalid_capability()
     params.service_address = "localhost";
     params.service_port = PORT;
     params.service_type = "test";
-    params.service_identity = key_proto;
+    params.service_identity = identity_msg;
     params.cap = cap_proto;
     params.cap->secret.len--;
 
@@ -180,7 +180,7 @@ static void invoking_fails_with_invalid_service_identity()
     params.service_address = "localhost";
     params.service_port = PORT;
     params.service_type = "test";
-    params.service_identity = key_proto;
+    params.service_identity = identity_msg;
     params.service_identity->data.len--;
     params.cap = cap_proto;
 

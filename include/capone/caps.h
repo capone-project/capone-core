@@ -43,7 +43,7 @@ struct cpn_cap {
     uint8_t secret[CPN_CAP_SECRET_LEN];
 
     struct {
-        struct cpn_sign_key_public entity;
+        struct cpn_sign_key_public identity;
         uint32_t rights;
     } *chain;
     uint32_t chain_depth;
