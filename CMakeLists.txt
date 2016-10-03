@@ -57,7 +57,6 @@ ADD_LIBRARY(capone SHARED
     lib/client.c
     lib/common.c
     lib/global.c
-    lib/keys.c
     lib/list.c
     lib/log.c
     lib/opts.c
@@ -68,6 +67,7 @@ ADD_LIBRARY(capone SHARED
     lib/socket.c
     lib/crypto/asymmetric.c
     lib/crypto/sign.c
+    lib/crypto/symmetric.c
     lib/services/capabilities.c
     lib/services/exec.c
     lib/services/invoke.c

@@ -30,7 +30,6 @@ IF(CMOCKA_FOUND)
         lib/channel.c
         lib/common.c
         lib/global.c
-        lib/keys.c
         lib/list.c
         lib/opts.c
         lib/proto.c
@@ -41,6 +40,7 @@ IF(CMOCKA_FOUND)
         lib/test-service.c
         lib/crypto/asymmetric.c
         lib/crypto/sign.c
+        lib/crypto/symmetric.c
         lib/service/capabilities.c
         lib/service/exec.c
         lib/service/invoke.c

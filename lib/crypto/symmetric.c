@@ -16,11 +16,12 @@
  */
 
 #include <string.h>
+#include <sodium.h>
 
-#include "capone/cfg.h"
 #include "capone/common.h"
 #include "capone/log.h"
-#include "capone/keys.h"
+
+#include "capone/crypto/symmetric.h"
 
 int cpn_symmetric_key_generate(struct cpn_symmetric_key *out)
 {

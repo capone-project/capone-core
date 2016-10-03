@@ -25,6 +25,7 @@
 
 extern int crypto_asymmetric_test_run_suite(void);
 extern int crypto_sign_test_run_suite(void);
+extern int crypto_symmetric_test_run_suite(void);
 
 extern int acl_test_run_suite(void);
 extern int buf_test_run_suite(void);
@@ -34,7 +35,6 @@ extern int channel_test_run_suite(void);
 extern int cmdparse_test_run_suite(void);
 extern int common_test_run_suite(void);
 extern int global_test_run_suite(void);
-extern int keys_test_run_suite(void);
 extern int list_test_run_suite(void);
 extern int proto_test_run_suite(void);
 extern int protobuf_test_run_suite(void);
@@ -54,6 +54,7 @@ static struct cpn_opt opts[] = {
 static int (*suite_fns[])(void) = {
     crypto_asymmetric_test_run_suite,
     crypto_sign_test_run_suite,
+    crypto_symmetric_test_run_suite,
 
     acl_test_run_suite,
     buf_test_run_suite,
@@ -63,7 +64,6 @@ static int (*suite_fns[])(void) = {
     cmdparse_test_run_suite,
     common_test_run_suite,
     global_test_run_suite,
-    keys_test_run_suite,
     list_test_run_suite,
     socket_test_run_suite,
     service_test_run_suite,

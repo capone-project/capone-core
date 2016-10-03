@@ -18,8 +18,9 @@
 #include <string.h>
 
 #include "capone/cfg.h"
-#include "capone/keys.h"
 #include "capone/common.h"
+
+#include "capone/crypto/symmetric.h"
 
 #include "test.h"
 
@@ -114,7 +115,7 @@ static void symmetric_key_hex_from_key_succeeds()
     assert_string_equal(key_hex.data, SYMMETRIC_KEY);
 }
 
-int keys_test_run_suite(void)
+int crypto_symmetric_test_run_suite(void)
 {
     const struct CMUnitTest tests[] = {
         test(generate_symmetric_key),

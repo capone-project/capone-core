@@ -39,21 +39,23 @@
  * @{
  */
 
-#ifndef CPN_LIB_KEYS_H
-#define CPN_LIB_KEYS_H
+#ifndef CPN_LIB_CRYPTO_SYMMETRIC_H
+#define CPN_LIB_CRYPTO_SYMMETRIC_H
 
-#include <sodium.h>
+#define CPN_CRYPTO_SYMMETRIC_KEYBYTES 32
+#define CPN_CRYPTO_SYMMETRIC_NONCEBYTES 24
+#define CPN_CRYPTO_SYMMETRIC_MACBYTES 16
 
 #include "capone/cfg.h"
-#include "capone/proto/core.pb-c.h"
 
 /** @brief Symmetric key used to encrypt/decrypt data */
 struct cpn_symmetric_key {
-    uint8_t data[crypto_secretbox_KEYBYTES];
+    uint8_t data[CPN_CRYPTO_SYMMETRIC_KEYBYTES];
 };
+
 /** @brief Hex representation of a symmetric key */
 struct cpn_symmetric_key_hex {
-    char data[crypto_secretbox_KEYBYTES * 2 + 1];
+    char data[CPN_CRYPTO_SYMMETRIC_KEYBYTES * 2 + 1];
 };
 
 /** @brief Generate a new symmetric key

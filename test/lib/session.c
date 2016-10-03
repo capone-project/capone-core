@@ -18,7 +18,6 @@
 #include <string.h>
 
 #include "capone/common.h"
-#include "capone/keys.h"
 #include "capone/session.h"
 #include "capone/service.h"
 

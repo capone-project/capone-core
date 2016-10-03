@@ -20,9 +20,10 @@
 
 #include "capone/caps.h"
 #include "capone/channel.h"
-#include "capone/keys.h"
 #include "capone/list.h"
 #include "capone/server.h"
+
+#include "capone/crypto/symmetric.h"
 
 /** @brief Results of a single announce message
  *
