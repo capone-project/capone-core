@@ -18,6 +18,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <signal.h>
+#include <stdio.h>
 
 #include "capone/common.h"
 #include "capone/log.h"
