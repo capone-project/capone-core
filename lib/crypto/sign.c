@@ -158,3 +158,37 @@ out:
     return ret;
 }
 
+int cpn_sign_sig_from_bin(struct cpn_sign_sig *out, const uint8_t *data, size_t datalen)
+{
+    if (datalen != CPN_CRYPTO_SIGN_SIGBYTES) {
+        cpn_log(LOG_LEVEL_ERROR, "Invalid signature length %"PRIuMAX, datalen);
+        return -1;
+    }
+
+    memcpy(out->data, data, datalen);
+    return 0;
+}
+
+int cpn_sign_sig(struct cpn_sign_sig *out, const struct cpn_sign_sk *key,
+        uint8_t *data, size_t datalen)
+{
+    memset(out, 0, sizeof(*out));
+
+    if (crypto_sign_detached(out->data, NULL, data, datalen, key->data) != 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Could not sign data");
+        return -1;
+    }
+
+    return 0;
+}
+
+int cpn_sign_sig_verify(const struct cpn_sign_pk *key, const struct cpn_sign_sig *sig,
+        uint8_t *data, size_t datalen)
+{
+    if (crypto_sign_verify_detached(sig->data, data, datalen, key->data) != 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Could not verify signature");
+        return -1;
+    }
+
+    return 0;
+}

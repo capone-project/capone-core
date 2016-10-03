@@ -44,6 +44,10 @@ struct cpn_sign_keys {
     struct cpn_sign_pk pk;
 };
 
+struct cpn_sign_sig {
+    uint8_t data[CPN_CRYPTO_SIGN_SIGBYTES];
+};
+
 /** @brief Hex representation of a public signature key */
 struct cpn_sign_pk_hex {
     char data[CPN_CRYPTO_SIGN_PKBYTES * 2 + 1];
@@ -130,5 +134,16 @@ int cpn_sign_keys_from_config(struct cpn_sign_keys *out, const struct cpn_cfg *c
  * \see cpn_sign_keys_from_config
  */
 int cpn_sign_keys_from_config_file(struct cpn_sign_keys *out, const char *file);
+
+/** @brief Create a signature from its binary representation */
+int cpn_sign_sig_from_bin(struct cpn_sign_sig *out, const uint8_t *data, size_t datalen);
+
+/** @brief Create a signature for given data */
+int cpn_sign_sig(struct cpn_sign_sig *out, const struct cpn_sign_sk *key,
+        uint8_t *data, size_t datalen);
+
+/** @brief Verify a signature for given data */
+int cpn_sign_sig_verify(const struct cpn_sign_pk *key, const struct cpn_sign_sig *sig,
+        uint8_t *data, size_t datalen);
 
 #endif

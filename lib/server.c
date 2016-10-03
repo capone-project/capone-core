@@ -460,8 +460,8 @@ static int send_signed_key(struct cpn_channel *channel,
         const struct cpn_asymmetric_pk *remote_emph_key)
 {
     ResponderKey msg = RESPONDER_KEY__INIT;
-    uint8_t signature[CPN_CRYPTO_SIGN_SIGBYTES];
     struct cpn_buf sign_buf = CPN_BUF_INIT;
+    struct cpn_sign_sig sig;
     int err = 0;
 
     cpn_buf_append_data(&sign_buf, sign_keys->pk.data, CPN_CRYPTO_SIGN_PKBYTES);
@@ -470,10 +470,7 @@ static int send_signed_key(struct cpn_channel *channel,
     cpn_buf_append_data(&sign_buf, remote_emph_key->data, CPN_CRYPTO_ASYMMETRIC_PKBYTES);
     cpn_buf_append_data(&sign_buf, remote_sign_key->data, CPN_CRYPTO_ASYMMETRIC_PKBYTES);
 
-    memset(signature, 0, sizeof(signature));
-    if ((err = crypto_sign_detached(signature, NULL,
-                    (unsigned char *) sign_buf.data, sign_buf.length,
-                    sign_keys->sk.data)) < 0)
+    if ((err = cpn_sign_sig(&sig, &sign_keys->sk, (uint8_t *) sign_buf.data, sign_buf.length)) < 0)
     {
         cpn_log(LOG_LEVEL_ERROR, "Unable to sign ephemeral key");
         goto out;
@@ -484,8 +481,8 @@ static int send_signed_key(struct cpn_channel *channel,
     msg.sign_pk.len = sizeof(sign_keys->pk.data);
     msg.ephm_pk.data = (uint8_t *) local_emph_key->data;
     msg.ephm_pk.len = sizeof(local_emph_key->data);
-    msg.signature.data = signature;
-    msg.signature.len = sizeof(signature);
+    msg.signature.data = sig.data;
+    msg.signature.len = sizeof(sig.data);
 
     if ((err = cpn_channel_write_protobuf(channel, &msg.base)) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Received invalid ephemeral key signature");
@@ -539,7 +536,7 @@ static int receive_key_verification(struct cpn_channel *c,
 {
     AcknowledgeKey *msg = NULL;
     struct cpn_buf sign_buf = CPN_BUF_INIT;
-    uint8_t *sign_data = NULL;
+    struct cpn_sign_sig sig;
     int err = -1;
 
     if (cpn_channel_receive_protobuf(c,
@@ -557,7 +554,7 @@ static int receive_key_verification(struct cpn_channel *c,
             memcmp(msg->sign_pk.data, remote_pk->data, msg->sign_pk.len)) {
         cpn_log(LOG_LEVEL_ERROR, "Verification key does not match");
         goto out;
-    } else if (msg->signature.len != CPN_CRYPTO_SIGN_SIGBYTES) {
+    } else if (cpn_sign_sig_from_bin(&sig, msg->signature.data, msg->signature.len) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Verification has invalid signature length");
         goto out;
     }
@@ -568,18 +565,14 @@ static int receive_key_verification(struct cpn_channel *c,
     cpn_buf_append_data(&sign_buf, local_emph_key->data, CPN_CRYPTO_ASYMMETRIC_PKBYTES);
     cpn_buf_append_data(&sign_buf, local_pk->data, CPN_CRYPTO_ASYMMETRIC_PKBYTES);
 
-    if (crypto_sign_verify_detached(msg->signature.data,
-                (unsigned char *) sign_buf.data, sign_buf.length,
-                remote_pk->data) < 0)
-    {
-        cpn_log(LOG_LEVEL_ERROR, "Received invalid signature");
+    if (cpn_sign_sig_verify(remote_pk, &sig, (uint8_t *) sign_buf.data, sign_buf.length) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Unable to verify signature");
         goto out;
     }
 
     err = 0;
 
 out:
-    free(sign_data);
     cpn_buf_clear(&sign_buf);
     if (msg)
         acknowledge_key__free_unpacked(msg, NULL);
