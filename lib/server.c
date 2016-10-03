@@ -587,9 +587,7 @@ int cpn_server_await_encryption(struct cpn_channel *channel,
     struct cpn_asymmetric_keys emph_keys;
     struct cpn_asymmetric_pk remote_emph_key;
     struct cpn_symmetric_key shared_key;
-    uint8_t scalarmult[crypto_scalarmult_BYTES];
     uint32_t id;
-    crypto_generichash_state hash;
 
     if (receive_ephemeral_key(channel, &id, remote_sign_key, &remote_emph_key) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to receive session key");
@@ -617,18 +615,8 @@ int cpn_server_await_encryption(struct cpn_channel *channel,
         return -1;
     }
 
-    if (crypto_scalarmult(scalarmult, emph_keys.sk.data, remote_emph_key.data) < 0) {
-        cpn_log(LOG_LEVEL_ERROR, "Unable to perform scalarmultiplication");
-        return -1;
-    }
-
-    if (crypto_generichash_init(&hash, NULL, 0, sizeof(shared_key.data)) < 0 ||
-            crypto_generichash_update(&hash, scalarmult, sizeof(scalarmult)) < 0 ||
-            crypto_generichash_update(&hash, remote_emph_key.data, sizeof(remote_emph_key.data)) < 0 ||
-            crypto_generichash_update(&hash, emph_keys.pk.data, sizeof(emph_keys.pk.data)) < 0 ||
-            crypto_generichash_final(&hash, shared_key.data, sizeof(shared_key.data)) < 0)
-    {
-        cpn_log(LOG_LEVEL_ERROR, "Unable to calculate h(q || pk1 || pk2)");
+    if (cpn_symmetric_key_from_scalarmult(&shared_key, &emph_keys, &remote_emph_key, false) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Unable to derive shared secret");
         return -1;
     }
 

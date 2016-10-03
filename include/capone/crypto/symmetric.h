@@ -46,7 +46,10 @@
 #define CPN_CRYPTO_SYMMETRIC_NONCEBYTES 24
 #define CPN_CRYPTO_SYMMETRIC_MACBYTES 16
 
+#include <stdbool.h>
+
 #include "capone/cfg.h"
+#include "capone/crypto/asymmetric.h"
 
 /** @brief Symmetric key used to encrypt/decrypt data */
 struct cpn_symmetric_key {
@@ -85,6 +88,20 @@ int cpn_symmetric_key_from_hex(struct cpn_symmetric_key *out, const char *hex);
  * @return <code>0</code> on success, <code>-1</code> otherwise
  */
 int cpn_symmetric_key_from_bin(struct cpn_symmetric_key *out, const uint8_t *key, size_t keylen);
+
+/** @brief Derive a new symmetric key by DH
+ *
+ * @param[out] out Newly generated key
+ * @param[in] sk Local key pair
+ * @param[in] pk Remote public key
+ * @param[in] localfirst Whether to factor in the local key pair
+ *            or remote key pair first
+ * @retval 0 on success
+ * @retval -1 otherwise
+ */
+int cpn_symmetric_key_from_scalarmult(struct cpn_symmetric_key *out,
+        const struct cpn_asymmetric_keys *sk, const struct cpn_asymmetric_pk *pk,
+        bool localfirst);
 
 /** @brief Read a symmetric key from binary data
  *

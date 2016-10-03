@@ -55,6 +55,39 @@ int cpn_symmetric_key_from_bin(struct cpn_symmetric_key *out, const uint8_t *key
     return 0;
 }
 
+int cpn_symmetric_key_from_scalarmult(struct cpn_symmetric_key *out,
+        const struct cpn_asymmetric_keys *keys, const struct cpn_asymmetric_pk *pk, bool localfirst)
+{
+    uint8_t scalarmult[crypto_scalarmult_BYTES];
+    crypto_generichash_state hash;
+    int err = 0;
+
+    if (crypto_scalarmult(scalarmult, keys->sk.data, pk->data) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Unable to perform scalarmultiplication");
+        return -1;
+    }
+
+    err |= crypto_generichash_init(&hash, NULL, 0, sizeof(out->data));
+
+    err |= crypto_generichash_update(&hash, scalarmult, sizeof(scalarmult));
+    if (localfirst) {
+        err |= crypto_generichash_update(&hash, keys->pk.data, sizeof(keys->pk.data));
+        err |= crypto_generichash_update(&hash, pk->data, sizeof(pk->data));
+    } else {
+        err |= crypto_generichash_update(&hash, pk->data, sizeof(pk->data));
+        err |= crypto_generichash_update(&hash, keys->pk.data, sizeof(keys->pk.data));
+    }
+
+    err |= crypto_generichash_final(&hash, out->data, sizeof(out->data));
+
+    if (err) {
+        cpn_log(LOG_LEVEL_ERROR, "Unable to calculate h(q || pk1 || pk2)");
+        return -1;
+    }
+
+    return 0;
+}
+
 int cpn_symmetric_key_hex_from_bin(struct cpn_symmetric_key_hex *out, const uint8_t *data, size_t datalen)
 {
     struct cpn_symmetric_key key;
