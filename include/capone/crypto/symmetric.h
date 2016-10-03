@@ -103,6 +103,44 @@ int cpn_symmetric_key_hex_from_bin(struct cpn_symmetric_key_hex *out, const uint
  */
 void cpn_symmetric_key_hex_from_key(struct cpn_symmetric_key_hex *out, const struct cpn_symmetric_key *key);
 
+/** @brief Encrypt data
+ *
+ * Evaluate the message authentication tag and, if successful,
+ * decrypt the ciphertext. Cipher and plaintext buffers may
+ * overlap.
+ *
+ * @param[out] out Buffer to store encrypted data and message
+ *             authentication at. Needs to be of size
+ *             <code>datalen + CPN_CRYPTO_SYMMETRIC_MACBYTES</code>.
+ * @param[in] key Key to encrypt with
+ * @param[in] nonce Nonce to encrypt with
+ * @param[in] data Data to encrypt
+ * @param[in] datalen Length of data to encrypt
+ * @retval 0 on success
+ * @retval -1 otherwise
+ */
+int cpn_symmetric_key_encrypt(uint8_t *out, const struct cpn_symmetric_key *key,
+        const struct cpn_symmetric_key_nonce *nonce, uint8_t *data, size_t datalen);
+
+/** @brief Decrypt data
+ *
+ * Evaluate the message authentication tag and, if successful,
+ * decrypt the ciphertext. Cipher and plaintext buffers may
+ * overlap.
+ *
+ * @param[out] out Buffer to store decrypted data at. Needs to be
+ *            of size <code>datalen -
+ *            CPN_CRYPTO_SYMMETRIC_MACBYTES</code>.
+ * @param[in] key Key to decrypt with
+ * @param[in] nonce Nonce to decrypt with
+ * @param[in] data Data to decrypt
+ * @param[in] datalen Length of data to decrypt
+ * @retval 0 on success
+ * @retval -1 otherwise
+ */
+int cpn_symmetric_key_decrypt(uint8_t *out, const struct cpn_symmetric_key *key,
+        const struct cpn_symmetric_key_nonce *nonce, uint8_t *data, size_t datalen);
+
 /** @brief Increment nonce by `count` */
 void cpn_symmetric_key_nonce_increment(struct cpn_symmetric_key_nonce *nonce, size_t count);
 

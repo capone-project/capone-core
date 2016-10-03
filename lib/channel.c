@@ -15,7 +15,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <sodium.h>
 #include <errno.h>
 #include <inttypes.h>
 #include <string.h>
@@ -31,10 +30,6 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
-
-#include <sodium/crypto_auth.h>
-#include <sodium/utils.h>
-#include <sodium/randombytes.h>
 
 #include "capone/log.h"
 #include "capone/common.h"
@@ -201,8 +196,9 @@ int cpn_channel_write_data(struct cpn_channel *c, uint8_t *data, uint32_t datale
         memcpy(block + offset, data + written, len);
 
         if (c->crypto == CPN_CHANNEL_CRYPTO_SYMMETRIC) {
-            if (crypto_secretbox_easy(block, block, c->blocklen - CPN_CRYPTO_SYMMETRIC_MACBYTES,
-                        c->local_nonce.data, c->key.data) < 0) {
+            if (cpn_symmetric_key_encrypt(block, &c->key, &c->local_nonce,
+                        block, c->blocklen - CPN_CRYPTO_SYMMETRIC_MACBYTES) < 0)
+            {
                 cpn_log(LOG_LEVEL_ERROR, "Unable to encrypt message");
                 return -1;
             }
@@ -306,8 +302,8 @@ ssize_t cpn_channel_receive_data(struct cpn_channel *c, uint8_t *out, size_t max
         }
 
         if (c->crypto == CPN_CHANNEL_CRYPTO_SYMMETRIC) {
-            if (crypto_secretbox_open_easy(block, block, c->blocklen,
-                        c->remote_nonce.data, c->key.data) < 0)
+            if (cpn_symmetric_key_decrypt(block, &c->key, &c->remote_nonce,
+                        block, c->blocklen) < 0)
             {
                 cpn_log(LOG_LEVEL_ERROR, "Unable to decrypt received block");
                 return -1;

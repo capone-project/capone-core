@@ -71,6 +71,18 @@ void cpn_symmetric_key_hex_from_key(struct cpn_symmetric_key_hex *out, const str
     sodium_bin2hex(out->data, sizeof(out->data), key->data, sizeof(key->data));
 }
 
+int cpn_symmetric_key_encrypt(uint8_t *out, const struct cpn_symmetric_key *key,
+        const struct cpn_symmetric_key_nonce *nonce, uint8_t *data, size_t datalen)
+{
+    return crypto_secretbox_easy(out, data, datalen, nonce->data, key->data);
+}
+
+int cpn_symmetric_key_decrypt(uint8_t *out, const struct cpn_symmetric_key *key,
+        const struct cpn_symmetric_key_nonce *nonce, uint8_t *data, size_t datalen)
+{
+    return crypto_secretbox_open_easy(out, data, datalen, nonce->data, key->data);
+}
+
 void cpn_symmetric_key_nonce_increment(struct cpn_symmetric_key_nonce *nonce, size_t count)
 {
     size_t i;
