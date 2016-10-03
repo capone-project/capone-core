@@ -99,15 +99,15 @@ int cpn_channel_enable_encryption(struct cpn_channel *c,
 {
     memcpy(&c->key, key, sizeof(c->key));
 
-    memset(c->local_nonce, 0, sizeof(c->local_nonce));
-    memset(c->remote_nonce, 0, sizeof(c->remote_nonce));
+    memset(&c->local_nonce, 0, sizeof(c->local_nonce));
+    memset(&c->remote_nonce, 0, sizeof(c->remote_nonce));
 
     switch (nonce) {
         case CPN_CHANNEL_NONCE_CLIENT:
-            sodium_increment(c->remote_nonce, sizeof(c->remote_nonce));
+            cpn_symmetric_key_nonce_increment(&c->remote_nonce, 1);
             break;
         case CPN_CHANNEL_NONCE_SERVER:
-            sodium_increment(c->local_nonce, sizeof(c->local_nonce));
+            cpn_symmetric_key_nonce_increment(&c->local_nonce, 1);
             break;
     }
 
@@ -202,12 +202,11 @@ int cpn_channel_write_data(struct cpn_channel *c, uint8_t *data, uint32_t datale
 
         if (c->crypto == CPN_CHANNEL_CRYPTO_SYMMETRIC) {
             if (crypto_secretbox_easy(block, block, c->blocklen - CPN_CRYPTO_SYMMETRIC_MACBYTES,
-                        c->local_nonce, c->key.data) < 0) {
+                        c->local_nonce.data, c->key.data) < 0) {
                 cpn_log(LOG_LEVEL_ERROR, "Unable to encrypt message");
                 return -1;
             }
-            sodium_increment(c->local_nonce, CPN_CRYPTO_SYMMETRIC_NONCEBYTES);
-            sodium_increment(c->local_nonce, CPN_CRYPTO_SYMMETRIC_NONCEBYTES);
+            cpn_symmetric_key_nonce_increment(&c->local_nonce, 2);
         }
 
         ret = write_data(c, block, c->blocklen);
@@ -308,13 +307,12 @@ ssize_t cpn_channel_receive_data(struct cpn_channel *c, uint8_t *out, size_t max
 
         if (c->crypto == CPN_CHANNEL_CRYPTO_SYMMETRIC) {
             if (crypto_secretbox_open_easy(block, block, c->blocklen,
-                        c->remote_nonce, c->key.data) < 0)
+                        c->remote_nonce.data, c->key.data) < 0)
             {
                 cpn_log(LOG_LEVEL_ERROR, "Unable to decrypt received block");
                 return -1;
             }
-            sodium_increment(c->remote_nonce, CPN_CRYPTO_SYMMETRIC_NONCEBYTES);
-            sodium_increment(c->remote_nonce, CPN_CRYPTO_SYMMETRIC_NONCEBYTES);
+            cpn_symmetric_key_nonce_increment(&c->remote_nonce, 2);
         }
 
         if (offset) {

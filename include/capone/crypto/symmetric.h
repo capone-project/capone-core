@@ -58,6 +58,10 @@ struct cpn_symmetric_key_hex {
     char data[CPN_CRYPTO_SYMMETRIC_KEYBYTES * 2 + 1];
 };
 
+struct cpn_symmetric_key_nonce {
+    uint8_t data[CPN_CRYPTO_SYMMETRIC_NONCEBYTES];
+};
+
 /** @brief Generate a new symmetric key
  *
  * @param[out] out Pointer to store symmetric key at.
@@ -98,6 +102,9 @@ int cpn_symmetric_key_hex_from_bin(struct cpn_symmetric_key_hex *out, const uint
  * @param[in] key Public signature key to convert.
  */
 void cpn_symmetric_key_hex_from_key(struct cpn_symmetric_key_hex *out, const struct cpn_symmetric_key *key);
+
+/** @brief Increment nonce by `count` */
+void cpn_symmetric_key_nonce_increment(struct cpn_symmetric_key_nonce *nonce, size_t count);
 
 #endif
 

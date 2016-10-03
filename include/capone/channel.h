@@ -107,8 +107,8 @@ struct cpn_channel {
     enum cpn_channel_crypto crypto;
 
     struct cpn_symmetric_key key;
-    uint8_t remote_nonce[CPN_CRYPTO_SYMMETRIC_NONCEBYTES];
-    uint8_t local_nonce[CPN_CRYPTO_SYMMETRIC_NONCEBYTES];
+    struct cpn_symmetric_key_nonce remote_nonce;
+    struct cpn_symmetric_key_nonce local_nonce;
 };
 
 /** @brief Initialize a channel with a host and port

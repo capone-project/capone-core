@@ -70,3 +70,11 @@ void cpn_symmetric_key_hex_from_key(struct cpn_symmetric_key_hex *out, const str
 {
     sodium_bin2hex(out->data, sizeof(out->data), key->data, sizeof(key->data));
 }
+
+void cpn_symmetric_key_nonce_increment(struct cpn_symmetric_key_nonce *nonce, size_t count)
+{
+    size_t i;
+
+    for (i = 0; i < count; i++)
+        sodium_increment(nonce->data, sizeof(nonce->data));
+}

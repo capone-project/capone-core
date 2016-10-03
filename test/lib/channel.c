@@ -310,20 +310,20 @@ static void write_encrypted_messages_increments_nonce()
 {
     unsigned char m1[] = "test", m2[] = "somewhatlongermessage",
                   buf[sizeof(m2)];
-    uint8_t nonce[crypto_box_MACBYTES];
+    struct cpn_symmetric_key_nonce nonce;
 
     stub_sockets(&channel, &remote, CPN_CHANNEL_TYPE_TCP);
 
     cpn_channel_enable_encryption(&channel, &key, 0);
     cpn_channel_enable_encryption(&remote, &key, 1);
 
-    memcpy(nonce, channel.local_nonce, sizeof(nonce));
+    memcpy(&nonce, &channel.local_nonce, sizeof(nonce));
     assert_success(cpn_channel_write_data(&channel, m1, sizeof(m1)));
-    assert_int_not_equal(sodium_compare(nonce, channel.local_nonce, sizeof(nonce)), 0);
+    assert_memory_not_equal(&nonce, &channel.local_nonce, sizeof(nonce));
 
-    memcpy(nonce, channel.local_nonce, sizeof(nonce));
+    memcpy(&nonce, &channel.local_nonce, sizeof(nonce));
     assert_int_equal(cpn_channel_receive_data(&remote, buf, sizeof(buf)), sizeof(m1));
-    assert_int_not_equal(sodium_compare(nonce, channel.remote_nonce, sizeof(nonce)), 0);
+    assert_memory_not_equal(&nonce, &channel.remote_nonce, sizeof(nonce));
     assert_string_equal(m1, buf);
 
     assert_success(cpn_channel_write_data(&channel, m2, sizeof(m2)));
