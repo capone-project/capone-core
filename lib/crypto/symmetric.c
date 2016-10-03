@@ -21,6 +21,7 @@
 #include "capone/common.h"
 #include "capone/log.h"
 
+#include "capone/crypto/hash.h"
 #include "capone/crypto/symmetric.h"
 
 int cpn_symmetric_key_generate(struct cpn_symmetric_key *out)
@@ -59,7 +60,7 @@ int cpn_symmetric_key_from_scalarmult(struct cpn_symmetric_key *out,
         const struct cpn_asymmetric_keys *keys, const struct cpn_asymmetric_pk *pk, bool localfirst)
 {
     uint8_t scalarmult[crypto_scalarmult_BYTES];
-    crypto_generichash_state hash;
+    struct cpn_hash_state hash;
     int err = 0;
 
     if (crypto_scalarmult(scalarmult, keys->sk.data, pk->data) < 0) {
@@ -67,18 +68,18 @@ int cpn_symmetric_key_from_scalarmult(struct cpn_symmetric_key *out,
         return -1;
     }
 
-    err |= crypto_generichash_init(&hash, NULL, 0, sizeof(out->data));
+    err |= cpn_hash_init(&hash, sizeof(out->data));
 
-    err |= crypto_generichash_update(&hash, scalarmult, sizeof(scalarmult));
+    err |= cpn_hash_update(&hash, scalarmult, sizeof(scalarmult));
     if (localfirst) {
-        err |= crypto_generichash_update(&hash, keys->pk.data, sizeof(keys->pk.data));
-        err |= crypto_generichash_update(&hash, pk->data, sizeof(pk->data));
+        err |= cpn_hash_update(&hash, keys->pk.data, sizeof(keys->pk.data));
+        err |= cpn_hash_update(&hash, pk->data, sizeof(pk->data));
     } else {
-        err |= crypto_generichash_update(&hash, pk->data, sizeof(pk->data));
-        err |= crypto_generichash_update(&hash, keys->pk.data, sizeof(keys->pk.data));
+        err |= cpn_hash_update(&hash, pk->data, sizeof(pk->data));
+        err |= cpn_hash_update(&hash, keys->pk.data, sizeof(keys->pk.data));
     }
 
-    err |= crypto_generichash_final(&hash, out->data, sizeof(out->data));
+    err |= cpn_hash_final(out->data, &hash);
 
     if (err) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to calculate h(q || pk1 || pk2)");
