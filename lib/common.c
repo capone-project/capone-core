@@ -15,12 +15,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <sodium.h>
 #include <errno.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+
+#include <sodium/utils.h>
+#include <sodium/randombytes.h>
 
 #include "capone/channel.h"
 #include "capone/cfg.h"
@@ -101,4 +103,14 @@ int parse_hex(uint8_t *out, uint32_t outlen, const char *hex, uint32_t hexlen)
         return -1;
 
     return 0;
+}
+
+void cpn_randombytes(uint8_t *out, size_t len)
+{
+    randombytes(out, len);
+}
+
+void cpn_memzero(void *data, size_t len)
+{
+    memset(data, 0, len);
 }

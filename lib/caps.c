@@ -15,11 +15,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <arpa/inet.h>
-
-#include <sodium.h>
 #include <string.h>
 #include <pthread.h>
+
+#include <arpa/inet.h>
+
+#include <sodium/utils.h>
 
 #include "capone/buf.h"
 #include "capone/caps.h"
@@ -264,7 +265,7 @@ int cpn_cap_create_root(struct cpn_cap **out)
     *out = NULL;
 
     cap = malloc(sizeof(struct cpn_cap));
-    randombytes_buf(cap->secret, CPN_CAP_SECRET_LEN);
+    cpn_randombytes(cap->secret, CPN_CAP_SECRET_LEN);
     cap->chain_depth = 0;
     cap->chain = NULL;
 

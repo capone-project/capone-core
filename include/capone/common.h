@@ -127,6 +127,12 @@ int parse_uint32t(uint32_t *out, const char *num);
 
 int parse_hex(uint8_t *out, uint32_t outlen, const char *hex, uint32_t hexlen);
 
+/** @brief Fill \p out buffer with \p len bytes */
+void cpn_randombytes(uint8_t *out, size_t len);
+
+/** @brief Zero out \p len bytes in buffer \p data */
+void cpn_memzero(void *data, size_t len);
+
 #endif
 
 /** @} */

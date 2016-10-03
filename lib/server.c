@@ -15,13 +15,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <sodium.h>
 #include <string.h>
 
 #include "config.h"
 
 #include "capone/buf.h"
 #include "capone/channel.h"
+#include "capone/common.h"
 #include "capone/log.h"
 #include "capone/session.h"
 #include "capone/server.h"
@@ -620,7 +620,7 @@ int cpn_server_await_encryption(struct cpn_channel *channel,
         return -1;
     }
 
-    sodium_memzero(&emph_keys, sizeof(emph_keys));
+    cpn_memzero(&emph_keys, sizeof(emph_keys));
 
     if (cpn_channel_enable_encryption(channel, &shared_key, 1) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not enable encryption");

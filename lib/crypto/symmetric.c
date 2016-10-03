@@ -16,7 +16,10 @@
  */
 
 #include <string.h>
-#include <sodium.h>
+
+#include <sodium/crypto_scalarmult.h>
+#include <sodium/crypto_secretbox.h>
+#include <sodium/utils.h>
 
 #include "capone/common.h"
 #include "capone/log.h"
@@ -26,7 +29,7 @@
 
 int cpn_symmetric_key_generate(struct cpn_symmetric_key *out)
 {
-    randombytes(out->data, sizeof(out->data));
+    cpn_randombytes(out->data, sizeof(out->data));
     return 0;
 }
 

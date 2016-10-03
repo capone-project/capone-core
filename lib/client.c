@@ -15,7 +15,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <sodium.h>
 #include <errno.h>
 #include <string.h>
 
@@ -23,6 +22,7 @@
 
 #include "capone/buf.h"
 #include "capone/client.h"
+#include "capone/common.h"
 #include "capone/log.h"
 
 #include "capone/crypto/asymmetric.h"
@@ -557,7 +557,7 @@ static int initiate_encryption(struct cpn_channel *channel,
         return -1;
     }
 
-    id = randombytes_random();
+    cpn_randombytes((uint8_t *) &id, sizeof(id));
 
     if (send_ephemeral_key(channel, id, sign_keys, &emph_keys.pk) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to send session key");
@@ -584,7 +584,7 @@ static int initiate_encryption(struct cpn_channel *channel,
         return -1;
     }
 
-    sodium_memzero(&emph_keys, sizeof(emph_keys));
+    cpn_memzero(&emph_keys, sizeof(emph_keys));
 
     if (cpn_channel_enable_encryption(channel, &shared_key, 0) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not enable encryption");

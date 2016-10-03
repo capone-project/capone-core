@@ -16,7 +16,9 @@
  */
 
 #include <string.h>
-#include <sodium.h>
+
+#include <sodium/crypto_sign.h>
+#include <sodium/utils.h>
 
 #include "capone/common.h"
 #include "capone/log.h"
