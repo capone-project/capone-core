@@ -460,9 +460,10 @@ static int send_signed_key(struct cpn_channel *channel,
         const struct cpn_asymmetric_pk *remote_emph_key)
 {
     EncryptionAcknowledgementMessage msg = ENCRYPTION_ACKNOWLEDGEMENT_MESSAGE__INIT;
+    IdentityMessage *identity = NULL;
     struct cpn_buf sign_buf = CPN_BUF_INIT;
     struct cpn_sign_sig sig;
-    int err = 0;
+    int err = -1;
 
     cpn_buf_append_data(&sign_buf, sign_keys->pk.data, CPN_CRYPTO_SIGN_PKBYTES);
     cpn_buf_append_data(&sign_buf, (unsigned char *) &id, sizeof(id));
@@ -470,29 +471,37 @@ static int send_signed_key(struct cpn_channel *channel,
     cpn_buf_append_data(&sign_buf, remote_emph_key->data, CPN_CRYPTO_ASYMMETRIC_PKBYTES);
     cpn_buf_append_data(&sign_buf, remote_sign_key->data, CPN_CRYPTO_ASYMMETRIC_PKBYTES);
 
-    if ((err = cpn_sign_sig(&sig, &sign_keys->sk, (uint8_t *) sign_buf.data, sign_buf.length)) < 0)
+    if (cpn_sign_sig(&sig, &sign_keys->sk, (uint8_t *) sign_buf.data, sign_buf.length) < 0)
     {
         cpn_log(LOG_LEVEL_ERROR, "Unable to sign ephemeral key");
         goto out;
     }
 
+    if (cpn_sign_pk_to_proto(&identity, &sign_keys->pk) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Unable to generate identity message");
+        goto out;
+    }
+
     msg.sessionid = id;
-    msg.sign_pk.data = (uint8_t *) sign_keys->pk.data;
-    msg.sign_pk.len = sizeof(sign_keys->pk.data);
+    msg.identity = identity;
     msg.ephm_pk.data = (uint8_t *) local_emph_key->data;
     msg.ephm_pk.len = sizeof(local_emph_key->data);
     msg.signature.data = sig.data;
     msg.signature.len = sizeof(sig.data);
 
-    if ((err = cpn_channel_write_protobuf(channel, &msg.base)) < 0) {
+    if (cpn_channel_write_protobuf(channel, &msg.base) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Received invalid ephemeral key signature");
         goto out;
     }
 
+    err = 0;
+
 out:
+    if (identity)
+        identity_message__free_unpacked(identity, NULL);
     cpn_buf_clear(&sign_buf);
 
-    return 0;
+    return err;
 }
 
 static int receive_ephemeral_key(
@@ -512,8 +521,7 @@ static int receive_ephemeral_key(
         goto out;
     }
 
-    if (cpn_sign_pk_from_bin(remote_sign_key,
-                msg->sign_pk.data, msg->sign_pk.len) < 0 ||
+    if (cpn_sign_pk_from_proto(remote_sign_key, msg->identity) < 0 ||
             cpn_asymmetric_pk_from_bin(remote_encrypt_key,
                 msg->ephm_pk.data, msg->ephm_pk.len) < 0)
     {
@@ -540,6 +548,7 @@ static int receive_key_verification(struct cpn_channel *c,
 {
     EncryptionAcknowledgementMessage *msg = NULL;
     struct cpn_buf sign_buf = CPN_BUF_INIT;
+    struct cpn_sign_pk received_pk;
     struct cpn_sign_sig sig;
     int err = -1;
 
@@ -554,8 +563,8 @@ static int receive_key_verification(struct cpn_channel *c,
     if (msg->sessionid != id) {
         cpn_log(LOG_LEVEL_ERROR, "Verification has invalid session");
         goto out;
-    } else if (msg->sign_pk.len != sizeof(remote_pk->data) ||
-            memcmp(msg->sign_pk.data, remote_pk->data, msg->sign_pk.len)) {
+    } else if (cpn_sign_pk_from_proto(&received_pk, msg->identity) < 0 ||
+            memcmp(&received_pk, remote_pk, sizeof(received_pk))) {
         cpn_log(LOG_LEVEL_ERROR, "Verification key does not match");
         goto out;
     } else if (msg->ephm_pk.len != sizeof(remote_emph_key->data) ||

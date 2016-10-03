@@ -419,19 +419,31 @@ static int send_ephemeral_key(struct cpn_channel *channel,
         const struct cpn_asymmetric_pk *encrypt_key)
 {
     EncryptionInitiationMessage msg = ENCRYPTION_INITIATION_MESSAGE__INIT;
+    IdentityMessage *identity = NULL;
+    int err = -1;
 
-    msg.sign_pk.data = (uint8_t *) sign_keys->pk.data;
-    msg.sign_pk.len = sizeof(sign_keys->pk.data);
+    if (cpn_sign_pk_to_proto(&identity, &sign_keys->pk) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Could not generate identity message");
+        goto out;
+    }
+
+    msg.identity = identity;
     msg.ephm_pk.data = (uint8_t *) encrypt_key->data;
     msg.ephm_pk.len = sizeof(encrypt_key->data);
     msg.sessionid = id;
 
     if (cpn_channel_write_protobuf(channel, &msg.base) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not send negotiation");
-        return -1;
+        goto out;
     }
 
-    return 0;
+    err = 0;
+
+out:
+    if (identity)
+        identity_message__free_unpacked(identity, NULL);
+
+    return err;
 }
 
 static int receive_signed_key(struct cpn_asymmetric_pk *out,
@@ -463,7 +475,7 @@ static int receive_signed_key(struct cpn_asymmetric_pk *out,
     } else if (cpn_sign_sig_from_bin(&sig, msg->signature.data, msg->signature.len) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Received invalid signature");
         goto out;
-    } else if (cpn_sign_pk_from_bin(&msg_sign_key, msg->sign_pk.data, msg->sign_pk.len) < 0) {
+    } else if (cpn_sign_pk_from_proto(&msg_sign_key, msg->identity) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Initiator's long-term signature key is invalid");
         goto out;
     } else if (cpn_asymmetric_pk_from_bin(&msg_emph_key, msg->ephm_pk.data, msg->ephm_pk.len) < 0) {
@@ -509,9 +521,10 @@ static int send_key_verification(struct cpn_channel *c,
         const struct cpn_asymmetric_pk *remote_emph_pk)
 {
     EncryptionAcknowledgementMessage msg = ENCRYPTION_ACKNOWLEDGEMENT_MESSAGE__INIT;
+    IdentityMessage *identity = NULL;
     struct cpn_buf sign_buf = CPN_BUF_INIT;
     struct cpn_sign_sig sig;
-    int err = 0;
+    int err = -1;
 
     cpn_buf_append_data(&sign_buf, sign_keys->pk.data, CPN_CRYPTO_SIGN_PKBYTES);
     cpn_buf_append_data(&sign_buf, (unsigned char *) &id, sizeof(id));
@@ -519,27 +532,35 @@ static int send_key_verification(struct cpn_channel *c,
     cpn_buf_append_data(&sign_buf, remote_emph_pk->data, CPN_CRYPTO_ASYMMETRIC_PKBYTES);
     cpn_buf_append_data(&sign_buf, remote_pk->data, CPN_CRYPTO_ASYMMETRIC_PKBYTES);
 
-    if ((err = cpn_sign_sig(&sig, &sign_keys->sk,
-                    (uint8_t *) sign_buf.data, sign_buf.length)) < 0)
+    if (cpn_sign_sig(&sig, &sign_keys->sk,
+                    (uint8_t *) sign_buf.data, sign_buf.length) < 0)
     {
         cpn_log(LOG_LEVEL_ERROR, "Unable to sign key verification");
         goto out;
     }
 
+    if (cpn_sign_pk_to_proto(&identity, &sign_keys->pk) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Unable to generate identity message");
+        goto out;
+    }
+
     msg.sessionid = id;
+    msg.identity = identity;
     msg.ephm_pk.data = (uint8_t *) local_emph_key->data;
     msg.ephm_pk.len = sizeof(local_emph_key->data);
-    msg.sign_pk.data = (uint8_t *) sign_keys->pk.data;
-    msg.sign_pk.len = sizeof(sign_keys->pk.data);
     msg.signature.data = sig.data;
     msg.signature.len = sizeof(sig.data);
 
     if (cpn_channel_write_protobuf(c, &msg.base) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to send verification message");
-        return -1;
+        goto out;
     }
 
+    err = 0;
+
 out:
+    if (identity)
+        identity_message__free_unpacked(identity, NULL);
     cpn_buf_clear(&sign_buf);
 
     return err;
