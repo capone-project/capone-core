@@ -34,7 +34,7 @@
 
 #include <stdbool.h>
 
-#include "capone/keys.h"
+#include "capone/crypto/sign.h"
 
 /**
  * The rights that can be given for an identity.

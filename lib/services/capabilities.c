@@ -28,13 +28,14 @@
 #include "capone/channel.h"
 #include "capone/client.h"
 #include "capone/common.h"
-#include "capone/keys.h"
 #include "capone/list.h"
 #include "capone/log.h"
 #include "capone/opts.h"
 #include "capone/protobuf.h"
 #include "capone/server.h"
 #include "capone/service.h"
+
+#include "capone/crypto/sign.h"
 
 #include "capone/proto/capabilities.pb-c.h"
 #include "capone/services/capabilities.h"

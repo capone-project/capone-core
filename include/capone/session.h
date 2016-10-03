@@ -62,7 +62,8 @@
 #include <inttypes.h>
 
 #include "capone/caps.h"
-#include "capone/keys.h"
+
+#include "capone/crypto/sign.h"
 
 /** @brief A session wrapping identities and parameters */
 struct cpn_session {

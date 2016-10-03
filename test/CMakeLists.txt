@@ -39,6 +39,7 @@ IF(CMOCKA_FOUND)
         lib/session.c
         lib/socket.c
         lib/test-service.c
+        lib/crypto/sign.c
         lib/service/capabilities.c
         lib/service/exec.c
         lib/service/invoke.c

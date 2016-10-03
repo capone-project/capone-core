@@ -47,24 +47,6 @@
 #include "capone/cfg.h"
 #include "capone/proto/core.pb-c.h"
 
-/** @brief Secret signature key used to sign data */
-struct cpn_sign_key_secret {
-    uint8_t data[crypto_sign_SECRETKEYBYTES];
-};
-/** @brief Public signature key used to verify data */
-struct cpn_sign_key_public {
-    uint8_t data[crypto_sign_PUBLICKEYBYTES];
-};
-/** @brief Signature key pair */
-struct cpn_sign_key_pair {
-    struct cpn_sign_key_secret sk;
-    struct cpn_sign_key_public pk;
-};
-/** @brief Hex representation of a public signature key */
-struct cpn_sign_key_hex {
-    char data[crypto_sign_PUBLICKEYBYTES * 2 + 1];
-};
-
 /** @brief Secret encryption key used to decrypt data */
 struct cpn_encrypt_key_secret {
     uint8_t data[crypto_box_SECRETKEYBYTES];
@@ -87,73 +69,6 @@ struct cpn_symmetric_key {
 struct cpn_symmetric_key_hex {
     char data[crypto_secretbox_KEYBYTES * 2 + 1];
 };
-
-/** @brief Generate a new signature key pair
- *
- * @param[out] out Pointer to store key pair at.
- * @return <code>0</code>
- */
-int cpn_sign_key_pair_generate(struct cpn_sign_key_pair *out);
-
-/** @brief Read a signature key pair from a configuration
- *
- * Read a key pair from a configuration. The key pair is assumed
- * to be present in the "core" section and stored in the entries
- * "public_key" and "secret_key".
- *
- * @param[out] out Pointer to store key pair at.
- * @param[in] cfg Configuration to read keys from.
- * @return <code>0</code> on success, <code>-1</code> otherwise
- */
-int cpn_sign_key_pair_from_config(struct cpn_sign_key_pair *out, const struct cpn_cfg *cfg);
-
-/** @brief Read a signature key pair from a configuration file
- *
- * Read a key pair from a configuration file.
- *
- * @param[out] out Pointer to store key pair at.
- * @param[in] file Path of the configuration file.
- * @return <code>0</code> on success, <code>-1</code> otherwise
- *
- * \see cpn_sign_key_pair_from_config
- */
-int cpn_sign_key_pair_from_config_file(struct cpn_sign_key_pair *out, const char *file);
-
-/** @brief Read a public signature key from hex
- *
- * @param[out] out Pointer to store public signature key at.
- * @param[in] hex Hex representation of the key.
- * @return <code>0</code> on success, <code>-1</code> otherwise
- */
-int cpn_sign_key_public_from_hex(struct cpn_sign_key_public *out, const char *hex);
-
-/** @brief Read a public signature key from binary data
- *
- * @param[out] out Pointer to store public signature key at.
- * @param[in] pk Binary representation of the key.
- * @param[in] pklen Length of the binary data.
- * @return <code>0</code> on success, <code>-1</code> otherwise
- */
-int cpn_sign_key_public_from_bin(struct cpn_sign_key_public *out, const uint8_t *pk, size_t pklen);
-
-/** @brief Read a public signature key hex representation from binary data
- *
- * @param[out] out Pointer to store public signature hex
- *             representation at.
- * @param[in] pk Binary representation of the key.
- * @param[in] pklen Length of the binary data.
- * @return <code>0</code> on success, <code>-1</code> otherwise
- */
-int cpn_sign_key_hex_from_bin(struct cpn_sign_key_hex *out, const uint8_t *pk, size_t pklen);
-
-/** @brief Convert public signature key into hex representation
- *
- * @param[out] out Pointer to store public signature hex
- *             representation at.
- * @param[in] key Public signature key to convert.
- */
-void cpn_sign_key_hex_from_key(struct cpn_sign_key_hex *out, const struct cpn_sign_key_public *key);
-
 /** @brief Generate a new encryption key pair
  *
  * @param[out] out Pointer to store public encryption key pair at.
@@ -211,10 +126,6 @@ int cpn_symmetric_key_hex_from_bin(struct cpn_symmetric_key_hex *out, const uint
  * @param[in] key Public signature key to convert.
  */
 void cpn_symmetric_key_hex_from_key(struct cpn_symmetric_key_hex *out, const struct cpn_symmetric_key *key);
-
-int cpn_sign_key_public_from_proto(struct cpn_sign_key_public *out, const IdentityMessage *msg);
-
-int cpn_sign_key_public_to_proto(IdentityMessage **out, const struct cpn_sign_key_public *key);
 
 #endif
 

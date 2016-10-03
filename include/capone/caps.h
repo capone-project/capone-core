@@ -29,7 +29,7 @@
 
 #include <stdbool.h>
 
-#include "capone/keys.h"
+#include "capone/crypto/sign.h"
 #include "capone/proto/core.pb-c.h"
 
 #define CPN_CAP_SECRET_LEN 32

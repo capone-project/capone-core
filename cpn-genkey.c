@@ -21,8 +21,9 @@
 #include <sodium.h>
 
 #include "capone/common.h"
-#include "capone/keys.h"
 #include "capone/opts.h"
+
+#include "capone/crypto/sign.h"
 
 int main(int argc, const char *argv[])
 {

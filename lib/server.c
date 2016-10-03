@@ -458,11 +458,11 @@ static int send_signed_key(struct cpn_channel *channel,
         const struct cpn_encrypt_key_public *remote_emph_key)
 {
     ResponderKey msg = RESPONDER_KEY__INIT;
-    uint8_t signature[crypto_sign_BYTES];
+    uint8_t signature[CPN_CRYPTO_SIGN_SIGBYTES];
     struct cpn_buf sign_buf = CPN_BUF_INIT;
     int err = 0;
 
-    cpn_buf_append_data(&sign_buf, sign_keys->pk.data, crypto_sign_PUBLICKEYBYTES);
+    cpn_buf_append_data(&sign_buf, sign_keys->pk.data, CPN_CRYPTO_SIGN_PKBYTES);
     cpn_buf_append_data(&sign_buf, (unsigned char *) &id, sizeof(id));
     cpn_buf_append_data(&sign_buf, local_emph_key->data, crypto_box_PUBLICKEYBYTES);
     cpn_buf_append_data(&sign_buf, remote_emph_key->data, crypto_box_PUBLICKEYBYTES);
@@ -555,12 +555,12 @@ static int receive_key_verification(struct cpn_channel *c,
             memcmp(msg->sign_pk.data, remote_pk->data, msg->sign_pk.len)) {
         cpn_log(LOG_LEVEL_ERROR, "Verification key does not match");
         goto out;
-    } else if (msg->signature.len != crypto_sign_BYTES) {
+    } else if (msg->signature.len != CPN_CRYPTO_SIGN_SIGBYTES) {
         cpn_log(LOG_LEVEL_ERROR, "Verification has invalid signature length");
         goto out;
     }
 
-    cpn_buf_append_data(&sign_buf, remote_pk->data, crypto_sign_PUBLICKEYBYTES);
+    cpn_buf_append_data(&sign_buf, remote_pk->data, CPN_CRYPTO_SIGN_PKBYTES);
     cpn_buf_append_data(&sign_buf, (unsigned char *) &id, sizeof(id));
     cpn_buf_append_data(&sign_buf, remote_emph_key->data, crypto_box_PUBLICKEYBYTES);
     cpn_buf_append_data(&sign_buf, local_emph_key->data, crypto_box_PUBLICKEYBYTES);

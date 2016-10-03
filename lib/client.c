@@ -457,7 +457,7 @@ static int receive_signed_key(struct cpn_encrypt_key_public *out,
     if (msg->sessionid != id) {
         cpn_log(LOG_LEVEL_ERROR, "Received invalid session id");
         goto out;
-    } else if (msg->signature.len != crypto_sign_BYTES) {
+    } else if (msg->signature.len != CPN_CRYPTO_SIGN_SIGBYTES) {
         cpn_log(LOG_LEVEL_ERROR, "Received invalid signature");
         goto out;
     } else if (cpn_sign_key_public_from_bin(&msg_sign_key, msg->sign_pk.data, msg->sign_pk.len) < 0) {
@@ -473,7 +473,7 @@ static int receive_signed_key(struct cpn_encrypt_key_public *out,
         goto out;
     }
 
-    cpn_buf_append_data(&sign_buf, msg_sign_key.data, crypto_sign_PUBLICKEYBYTES);
+    cpn_buf_append_data(&sign_buf, msg_sign_key.data, CPN_CRYPTO_SIGN_PKBYTES);
     cpn_buf_append_data(&sign_buf, (unsigned char *) &id, sizeof(id));
     cpn_buf_append_data(&sign_buf, msg_emph_key.data, crypto_box_PUBLICKEYBYTES);
     cpn_buf_append_data(&sign_buf, local_emph_key->data, crypto_box_PUBLICKEYBYTES);
@@ -510,10 +510,10 @@ static int send_key_verification(struct cpn_channel *c,
 {
     AcknowledgeKey msg = ACKNOWLEDGE_KEY__INIT;
     struct cpn_buf sign_buf = CPN_BUF_INIT;
-    uint8_t signature[crypto_sign_BYTES], *sign_data = NULL;
+    uint8_t signature[CPN_CRYPTO_SIGN_SIGBYTES], *sign_data = NULL;
     int err = 0;
 
-    cpn_buf_append_data(&sign_buf, sign_keys->pk.data, crypto_sign_PUBLICKEYBYTES);
+    cpn_buf_append_data(&sign_buf, sign_keys->pk.data, CPN_CRYPTO_SIGN_PKBYTES);
     cpn_buf_append_data(&sign_buf, (unsigned char *) &id, sizeof(id));
     cpn_buf_append_data(&sign_buf, local_emph_key->data, crypto_box_PUBLICKEYBYTES);
     cpn_buf_append_data(&sign_buf, remote_emph_pk->data, crypto_box_PUBLICKEYBYTES);

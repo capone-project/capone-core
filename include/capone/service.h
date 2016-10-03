@@ -35,8 +35,9 @@
 #define CPN_LIB_SERVICE_H
 
 #include "capone/cfg.h"
-#include "capone/keys.h"
 #include "capone/session.h"
+
+#include "capone/crypto/sign.h"
 
 struct cpn_channel;
 

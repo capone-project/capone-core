@@ -33,10 +33,11 @@
 #ifndef CAPONE_OPTS_H
 #define CAPONE_OPTS_H
 
+#include <stdio.h>
 #include <stdbool.h>
 #include <inttypes.h>
 
-#include "capone/keys.h"
+#include "capone/crypto/sign.h"
 
 /**
  * Type of command line arguments
