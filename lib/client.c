@@ -418,7 +418,7 @@ static int send_ephemeral_key(struct cpn_channel *channel,
         const struct cpn_sign_keys *sign_keys,
         const struct cpn_asymmetric_pk *encrypt_key)
 {
-    InitiatorKey msg = INITIATOR_KEY__INIT;
+    EncryptionInitiationMessage msg = ENCRYPTION_INITIATION_MESSAGE__INIT;
 
     msg.sign_pk.data = (uint8_t *) sign_keys->pk.data;
     msg.sign_pk.len = sizeof(sign_keys->pk.data);
@@ -441,7 +441,7 @@ static int receive_signed_key(struct cpn_asymmetric_pk *out,
         const struct cpn_asymmetric_pk *local_emph_key,
         const struct cpn_sign_pk *remote_sign_key)
 {
-    ResponderKey *msg;
+    EncryptionAcknowledgementMessage *msg;
     struct cpn_buf sign_buf = CPN_BUF_INIT;
     struct cpn_sign_pk msg_sign_key;
     struct cpn_asymmetric_pk msg_emph_key;
@@ -449,7 +449,7 @@ static int receive_signed_key(struct cpn_asymmetric_pk *out,
     int ret = -1;
 
     if (cpn_channel_receive_protobuf(channel,
-            &responder_key__descriptor,
+            &encryption_acknowledgement_message__descriptor,
             (ProtobufCMessage **) &msg) < 0)
     {
         cpn_log(LOG_LEVEL_ERROR, "Unable to receive ephemeral key signature");
@@ -496,7 +496,7 @@ static int receive_signed_key(struct cpn_asymmetric_pk *out,
 out:
     cpn_buf_clear(&sign_buf);
     if (msg)
-        responder_key__free_unpacked(msg, NULL);
+        encryption_acknowledgement_message__free_unpacked(msg, NULL);
 
     return ret;
 }
@@ -508,7 +508,7 @@ static int send_key_verification(struct cpn_channel *c,
         const struct cpn_sign_pk *remote_pk,
         const struct cpn_asymmetric_pk *remote_emph_pk)
 {
-    ResponderKey msg = RESPONDER_KEY__INIT;
+    EncryptionAcknowledgementMessage msg = ENCRYPTION_ACKNOWLEDGEMENT_MESSAGE__INIT;
     struct cpn_buf sign_buf = CPN_BUF_INIT;
     struct cpn_sign_sig sig;
     int err = 0;

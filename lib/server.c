@@ -459,7 +459,7 @@ static int send_signed_key(struct cpn_channel *channel,
         const struct cpn_sign_pk *remote_sign_key,
         const struct cpn_asymmetric_pk *remote_emph_key)
 {
-    ResponderKey msg = RESPONDER_KEY__INIT;
+    EncryptionAcknowledgementMessage msg = ENCRYPTION_ACKNOWLEDGEMENT_MESSAGE__INIT;
     struct cpn_buf sign_buf = CPN_BUF_INIT;
     struct cpn_sign_sig sig;
     int err = 0;
@@ -501,14 +501,15 @@ static int receive_ephemeral_key(
         struct cpn_sign_pk *remote_sign_key,
         struct cpn_asymmetric_pk *remote_encrypt_key)
 {
-    InitiatorKey *msg;
+    EncryptionInitiationMessage *msg = NULL;
+    int err = -1;
 
     if (cpn_channel_receive_protobuf(channel,
-                &initiator_key__descriptor,
+                &encryption_initiation_message__descriptor,
                 (ProtobufCMessage **) &msg) < 0)
     {
         cpn_log(LOG_LEVEL_ERROR, "Failed receiving negotiation response");
-        return -1;
+        goto out;
     }
 
     if (cpn_sign_pk_from_bin(remote_sign_key,
@@ -517,14 +518,17 @@ static int receive_ephemeral_key(
                 msg->ephm_pk.data, msg->ephm_pk.len) < 0)
     {
         cpn_log(LOG_LEVEL_ERROR, "Invalid keys");
-        return -1;
+        goto out;
     }
 
     *id = msg->sessionid;
+    err = 0;
 
-    initiator_key__free_unpacked(msg, NULL);
+out:
+    if (msg)
+        encryption_initiation_message__free_unpacked(msg, NULL);
 
-    return 0;
+    return err;
 }
 
 static int receive_key_verification(struct cpn_channel *c,
@@ -534,13 +538,13 @@ static int receive_key_verification(struct cpn_channel *c,
         const struct cpn_sign_pk *remote_pk,
         const struct cpn_asymmetric_pk *remote_emph_key)
 {
-    ResponderKey *msg = NULL;
+    EncryptionAcknowledgementMessage *msg = NULL;
     struct cpn_buf sign_buf = CPN_BUF_INIT;
     struct cpn_sign_sig sig;
     int err = -1;
 
     if (cpn_channel_receive_protobuf(c,
-            &responder_key__descriptor,
+            &encryption_acknowledgement_message__descriptor,
             (ProtobufCMessage **) &msg) < 0)
     {
         cpn_log(LOG_LEVEL_ERROR, "Unable to receive acknowledge message");
@@ -579,7 +583,7 @@ static int receive_key_verification(struct cpn_channel *c,
 out:
     cpn_buf_clear(&sign_buf);
     if (msg)
-        responder_key__free_unpacked(msg, NULL);
+        encryption_acknowledgement_message__free_unpacked(msg, NULL);
 
     return err;
 }
