@@ -534,13 +534,13 @@ static int receive_key_verification(struct cpn_channel *c,
         const struct cpn_sign_pk *remote_pk,
         const struct cpn_asymmetric_pk *remote_emph_key)
 {
-    AcknowledgeKey *msg = NULL;
+    ResponderKey *msg = NULL;
     struct cpn_buf sign_buf = CPN_BUF_INIT;
     struct cpn_sign_sig sig;
     int err = -1;
 
     if (cpn_channel_receive_protobuf(c,
-            &acknowledge_key__descriptor,
+            &responder_key__descriptor,
             (ProtobufCMessage **) &msg) < 0)
     {
         cpn_log(LOG_LEVEL_ERROR, "Unable to receive acknowledge message");
@@ -553,6 +553,10 @@ static int receive_key_verification(struct cpn_channel *c,
     } else if (msg->sign_pk.len != sizeof(remote_pk->data) ||
             memcmp(msg->sign_pk.data, remote_pk->data, msg->sign_pk.len)) {
         cpn_log(LOG_LEVEL_ERROR, "Verification key does not match");
+        goto out;
+    } else if (msg->ephm_pk.len != sizeof(remote_emph_key->data) ||
+            memcmp(msg->ephm_pk.data, remote_emph_key->data, msg->ephm_pk.len)) {
+        cpn_log(LOG_LEVEL_ERROR, "Ephemeral key does not match");
         goto out;
     } else if (cpn_sign_sig_from_bin(&sig, msg->signature.data, msg->signature.len) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Verification has invalid signature length");
@@ -575,7 +579,7 @@ static int receive_key_verification(struct cpn_channel *c,
 out:
     cpn_buf_clear(&sign_buf);
     if (msg)
-        acknowledge_key__free_unpacked(msg, NULL);
+        responder_key__free_unpacked(msg, NULL);
 
     return err;
 }

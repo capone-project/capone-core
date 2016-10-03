@@ -508,7 +508,7 @@ static int send_key_verification(struct cpn_channel *c,
         const struct cpn_sign_pk *remote_pk,
         const struct cpn_asymmetric_pk *remote_emph_pk)
 {
-    AcknowledgeKey msg = ACKNOWLEDGE_KEY__INIT;
+    ResponderKey msg = RESPONDER_KEY__INIT;
     struct cpn_buf sign_buf = CPN_BUF_INIT;
     struct cpn_sign_sig sig;
     int err = 0;
@@ -527,6 +527,8 @@ static int send_key_verification(struct cpn_channel *c,
     }
 
     msg.sessionid = id;
+    msg.ephm_pk.data = (uint8_t *) local_emph_key->data;
+    msg.ephm_pk.len = sizeof(local_emph_key->data);
     msg.sign_pk.data = (uint8_t *) sign_keys->pk.data;
     msg.sign_pk.len = sizeof(sign_keys->pk.data);
     msg.signature.data = sig.data;
