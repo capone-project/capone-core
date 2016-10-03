@@ -23,6 +23,7 @@
 
 #include "test.h"
 
+extern int crypto_asymmetric_test_run_suite(void);
 extern int crypto_sign_test_run_suite(void);
 
 extern int acl_test_run_suite(void);
@@ -51,6 +52,7 @@ static struct cpn_opt opts[] = {
 };
 
 static int (*suite_fns[])(void) = {
+    crypto_asymmetric_test_run_suite,
     crypto_sign_test_run_suite,
 
     acl_test_run_suite,

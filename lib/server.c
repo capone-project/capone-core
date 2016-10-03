@@ -26,6 +26,8 @@
 #include "capone/session.h"
 #include "capone/server.h"
 
+#include "capone/crypto/asymmetric.h"
+
 #include "capone/proto/capone.pb-c.h"
 #include "capone/proto/discovery.pb-c.h"
 #include "capone/proto/encryption.pb-c.h"
@@ -464,9 +466,9 @@ static int send_signed_key(struct cpn_channel *channel,
 
     cpn_buf_append_data(&sign_buf, sign_keys->pk.data, CPN_CRYPTO_SIGN_PKBYTES);
     cpn_buf_append_data(&sign_buf, (unsigned char *) &id, sizeof(id));
-    cpn_buf_append_data(&sign_buf, local_emph_key->data, crypto_box_PUBLICKEYBYTES);
-    cpn_buf_append_data(&sign_buf, remote_emph_key->data, crypto_box_PUBLICKEYBYTES);
-    cpn_buf_append_data(&sign_buf, remote_sign_key->data, crypto_box_PUBLICKEYBYTES);
+    cpn_buf_append_data(&sign_buf, local_emph_key->data, CPN_CRYPTO_ASYMMETRIC_PKBYTES);
+    cpn_buf_append_data(&sign_buf, remote_emph_key->data, CPN_CRYPTO_ASYMMETRIC_PKBYTES);
+    cpn_buf_append_data(&sign_buf, remote_sign_key->data, CPN_CRYPTO_ASYMMETRIC_PKBYTES);
 
     memset(signature, 0, sizeof(signature));
     if ((err = crypto_sign_detached(signature, NULL,
@@ -562,9 +564,9 @@ static int receive_key_verification(struct cpn_channel *c,
 
     cpn_buf_append_data(&sign_buf, remote_pk->data, CPN_CRYPTO_SIGN_PKBYTES);
     cpn_buf_append_data(&sign_buf, (unsigned char *) &id, sizeof(id));
-    cpn_buf_append_data(&sign_buf, remote_emph_key->data, crypto_box_PUBLICKEYBYTES);
-    cpn_buf_append_data(&sign_buf, local_emph_key->data, crypto_box_PUBLICKEYBYTES);
-    cpn_buf_append_data(&sign_buf, local_pk->data, crypto_box_PUBLICKEYBYTES);
+    cpn_buf_append_data(&sign_buf, remote_emph_key->data, CPN_CRYPTO_ASYMMETRIC_PKBYTES);
+    cpn_buf_append_data(&sign_buf, local_emph_key->data, CPN_CRYPTO_ASYMMETRIC_PKBYTES);
+    cpn_buf_append_data(&sign_buf, local_pk->data, CPN_CRYPTO_ASYMMETRIC_PKBYTES);
 
     if (crypto_sign_verify_detached(msg->signature.data,
                 (unsigned char *) sign_buf.data, sign_buf.length,

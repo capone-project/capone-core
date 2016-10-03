@@ -66,6 +66,7 @@ ADD_LIBRARY(capone SHARED
     lib/service.c
     lib/session.c
     lib/socket.c
+    lib/crypto/asymmetric.c
     lib/crypto/sign.c
     lib/services/capabilities.c
     lib/services/exec.c

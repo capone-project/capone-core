@@ -22,23 +22,6 @@
 #include "capone/log.h"
 #include "capone/keys.h"
 
-int cpn_encrypt_key_pair_generate(struct cpn_encrypt_key_pair *out)
-{
-    return crypto_box_keypair(out->pk.data, out->sk.data);
-}
-
-int cpn_encrypt_key_public_from_bin(struct cpn_encrypt_key_public *out, uint8_t *pk, size_t pklen)
-{
-    if (pklen != crypto_box_PUBLICKEYBYTES) {
-        cpn_log(LOG_LEVEL_ERROR, "Passed in buffer does not match required public encrypt key length");
-        return -1;
-    }
-
-    memcpy(out->data, pk, sizeof(out->data));
-
-    return 0;
-}
-
 int cpn_symmetric_key_generate(struct cpn_symmetric_key *out)
 {
     randombytes(out->data, sizeof(out->data));

@@ -47,20 +47,6 @@
 #include "capone/cfg.h"
 #include "capone/proto/core.pb-c.h"
 
-/** @brief Secret encryption key used to decrypt data */
-struct cpn_encrypt_key_secret {
-    uint8_t data[crypto_box_SECRETKEYBYTES];
-};
-/** @brief Public encryption key used to encrypt data */
-struct cpn_encrypt_key_public {
-    uint8_t data[crypto_box_PUBLICKEYBYTES];
-};
-/** @brief Encryption key pair */
-struct cpn_encrypt_key_pair {
-    struct cpn_encrypt_key_secret sk;
-    struct cpn_encrypt_key_public pk;
-};
-
 /** @brief Symmetric key used to encrypt/decrypt data */
 struct cpn_symmetric_key {
     uint8_t data[crypto_secretbox_KEYBYTES];
@@ -69,22 +55,6 @@ struct cpn_symmetric_key {
 struct cpn_symmetric_key_hex {
     char data[crypto_secretbox_KEYBYTES * 2 + 1];
 };
-/** @brief Generate a new encryption key pair
- *
- * @param[out] out Pointer to store public encryption key pair at.
- * @return <code>0</code>
- */
-int cpn_encrypt_key_pair_generate(struct cpn_encrypt_key_pair *out);
-
-/** @brief Read a public encryption key from binary data
- *
- * @param[out] out Pointer to store public encryption key at.
- * @param[in] pk Binary representation of the key.
- * @param[in] pklen Length of the binary data.
- * @return <code>0</code> on success, <code>-1</code> otherwise
- */
-int cpn_encrypt_key_public_from_bin(struct cpn_encrypt_key_public *out,
-        uint8_t *pk, size_t pklen);
 
 /** @brief Generate a new symmetric key
  *

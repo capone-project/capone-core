@@ -23,8 +23,6 @@
 
 #include "test.h"
 
-static struct cpn_encrypt_key_pair enc_pair;
-
 static struct cpn_symmetric_key key;
 static struct cpn_symmetric_key_hex key_hex;
 
@@ -37,7 +35,6 @@ static void assert_symmetric_key_matches(const struct cpn_symmetric_key *key, co
 
 static int setup()
 {
-    memset(&enc_pair, 0, sizeof(enc_pair));
     memset(&key, 0, sizeof(key));
     return 0;
 }
@@ -50,36 +47,6 @@ static int teardown()
 static void generate_symmetric_key()
 {
     assert_success(cpn_symmetric_key_generate(&key));
-}
-
-static void generate_encryption_key()
-{
-    assert_success(cpn_encrypt_key_pair_generate(&enc_pair));
-}
-
-static void encrypt_key_public_from_bin_succeeds()
-{
-    struct cpn_encrypt_key_public pk;
-
-    assert_success(cpn_encrypt_key_pair_generate(&enc_pair));
-    assert_success(cpn_encrypt_key_public_from_bin(&pk, enc_pair.pk.data, sizeof(enc_pair.pk)));
-    assert_memory_equal(pk.data, enc_pair.pk.data, sizeof(pk.data));
-}
-
-static void encrypt_key_public_from_too_short_bin_fails()
-{
-    struct cpn_encrypt_key_public pk;
-
-    assert_success(cpn_encrypt_key_pair_generate(&enc_pair));
-    assert_failure(cpn_encrypt_key_public_from_bin(&pk, enc_pair.pk.data, sizeof(enc_pair.pk) - 1));
-}
-
-static void encrypt_key_public_from_too_long_bin_fails()
-{
-    struct cpn_encrypt_key_public pk;
-
-    assert_success(cpn_encrypt_key_pair_generate(&enc_pair));
-    assert_failure(cpn_encrypt_key_public_from_bin(&pk, enc_pair.pk.data, sizeof(enc_pair.pk) + 1));
 }
 
 static void symmetric_key_from_hex_succeeds()
@@ -151,11 +118,6 @@ int keys_test_run_suite(void)
 {
     const struct CMUnitTest tests[] = {
         test(generate_symmetric_key),
-        test(generate_encryption_key),
-
-        test(encrypt_key_public_from_bin_succeeds),
-        test(encrypt_key_public_from_too_short_bin_fails),
-        test(encrypt_key_public_from_too_long_bin_fails),
 
         test(symmetric_key_from_hex_succeeds),
         test(symmetric_key_from_too_short_hex_fails),
