@@ -453,7 +453,6 @@ out:
 }
 
 static int send_signed_key(struct cpn_channel *channel,
-        uint32_t id,
         const struct cpn_sign_keys *sign_keys,
         const struct cpn_asymmetric_pk *local_emph_key,
         const struct cpn_sign_pk *remote_sign_key,
@@ -467,7 +466,6 @@ static int send_signed_key(struct cpn_channel *channel,
     int err = -1;
 
     cpn_buf_append_data(&sign_buf, sign_keys->pk.data, CPN_CRYPTO_SIGN_PKBYTES);
-    cpn_buf_append_data(&sign_buf, (unsigned char *) &id, sizeof(id));
     cpn_buf_append_data(&sign_buf, local_emph_key->data, CPN_CRYPTO_ASYMMETRIC_PKBYTES);
     cpn_buf_append_data(&sign_buf, remote_emph_key->data, CPN_CRYPTO_ASYMMETRIC_PKBYTES);
     cpn_buf_append_data(&sign_buf, remote_sign_key->data, CPN_CRYPTO_ASYMMETRIC_PKBYTES);
@@ -488,7 +486,6 @@ static int send_signed_key(struct cpn_channel *channel,
         goto out;
     }
 
-    msg.sessionid = id;
     msg.identity = identity;
     msg.ephemeral = ephemeral;
     msg.signature.data = sig.data;
@@ -513,7 +510,6 @@ out:
 
 static int receive_ephemeral_key(
         struct cpn_channel *channel,
-        uint32_t *id,
         struct cpn_sign_pk *remote_sign_key,
         struct cpn_asymmetric_pk *remote_encrypt_key)
 {
@@ -535,7 +531,6 @@ static int receive_ephemeral_key(
         goto out;
     }
 
-    *id = msg->sessionid;
     err = 0;
 
 out:
@@ -546,7 +541,6 @@ out:
 }
 
 static int receive_key_verification(struct cpn_channel *c,
-        uint32_t id,
         const struct cpn_sign_pk *local_pk,
         const struct cpn_asymmetric_pk *local_emph_key,
         const struct cpn_sign_pk *remote_pk,
@@ -567,10 +561,7 @@ static int receive_key_verification(struct cpn_channel *c,
         goto out;
     }
 
-    if (msg->sessionid != id) {
-        cpn_log(LOG_LEVEL_ERROR, "Verification has invalid session");
-        goto out;
-    } else if (cpn_sign_pk_from_proto(&received_pk, msg->identity) < 0 ||
+    if (cpn_sign_pk_from_proto(&received_pk, msg->identity) < 0 ||
             memcmp(&received_pk, remote_pk, sizeof(received_pk))) {
         cpn_log(LOG_LEVEL_ERROR, "Verification key does not match");
         goto out;
@@ -584,7 +575,6 @@ static int receive_key_verification(struct cpn_channel *c,
     }
 
     cpn_buf_append_data(&sign_buf, remote_pk->data, CPN_CRYPTO_SIGN_PKBYTES);
-    cpn_buf_append_data(&sign_buf, (unsigned char *) &id, sizeof(id));
     cpn_buf_append_data(&sign_buf, remote_emph_key->data, CPN_CRYPTO_ASYMMETRIC_PKBYTES);
     cpn_buf_append_data(&sign_buf, local_emph_key->data, CPN_CRYPTO_ASYMMETRIC_PKBYTES);
     cpn_buf_append_data(&sign_buf, local_pk->data, CPN_CRYPTO_ASYMMETRIC_PKBYTES);
@@ -611,9 +601,8 @@ int cpn_server_await_encryption(struct cpn_channel *channel,
     struct cpn_asymmetric_keys emph_keys;
     struct cpn_asymmetric_pk remote_emph_key;
     struct cpn_symmetric_key shared_key;
-    uint32_t id;
 
-    if (receive_ephemeral_key(channel, &id, remote_sign_key, &remote_emph_key) < 0) {
+    if (receive_ephemeral_key(channel, remote_sign_key, &remote_emph_key) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to receive session key");
         return -1;
     }
@@ -623,7 +612,7 @@ int cpn_server_await_encryption(struct cpn_channel *channel,
         return -1;
     }
 
-    if (send_signed_key(channel, id,
+    if (send_signed_key(channel,
                 sign_keys, &emph_keys.pk,
                 remote_sign_key, &remote_emph_key) < 0)
     {
@@ -631,7 +620,7 @@ int cpn_server_await_encryption(struct cpn_channel *channel,
         return -1;
     }
 
-    if (receive_key_verification(channel, id,
+    if (receive_key_verification(channel,
                 &sign_keys->pk, &emph_keys.pk,
                 remote_sign_key, &remote_emph_key) < 0)
     {
