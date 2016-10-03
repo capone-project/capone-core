@@ -19,6 +19,7 @@
 
 #include "capone/cfg.h"
 #include "capone/keys.h"
+#include "capone/common.h"
 
 #include "test.h"
 
@@ -36,21 +37,21 @@ static struct cpn_cfg config;
 static void assert_sign_pk_matches(const struct cpn_sign_key_public *pk, const char *key)
 {
     uint8_t bin[sizeof(pk->data)];
-    assert_success(sodium_hex2bin(bin, sizeof(bin), key, strlen(key), NULL, NULL, NULL));
+    assert_success(parse_hex(bin, sizeof(bin), key, strlen(key)));
     assert_memory_equal(bin, pk->data, sizeof(pk->data));
 }
 
 static void assert_sign_sk_matches(const struct cpn_sign_key_secret *sk, const char *key)
 {
     uint8_t bin[sizeof(sk->data)];
-    assert_success(sodium_hex2bin(bin, sizeof(bin), key, strlen(key), NULL, NULL, NULL));
+    assert_success(parse_hex(bin, sizeof(bin), key, strlen(key)));
     assert_memory_equal(bin, sk->data, sizeof(sk->data));
 }
 
 static void assert_symmetric_key_matches(const struct cpn_symmetric_key *key, const char *str)
 {
     uint8_t bin[sizeof(key->data)];
-    assert_success(sodium_hex2bin(bin, sizeof(bin), str, strlen(str), NULL, NULL, NULL));
+    assert_success(parse_hex(bin, sizeof(bin), str, strlen(str)));
     assert_memory_equal(bin, key->data, sizeof(key->data));
 }
 
