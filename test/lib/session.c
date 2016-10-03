@@ -24,7 +24,7 @@
 #include "test.h"
 #include "lib/test.pb-c.h"
 
-static struct cpn_sign_key_public pk;
+static struct cpn_sign_pk pk;
 static const struct cpn_session *session;
 
 static int setup()
@@ -48,7 +48,7 @@ static void add_sessions_adds_session()
 
     assert_int_equal(removed->identifier, session->identifier);
     assert_null(removed->parameters);
-    assert_memory_equal(&removed->creator, &pk, sizeof(struct cpn_sign_key_public));
+    assert_memory_equal(&removed->creator, &pk, sizeof(struct cpn_sign_pk));
 
     cpn_session_free(removed);
 }
@@ -131,7 +131,7 @@ static void remove_session_fails_without_sessions()
 
 static void remove_session_fails_for_empty_session()
 {
-    struct cpn_sign_key_public key;
+    struct cpn_sign_pk key;
     struct cpn_session *session;
 
     memset(&key, 0, sizeof(key));

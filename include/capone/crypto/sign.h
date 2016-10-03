@@ -29,23 +29,23 @@
 #define CPN_CRYPTO_SIGN_SIGBYTES 64
 
 /** @brief Secret signature key used to sign data */
-struct cpn_sign_key_secret {
+struct cpn_sign_sk {
     uint8_t data[CPN_CRYPTO_SIGN_SKBYTES];
 };
 
 /** @brief Public signature key used to verify data */
-struct cpn_sign_key_public {
+struct cpn_sign_pk {
     uint8_t data[CPN_CRYPTO_SIGN_PKBYTES];
 };
 
 /** @brief Signature key pair */
-struct cpn_sign_key_pair {
-    struct cpn_sign_key_secret sk;
-    struct cpn_sign_key_public pk;
+struct cpn_sign_keys {
+    struct cpn_sign_sk sk;
+    struct cpn_sign_pk pk;
 };
 
 /** @brief Hex representation of a public signature key */
-struct cpn_sign_key_hex {
+struct cpn_sign_pk_hex {
     char data[CPN_CRYPTO_SIGN_PKBYTES * 2 + 1];
 };
 
@@ -54,7 +54,7 @@ struct cpn_sign_key_hex {
  * @param[out] out Pointer to store key pair at.
  * @return <code>0</code>
  */
-int cpn_sign_key_pair_generate(struct cpn_sign_key_pair *out);
+int cpn_sign_keys_generate(struct cpn_sign_keys *out);
 
 /** @brief Read a public signature key from binary data
  *
@@ -63,7 +63,7 @@ int cpn_sign_key_pair_generate(struct cpn_sign_key_pair *out);
  * @param[in] pklen Length of the binary data.
  * @return <code>0</code> on success, <code>-1</code> otherwise
  */
-int cpn_sign_key_public_from_bin(struct cpn_sign_key_public *out, const uint8_t *pk, size_t pklen);
+int cpn_sign_pk_from_bin(struct cpn_sign_pk *out, const uint8_t *pk, size_t pklen);
 
 /** @brief Read a public signature key from hex
  *
@@ -71,7 +71,7 @@ int cpn_sign_key_public_from_bin(struct cpn_sign_key_public *out, const uint8_t 
  * @param[in] hex Hex representation of the key.
  * @return <code>0</code> on success, <code>-1</code> otherwise
  */
-int cpn_sign_key_public_from_hex(struct cpn_sign_key_public *out, const char *hex);
+int cpn_sign_pk_from_hex(struct cpn_sign_pk *out, const char *hex);
 
 /** @brief Convert an IdentityMessage to a signature key
  *
@@ -79,7 +79,7 @@ int cpn_sign_key_public_from_hex(struct cpn_sign_key_public *out, const char *he
  * @param[in] msg Message to derive public key from
  * @return <code>0</code> on success, <code>-1</code> otherwise
  */
-int cpn_sign_key_public_from_proto(struct cpn_sign_key_public *out, const IdentityMessage *msg);
+int cpn_sign_pk_from_proto(struct cpn_sign_pk *out, const IdentityMessage *msg);
 
 /** @brief Convert a public signature key to a protobufmessage
  *
@@ -87,7 +87,7 @@ int cpn_sign_key_public_from_proto(struct cpn_sign_key_public *out, const Identi
  * @param[in] key Key to convert
  * @return <code>0</code> on success, <code>-1</code> otherwise
  */
-int cpn_sign_key_public_to_proto(IdentityMessage **out, const struct cpn_sign_key_public *key);
+int cpn_sign_pk_to_proto(IdentityMessage **out, const struct cpn_sign_pk *key);
 
 /** @brief Read a public signature key hex representation from binary data
  *
@@ -97,7 +97,7 @@ int cpn_sign_key_public_to_proto(IdentityMessage **out, const struct cpn_sign_ke
  * @param[in] pklen Length of the binary data.
  * @return <code>0</code> on success, <code>-1</code> otherwise
  */
-int cpn_sign_key_hex_from_bin(struct cpn_sign_key_hex *out, const uint8_t *pk, size_t pklen);
+int cpn_sign_pk_hex_from_bin(struct cpn_sign_pk_hex *out, const uint8_t *pk, size_t pklen);
 
 /** @brief Convert public signature key into hex representation
  *
@@ -105,7 +105,7 @@ int cpn_sign_key_hex_from_bin(struct cpn_sign_key_hex *out, const uint8_t *pk, s
  *             representation at.
  * @param[in] key Public signature key to convert.
  */
-void cpn_sign_key_hex_from_key(struct cpn_sign_key_hex *out, const struct cpn_sign_key_public *key);
+void cpn_sign_pk_hex_from_key(struct cpn_sign_pk_hex *out, const struct cpn_sign_pk *key);
 
 /** @brief Read a signature key pair from a configuration
  *
@@ -117,7 +117,7 @@ void cpn_sign_key_hex_from_key(struct cpn_sign_key_hex *out, const struct cpn_si
  * @param[in] cfg Configuration to read keys from.
  * @return <code>0</code> on success, <code>-1</code> otherwise
  */
-int cpn_sign_key_pair_from_config(struct cpn_sign_key_pair *out, const struct cpn_cfg *cfg);
+int cpn_sign_keys_from_config(struct cpn_sign_keys *out, const struct cpn_cfg *cfg);
 
 /** @brief Read a signature key pair from a configuration file
  *
@@ -127,8 +127,8 @@ int cpn_sign_key_pair_from_config(struct cpn_sign_key_pair *out, const struct cp
  * @param[in] file Path of the configuration file.
  * @return <code>0</code> on success, <code>-1</code> otherwise
  *
- * \see cpn_sign_key_pair_from_config
+ * \see cpn_sign_keys_from_config
  */
-int cpn_sign_key_pair_from_config_file(struct cpn_sign_key_pair *out, const char *file);
+int cpn_sign_keys_from_config_file(struct cpn_sign_keys *out, const char *file);
 
 #endif

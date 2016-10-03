@@ -26,16 +26,16 @@ static char *string;
 
 static struct cpn_cap *root;
 static struct cpn_cap *ref;
-static struct cpn_sign_key_public pk;
-static struct cpn_sign_key_public other_pk;
+static struct cpn_sign_pk pk;
+static struct cpn_sign_pk other_pk;
 
 static int setup()
 {
     root = NULL;
     ref = NULL;
     string = NULL;
-    assert_success(cpn_sign_key_public_from_hex(&pk, PK));
-    assert_success(cpn_sign_key_public_from_hex(&other_pk, OTHER_PK));
+    assert_success(cpn_sign_pk_from_hex(&pk, PK));
+    assert_success(cpn_sign_pk_from_hex(&other_pk, OTHER_PK));
     return 0;
 }
 

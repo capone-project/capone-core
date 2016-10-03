@@ -36,11 +36,11 @@ static const struct cpn_service_plugin *service;
 static struct cpn_cfg cfg;
 static struct cpn_channel client;
 static struct cpn_channel server;
-static struct cpn_sign_key_public pk;
+static struct cpn_sign_pk pk;
 
 static int setup()
 {
-    assert_success(cpn_sign_key_public_from_hex(&pk, PK));
+    assert_success(cpn_sign_pk_from_hex(&pk, PK));
     assert_success(cpn_cfg_parse_string(&cfg, CFG, strlen(CFG)));
     stub_sockets(&client, &server, CPN_CHANNEL_TYPE_TCP);
     return 0;
@@ -113,8 +113,8 @@ static void forwarding_request_succeeds()
     requestParams.service_address = "localhost";
     requestParams.service_port = 12345;
     requestParams.service_type = "test";
-    assert_success(cpn_sign_key_public_to_proto(&requestParams.requested_identity, &pk));
-    assert_success(cpn_sign_key_public_to_proto(&requestParams.service_identity, &pk));
+    assert_success(cpn_sign_pk_to_proto(&requestParams.requested_identity, &pk));
+    assert_success(cpn_sign_pk_to_proto(&requestParams.service_identity, &pk));
     params.request_params = &requestParams;
     params.type = CAPABILITIES_PARAMS__TYPE__REQUEST;
 

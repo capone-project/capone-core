@@ -36,7 +36,7 @@ struct await_discovery_args {
     const char *name;
     int nservices;
     struct cpn_service *services;
-    struct cpn_sign_key_public *identity;
+    struct cpn_sign_pk *identity;
     int result;
 };
 
@@ -49,15 +49,15 @@ struct await_query_args {
 struct await_request_args {
     struct cpn_channel *channel;
     struct cpn_service *s;
-    struct cpn_sign_key_public *r;
-    struct cpn_sign_key_public *whitelist;
+    struct cpn_sign_pk *r;
+    struct cpn_sign_pk *whitelist;
     size_t nwhitelist;
     int result;
 };
 
 struct handle_session_args {
     struct cpn_channel *channel;
-    struct cpn_sign_key_public *remote_key;
+    struct cpn_sign_pk *remote_key;
     struct cpn_service *service;
     struct cpn_cfg *cfg;
     int result;
@@ -65,14 +65,14 @@ struct handle_session_args {
 
 struct handle_termination_args {
     struct cpn_channel *channel;
-    struct cpn_sign_key_public *terminator;
+    struct cpn_sign_pk *terminator;
     int result;
 };
 
 static struct cpn_cfg config;
 static struct cpn_service service;
 static struct cpn_channel local, remote;
-static struct cpn_sign_key_pair local_keys, remote_keys;
+static struct cpn_sign_keys local_keys, remote_keys;
 static const struct cpn_service_plugin *test_service;
 
 static int setup()
@@ -185,7 +185,7 @@ static void connection_initiation_succeeds()
     struct cpn_thread t;
     struct cpn_socket s;
     struct cpn_channel c;
-    struct cpn_sign_key_public key;
+    struct cpn_sign_pk key;
 
     assert_success(cpn_socket_init(&s, "127.0.0.1", 31248, CPN_CHANNEL_TYPE_TCP));
     assert_success(cpn_socket_listen(&s));
@@ -220,7 +220,7 @@ static void discovery_without_services_succeeds()
     assert_success(args.result);
     assert_string_equal(results.name, args.name);
     assert_int_equal(results.version, CPN_PROTOCOL_VERSION);
-    assert_memory_equal(&results.identity, &remote_keys.pk, sizeof(struct cpn_sign_key_public));
+    assert_memory_equal(&results.identity, &remote_keys.pk, sizeof(struct cpn_sign_pk));
     assert_int_equal(results.nservices, args.nservices);
     assert_null(results.services);
 
@@ -247,7 +247,7 @@ static void discovery_with_services_succeeds()
     assert_success(args.result);
     assert_string_equal(results.name, args.name);
     assert_int_equal(results.version, CPN_PROTOCOL_VERSION);
-    assert_memory_equal(&results.identity, &remote_keys.pk, sizeof(struct cpn_sign_key_public));
+    assert_memory_equal(&results.identity, &remote_keys.pk, sizeof(struct cpn_sign_pk));
     assert_int_equal(results.nservices, args.nservices);
     assert_string_equal(results.services[0].category, service.plugin->category);
     assert_string_equal(results.services[0].name, service.name);
@@ -628,8 +628,8 @@ int proto_test_run_suite(void)
     assert_success(cpn_cfg_parse_string(&config, service_cfg, strlen(service_cfg)));
     assert_success(cpn_service_from_config(&service, "Foo", &config));
 
-    assert_success(cpn_sign_key_pair_generate(&local_keys));
-    assert_success(cpn_sign_key_pair_generate(&remote_keys));
+    assert_success(cpn_sign_keys_generate(&local_keys));
+    assert_success(cpn_sign_keys_generate(&remote_keys));
 
     return execute_test_suite("proto", tests, setup, teardown);
 }

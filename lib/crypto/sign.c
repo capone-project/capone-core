@@ -22,12 +22,12 @@
 #include "capone/log.h"
 #include "capone/crypto/sign.h"
 
-int cpn_sign_key_pair_generate(struct cpn_sign_key_pair *out)
+int cpn_sign_keys_generate(struct cpn_sign_keys *out)
 {
     return crypto_sign_ed25519_keypair(out->pk.data, out->sk.data);
 }
 
-int cpn_sign_key_public_from_bin(struct cpn_sign_key_public *out, const uint8_t *pk, size_t pklen)
+int cpn_sign_pk_from_bin(struct cpn_sign_pk *out, const uint8_t *pk, size_t pklen)
 {
     if (pklen != crypto_sign_PUBLICKEYBYTES) {
         cpn_log(LOG_LEVEL_ERROR, "Passed in buffer does not match required public sign key length");
@@ -39,7 +39,7 @@ int cpn_sign_key_public_from_bin(struct cpn_sign_key_public *out, const uint8_t 
     return 0;
 }
 
-int cpn_sign_key_public_from_hex(struct cpn_sign_key_public *out, const char *hex)
+int cpn_sign_pk_from_hex(struct cpn_sign_pk *out, const char *hex)
 {
     if (hex == NULL) {
         cpn_log(LOG_LEVEL_ERROR, "Error parsing nonexistent public signature key");
@@ -53,7 +53,7 @@ int cpn_sign_key_public_from_hex(struct cpn_sign_key_public *out, const char *he
     return 0;
 }
 
-int cpn_sign_key_public_from_proto(struct cpn_sign_key_public *out, const IdentityMessage *msg)
+int cpn_sign_pk_from_proto(struct cpn_sign_pk *out, const IdentityMessage *msg)
 {
     if (msg->data.len != sizeof(out->data))
         return -1;
@@ -61,7 +61,7 @@ int cpn_sign_key_public_from_proto(struct cpn_sign_key_public *out, const Identi
     return 0;
 }
 
-int cpn_sign_key_public_to_proto(IdentityMessage **out, const struct cpn_sign_key_public *key)
+int cpn_sign_pk_to_proto(IdentityMessage **out, const struct cpn_sign_pk *key)
 {
     IdentityMessage *result = malloc(sizeof(IdentityMessage));
     identity_message__init(result);
@@ -75,23 +75,23 @@ int cpn_sign_key_public_to_proto(IdentityMessage **out, const struct cpn_sign_ke
     return 0;
 }
 
-int cpn_sign_key_hex_from_bin(struct cpn_sign_key_hex *out, const uint8_t *pk, size_t pklen)
+int cpn_sign_pk_hex_from_bin(struct cpn_sign_pk_hex *out, const uint8_t *pk, size_t pklen)
 {
-    struct cpn_sign_key_public key;
+    struct cpn_sign_pk key;
 
-    if (cpn_sign_key_public_from_bin(&key, pk, pklen) < 0)
+    if (cpn_sign_pk_from_bin(&key, pk, pklen) < 0)
         return -1;
 
-    cpn_sign_key_hex_from_key(out, &key);
+    cpn_sign_pk_hex_from_key(out, &key);
     return 0;
 }
 
-void cpn_sign_key_hex_from_key(struct cpn_sign_key_hex *out, const struct cpn_sign_key_public *key)
+void cpn_sign_pk_hex_from_key(struct cpn_sign_pk_hex *out, const struct cpn_sign_pk *key)
 {
     sodium_bin2hex(out->data, sizeof(out->data), key->data, sizeof(key->data));
 }
 
-static int cpn_sign_key_secret_from_hex(struct cpn_sign_key_secret *out, const char *hex)
+static int cpn_sign_sk_from_hex(struct cpn_sign_sk *out, const char *hex)
 {
     if (hex == NULL) {
         cpn_log(LOG_LEVEL_ERROR, "Error parsing nonexistent secret signature key");
@@ -105,20 +105,20 @@ static int cpn_sign_key_secret_from_hex(struct cpn_sign_key_secret *out, const c
     return 0;
 }
 
-int cpn_sign_key_pair_from_config(struct cpn_sign_key_pair *out, const struct cpn_cfg *cfg)
+int cpn_sign_keys_from_config(struct cpn_sign_keys *out, const struct cpn_cfg *cfg)
 {
-    struct cpn_sign_key_public pk;
-    struct cpn_sign_key_secret sk;
+    struct cpn_sign_pk pk;
+    struct cpn_sign_sk sk;
     char *value;
 
     value = cpn_cfg_get_str_value(cfg, "core", "public_key");
-    if (cpn_sign_key_public_from_hex(&pk, value) < 0) {
+    if (cpn_sign_pk_from_hex(&pk, value) < 0) {
         goto out_err;
     }
     free(value);
 
     value = cpn_cfg_get_str_value(cfg, "core", "secret_key");
-    if (cpn_sign_key_secret_from_hex(&sk, value) < 0) {
+    if (cpn_sign_sk_from_hex(&sk, value) < 0) {
         goto out_err;
     }
     free(value);
@@ -135,7 +135,7 @@ out_err:
     return -1;
 }
 
-int cpn_sign_key_pair_from_config_file(struct cpn_sign_key_pair *out, const char *file)
+int cpn_sign_keys_from_config_file(struct cpn_sign_keys *out, const char *file)
 {
     struct cpn_cfg cfg;
     int ret = 0;
@@ -147,7 +147,7 @@ int cpn_sign_key_pair_from_config_file(struct cpn_sign_key_pair *out, const char
         goto out;
     }
 
-    if (cpn_sign_key_pair_from_config(out, &cfg) < 0) {
+    if (cpn_sign_keys_from_config(out, &cfg) < 0) {
         ret = -1;
         goto out;
     }

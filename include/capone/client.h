@@ -33,7 +33,7 @@
 struct cpn_discovery_results {
     char *name;
     uint32_t version;
-    struct cpn_sign_key_public identity;
+    struct cpn_sign_pk identity;
 
     struct {
         char *name;
@@ -122,8 +122,8 @@ void cpn_discovery_results_clear(struct cpn_discovery_results *results);
 int cpn_client_connect(struct cpn_channel *channel,
         const char *host,
         uint32_t port,
-        const struct cpn_sign_key_pair *local_keys,
-        const struct cpn_sign_key_public *remote_key);
+        const struct cpn_sign_keys *local_keys,
+        const struct cpn_sign_pk *remote_key);
 
 /** @brief Query a remote service for its parameters
  *

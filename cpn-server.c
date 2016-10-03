@@ -49,12 +49,12 @@ struct handle_discovery_args {
 static struct cpn_acl request_acl = CPN_ACL_INIT;
 static struct cpn_acl query_acl = CPN_ACL_INIT;
 
-static struct cpn_sign_key_pair local_keys;
+static struct cpn_sign_keys local_keys;
 static const char *name;
 
 static int read_acl(struct cpn_acl *acl, const char *file)
 {
-    struct cpn_sign_key_public pk;
+    struct cpn_sign_pk pk;
     FILE *stream = NULL;
     char *line = NULL;
     size_t length;
@@ -70,7 +70,7 @@ static int read_acl(struct cpn_acl *acl, const char *file)
         if (line[read - 1] == '\n')
             line[read - 1] = '\0';
 
-        if (cpn_sign_key_public_from_hex(&pk, line) < 0) {
+        if (cpn_sign_pk_from_hex(&pk, line) < 0) {
             cpn_log(LOG_LEVEL_ERROR, "Invalid key '%s'", line);
             goto out_err;
         }
@@ -131,7 +131,7 @@ static int setup_signals(void)
 static void *handle_discovery(void *payload)
 {
     struct handle_discovery_args *args = (struct handle_discovery_args *) payload;
-    struct cpn_sign_key_public remote_sign_key;
+    struct cpn_sign_pk remote_sign_key;
 
     if (args->channel.type == CPN_CHANNEL_TYPE_TCP) {
         if (cpn_server_await_encryption(&args->channel, &local_keys, &remote_sign_key) < 0) {
@@ -155,7 +155,7 @@ out:
 static void *handle_connection(void *payload)
 {
     struct handle_connection_args *args = (struct handle_connection_args *) payload;
-    struct cpn_sign_key_public remote_key;
+    struct cpn_sign_pk remote_key;
     enum cpn_command type;
 
     if (cpn_server_await_encryption(&args->channel, &local_keys, &remote_key) < 0) {
@@ -293,7 +293,7 @@ static int setup(struct cpn_cfg *cfg, int argc, const char *argv[])
         goto out;
     }
 
-    if (cpn_sign_key_pair_from_config(&local_keys, cfg) < 0) {
+    if (cpn_sign_keys_from_config(&local_keys, cfg) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not parse config");
         err = -1;
         goto out;

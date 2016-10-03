@@ -35,14 +35,14 @@
 
 #define LISTEN_PORT 6668
 
-static struct cpn_sign_key_pair local_keys;
+static struct cpn_sign_keys local_keys;
 
 static void print_announcement(struct cpn_discovery_results *announce)
 {
-    struct cpn_sign_key_hex hex;
+    struct cpn_sign_pk_hex hex;
     uint32_t i;
 
-    cpn_sign_key_hex_from_key(&hex, &announce->identity);
+    cpn_sign_pk_hex_from_key(&hex, &announce->identity);
 
     printf("%s - %s (v%"PRIu32")\n", announce->name, hex.data, announce->version);
 
@@ -74,7 +74,7 @@ static void undirected_discovery()
 
         while (true) {
             struct cpn_discovery_results results;
-            struct cpn_sign_key_public *key;
+            struct cpn_sign_pk *key;
             struct cpn_list_entry *it;
             struct pollfd pfd[1];
             int err;
@@ -96,17 +96,17 @@ static void undirected_discovery()
 
             cpn_list_foreach(&known_keys, it, key) {
                 if (!memcmp(key->data, results.identity.data,
-                            sizeof(struct cpn_sign_key_public)))
+                            sizeof(struct cpn_sign_pk)))
                 {
-                    struct cpn_sign_key_hex hex;
-                    cpn_sign_key_hex_from_key(&hex, &results.identity);
+                    struct cpn_sign_pk_hex hex;
+                    cpn_sign_pk_hex_from_key(&hex, &results.identity);
                     cpn_log(LOG_LEVEL_DEBUG, "Ignoring known key %s", hex.data);
                     continue;
                 }
             }
 
-            key = malloc(sizeof(struct cpn_sign_key_public));
-            memcpy(key, results.identity.data, sizeof(struct cpn_sign_key_public));
+            key = malloc(sizeof(struct cpn_sign_pk));
+            memcpy(key, results.identity.data, sizeof(struct cpn_sign_pk));
             cpn_list_append(&known_keys, key);
 
             print_announcement(&results);
@@ -118,7 +118,7 @@ out:
     cpn_channel_close(&channel);
 }
 
-static void directed_discovery(const struct cpn_sign_key_public *remote_key,
+static void directed_discovery(const struct cpn_sign_pk *remote_key,
         const char *host, uint32_t port)
 {
     struct cpn_discovery_results results;

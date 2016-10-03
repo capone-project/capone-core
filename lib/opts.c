@@ -38,14 +38,14 @@ static int parse_option(struct cpn_opt *opt, int argc, const char *argv[])
             return 0;
         case CPN_OPTS_TYPE_SIGKEY:
             {
-                struct cpn_sign_key_public key;
+                struct cpn_sign_pk key;
 
                 if (argc < 2) {
                     cpn_log(LOG_LEVEL_ERROR, "No key for option %s", argv[0]);
                     return -1;
                 }
 
-                if (cpn_sign_key_public_from_hex(&key, argv[1]) < 0) {
+                if (cpn_sign_pk_from_hex(&key, argv[1]) < 0) {
                     cpn_log(LOG_LEVEL_ERROR, "Invalid key %s for option %s",
                             argv[1], argv[0]);
                     return -1;

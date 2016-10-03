@@ -86,8 +86,8 @@ int cpn_server_await_command(enum cpn_command *out,
  * \see cpn_proto_initiate_encryption
  */
 int cpn_server_await_encryption(struct cpn_channel *channel,
-        const struct cpn_sign_key_pair *sign_keys,
-        struct cpn_sign_key_public *remote_sign_key);
+        const struct cpn_sign_keys *sign_keys,
+        struct cpn_sign_pk *remote_sign_key);
 
 /** @brief Answer a discovery probe
  *
@@ -107,7 +107,7 @@ int cpn_server_handle_discovery(struct cpn_channel *channel,
         const char *name,
         uint32_t nservices,
         const struct cpn_service *services,
-        const struct cpn_sign_key_public *local_key);
+        const struct cpn_sign_pk *local_key);
 
 /** @brief Answer a query from a client
  *
@@ -138,7 +138,7 @@ int cpn_server_handle_query(struct cpn_channel *channel,
  * \see cpn_client_request_session
  */
 int cpn_server_handle_request(struct cpn_channel *channel,
-        const struct cpn_sign_key_public *remote_key,
+        const struct cpn_sign_pk *remote_key,
         const struct cpn_service_plugin *plugin);
 
 /** @brief Handle incoming session invocation
@@ -156,7 +156,7 @@ int cpn_server_handle_request(struct cpn_channel *channel,
  * \see cpn_client_start_session
  */
 int cpn_server_handle_session(struct cpn_channel *channel,
-        const struct cpn_sign_key_public *remote_key,
+        const struct cpn_sign_pk *remote_key,
         const struct cpn_service *service,
         const struct cpn_cfg *cfg);
 
@@ -177,7 +177,7 @@ int cpn_server_handle_session(struct cpn_channel *channel,
  * \see cpn_client_terminate_session
  */
 int cpn_server_handle_termination(struct cpn_channel *channel,
-        const struct cpn_sign_key_public *remote_key);
+        const struct cpn_sign_pk *remote_key);
 
 #endif
 

@@ -106,7 +106,7 @@ struct cpn_opts_stringlist {
 union cpn_opt_value {
     struct cpn_opt *action_opts;
     uint32_t counter;
-    struct cpn_sign_key_public sigkey;
+    struct cpn_sign_pk sigkey;
     const char *string;
     struct cpn_opts_stringlist stringlist;
     uint32_t uint32;

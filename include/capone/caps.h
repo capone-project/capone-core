@@ -43,7 +43,7 @@ struct cpn_cap {
     uint8_t secret[CPN_CAP_SECRET_LEN];
 
     struct {
-        struct cpn_sign_key_public identity;
+        struct cpn_sign_pk identity;
         uint32_t rights;
     } *chain;
     uint32_t chain_depth;
@@ -90,7 +90,7 @@ int cpn_cap_create_root(struct cpn_cap **out);
  * @return <code>0</code> on success, <code>-1</code> otherwise
  */
 int cpn_cap_create_ref(struct cpn_cap **out, const struct cpn_cap *root,
-        uint32_t rights, const struct cpn_sign_key_public *key);
+        uint32_t rights, const struct cpn_sign_pk *key);
 
 /** @brief Free an allocated capability */
 void cpn_cap_free(struct cpn_cap *cap);
@@ -108,7 +108,7 @@ void cpn_cap_free(struct cpn_cap *cap);
  *         given key and rights, <code>-1</code> otherwise
  */
 int cpn_caps_verify(const struct cpn_cap *ref, const struct cpn_cap *root,
-        const struct cpn_sign_key_public *key, uint32_t rights);
+        const struct cpn_sign_pk *key, uint32_t rights);
 
 #endif
 

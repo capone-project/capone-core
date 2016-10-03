@@ -73,7 +73,7 @@ int cpn_server_handle_discovery(struct cpn_channel *channel,
         const char *name,
         uint32_t nservices,
         const struct cpn_service *services,
-        const struct cpn_sign_key_public *local_key)
+        const struct cpn_sign_pk *local_key)
 {
     DiscoverMessage *msg = NULL;
     DiscoverResult result = DISCOVER_RESULT__INIT;
@@ -94,9 +94,9 @@ int cpn_server_handle_discovery(struct cpn_channel *channel,
     }
 
     for (i = 0; i < msg->n_known_keys; i++) {
-        if (msg->known_keys[i].len != sizeof(struct cpn_sign_key_public))
+        if (msg->known_keys[i].len != sizeof(struct cpn_sign_pk))
             continue;
-        if (memcmp(msg->known_keys[i].data, local_key->data, sizeof(struct cpn_sign_key_public)))
+        if (memcmp(msg->known_keys[i].data, local_key->data, sizeof(struct cpn_sign_pk)))
             continue;
         cpn_log(LOG_LEVEL_DEBUG, "Skipping announce due to alreay being known");
         err = 0;
@@ -105,7 +105,7 @@ int cpn_server_handle_discovery(struct cpn_channel *channel,
 
     result.name = (char *) name;
     result.version = CPN_PROTOCOL_VERSION;
-    cpn_sign_key_public_to_proto(&result.identity, local_key);
+    cpn_sign_pk_to_proto(&result.identity, local_key);
 
     service_messages = malloc(sizeof(DiscoverResult__Service *) * nservices);
     for (i = 0; i < (size_t) nservices; i++) {
@@ -141,7 +141,7 @@ out:
 }
 
 int cpn_server_handle_session(struct cpn_channel *channel,
-        const struct cpn_sign_key_public *remote_key,
+        const struct cpn_sign_pk *remote_key,
         const struct cpn_service *service,
         const struct cpn_cfg *cfg)
 {
@@ -285,7 +285,7 @@ out:
     return err;
 }
 
-static int create_cap(CapabilityMessage **out, const struct cpn_cap *root, uint32_t rights, const struct cpn_sign_key_public *key)
+static int create_cap(CapabilityMessage **out, const struct cpn_cap *root, uint32_t rights, const struct cpn_sign_pk *key)
 {
     CapabilityMessage *msg = NULL;
     struct cpn_cap *cap = NULL;
@@ -309,7 +309,7 @@ out:
 }
 
 int cpn_server_handle_request(struct cpn_channel *channel,
-        const struct cpn_sign_key_public *remote_key,
+        const struct cpn_sign_pk *remote_key,
         const struct cpn_service_plugin *service)
 {
     SessionRequestMessage *request = NULL;
@@ -384,7 +384,7 @@ out:
 }
 
 int cpn_server_handle_termination(struct cpn_channel *channel,
-        const struct cpn_sign_key_public *remote_key)
+        const struct cpn_sign_pk *remote_key)
 {
     SessionTerminationMessage *msg = NULL;
     SessionTerminationResult result = SESSION_TERMINATION_RESULT__INIT;
@@ -454,9 +454,9 @@ out:
 
 static int send_signed_key(struct cpn_channel *channel,
         uint32_t id,
-        const struct cpn_sign_key_pair *sign_keys,
+        const struct cpn_sign_keys *sign_keys,
         const struct cpn_asymmetric_pk *local_emph_key,
-        const struct cpn_sign_key_public *remote_sign_key,
+        const struct cpn_sign_pk *remote_sign_key,
         const struct cpn_asymmetric_pk *remote_emph_key)
 {
     ResponderKey msg = RESPONDER_KEY__INIT;
@@ -501,7 +501,7 @@ out:
 static int receive_ephemeral_key(
         struct cpn_channel *channel,
         uint32_t *id,
-        struct cpn_sign_key_public *remote_sign_key,
+        struct cpn_sign_pk *remote_sign_key,
         struct cpn_asymmetric_pk *remote_encrypt_key)
 {
     InitiatorKey *msg;
@@ -514,7 +514,7 @@ static int receive_ephemeral_key(
         return -1;
     }
 
-    if (cpn_sign_key_public_from_bin(remote_sign_key,
+    if (cpn_sign_pk_from_bin(remote_sign_key,
                 msg->sign_pk.data, msg->sign_pk.len) < 0 ||
             cpn_asymmetric_pk_from_bin(remote_encrypt_key,
                 msg->ephm_pk.data, msg->ephm_pk.len) < 0)
@@ -532,9 +532,9 @@ static int receive_ephemeral_key(
 
 static int receive_key_verification(struct cpn_channel *c,
         uint32_t id,
-        const struct cpn_sign_key_public *local_pk,
+        const struct cpn_sign_pk *local_pk,
         const struct cpn_asymmetric_pk *local_emph_key,
-        const struct cpn_sign_key_public *remote_pk,
+        const struct cpn_sign_pk *remote_pk,
         const struct cpn_asymmetric_pk *remote_emph_key)
 {
     AcknowledgeKey *msg = NULL;
@@ -588,8 +588,8 @@ out:
 }
 
 int cpn_server_await_encryption(struct cpn_channel *channel,
-        const struct cpn_sign_key_pair *sign_keys,
-        struct cpn_sign_key_public *remote_sign_key)
+        const struct cpn_sign_keys *sign_keys,
+        struct cpn_sign_pk *remote_sign_key)
 {
     struct cpn_asymmetric_keys emph_keys;
     struct cpn_asymmetric_pk remote_emph_key;

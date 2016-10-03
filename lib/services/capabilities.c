@@ -41,7 +41,7 @@
 #include "capone/services/capabilities.h"
 
 struct registrant {
-    struct cpn_sign_key_public identity;
+    struct cpn_sign_pk identity;
     struct cpn_channel channel;
 };
 
@@ -162,8 +162,8 @@ static int relay_capability_request(struct cpn_channel *channel,
 {
     Capability cap_message = CAPABILITY__INIT;
     struct cpn_channel service_channel;
-    struct cpn_sign_key_pair local_keys;
-    struct cpn_sign_key_public service_key, invoker_key;
+    struct cpn_sign_keys local_keys;
+    struct cpn_sign_pk service_key, invoker_key;
     struct cpn_cap *root_cap = NULL, *ref_cap = NULL;
     const struct cpn_service_plugin *service;
     ProtobufCMessage *params = NULL;
@@ -172,7 +172,7 @@ static int relay_capability_request(struct cpn_channel *channel,
 
     memset(&service_channel, 0, sizeof(struct cpn_channel));
 
-    if ((ret = cpn_sign_key_pair_from_config(&local_keys, cfg)) < 0) {
+    if ((ret = cpn_sign_keys_from_config(&local_keys, cfg)) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to retrieve local key pair from config");
         goto out;
     }
@@ -189,7 +189,7 @@ static int relay_capability_request(struct cpn_channel *channel,
         goto out;
     }
 
-    if (cpn_sign_key_public_from_proto(&service_key, request->service_identity) < 0) {
+    if (cpn_sign_pk_from_proto(&service_key, request->service_identity) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to parse service identity");
         goto out;
     }
@@ -214,7 +214,7 @@ static int relay_capability_request(struct cpn_channel *channel,
 
     cap_message.requestid = request->requestid;
     cap_message.sessionid = sessionid;
-    cpn_sign_key_public_to_proto(&cap_message.service_identity, &service_key);
+    cpn_sign_pk_to_proto(&cap_message.service_identity, &service_key);
 
     if (cpn_cap_to_protobuf(&cap_message.capability, ref_cap) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to parse capability");
@@ -243,20 +243,20 @@ static int answer_request(struct cpn_channel *channel,
         CapabilitiesRequest *request)
 {
     struct cpn_buf buf = CPN_BUF_INIT;
-    struct cpn_sign_key_hex requester_hex, service_hex;
-    struct cpn_sign_key_public requester, service;
+    struct cpn_sign_pk_hex requester_hex, service_hex;
+    struct cpn_sign_pk requester, service;
     const struct cpn_service_plugin *plugin;
     ProtobufCMessage *params;
 
-    if (cpn_sign_key_public_from_proto(&requester, request->requester_identity) < 0 ||
-            cpn_sign_key_public_from_proto(&service, request->service_identity) < 0)
+    if (cpn_sign_pk_from_proto(&requester, request->requester_identity) < 0 ||
+            cpn_sign_pk_from_proto(&service, request->service_identity) < 0)
     {
         cpn_log(LOG_LEVEL_ERROR, "Unable to parse remote keys");
         return -1;
     }
 
-    cpn_sign_key_hex_from_key(&requester_hex, &requester);
-    cpn_sign_key_hex_from_key(&service_hex, &service);
+    cpn_sign_pk_hex_from_key(&requester_hex, &requester);
+    cpn_sign_pk_hex_from_key(&service_hex, &service);
 
     cpn_buf_printf(&buf,
            "request from: %s\n"
@@ -342,8 +342,8 @@ out:
 static int invoke_request(struct cpn_channel *channel)
 {
     Capability *capability = NULL;
-    struct cpn_sign_key_public service;
-    struct cpn_sign_key_hex service_hex;
+    struct cpn_sign_pk service;
+    struct cpn_sign_pk_hex service_hex;
     struct cpn_cap *cap = NULL;
     char *cap_hex = NULL;
     int err = -1;
@@ -355,11 +355,11 @@ static int invoke_request(struct cpn_channel *channel)
         goto out;
     }
 
-    if (cpn_sign_key_public_from_proto(&service, capability->service_identity) < 0) {
+    if (cpn_sign_pk_from_proto(&service, capability->service_identity) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to parse service identity");
         goto out;
     }
-    cpn_sign_key_hex_from_key(&service_hex, &service);
+    cpn_sign_pk_hex_from_key(&service_hex, &service);
 
     if (cpn_cap_from_protobuf(&cap, capability->capability) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to parse capability secret");
@@ -405,21 +405,21 @@ static int invoke(struct cpn_channel *channel,
 }
 
 static int handle_register(struct cpn_channel *channel,
-        const struct cpn_sign_key_public *invoker)
+        const struct cpn_sign_pk *invoker)
 {
-    struct cpn_sign_key_hex hex;
+    struct cpn_sign_pk_hex hex;
     struct registrant *registrant;
     int n = 0;
 
     registrant = malloc(sizeof(struct registrant));
     memcpy(&registrant->channel, channel, sizeof(struct cpn_channel));
-    memcpy(&registrant->identity, invoker, sizeof(struct cpn_sign_key_public));
+    memcpy(&registrant->identity, invoker, sizeof(struct cpn_sign_pk));
 
     pthread_mutex_lock(&registrants_mutex);
     cpn_list_append(&registrants, registrant);
     pthread_mutex_unlock(&registrants_mutex);
 
-    cpn_sign_key_hex_from_key(&hex, invoker);
+    cpn_sign_pk_hex_from_key(&hex, invoker);
     cpn_log(LOG_LEVEL_DEBUG, "Identity %s registered", hex.data);
     cpn_log(LOG_LEVEL_VERBOSE, "%d identities registered", n + 1);
 
@@ -429,7 +429,7 @@ static int handle_register(struct cpn_channel *channel,
 }
 
 static int handle_request(struct cpn_channel *channel,
-        const struct cpn_sign_key_public *invoker,
+        const struct cpn_sign_pk *invoker,
         CapabilitiesParams__RequestParams *params)
 {
     CapabilitiesCommand cmd = CAPABILITIES_COMMAND__INIT;
@@ -447,7 +447,7 @@ static int handle_request(struct cpn_channel *channel,
     pthread_mutex_lock(&registrants_mutex);
     cpn_list_foreach(&registrants, it, reg) {
         if (!memcmp(reg->identity.data, params->requested_identity->data.data,
-                    sizeof(struct cpn_sign_key_public)))
+                    sizeof(struct cpn_sign_pk)))
             break;
     }
     pthread_mutex_unlock(&registrants_mutex);
@@ -459,7 +459,7 @@ static int handle_request(struct cpn_channel *channel,
 
     request.requestid = requestid++;
 
-    cpn_sign_key_public_to_proto(&request.requester_identity, invoker);
+    cpn_sign_pk_to_proto(&request.requester_identity, invoker);
     request.service_identity = params->service_identity;
     request.service_address = params->service_address;
     request.service_port = params->service_port;
@@ -495,7 +495,7 @@ static int handle_request(struct cpn_channel *channel,
 }
 
 static int handle(struct cpn_channel *channel,
-        const struct cpn_sign_key_public *invoker,
+        const struct cpn_sign_pk *invoker,
         const struct cpn_session *session,
         const struct cpn_cfg *cfg)
 {
@@ -556,8 +556,8 @@ int parse(ProtobufCMessage **out, int argc, const char *argv[])
         rparams = malloc(sizeof(CapabilitiesParams__RequestParams));
         capabilities_params__request_params__init(rparams);
 
-        cpn_sign_key_public_to_proto(&rparams->requested_identity, &request_opts[0].value.sigkey);
-        cpn_sign_key_public_to_proto(&rparams->service_identity, &request_opts[1].value.sigkey);
+        cpn_sign_pk_to_proto(&rparams->requested_identity, &request_opts[0].value.sigkey);
+        cpn_sign_pk_to_proto(&rparams->service_identity, &request_opts[1].value.sigkey);
         rparams->service_address = strdup(request_opts[2].value.string);
         rparams->service_port = request_opts[3].value.uint32;
         rparams->service_type = strdup(request_opts[4].value.string);

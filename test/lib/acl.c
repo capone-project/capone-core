@@ -22,7 +22,7 @@
 #include "test.h"
 
 static struct cpn_acl acl;
-static struct cpn_sign_key_public key1, key2;
+static struct cpn_sign_pk key1, key2;
 
 static int setup()
 {

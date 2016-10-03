@@ -27,14 +27,14 @@
 
 int main(int argc, const char *argv[])
 {
-    struct cpn_sign_key_pair keys;
+    struct cpn_sign_keys keys;
     char pkhex[sizeof(keys.pk.data) * 2 + 1],
          skhex[sizeof(keys.sk.data) * 2 + 1];
 
     if (cpn_opts_parse_cmd(NULL, argc, argv) < 0)
         return -1;
 
-    if (cpn_sign_key_pair_generate(&keys) < 0) {
+    if (cpn_sign_keys_generate(&keys) < 0) {
         puts("Error generating key pair");
         return -1;
     }

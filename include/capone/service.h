@@ -65,7 +65,7 @@ typedef int (*cpn_service_client_fn)(struct cpn_channel *channel,
  * @return <code>0</code> on success, <code>-1</code> otherwise
  */
 typedef int (*cpn_service_server_fn)(struct cpn_channel *channel,
-        const struct cpn_sign_key_public *invoker,
+        const struct cpn_sign_pk *invoker,
         const struct cpn_session *session,
         const struct cpn_cfg *cfg);
 

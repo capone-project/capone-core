@@ -32,8 +32,8 @@
 #define REPEATS 1000
 
 struct client_args {
-    struct cpn_sign_key_pair client_keys;
-    struct cpn_sign_key_pair server_keys;
+    struct cpn_sign_keys client_keys;
+    struct cpn_sign_keys server_keys;
 };
 
 static void *client(void *payload)
@@ -96,11 +96,11 @@ int main(int argc, const char *argv[])
         return -1;
     }
 
-    if (cpn_sign_key_pair_generate(&args.server_keys) < 0) {
+    if (cpn_sign_keys_generate(&args.server_keys) < 0) {
         puts("Unable to generate server sign key");
         return -1;
     }
-    if (cpn_sign_key_pair_generate(&args.client_keys) < 0) {
+    if (cpn_sign_keys_generate(&args.client_keys) < 0) {
         puts("Unable to generate client sign key");
         return -1;
     }

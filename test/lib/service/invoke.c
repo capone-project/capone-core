@@ -38,7 +38,7 @@ struct invoker_opts {
 
 static struct cpn_cfg cfg;
 
-static struct cpn_sign_key_pair keys;
+static struct cpn_sign_keys keys;
 static IdentityMessage *identity_msg;
 
 static struct cpn_cap cap;
@@ -49,10 +49,10 @@ static const struct cpn_service_plugin *service;
 static int setup()
 {
     assert_success(cpn_cfg_parse_string(&cfg, CFG, strlen(CFG)));
-    assert_success(cpn_sign_key_pair_from_config(&keys, &cfg));
+    assert_success(cpn_sign_keys_from_config(&keys, &cfg));
     assert_success(cpn_service_plugin_for_type(&service, "invoke"));
 
-    assert_success(cpn_sign_key_public_to_proto(&identity_msg, &keys.pk));
+    assert_success(cpn_sign_pk_to_proto(&identity_msg, &keys.pk));
     assert_success(cpn_cap_to_protobuf(&cap_proto, &cap));
 
     return 0;

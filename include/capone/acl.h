@@ -96,7 +96,7 @@ void cpn_acl_clear(struct cpn_acl *acl);
  *         right has already been added before
  */
 int cpn_acl_add_right(struct cpn_acl *acl,
-        const struct cpn_sign_key_public *identity,
+        const struct cpn_sign_pk *identity,
         enum cpn_acl_right right);
 
 /** @brief Add permission to execute right for all identities
@@ -124,7 +124,7 @@ int cpn_acl_add_wildcard(struct cpn_acl *acl,
  *         <code>-1</code> if the right was not present in the ACL
  */
 int cpn_acl_remove_right(struct cpn_acl *acl,
-        const struct cpn_sign_key_public *identity,
+        const struct cpn_sign_pk *identity,
         enum cpn_acl_right right);
 
 /** @brief Check if the identity has a right
@@ -142,7 +142,7 @@ int cpn_acl_remove_right(struct cpn_acl *acl,
  *         <code>false</code> otherwise
  */
 bool cpn_acl_is_allowed(const struct cpn_acl *acl,
-        const struct cpn_sign_key_public *identity,
+        const struct cpn_sign_pk *identity,
         enum cpn_acl_right right);
 
 #endif

@@ -32,8 +32,8 @@
 #include "capone/proto/encryption.pb-c.h"
 
 static int initiate_encryption(struct cpn_channel *channel,
-        const struct cpn_sign_key_pair *sign_keys,
-        const struct cpn_sign_key_public *remote_sign_key);
+        const struct cpn_sign_keys *sign_keys,
+        const struct cpn_sign_pk *remote_sign_key);
 
 static int initiate_connection_type(struct cpn_channel *channel,
         ConnectionInitiationMessage__Type type)
@@ -53,7 +53,7 @@ static int initiate_connection_type(struct cpn_channel *channel,
 int cpn_client_discovery_probe(struct cpn_channel *channel, const struct cpn_list *known_keys)
 {
     DiscoverMessage msg = DISCOVER_MESSAGE__INIT;
-    struct cpn_sign_key_public *key;
+    struct cpn_sign_pk *key;
     struct cpn_list_entry *it;
     size_t i, keys;
     int err;
@@ -68,9 +68,9 @@ int cpn_client_discovery_probe(struct cpn_channel *channel, const struct cpn_lis
 
         i = 0;
         cpn_list_foreach(known_keys, it, key) {
-            msg.known_keys[i].len = sizeof(struct cpn_sign_key_public);
-            msg.known_keys[i].data = malloc(sizeof(struct cpn_sign_key_public));
-            memcpy(msg.known_keys[i].data, &key->data, sizeof(struct cpn_sign_key_public));
+            msg.known_keys[i].len = sizeof(struct cpn_sign_pk);
+            msg.known_keys[i].data = malloc(sizeof(struct cpn_sign_pk));
+            memcpy(msg.known_keys[i].data, &key->data, sizeof(struct cpn_sign_pk));
             i++;
         }
     } else {
@@ -105,7 +105,7 @@ int cpn_client_discovery_handle_announce(struct cpn_discovery_results *out,
         goto out;
     }
 
-    if (cpn_sign_key_public_from_proto(&results.identity,
+    if (cpn_sign_pk_from_proto(&results.identity,
                 announce->identity) < 0)
     {
         cpn_log(LOG_LEVEL_ERROR, "Invalid identity");
@@ -160,8 +160,8 @@ void cpn_discovery_results_clear(struct cpn_discovery_results *results)
 int cpn_client_connect(struct cpn_channel *channel,
         const char *host,
         uint32_t port,
-        const struct cpn_sign_key_pair *local_keys,
-        const struct cpn_sign_key_public *remote_key)
+        const struct cpn_sign_keys *local_keys,
+        const struct cpn_sign_pk *remote_key)
 {
     if (cpn_channel_init_from_host(channel, host, port, CPN_CHANNEL_TYPE_TCP) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not initialize channel");
@@ -415,7 +415,7 @@ out:
 
 static int send_ephemeral_key(struct cpn_channel *channel,
         uint32_t id,
-        const struct cpn_sign_key_pair *sign_keys,
+        const struct cpn_sign_keys *sign_keys,
         const struct cpn_asymmetric_pk *encrypt_key)
 {
     InitiatorKey msg = INITIATOR_KEY__INIT;
@@ -437,13 +437,13 @@ static int send_ephemeral_key(struct cpn_channel *channel,
 static int receive_signed_key(struct cpn_asymmetric_pk *out,
         struct cpn_channel *channel,
         uint32_t id,
-        const struct cpn_sign_key_public *local_sign_key,
+        const struct cpn_sign_pk *local_sign_key,
         const struct cpn_asymmetric_pk *local_emph_key,
-        const struct cpn_sign_key_public *remote_sign_key)
+        const struct cpn_sign_pk *remote_sign_key)
 {
     ResponderKey *msg;
     struct cpn_buf sign_buf = CPN_BUF_INIT;
-    struct cpn_sign_key_public msg_sign_key;
+    struct cpn_sign_pk msg_sign_key;
     struct cpn_asymmetric_pk msg_emph_key;
     int ret = -1;
 
@@ -462,7 +462,7 @@ static int receive_signed_key(struct cpn_asymmetric_pk *out,
     } else if (msg->signature.len != CPN_CRYPTO_SIGN_SIGBYTES) {
         cpn_log(LOG_LEVEL_ERROR, "Received invalid signature");
         goto out;
-    } else if (cpn_sign_key_public_from_bin(&msg_sign_key, msg->sign_pk.data, msg->sign_pk.len) < 0) {
+    } else if (cpn_sign_pk_from_bin(&msg_sign_key, msg->sign_pk.data, msg->sign_pk.len) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Initiator's long-term signature key is invalid");
         goto out;
     } else if (cpn_asymmetric_pk_from_bin(&msg_emph_key, msg->ephm_pk.data, msg->ephm_pk.len) < 0) {
@@ -505,9 +505,9 @@ out:
 
 static int send_key_verification(struct cpn_channel *c,
         uint32_t id,
-        const struct cpn_sign_key_pair *sign_keys,
+        const struct cpn_sign_keys *sign_keys,
         const struct cpn_asymmetric_pk *local_emph_key,
-        const struct cpn_sign_key_public *remote_pk,
+        const struct cpn_sign_pk *remote_pk,
         const struct cpn_asymmetric_pk *remote_emph_pk)
 {
     AcknowledgeKey msg = ACKNOWLEDGE_KEY__INIT;
@@ -549,8 +549,8 @@ out:
 }
 
 static int initiate_encryption(struct cpn_channel *channel,
-        const struct cpn_sign_key_pair *sign_keys,
-        const struct cpn_sign_key_public *remote_sign_key)
+        const struct cpn_sign_keys *sign_keys,
+        const struct cpn_sign_pk *remote_sign_key)
 {
     struct cpn_asymmetric_keys emph_keys;
     struct cpn_asymmetric_pk remote_emph_key;

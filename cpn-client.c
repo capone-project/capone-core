@@ -69,15 +69,15 @@ static struct cpn_opt opts[] = {
 
 static struct cpn_cfg cfg;
 
-static struct cpn_sign_key_pair local_keys;
+static struct cpn_sign_keys local_keys;
 
-static struct cpn_sign_key_public remote_key;
+static struct cpn_sign_pk remote_key;
 static const char *remote_host;
 static uint32_t remote_port;
 
 static int cmd_query(void)
 {
-    struct cpn_sign_key_hex hex;
+    struct cpn_sign_pk_hex hex;
     struct cpn_query_results results;
     struct cpn_channel channel;
 
@@ -93,7 +93,7 @@ static int cmd_query(void)
         return -1;
     }
 
-    cpn_sign_key_hex_from_key(&hex, &remote_key);
+    cpn_sign_pk_hex_from_key(&hex, &remote_key);
 
     printf("%s\n"
             "\tname:     %s\n"
@@ -280,12 +280,12 @@ int main(int argc, const char *argv[])
         return -1;
     }
 
-    if (cpn_sign_key_pair_from_config(&local_keys, &cfg) < 0) {
+    if (cpn_sign_keys_from_config(&local_keys, &cfg) < 0) {
         puts("Could not keys from config");
         return -1;
     }
 
-    memcpy(&remote_key, &cpn_opts_get(opts, 0, "--remote-key")->sigkey, sizeof(struct cpn_sign_key_public));
+    memcpy(&remote_key, &cpn_opts_get(opts, 0, "--remote-key")->sigkey, sizeof(struct cpn_sign_pk));
     remote_host = cpn_opts_get(opts, 0, "--remote-host")->string;
     remote_port = cpn_opts_get(opts, 0, "--remote-port")->uint32;
 

@@ -40,14 +40,14 @@ static int invoke(struct cpn_channel *channel,
 }
 
 static int handle(struct cpn_channel *channel,
-        const struct cpn_sign_key_public *invoker,
+        const struct cpn_sign_pk *invoker,
         const struct cpn_session *session,
         const struct cpn_cfg *cfg)
 {
     InvokeParams *params;
     const struct cpn_service_plugin *plugin;
-    struct cpn_sign_key_pair local_keys;
-    struct cpn_sign_key_public service_key;
+    struct cpn_sign_keys local_keys;
+    struct cpn_sign_pk service_key;
     struct cpn_channel remote_channel;
     struct cpn_session *remote_session = NULL;
     struct cpn_cap *cap = NULL;
@@ -58,7 +58,7 @@ static int handle(struct cpn_channel *channel,
 
     params = (InvokeParams *) session->parameters;
 
-    if (cpn_sign_key_pair_from_config(&local_keys, cfg) < 0) {
+    if (cpn_sign_keys_from_config(&local_keys, cfg) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not parse config");
         goto out;
     }
@@ -73,7 +73,7 @@ static int handle(struct cpn_channel *channel,
         goto out;
     }
 
-    if (cpn_sign_key_public_from_proto(&service_key, params->service_identity) < 0) {
+    if (cpn_sign_pk_from_proto(&service_key, params->service_identity) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Invalid Unknown service key");
         goto out;
     }
@@ -132,7 +132,7 @@ static int parse(ProtobufCMessage **out, int argc, const char *argv[])
     params->sessionid = opts[0].value.uint32;
     cpn_cap_to_protobuf(&params->cap, cap);
 
-    cpn_sign_key_public_to_proto(&params->service_identity, &opts[2].value.sigkey);
+    cpn_sign_pk_to_proto(&params->service_identity, &opts[2].value.sigkey);
     params->service_address = strdup(opts[3].value.string);
     params->service_port = opts[4].value.uint32;
     params->service_type = strdup(opts[5].value.string);
