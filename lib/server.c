@@ -455,9 +455,9 @@ out:
 static int send_signed_key(struct cpn_channel *channel,
         uint32_t id,
         const struct cpn_sign_key_pair *sign_keys,
-        const struct cpn_encrypt_key_public *local_emph_key,
+        const struct cpn_asymmetric_pk *local_emph_key,
         const struct cpn_sign_key_public *remote_sign_key,
-        const struct cpn_encrypt_key_public *remote_emph_key)
+        const struct cpn_asymmetric_pk *remote_emph_key)
 {
     ResponderKey msg = RESPONDER_KEY__INIT;
     uint8_t signature[CPN_CRYPTO_SIGN_SIGBYTES];
@@ -502,7 +502,7 @@ static int receive_ephemeral_key(
         struct cpn_channel *channel,
         uint32_t *id,
         struct cpn_sign_key_public *remote_sign_key,
-        struct cpn_encrypt_key_public *remote_encrypt_key)
+        struct cpn_asymmetric_pk *remote_encrypt_key)
 {
     InitiatorKey *msg;
 
@@ -516,7 +516,7 @@ static int receive_ephemeral_key(
 
     if (cpn_sign_key_public_from_bin(remote_sign_key,
                 msg->sign_pk.data, msg->sign_pk.len) < 0 ||
-            cpn_encrypt_key_public_from_bin(remote_encrypt_key,
+            cpn_asymmetric_pk_from_bin(remote_encrypt_key,
                 msg->ephm_pk.data, msg->ephm_pk.len) < 0)
     {
         cpn_log(LOG_LEVEL_ERROR, "Invalid keys");
@@ -533,9 +533,9 @@ static int receive_ephemeral_key(
 static int receive_key_verification(struct cpn_channel *c,
         uint32_t id,
         const struct cpn_sign_key_public *local_pk,
-        const struct cpn_encrypt_key_public *local_emph_key,
+        const struct cpn_asymmetric_pk *local_emph_key,
         const struct cpn_sign_key_public *remote_pk,
-        const struct cpn_encrypt_key_public *remote_emph_key)
+        const struct cpn_asymmetric_pk *remote_emph_key)
 {
     AcknowledgeKey *msg = NULL;
     struct cpn_buf sign_buf = CPN_BUF_INIT;
@@ -591,8 +591,8 @@ int cpn_server_await_encryption(struct cpn_channel *channel,
         const struct cpn_sign_key_pair *sign_keys,
         struct cpn_sign_key_public *remote_sign_key)
 {
-    struct cpn_encrypt_key_pair emph_keys;
-    struct cpn_encrypt_key_public remote_emph_key;
+    struct cpn_asymmetric_keys emph_keys;
+    struct cpn_asymmetric_pk remote_emph_key;
     struct cpn_symmetric_key shared_key;
     uint8_t scalarmult[crypto_scalarmult_BYTES];
     uint32_t id;
@@ -603,7 +603,7 @@ int cpn_server_await_encryption(struct cpn_channel *channel,
         return -1;
     }
 
-    if (cpn_encrypt_key_pair_generate(&emph_keys) < 0) {
+    if (cpn_asymmetric_keys_generate(&emph_keys) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to generate key pair");
         return -1;
     }

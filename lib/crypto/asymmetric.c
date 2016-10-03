@@ -22,12 +22,12 @@
 
 #include "capone/crypto/asymmetric.h"
 
-int cpn_encrypt_key_pair_generate(struct cpn_encrypt_key_pair *out)
+int cpn_asymmetric_keys_generate(struct cpn_asymmetric_keys *out)
 {
     return crypto_box_keypair(out->pk.data, out->sk.data);
 }
 
-int cpn_encrypt_key_public_from_bin(struct cpn_encrypt_key_public *out, uint8_t *pk, size_t pklen)
+int cpn_asymmetric_pk_from_bin(struct cpn_asymmetric_pk *out, uint8_t *pk, size_t pklen)
 {
     if (pklen != crypto_box_PUBLICKEYBYTES) {
         cpn_log(LOG_LEVEL_ERROR, "Passed in buffer does not match required public encrypt key length");

@@ -21,7 +21,7 @@
 
 #include "test.h"
 
-static struct cpn_encrypt_key_pair enc_pair;
+static struct cpn_asymmetric_keys enc_pair;
 
 static int setup()
 {
@@ -36,32 +36,32 @@ static int teardown()
 
 static void generate_encryption_key()
 {
-    assert_success(cpn_encrypt_key_pair_generate(&enc_pair));
+    assert_success(cpn_asymmetric_keys_generate(&enc_pair));
 }
 
 static void encrypt_key_public_from_bin_succeeds()
 {
-    struct cpn_encrypt_key_public pk;
+    struct cpn_asymmetric_pk pk;
 
-    assert_success(cpn_encrypt_key_pair_generate(&enc_pair));
-    assert_success(cpn_encrypt_key_public_from_bin(&pk, enc_pair.pk.data, sizeof(enc_pair.pk)));
+    assert_success(cpn_asymmetric_keys_generate(&enc_pair));
+    assert_success(cpn_asymmetric_pk_from_bin(&pk, enc_pair.pk.data, sizeof(enc_pair.pk)));
     assert_memory_equal(pk.data, enc_pair.pk.data, sizeof(pk.data));
 }
 
 static void encrypt_key_public_from_too_short_bin_fails()
 {
-    struct cpn_encrypt_key_public pk;
+    struct cpn_asymmetric_pk pk;
 
-    assert_success(cpn_encrypt_key_pair_generate(&enc_pair));
-    assert_failure(cpn_encrypt_key_public_from_bin(&pk, enc_pair.pk.data, sizeof(enc_pair.pk) - 1));
+    assert_success(cpn_asymmetric_keys_generate(&enc_pair));
+    assert_failure(cpn_asymmetric_pk_from_bin(&pk, enc_pair.pk.data, sizeof(enc_pair.pk) - 1));
 }
 
 static void encrypt_key_public_from_too_long_bin_fails()
 {
-    struct cpn_encrypt_key_public pk;
+    struct cpn_asymmetric_pk pk;
 
-    assert_success(cpn_encrypt_key_pair_generate(&enc_pair));
-    assert_failure(cpn_encrypt_key_public_from_bin(&pk, enc_pair.pk.data, sizeof(enc_pair.pk) + 1));
+    assert_success(cpn_asymmetric_keys_generate(&enc_pair));
+    assert_failure(cpn_asymmetric_pk_from_bin(&pk, enc_pair.pk.data, sizeof(enc_pair.pk) + 1));
 }
 
 

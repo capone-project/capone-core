@@ -25,19 +25,19 @@
 #define CPN_CRYPTO_ASYMMETRIC_PKBYTES 32
 
 /** @brief Secret encryption key used to decrypt data */
-struct cpn_encrypt_key_secret {
+struct cpn_asymmetric_sk {
     uint8_t data[CPN_CRYPTO_ASYMMETRIC_SKBYTES];
 };
 
 /** @brief Public encryption key used to encrypt data */
-struct cpn_encrypt_key_public {
+struct cpn_asymmetric_pk {
     uint8_t data[CPN_CRYPTO_ASYMMETRIC_PKBYTES];
 };
 
 /** @brief Encryption key pair */
-struct cpn_encrypt_key_pair {
-    struct cpn_encrypt_key_secret sk;
-    struct cpn_encrypt_key_public pk;
+struct cpn_asymmetric_keys {
+    struct cpn_asymmetric_sk sk;
+    struct cpn_asymmetric_pk pk;
 };
 
 /** @brief Generate a new encryption key pair
@@ -45,7 +45,7 @@ struct cpn_encrypt_key_pair {
  * @param[out] out Pointer to store public encryption key pair at.
  * @return <code>0</code>
  */
-int cpn_encrypt_key_pair_generate(struct cpn_encrypt_key_pair *out);
+int cpn_asymmetric_keys_generate(struct cpn_asymmetric_keys *out);
 
 /** @brief Read a public encryption key from binary data
  *
@@ -54,7 +54,7 @@ int cpn_encrypt_key_pair_generate(struct cpn_encrypt_key_pair *out);
  * @param[in] pklen Length of the binary data.
  * @return <code>0</code> on success, <code>-1</code> otherwise
  */
-int cpn_encrypt_key_public_from_bin(struct cpn_encrypt_key_public *out,
+int cpn_asymmetric_pk_from_bin(struct cpn_asymmetric_pk *out,
         uint8_t *pk, size_t pklen);
 
 #endif
