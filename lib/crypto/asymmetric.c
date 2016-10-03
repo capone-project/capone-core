@@ -1,5 +1,4 @@
-/*
- * Copyright (C) 2016 Patrick Steinhardt
+/* * Copyright (C) 2016 Patrick Steinhardt
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,6 +15,7 @@
  */
 
 #include <string.h>
+#include <stdlib.h>
 
 #include <sodium/crypto_box.h>
 
@@ -36,6 +36,34 @@ int cpn_asymmetric_pk_from_bin(struct cpn_asymmetric_pk *out, uint8_t *pk, size_
     }
 
     memcpy(out->data, pk, sizeof(out->data));
+
+    return 0;
+}
+
+int cpn_asymmetric_pk_from_proto(struct cpn_asymmetric_pk *out,
+        const PublicKeyMessage *msg)
+{
+    if (msg->data.len != crypto_box_PUBLICKEYBYTES) {
+        cpn_log(LOG_LEVEL_ERROR, "Invalid public key length in message");
+        return -1;
+    }
+
+    memcpy(out->data, msg->data.data, msg->data.len);
+
+    return 0;
+}
+
+int cpn_asymmetric_pk_to_proto(PublicKeyMessage **out,
+        const struct cpn_asymmetric_pk *pk)
+{
+    PublicKeyMessage *msg = malloc(sizeof(PublicKeyMessage));
+    public_key_message__init(msg);
+
+    msg->data.len = crypto_box_PUBLICKEYBYTES;
+    msg->data.data = malloc(crypto_box_PUBLICKEYBYTES);
+    memcpy(msg->data.data, pk->data, crypto_box_PUBLICKEYBYTES);
+
+    *out = msg;
 
     return 0;
 }

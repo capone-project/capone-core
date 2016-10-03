@@ -420,6 +420,7 @@ static int send_ephemeral_key(struct cpn_channel *channel,
 {
     EncryptionInitiationMessage msg = ENCRYPTION_INITIATION_MESSAGE__INIT;
     IdentityMessage *identity = NULL;
+    PublicKeyMessage *ephemeral = NULL;
     int err = -1;
 
     if (cpn_sign_pk_to_proto(&identity, &sign_keys->pk) < 0) {
@@ -427,9 +428,13 @@ static int send_ephemeral_key(struct cpn_channel *channel,
         goto out;
     }
 
+    if (cpn_asymmetric_pk_to_proto(&ephemeral, encrypt_key) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Could not generate ephemeral key message");
+        goto out;
+    }
+
     msg.identity = identity;
-    msg.ephm_pk.data = (uint8_t *) encrypt_key->data;
-    msg.ephm_pk.len = sizeof(encrypt_key->data);
+    msg.ephemeral = ephemeral;
     msg.sessionid = id;
 
     if (cpn_channel_write_protobuf(channel, &msg.base) < 0) {
@@ -442,6 +447,8 @@ static int send_ephemeral_key(struct cpn_channel *channel,
 out:
     if (identity)
         identity_message__free_unpacked(identity, NULL);
+    if (ephemeral)
+        public_key_message__free_unpacked(ephemeral, NULL);
 
     return err;
 }
@@ -478,7 +485,7 @@ static int receive_signed_key(struct cpn_asymmetric_pk *out,
     } else if (cpn_sign_pk_from_proto(&msg_sign_key, msg->identity) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Initiator's long-term signature key is invalid");
         goto out;
-    } else if (cpn_asymmetric_pk_from_bin(&msg_emph_key, msg->ephm_pk.data, msg->ephm_pk.len) < 0) {
+    } else if (cpn_asymmetric_pk_from_proto(&msg_emph_key, msg->ephemeral) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Initiator's ephemeral key is invalid");
         goto out;
     }
@@ -522,6 +529,7 @@ static int send_key_verification(struct cpn_channel *c,
 {
     EncryptionAcknowledgementMessage msg = ENCRYPTION_ACKNOWLEDGEMENT_MESSAGE__INIT;
     IdentityMessage *identity = NULL;
+    PublicKeyMessage *ephemeral = NULL;
     struct cpn_buf sign_buf = CPN_BUF_INIT;
     struct cpn_sign_sig sig;
     int err = -1;
@@ -544,10 +552,14 @@ static int send_key_verification(struct cpn_channel *c,
         goto out;
     }
 
+    if (cpn_asymmetric_pk_to_proto(&ephemeral, local_emph_key) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Unable to generate ephemeral key message");
+        goto out;
+    }
+
     msg.sessionid = id;
     msg.identity = identity;
-    msg.ephm_pk.data = (uint8_t *) local_emph_key->data;
-    msg.ephm_pk.len = sizeof(local_emph_key->data);
+    msg.ephemeral = ephemeral;
     msg.signature.data = sig.data;
     msg.signature.len = sizeof(sig.data);
 
@@ -561,6 +573,8 @@ static int send_key_verification(struct cpn_channel *c,
 out:
     if (identity)
         identity_message__free_unpacked(identity, NULL);
+    if (ephemeral)
+        public_key_message__free_unpacked(ephemeral, NULL);
     cpn_buf_clear(&sign_buf);
 
     return err;

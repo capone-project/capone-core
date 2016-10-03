@@ -21,6 +21,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "capone/proto/core.pb-c.h"
+
 #define CPN_CRYPTO_ASYMMETRIC_SKBYTES 32
 #define CPN_CRYPTO_ASYMMETRIC_PKBYTES 32
 
@@ -56,5 +58,13 @@ int cpn_asymmetric_keys_generate(struct cpn_asymmetric_keys *out);
  */
 int cpn_asymmetric_pk_from_bin(struct cpn_asymmetric_pk *out,
         uint8_t *pk, size_t pklen);
+
+/** @brief Convert a public key message to a key struct */
+int cpn_asymmetric_pk_from_proto(struct cpn_asymmetric_pk *out,
+        const PublicKeyMessage *msg);
+
+/** @brief Convert a key struct to a public key message */
+int cpn_asymmetric_pk_to_proto(PublicKeyMessage **out,
+        const struct cpn_asymmetric_pk *pk);
 
 #endif
