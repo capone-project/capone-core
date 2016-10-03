@@ -22,15 +22,18 @@
 
 #include "capone/buf.h"
 #include "capone/client.h"
+#include "capone/common.h"
 #include "capone/log.h"
+
+#include "capone/crypto/asymmetric.h"
 
 #include "capone/proto/capone.pb-c.h"
 #include "capone/proto/discovery.pb-c.h"
 #include "capone/proto/encryption.pb-c.h"
 
 static int initiate_encryption(struct cpn_channel *channel,
-        const struct cpn_sign_key_pair *sign_keys,
-        const struct cpn_sign_key_public *remote_sign_key);
+        const struct cpn_sign_keys *sign_keys,
+        const struct cpn_sign_pk *remote_sign_key);
 
 static int initiate_connection_type(struct cpn_channel *channel,
         ConnectionInitiationMessage__Type type)
@@ -50,7 +53,7 @@ static int initiate_connection_type(struct cpn_channel *channel,
 int cpn_client_discovery_probe(struct cpn_channel *channel, const struct cpn_list *known_keys)
 {
     DiscoverMessage msg = DISCOVER_MESSAGE__INIT;
-    struct cpn_sign_key_public *key;
+    struct cpn_sign_pk *key;
     struct cpn_list_entry *it;
     size_t i, keys;
     int err;
@@ -65,9 +68,9 @@ int cpn_client_discovery_probe(struct cpn_channel *channel, const struct cpn_lis
 
         i = 0;
         cpn_list_foreach(known_keys, it, key) {
-            msg.known_keys[i].len = sizeof(struct cpn_sign_key_public);
-            msg.known_keys[i].data = malloc(sizeof(struct cpn_sign_key_public));
-            memcpy(msg.known_keys[i].data, &key->data, sizeof(struct cpn_sign_key_public));
+            msg.known_keys[i].len = sizeof(struct cpn_sign_pk);
+            msg.known_keys[i].data = malloc(sizeof(struct cpn_sign_pk));
+            memcpy(msg.known_keys[i].data, &key->data, sizeof(struct cpn_sign_pk));
             i++;
         }
     } else {
@@ -102,7 +105,7 @@ int cpn_client_discovery_handle_announce(struct cpn_discovery_results *out,
         goto out;
     }
 
-    if (cpn_sign_key_public_from_proto(&results.identity,
+    if (cpn_sign_pk_from_proto(&results.identity,
                 announce->identity) < 0)
     {
         cpn_log(LOG_LEVEL_ERROR, "Invalid identity");
@@ -157,8 +160,8 @@ void cpn_discovery_results_clear(struct cpn_discovery_results *results)
 int cpn_client_connect(struct cpn_channel *channel,
         const char *host,
         uint32_t port,
-        const struct cpn_sign_key_pair *local_keys,
-        const struct cpn_sign_key_public *remote_key)
+        const struct cpn_sign_keys *local_keys,
+        const struct cpn_sign_pk *remote_key)
 {
     if (cpn_channel_init_from_host(channel, host, port, CPN_CHANNEL_TYPE_TCP) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not initialize channel");
@@ -412,8 +415,8 @@ out:
 
 static int send_ephemeral_key(struct cpn_channel *channel,
         uint32_t id,
-        const struct cpn_sign_key_pair *sign_keys,
-        const struct cpn_encrypt_key_public *encrypt_key)
+        const struct cpn_sign_keys *sign_keys,
+        const struct cpn_asymmetric_pk *encrypt_key)
 {
     InitiatorKey msg = INITIATOR_KEY__INIT;
 
@@ -431,17 +434,18 @@ static int send_ephemeral_key(struct cpn_channel *channel,
     return 0;
 }
 
-static int receive_signed_key(struct cpn_encrypt_key_public *out,
+static int receive_signed_key(struct cpn_asymmetric_pk *out,
         struct cpn_channel *channel,
         uint32_t id,
-        const struct cpn_sign_key_public *local_sign_key,
-        const struct cpn_encrypt_key_public *local_emph_key,
-        const struct cpn_sign_key_public *remote_sign_key)
+        const struct cpn_sign_pk *local_sign_key,
+        const struct cpn_asymmetric_pk *local_emph_key,
+        const struct cpn_sign_pk *remote_sign_key)
 {
     ResponderKey *msg;
     struct cpn_buf sign_buf = CPN_BUF_INIT;
-    struct cpn_sign_key_public msg_sign_key;
-    struct cpn_encrypt_key_public msg_emph_key;
+    struct cpn_sign_pk msg_sign_key;
+    struct cpn_asymmetric_pk msg_emph_key;
+    struct cpn_sign_sig sig;
     int ret = -1;
 
     if (cpn_channel_receive_protobuf(channel,
@@ -456,13 +460,13 @@ static int receive_signed_key(struct cpn_encrypt_key_public *out,
     if (msg->sessionid != id) {
         cpn_log(LOG_LEVEL_ERROR, "Received invalid session id");
         goto out;
-    } else if (msg->signature.len != crypto_sign_BYTES) {
+    } else if (cpn_sign_sig_from_bin(&sig, msg->signature.data, msg->signature.len) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Received invalid signature");
         goto out;
-    } else if (cpn_sign_key_public_from_bin(&msg_sign_key, msg->sign_pk.data, msg->sign_pk.len) < 0) {
+    } else if (cpn_sign_pk_from_bin(&msg_sign_key, msg->sign_pk.data, msg->sign_pk.len) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Initiator's long-term signature key is invalid");
         goto out;
-    } else if (cpn_encrypt_key_public_from_bin(&msg_emph_key, msg->ephm_pk.data, msg->ephm_pk.len) < 0) {
+    } else if (cpn_asymmetric_pk_from_bin(&msg_emph_key, msg->ephm_pk.data, msg->ephm_pk.len) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Initiator's ephemeral key is invalid");
         goto out;
     }
@@ -472,16 +476,13 @@ static int receive_signed_key(struct cpn_encrypt_key_public *out,
         goto out;
     }
 
-    cpn_buf_append_data(&sign_buf, msg_sign_key.data, crypto_sign_PUBLICKEYBYTES);
+    cpn_buf_append_data(&sign_buf, msg_sign_key.data, CPN_CRYPTO_SIGN_PKBYTES);
     cpn_buf_append_data(&sign_buf, (unsigned char *) &id, sizeof(id));
-    cpn_buf_append_data(&sign_buf, msg_emph_key.data, crypto_box_PUBLICKEYBYTES);
-    cpn_buf_append_data(&sign_buf, local_emph_key->data, crypto_box_PUBLICKEYBYTES);
-    cpn_buf_append_data(&sign_buf, local_sign_key->data, crypto_box_PUBLICKEYBYTES);
+    cpn_buf_append_data(&sign_buf, msg_emph_key.data, CPN_CRYPTO_ASYMMETRIC_PKBYTES);
+    cpn_buf_append_data(&sign_buf, local_emph_key->data, CPN_CRYPTO_ASYMMETRIC_PKBYTES);
+    cpn_buf_append_data(&sign_buf, local_sign_key->data, CPN_CRYPTO_ASYMMETRIC_PKBYTES);
 
-    if (crypto_sign_verify_detached(msg->signature.data,
-                (unsigned char *) sign_buf.data, sign_buf.length,
-                remote_sign_key->data) < 0)
-    {
+    if (cpn_sign_sig_verify(remote_sign_key, &sig, (uint8_t *) sign_buf.data, sign_buf.length) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Received invalid signature");
         goto out;
     }
@@ -502,26 +503,24 @@ out:
 
 static int send_key_verification(struct cpn_channel *c,
         uint32_t id,
-        const struct cpn_sign_key_pair *sign_keys,
-        const struct cpn_encrypt_key_public *local_emph_key,
-        const struct cpn_sign_key_public *remote_pk,
-        const struct cpn_encrypt_key_public *remote_emph_pk)
+        const struct cpn_sign_keys *sign_keys,
+        const struct cpn_asymmetric_pk *local_emph_key,
+        const struct cpn_sign_pk *remote_pk,
+        const struct cpn_asymmetric_pk *remote_emph_pk)
 {
     AcknowledgeKey msg = ACKNOWLEDGE_KEY__INIT;
     struct cpn_buf sign_buf = CPN_BUF_INIT;
-    uint8_t signature[crypto_sign_BYTES], *sign_data = NULL;
+    struct cpn_sign_sig sig;
     int err = 0;
 
-    cpn_buf_append_data(&sign_buf, sign_keys->pk.data, crypto_sign_PUBLICKEYBYTES);
+    cpn_buf_append_data(&sign_buf, sign_keys->pk.data, CPN_CRYPTO_SIGN_PKBYTES);
     cpn_buf_append_data(&sign_buf, (unsigned char *) &id, sizeof(id));
-    cpn_buf_append_data(&sign_buf, local_emph_key->data, crypto_box_PUBLICKEYBYTES);
-    cpn_buf_append_data(&sign_buf, remote_emph_pk->data, crypto_box_PUBLICKEYBYTES);
-    cpn_buf_append_data(&sign_buf, remote_pk->data, crypto_box_PUBLICKEYBYTES);
+    cpn_buf_append_data(&sign_buf, local_emph_key->data, CPN_CRYPTO_ASYMMETRIC_PKBYTES);
+    cpn_buf_append_data(&sign_buf, remote_emph_pk->data, CPN_CRYPTO_ASYMMETRIC_PKBYTES);
+    cpn_buf_append_data(&sign_buf, remote_pk->data, CPN_CRYPTO_ASYMMETRIC_PKBYTES);
 
-    memset(signature, 0, sizeof(signature));
-    if ((err = crypto_sign_detached(signature, NULL,
-                    (unsigned char *) sign_buf.data, sign_buf.length,
-                    sign_keys->sk.data)) < 0)
+    if ((err = cpn_sign_sig(&sig, &sign_keys->sk,
+                    (uint8_t *) sign_buf.data, sign_buf.length)) < 0)
     {
         cpn_log(LOG_LEVEL_ERROR, "Unable to sign key verification");
         goto out;
@@ -530,8 +529,8 @@ static int send_key_verification(struct cpn_channel *c,
     msg.sessionid = id;
     msg.sign_pk.data = (uint8_t *) sign_keys->pk.data;
     msg.sign_pk.len = sizeof(sign_keys->pk.data);
-    msg.signature.data = signature;
-    msg.signature.len = sizeof(signature);
+    msg.signature.data = sig.data;
+    msg.signature.len = sizeof(sig.data);
 
     if (cpn_channel_write_protobuf(c, &msg.base) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to send verification message");
@@ -539,29 +538,26 @@ static int send_key_verification(struct cpn_channel *c,
     }
 
 out:
-    free(sign_data);
     cpn_buf_clear(&sign_buf);
 
     return err;
 }
 
 static int initiate_encryption(struct cpn_channel *channel,
-        const struct cpn_sign_key_pair *sign_keys,
-        const struct cpn_sign_key_public *remote_sign_key)
+        const struct cpn_sign_keys *sign_keys,
+        const struct cpn_sign_pk *remote_sign_key)
 {
-    struct cpn_encrypt_key_pair emph_keys;
-    struct cpn_encrypt_key_public remote_emph_key;
+    struct cpn_asymmetric_keys emph_keys;
+    struct cpn_asymmetric_pk remote_emph_key;
     struct cpn_symmetric_key shared_key;
-    uint8_t scalarmult[crypto_scalarmult_BYTES];
-    crypto_generichash_state hash;
     uint32_t id;
 
-    if (cpn_encrypt_key_pair_generate(&emph_keys) < 0) {
+    if (cpn_asymmetric_keys_generate(&emph_keys) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to generate key pair");
         return -1;
     }
 
-    id = randombytes_random();
+    cpn_randombytes((uint8_t *) &id, sizeof(id));
 
     if (send_ephemeral_key(channel, id, sign_keys, &emph_keys.pk) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Unable to send session key");
@@ -583,22 +579,12 @@ static int initiate_encryption(struct cpn_channel *channel,
         return -1;
     }
 
-    if (crypto_scalarmult(scalarmult, emph_keys.sk.data, remote_emph_key.data) < 0) {
-        cpn_log(LOG_LEVEL_ERROR, "Unable to perform scalarmultiplication");
+    if (cpn_symmetric_key_from_scalarmult(&shared_key, &emph_keys, &remote_emph_key, true) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Unable to derive shared key");
         return -1;
     }
 
-    if (crypto_generichash_init(&hash, NULL, 0, sizeof(shared_key.data)) < 0 ||
-            crypto_generichash_update(&hash, scalarmult, sizeof(scalarmult)) < 0 ||
-            crypto_generichash_update(&hash, emph_keys.pk.data, sizeof(emph_keys.pk.data)) < 0 ||
-            crypto_generichash_update(&hash, remote_emph_key.data, sizeof(remote_emph_key.data)) < 0 ||
-            crypto_generichash_final(&hash, shared_key.data, sizeof(shared_key.data)) < 0)
-    {
-        cpn_log(LOG_LEVEL_ERROR, "Unable to calculate h(q || pk1 || pk2)");
-        return -1;
-    }
-
-    sodium_memzero(&emph_keys, sizeof(emph_keys));
+    cpn_memzero(&emph_keys, sizeof(emph_keys));
 
     if (cpn_channel_enable_encryption(channel, &shared_key, 0) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not enable encryption");

@@ -65,9 +65,7 @@
 
 #include <protobuf-c/protobuf-c.h>
 
-#include <sodium/crypto_box.h>
-
-#include "capone/keys.h"
+#include "capone/crypto/symmetric.h"
 
 /** @brief Network communication type */
 enum cpn_channel_type {
@@ -109,8 +107,8 @@ struct cpn_channel {
     enum cpn_channel_crypto crypto;
 
     struct cpn_symmetric_key key;
-    uint8_t remote_nonce[crypto_box_NONCEBYTES];
-    uint8_t local_nonce[crypto_box_NONCEBYTES];
+    struct cpn_symmetric_key_nonce remote_nonce;
+    struct cpn_symmetric_key_nonce local_nonce;
 };
 
 /** @brief Initialize a channel with a host and port

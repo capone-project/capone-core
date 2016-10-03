@@ -32,7 +32,7 @@ struct serve_opts {
 
 static struct cpn_channel client;
 static struct cpn_channel server;
-static struct cpn_sign_key_public pk;
+static struct cpn_sign_pk pk;
 static struct cpn_cfg cfg;
 
 static const struct cpn_service_plugin *service;

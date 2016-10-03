@@ -33,10 +33,11 @@
 #ifndef CAPONE_OPTS_H
 #define CAPONE_OPTS_H
 
+#include <stdio.h>
 #include <stdbool.h>
 #include <inttypes.h>
 
-#include "capone/keys.h"
+#include "capone/crypto/sign.h"
 
 /**
  * Type of command line arguments
@@ -105,7 +106,7 @@ struct cpn_opts_stringlist {
 union cpn_opt_value {
     struct cpn_opt *action_opts;
     uint32_t counter;
-    struct cpn_sign_key_public sigkey;
+    struct cpn_sign_pk sigkey;
     const char *string;
     struct cpn_opts_stringlist stringlist;
     uint32_t uint32;

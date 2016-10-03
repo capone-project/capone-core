@@ -73,7 +73,7 @@ static int execute(const char *cmd, const char **args, int nargs)
 }
 
 static int handle(struct cpn_channel *channel,
-        const struct cpn_sign_key_public *invoker,
+        const struct cpn_sign_pk *invoker,
         const struct cpn_session *session,
         const struct cpn_cfg *cfg)
 {

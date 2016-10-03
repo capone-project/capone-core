@@ -16,35 +16,26 @@
  */
 
 #include <string.h>
-#include <stdio.h>
 
-#include <sodium.h>
+#include <sodium/crypto_box.h>
 
-#include "capone/common.h"
-#include "capone/opts.h"
+#include "capone/log.h"
 
-#include "capone/crypto/sign.h"
+#include "capone/crypto/asymmetric.h"
 
-int main(int argc, const char *argv[])
+int cpn_asymmetric_keys_generate(struct cpn_asymmetric_keys *out)
 {
-    struct cpn_sign_keys keys;
-    char pkhex[sizeof(keys.pk.data) * 2 + 1],
-         skhex[sizeof(keys.sk.data) * 2 + 1];
+    return crypto_box_keypair(out->pk.data, out->sk.data);
+}
 
-    if (cpn_opts_parse_cmd(NULL, argc, argv) < 0)
-        return -1;
-
-    if (cpn_sign_keys_generate(&keys) < 0) {
-        puts("Error generating key pair");
+int cpn_asymmetric_pk_from_bin(struct cpn_asymmetric_pk *out, uint8_t *pk, size_t pklen)
+{
+    if (pklen != crypto_box_PUBLICKEYBYTES) {
+        cpn_log(LOG_LEVEL_ERROR, "Passed in buffer does not match required public encrypt key length");
         return -1;
     }
 
-    sodium_bin2hex(pkhex, sizeof(pkhex), keys.pk.data, sizeof(keys.pk.data));
-    sodium_bin2hex(skhex, sizeof(skhex), keys.sk.data, sizeof(keys.sk.data));
-
-    printf("Public key:\t%s\n"
-           "Private key:\t%s\n",
-           pkhex, skhex);
+    memcpy(out->data, pk, sizeof(out->data));
 
     return 0;
 }

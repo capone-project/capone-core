@@ -21,7 +21,7 @@
 #include "capone/common.h"
 
 struct cpn_acl_entry {
-    struct cpn_sign_key_public identity;
+    struct cpn_sign_pk identity;
     enum cpn_acl_right right;
 
     char wildcard;
@@ -30,9 +30,9 @@ struct cpn_acl_entry {
 };
 
 static bool entry_matches(const struct cpn_acl_entry *e,
-        const struct cpn_sign_key_public *identity, enum cpn_acl_right right)
+        const struct cpn_sign_pk *identity, enum cpn_acl_right right)
 {
-    if (memcmp(e->identity.data, identity->data, sizeof(struct cpn_sign_key_public)))
+    if (memcmp(e->identity.data, identity->data, sizeof(struct cpn_sign_pk)))
         return false;
     if (e->right != right)
         return false;
@@ -77,7 +77,7 @@ void cpn_acl_clear(struct cpn_acl *acl)
 }
 
 int cpn_acl_add_right(struct cpn_acl *acl,
-        const struct cpn_sign_key_public *identity,
+        const struct cpn_sign_pk *identity,
         enum cpn_acl_right right)
 {
     struct cpn_acl_entry *e;
@@ -85,7 +85,7 @@ int cpn_acl_add_right(struct cpn_acl *acl,
     e = malloc(sizeof(struct cpn_acl_entry));
 
     memset(e, 0, sizeof(struct cpn_acl_entry));
-    memcpy(&e->identity, identity, sizeof(struct cpn_sign_key_public));
+    memcpy(&e->identity, identity, sizeof(struct cpn_sign_pk));
     e->right = right;
     e->wildcard = 0;
 
@@ -117,7 +117,7 @@ int cpn_acl_add_wildcard(struct cpn_acl *acl,
 }
 
 int cpn_acl_remove_right(struct cpn_acl *acl,
-        const struct cpn_sign_key_public *identity,
+        const struct cpn_sign_pk *identity,
         enum cpn_acl_right right)
 {
     struct cpn_acl_entry *it, *prev;
@@ -140,7 +140,7 @@ int cpn_acl_remove_right(struct cpn_acl *acl,
 }
 
 bool cpn_acl_is_allowed(const struct cpn_acl *acl,
-        const struct cpn_sign_key_public *identity,
+        const struct cpn_sign_pk *identity,
         enum cpn_acl_right right)
 {
     struct cpn_acl_entry *it;

@@ -62,7 +62,8 @@
 #include <inttypes.h>
 
 #include "capone/caps.h"
-#include "capone/keys.h"
+
+#include "capone/crypto/sign.h"
 
 /** @brief A session wrapping identities and parameters */
 struct cpn_session {
@@ -73,7 +74,7 @@ struct cpn_session {
     struct cpn_cap *cap;
 
     /** @brief Identity of the user who created the session */
-    struct cpn_sign_key_public creator;
+    struct cpn_sign_pk creator;
 
     /** @brief Parameters */
     ProtobufCMessage *parameters;
@@ -103,7 +104,7 @@ int cpn_sessions_init(void);
  * @return <code>0</code> on success, <code>-1</code> otherwise
  */
 int cpn_sessions_add(const struct cpn_session **out, ProtobufCMessage *params,
-        const struct cpn_sign_key_public *creator);
+        const struct cpn_sign_pk *creator);
 
 /** @brief Remove a session
  *

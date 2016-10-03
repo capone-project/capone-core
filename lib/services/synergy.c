@@ -18,6 +18,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <signal.h>
+#include <stdio.h>
 
 #include "capone/common.h"
 #include "capone/log.h"
@@ -85,7 +86,7 @@ out:
 }
 
 static int handle(struct cpn_channel *channel,
-        const struct cpn_sign_key_public *invoker,
+        const struct cpn_sign_pk *invoker,
         const struct cpn_session *session,
         const struct cpn_cfg *cfg)
 {

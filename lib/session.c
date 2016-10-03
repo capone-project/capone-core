@@ -31,7 +31,7 @@ static uint32_t sessionid;
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 int cpn_sessions_add(const struct cpn_session **out, ProtobufCMessage *params,
-        const struct cpn_sign_key_public *creator)
+        const struct cpn_sign_pk *creator)
 {
     struct cpn_session *session;
 
@@ -43,7 +43,7 @@ int cpn_sessions_add(const struct cpn_session **out, ProtobufCMessage *params,
     if (cpn_cap_create_root(&session->cap) < 0)
         return -1;
 
-    memcpy(&session->creator, creator, sizeof(struct cpn_sign_key_public));
+    memcpy(&session->creator, creator, sizeof(struct cpn_sign_pk));
 
     pthread_mutex_lock(&mutex);
     session->identifier = sessionid++;

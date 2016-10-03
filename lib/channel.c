@@ -31,10 +31,6 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 
-#include <sodium/crypto_auth.h>
-#include <sodium/utils.h>
-#include <sodium/randombytes.h>
-
 #include "capone/log.h"
 #include "capone/common.h"
 #include "capone/channel.h"
@@ -82,7 +78,7 @@ int cpn_channel_init_from_fd(struct cpn_channel *c,
 
 int cpn_channel_set_blocklen(struct cpn_channel *c, size_t len)
 {
-    if (len < sizeof(uint32_t) + crypto_box_MACBYTES + 1) {
+    if (len < sizeof(uint32_t) + CPN_CRYPTO_SYMMETRIC_MACBYTES + 1) {
         return -1;
     } else if (len > MAX_BLOCKLEN) {
         return -1;
@@ -98,15 +94,15 @@ int cpn_channel_enable_encryption(struct cpn_channel *c,
 {
     memcpy(&c->key, key, sizeof(c->key));
 
-    memset(c->local_nonce, 0, sizeof(c->local_nonce));
-    memset(c->remote_nonce, 0, sizeof(c->remote_nonce));
+    memset(&c->local_nonce, 0, sizeof(c->local_nonce));
+    memset(&c->remote_nonce, 0, sizeof(c->remote_nonce));
 
     switch (nonce) {
         case CPN_CHANNEL_NONCE_CLIENT:
-            sodium_increment(c->remote_nonce, sizeof(c->remote_nonce));
+            cpn_symmetric_key_nonce_increment(&c->remote_nonce, 1);
             break;
         case CPN_CHANNEL_NONCE_SERVER:
-            sodium_increment(c->local_nonce, sizeof(c->local_nonce));
+            cpn_symmetric_key_nonce_increment(&c->local_nonce, 1);
             break;
     }
 
@@ -191,7 +187,7 @@ int cpn_channel_write_data(struct cpn_channel *c, uint8_t *data, uint32_t datale
         ssize_t ret;
 
         if (c->crypto == CPN_CHANNEL_CRYPTO_SYMMETRIC) {
-            len = MIN(datalen - written, c->blocklen - offset - crypto_secretbox_MACBYTES);
+            len = MIN(datalen - written, c->blocklen - offset - CPN_CRYPTO_SYMMETRIC_MACBYTES);
         } else {
             len = MIN(datalen - written, c->blocklen - offset);
         }
@@ -200,13 +196,13 @@ int cpn_channel_write_data(struct cpn_channel *c, uint8_t *data, uint32_t datale
         memcpy(block + offset, data + written, len);
 
         if (c->crypto == CPN_CHANNEL_CRYPTO_SYMMETRIC) {
-            if (crypto_secretbox_easy(block, block, c->blocklen - crypto_secretbox_MACBYTES,
-                        c->local_nonce, c->key.data) < 0) {
+            if (cpn_symmetric_key_encrypt(block, &c->key, &c->local_nonce,
+                        block, c->blocklen - CPN_CRYPTO_SYMMETRIC_MACBYTES) < 0)
+            {
                 cpn_log(LOG_LEVEL_ERROR, "Unable to encrypt message");
                 return -1;
             }
-            sodium_increment(c->local_nonce, crypto_secretbox_NONCEBYTES);
-            sodium_increment(c->local_nonce, crypto_secretbox_NONCEBYTES);
+            cpn_symmetric_key_nonce_increment(&c->local_nonce, 2);
         }
 
         ret = write_data(c, block, c->blocklen);
@@ -306,14 +302,13 @@ ssize_t cpn_channel_receive_data(struct cpn_channel *c, uint8_t *out, size_t max
         }
 
         if (c->crypto == CPN_CHANNEL_CRYPTO_SYMMETRIC) {
-            if (crypto_secretbox_open_easy(block, block, c->blocklen,
-                        c->remote_nonce, c->key.data) < 0)
+            if (cpn_symmetric_key_decrypt(block, &c->key, &c->remote_nonce,
+                        block, c->blocklen) < 0)
             {
                 cpn_log(LOG_LEVEL_ERROR, "Unable to decrypt received block");
                 return -1;
             }
-            sodium_increment(c->remote_nonce, crypto_secretbox_NONCEBYTES);
-            sodium_increment(c->remote_nonce, crypto_secretbox_NONCEBYTES);
+            cpn_symmetric_key_nonce_increment(&c->remote_nonce, 2);
         }
 
         if (offset) {
@@ -326,7 +321,7 @@ ssize_t cpn_channel_receive_data(struct cpn_channel *c, uint8_t *out, size_t max
         }
 
         if (c->crypto == CPN_CHANNEL_CRYPTO_SYMMETRIC) {
-            blocklen = MIN(pkglen - received, c->blocklen - offset - crypto_secretbox_MACBYTES);
+            blocklen = MIN(pkglen - received, c->blocklen - offset - CPN_CRYPTO_SYMMETRIC_MACBYTES);
         } else {
             blocklen = MIN(pkglen - received, c->blocklen - offset);
         }
