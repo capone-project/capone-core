@@ -262,7 +262,7 @@ int cpn_server_handle_query(struct cpn_channel *channel,
     result.port = service->port;
     result.category = (char *) service->plugin->category;
     result.type = (char *) service->plugin->type;
-    result.version = (char *) service->plugin->version;
+    result.version = service->plugin->version;
 
     response.result = &result;
 

@@ -99,7 +99,7 @@ static int cmd_query(void)
             "\tname:     %s\n"
             "\tcategory: %s\n"
             "\ttype:     %s\n"
-            "\tversion:  %s\n"
+            "\tversion:  %"PRIu32"\n"
             "\tlocation: %s\n"
             "\tport:     %"PRIu32"\n",
             hex.data,

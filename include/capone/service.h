@@ -100,7 +100,7 @@ struct cpn_service_plugin {
     const char *type;
 
     /** @brief Version of the plugin */
-    const char *version;
+    uint32_t version;
 
     /** \see cpn_service_server_fn */
     cpn_service_server_fn server_fn;

@@ -76,7 +76,7 @@ int cpn_test_init_service(const struct cpn_service_plugin **out)
     static struct cpn_service_plugin plugin = {
         "Test",
         "test",
-        "0.0.1",
+        1,
         handle,
         invoke,
         parse,

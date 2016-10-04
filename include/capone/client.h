@@ -65,7 +65,7 @@ struct cpn_query_results {
     /** @brief Version of the service
      * \see cpn_service::version
      */
-    char *version;
+    uint32_t version;
     /** @brief Location of the service
      * \see cpn_service::location
      */

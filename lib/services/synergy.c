@@ -164,7 +164,7 @@ int cpn_synergy_init_service(const struct cpn_service_plugin **out)
     static struct cpn_service_plugin plugin = {
         "Input",
         "synergy",
-        "0.0.1",
+        1,
         handle,
         invoke,
         NULL,

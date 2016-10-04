@@ -321,7 +321,7 @@ static void query_succeeds()
     assert_string_equal(results.category, "Test");
     assert_string_equal(results.location, "Dunno");
     assert_int_equal(results.port, 1234);
-    assert_string_equal(results.version, CPN_VERSION);
+    assert_int_equal(results.version, 1);
 
     cpn_query_results_free(&results);
 }
