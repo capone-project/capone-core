@@ -91,7 +91,7 @@ int get_socket(struct sockaddr_storage *addr, socklen_t *addrlen,
 
         opt = 1;
         if (setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &opt, sizeof(opt)) < 0) {
-            cpn_log(LOG_LEVEL_DEBUG, "Unable to enable keepalive : %s", strerror(errno));
+            cpn_log(LOG_LEVEL_DEBUG, "Unable to enable keepalive: %s", strerror(errno));
             close(fd);
             continue;
         }
@@ -182,7 +182,7 @@ int cpn_socket_listen(struct cpn_socket *s)
 
 int cpn_socket_accept(struct cpn_socket *s, struct cpn_channel *out)
 {
-    int fd;
+    int fd, opt;
     socklen_t addrsize;
     struct sockaddr_storage addr;
 
@@ -200,6 +200,13 @@ int cpn_socket_accept(struct cpn_socket *s, struct cpn_channel *out)
                         continue;
                     cpn_log(LOG_LEVEL_ERROR, "Could not accept connection: %s",
                             strerror(errno));
+                    return -1;
+                }
+
+                opt = 1;
+                if (setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &opt, sizeof(opt)) < 0) {
+                    cpn_log(LOG_LEVEL_DEBUG, "Unable to enable keepalive: %s", strerror(errno));
+                    close(fd);
                     return -1;
                 }
 
