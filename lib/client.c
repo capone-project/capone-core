@@ -211,6 +211,8 @@ int cpn_client_start_session(struct cpn_session **out,
 
     connect.version = CPN_PROTOCOL_VERSION;
     connect.identifier = sessionid;
+    connect.service_type = (char *) plugin->type;
+    connect.service_version = plugin->version;
     if (cpn_cap_to_protobuf(&connect.capability, cap) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not read capability");
         goto out;
