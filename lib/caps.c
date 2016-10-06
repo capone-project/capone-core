@@ -81,7 +81,7 @@ int cpn_cap_from_string(struct cpn_cap **out, const char *string)
     } else {
         cap->chain = malloc(sizeof(*cap->chain) * chain_depth);
         cap->chain_depth = chain_depth;
-        rights = CPN_CAP_RIGHT_EXEC | CPN_CAP_RIGHT_TERM;
+        rights = CPN_CAP_RIGHT_EXEC | CPN_CAP_RIGHT_TERM | CPN_CAP_RIGHT_DISTRIBUTE;
 
         for (i = 0; i < chain_depth; i++) {
             string = ++ptr;
@@ -107,6 +107,9 @@ int cpn_cap_from_string(struct cpn_cap **out, const char *string)
                         break;
                     case 't':
                         cap->chain[i].rights |= CPN_CAP_RIGHT_TERM;
+                        break;
+                    case 'd':
+                        cap->chain[i].rights |= CPN_CAP_RIGHT_DISTRIBUTE;
                         break;
                     case '|':
                         continue;
@@ -155,6 +158,8 @@ int cpn_cap_to_string(char **out, const struct cpn_cap *cap)
                 cpn_buf_append(&buf, "x");
             if (cap->chain[i].rights & CPN_CAP_RIGHT_TERM)
                 cpn_buf_append(&buf, "t");
+            if (cap->chain[i].rights & CPN_CAP_RIGHT_DISTRIBUTE)
+                cpn_buf_append(&buf, "d");
         }
     }
 
@@ -281,8 +286,13 @@ int cpn_cap_create_ref(struct cpn_cap **out, const struct cpn_cap *root,
 
     *out = NULL;
 
-    if (root->chain_depth && rights & ~root->chain[root->chain_depth - 1].rights) {
+    if (root->chain_depth && (rights & ~root->chain[root->chain_depth - 1].rights)) {
         cpn_log(LOG_LEVEL_ERROR, "Invalid right expansion for new capability");
+        return -1;
+    }
+
+    if (root->chain_depth && !(CPN_CAP_RIGHT_DISTRIBUTE & root->chain[root->chain_depth - 1].rights)) {
+        cpn_log(LOG_LEVEL_ERROR, "Trying to derive from non-distributable capability");
         return -1;
     }
 
@@ -327,14 +337,27 @@ int cpn_caps_verify(const struct cpn_cap *ref, const struct cpn_cap *root,
     if (!(ref->chain[ref->chain_depth - 1].rights & right))
         return -1;
 
-    rights = CPN_CAP_RIGHT_EXEC | CPN_CAP_RIGHT_TERM;
+    rights = CPN_CAP_RIGHT_EXEC | CPN_CAP_RIGHT_TERM | CPN_CAP_RIGHT_DISTRIBUTE;
     memcpy(secret, root->secret, sizeof(secret));
 
     for (i = 0; i < ref->chain_depth; i++) {
-        if (ref->chain[i].rights & ~rights)
+        /* Check whether the previous set of rights allows for distribution */
+        if (!(rights & CPN_CAP_RIGHT_DISTRIBUTE)) {
+            cpn_log(LOG_LEVEL_ERROR, "Capability derived from non-distributable capability");
             return -1;
-        if (hash_secret(secret, ref->chain[i].rights, secret, &ref->chain[i].identity) < 0)
+        }
+
+        /* Check whether we extend previous rights */
+        if (ref->chain[i].rights & ~rights) {
+            cpn_log(LOG_LEVEL_ERROR, "Derived capability extends previous rights");
             return -1;
+        }
+
+        if (hash_secret(secret, ref->chain[i].rights, secret, &ref->chain[i].identity) < 0) {
+            cpn_log(LOG_LEVEL_ERROR, "Unable to compute capability secret");
+            return -1;
+        }
+
         rights = ref->chain[i].rights;
     }
 

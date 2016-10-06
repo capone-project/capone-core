@@ -32,6 +32,8 @@ static int parse_rights(uint32_t *out, const char *rights)
             case 't':
                 parsed |= CPN_CAP_RIGHT_TERM;
                 break;
+            case 'd':
+                parsed |= CPN_CAP_RIGHT_DISTRIBUTE;
             default:
                 return -1;
         }

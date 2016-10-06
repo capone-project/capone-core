@@ -36,7 +36,8 @@
 
 enum cpn_cap_rights {
     CPN_CAP_RIGHT_EXEC = 1 << 0,
-    CPN_CAP_RIGHT_TERM = 1 << 1
+    CPN_CAP_RIGHT_TERM = 1 << 1,
+    CPN_CAP_RIGHT_DISTRIBUTE = 1 << 2
 };
 
 struct cpn_cap {
