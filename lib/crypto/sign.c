@@ -171,6 +171,29 @@ int cpn_sign_sig_from_bin(struct cpn_sign_sig *out, const uint8_t *data, size_t 
     return 0;
 }
 
+int cpn_sign_sig_from_proto(struct cpn_sign_sig *out, const SignatureMessage *msg)
+{
+    if (!msg || msg->data.len != CPN_CRYPTO_SIGN_SIGBYTES)
+        return -1;
+
+    memcpy(out->data, msg->data.data, CPN_CRYPTO_SIGN_SIGBYTES);
+    return 0;
+}
+
+int cpn_sign_sig_to_proto(SignatureMessage **out, const struct cpn_sign_sig *sig)
+{
+    SignatureMessage *msg = malloc(sizeof(SignatureMessage));
+    signature_message__init(msg);
+
+    msg->data.len = CPN_CRYPTO_SIGN_SIGBYTES;
+    msg->data.data = malloc(CPN_CRYPTO_SIGN_SIGBYTES);
+    memcpy(msg->data.data, sig->data, CPN_CRYPTO_SIGN_SIGBYTES);
+
+    *out = msg;
+
+    return 0;
+}
+
 int cpn_sign_sig(struct cpn_sign_sig *out, const struct cpn_sign_sk *key,
         uint8_t *data, size_t datalen)
 {

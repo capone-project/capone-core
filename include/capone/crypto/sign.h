@@ -138,6 +138,12 @@ int cpn_sign_keys_from_config_file(struct cpn_sign_keys *out, const char *file);
 /** @brief Create a signature from its binary representation */
 int cpn_sign_sig_from_bin(struct cpn_sign_sig *out, const uint8_t *data, size_t datalen);
 
+/** @brief Create a signature from a protocol buffer message */
+int cpn_sign_sig_from_proto(struct cpn_sign_sig *out, const SignatureMessage *msg);
+
+/** @brief Create a protocol buffer message from signature */
+int cpn_sign_sig_to_proto(SignatureMessage **out, const struct cpn_sign_sig *sig);
+
 /** @brief Create a signature for given data */
 int cpn_sign_sig(struct cpn_sign_sig *out, const struct cpn_sign_sk *key,
         uint8_t *data, size_t datalen);
