@@ -62,7 +62,7 @@ int cpn_buf_append_data(struct cpn_buf *buf, const unsigned char *data, size_t l
  * Append the string to the currently contained string.
  *
  * @param[in] buf Buffer to append
- * @param[in] data Hex to append
+ * @param[in] data Binary data to append as hex
  * @param[in] len Length of binary data to append
  */
 int cpn_buf_append_hex(struct cpn_buf *buf, const unsigned char *data, size_t len);

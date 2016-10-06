@@ -84,6 +84,7 @@ static void appending_hex_succeeds()
     unsigned char bytes[] = { 0x01, 0x02, 0x03, 0x04 };
     assert_success(cpn_buf_append_hex(&buf, bytes, 4));
     assert_string_equal(buf.data, "01020304");
+    assert_int_equal(buf.length, 8);
 }
 
 static void printf_succeeds_on_empty_buf()
