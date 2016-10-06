@@ -17,6 +17,8 @@
 
 #include "capone/buf.h"
 
+#include <sodium/utils.h>
+
 #include <assert.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -77,6 +79,23 @@ int cpn_buf_append_data(struct cpn_buf *buf, const unsigned char *data, size_t l
 
     memcpy(buf->data + buf->length, data, len);
     buf->length = buf->length + len;
+
+    return 0;
+}
+
+int cpn_buf_append_hex(struct cpn_buf *buf, const unsigned char *data, size_t len)
+{
+    int hexlen = (len * 2);
+    int newlen = buf->length + hexlen + 1;
+
+    if (ensure_allocated(buf, newlen) < 0)
+        return -1;
+
+    assert(buf->data);
+
+    if (sodium_bin2hex(buf->data + buf->length, hexlen + 1, data, len) == NULL)
+        return -1;
+    buf->length = buf->length + hexlen;
 
     return 0;
 }

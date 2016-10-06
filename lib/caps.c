@@ -20,8 +20,6 @@
 
 #include <arpa/inet.h>
 
-#include <sodium/utils.h>
-
 #include "capone/buf.h"
 #include "capone/caps.h"
 #include "capone/common.h"
@@ -139,12 +137,10 @@ int cpn_cap_to_string(char **out, const struct cpn_cap *cap)
 {
     struct cpn_buf buf = CPN_BUF_INIT;
     struct cpn_sign_pk_hex hex;
-    char buffer[CPN_CAP_SECRET_LEN * 2 + 1];
     uint32_t i;
 
-    if (sodium_bin2hex(buffer, sizeof(buffer), cap->secret, sizeof(cap->secret)) == NULL)
+    if (cpn_buf_append_hex(&buf, cap->secret, sizeof(cap->secret)) < 0)
         goto out_err;
-    cpn_buf_append(&buf, buffer);
 
     if (cap->chain_depth) {
         for (i = 0; i < cap->chain_depth; i++) {

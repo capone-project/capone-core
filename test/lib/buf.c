@@ -79,6 +79,14 @@ static void appending_empty_does_nothing()
     assert_string_equal(buf.data, "test");
 }
 
+static void appending_hex_succeeds()
+{
+    unsigned char bytes[] = { 0x01, 0x02, 0x03, 0x04 };
+    assert_success(cpn_buf_append_hex(&buf, bytes, 4));
+    assert_string_equal(buf.data, "01020304");
+    assert_int_equal(buf.length, 8);
+}
+
 static void printf_succeeds_on_empty_buf()
 {
     assert_success(cpn_buf_printf(&buf, "%s", "test"));
@@ -102,6 +110,7 @@ int buf_test_run_suite(void)
         test(appending_empty_buf_succeeds),
         test(appending_twice_concatenates),
         test(appending_empty_does_nothing),
+        test(appending_hex_succeeds),
 
         test(printf_succeeds_on_empty_buf),
         test(printf_succeeds_on_nonempty_buf)
