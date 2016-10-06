@@ -475,6 +475,7 @@ int send_key_acknowledgement(struct cpn_channel *channel,
     EncryptionAcknowledgementMessage msg = ENCRYPTION_ACKNOWLEDGEMENT_MESSAGE__INIT;
     IdentityMessage *identity = NULL;
     PublicKeyMessage *ephemeral = NULL;
+    SignatureMessage *signature = NULL;
     struct cpn_buf sign_buf = CPN_BUF_INIT;
     struct cpn_sign_sig sig;
     int err = -1;
@@ -499,10 +500,14 @@ int send_key_acknowledgement(struct cpn_channel *channel,
         goto out;
     }
 
+    if (cpn_sign_sig_to_proto(&signature, &sig) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Unable to generate signature message");
+        goto out;
+    }
+
     msg.identity = identity;
     msg.ephemeral = ephemeral;
-    msg.signature.data = sig.data;
-    msg.signature.len = sizeof(sig.data);
+    msg.signature = signature;
 
     if (cpn_channel_write_protobuf(channel, &msg.base) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Received invalid ephemeral key signature");
@@ -516,6 +521,8 @@ out:
         identity_message__free_unpacked(identity, NULL);
     if (ephemeral)
         public_key_message__free_unpacked(ephemeral, NULL);
+    if (signature)
+        signature_message__free_unpacked(signature, NULL);
     cpn_buf_clear(&sign_buf);
 
     return err;
@@ -580,7 +587,7 @@ int receive_key_acknowledgement(struct cpn_asymmetric_pk *out,
     } else if (cpn_asymmetric_pk_from_proto(out, msg->ephemeral) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Ephemeral key does not match");
         goto out;
-    } else if (cpn_sign_sig_from_bin(&sig, msg->signature.data, msg->signature.len) < 0) {
+    } else if (cpn_sign_sig_from_proto(&sig, msg->signature) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Verification has invalid signature length");
         goto out;
     }
