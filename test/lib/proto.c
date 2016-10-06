@@ -321,7 +321,7 @@ static void query_succeeds()
     assert_string_equal(results.category, "Test");
     assert_string_equal(results.location, "Dunno");
     assert_int_equal(results.port, 1234);
-    assert_string_equal(results.version, CPN_VERSION);
+    assert_int_equal(results.version, 1);
 
     cpn_query_results_free(&results);
 }
@@ -490,6 +490,8 @@ static void connect_refuses_with_invalid_version()
     initialization.type = CONNECTION_INITIATION_MESSAGE__TYPE__CONNECT;
     connect.version = -1;
     connect.capability = &cap;
+    connect.service_type = (char *) service.plugin->type;
+    connect.service_version = service.plugin->version;
 
     cpn_spawn(&t, handle_session, &args);
 

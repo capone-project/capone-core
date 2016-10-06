@@ -168,6 +168,20 @@ int cpn_server_handle_session(struct cpn_channel *channel,
         goto out_notify;
     }
 
+    if (strcmp(connect->service_type, service->plugin->type)) {
+        cpn_log(LOG_LEVEL_ERROR, "Received connect for service type %s on service %s",
+                connect->service_type, service->plugin->type);
+        error.code = ERROR_MESSAGE__ERROR_CODE__EINVAL;
+        goto out_notify;
+    }
+
+    if (connect->service_version != service->plugin->version) {
+        cpn_log(LOG_LEVEL_ERROR, "Cannot handle version %"PRIu32" on service %s",
+                connect->service_version, service->plugin->type);
+        error.code = ERROR_MESSAGE__ERROR_CODE__EVERSION;
+        goto out_notify;
+    }
+
     if (cpn_cap_from_protobuf(&cap, connect->capability) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not read capability");
         error.code = ERROR_MESSAGE__ERROR_CODE__EACCESS;
@@ -262,7 +276,7 @@ int cpn_server_handle_query(struct cpn_channel *channel,
     result.port = service->port;
     result.category = (char *) service->plugin->category;
     result.type = (char *) service->plugin->type;
-    result.version = (char *) service->plugin->version;
+    result.version = service->plugin->version;
 
     response.result = &result;
 

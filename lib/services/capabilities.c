@@ -588,7 +588,7 @@ int cpn_capabilities_init_service(const struct cpn_service_plugin **service)
     static struct cpn_service_plugin plugin = {
         "Capabilities",
         "capabilities",
-        "0.0.1",
+        1,
         handle,
         invoke,
         parse,

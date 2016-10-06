@@ -211,6 +211,8 @@ int cpn_client_start_session(struct cpn_session **out,
 
     connect.version = CPN_PROTOCOL_VERSION;
     connect.identifier = sessionid;
+    connect.service_type = (char *) plugin->type;
+    connect.service_version = plugin->version;
     if (cpn_cap_to_protobuf(&connect.capability, cap) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not read capability");
         goto out;
@@ -350,7 +352,6 @@ int cpn_client_query_service(struct cpn_query_results *out,
     results.type = msg->result->type;
     msg->result->type = NULL;
     results.version = msg->result->version;
-    msg->result->version = NULL;
     results.location = msg->result->location;
     msg->result->location = NULL;
     results.port = msg->result->port;
@@ -373,8 +374,6 @@ void cpn_query_results_free(struct cpn_query_results *results)
     results->category = NULL;
     free(results->type);
     results->type = NULL;
-    free(results->version);
-    results->version = NULL;
     free(results->location);
     results->location = NULL;
 }
