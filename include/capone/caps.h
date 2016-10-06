@@ -40,6 +40,14 @@ enum cpn_cap_rights {
     CPN_CAP_RIGHT_DISTRIBUTE = 1 << 2
 };
 
+#define CPN_CAP_RIGHTS_ALL ( CPN_CAP_RIGHT_EXEC \
+                           | CPN_CAP_RIGHT_TERM \
+                           | CPN_CAP_RIGHT_DISTRIBUTE )
+
+struct cpn_cap_secret {
+    uint8_t secret[CPN_CAP_SECRET_LEN];
+};
+
 struct cpn_cap {
     uint8_t secret[CPN_CAP_SECRET_LEN];
 
@@ -56,25 +64,24 @@ int cpn_cap_from_string(struct cpn_cap **out, const char *string);
 /** @brief Parse a capability from strings */
 int cpn_cap_to_string(char **out, const struct cpn_cap *cap);
 
-/** @brief Duplicate memory associated with a capability */
-struct cpn_cap *cpn_cap_dup(const struct cpn_cap *cap);
-
 /** @brief Create capability from Protobuf */
 int cpn_cap_from_protobuf(struct cpn_cap **out, const CapabilityMessage *msg);
 
 /** @brief Create Protobuf from capability */
 int cpn_cap_to_protobuf(CapabilityMessage **out, const struct cpn_cap *cap);
 
-/** @brief Initialize a new internal capability
+/** @brief Initialize a capability secret
  *
- * This function initializes a new internal capabilty. The
- * internal capability can later on be used to get external
- * references, which may be distributed to third parties.
+ * This function initializes a new capability secret. The
+ * capability secret is used internally only and is used to
+ * protect objects. The value shall never be published. To grant
+ * access to the guarded object, capabilities can be created
+ * referencing the secret.
  *
- * @param[out] cap Newly allocated capability
+ * @param[out] cap Initialized capability secret
  * @return <code>0</code> on success, <code>-1</code> otherwise
  */
-int cpn_cap_create_root(struct cpn_cap **out);
+int cpn_cap_create_secret(struct cpn_cap_secret *out);
 
 /** @brief Create an external reference to an internal capability
  *
@@ -93,6 +100,24 @@ int cpn_cap_create_root(struct cpn_cap **out);
 int cpn_cap_create_ref(struct cpn_cap **out, const struct cpn_cap *root,
         uint32_t rights, const struct cpn_sign_pk *key);
 
+/** @brief Create an external reference to a capability secret
+ *
+ * References to a capability secret can be created, which can
+ * subsequently be distributed to a third party, giving this
+ * party certain rights on the object referenced by the
+ * capability.
+ *
+ * @param[out] out Newly created capability reference
+ * @param[in] secret Secret guarding an object
+ * @param[in] rights Rights granted with the new capability
+ * @param[in] key Public signature key of the entity to whom the
+ *            capability shall be granted
+ * @return <code>0</code> on success, <code>-1</code> otherwise
+ */
+int cpn_cap_create_ref_for_secret(struct cpn_cap **out,
+        const struct cpn_cap_secret *secret,
+        uint32_t rights, const struct cpn_sign_pk *key);
+
 /** @brief Free an allocated capability */
 void cpn_cap_free(struct cpn_cap *cap);
 
@@ -108,7 +133,8 @@ void cpn_cap_free(struct cpn_cap *cap);
  * @return <code>0</code> if the capability is valid for the
  *         given key and rights, <code>-1</code> otherwise
  */
-int cpn_caps_verify(const struct cpn_cap *ref, const struct cpn_cap *root,
+int cpn_caps_verify(const struct cpn_cap *ref,
+        const struct cpn_cap_secret *secret,
         const struct cpn_sign_pk *key, uint32_t rights);
 
 #endif

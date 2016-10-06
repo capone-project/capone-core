@@ -74,52 +74,52 @@ int cpn_cap_from_string(struct cpn_cap **out, const char *string)
     }
 
     if (*ptr == '\0') {
-        cap->chain = NULL;
-        cap->chain_depth = 0;
-    } else {
-        cap->chain = malloc(sizeof(*cap->chain) * chain_depth);
-        cap->chain_depth = chain_depth;
-        rights = CPN_CAP_RIGHT_EXEC | CPN_CAP_RIGHT_TERM | CPN_CAP_RIGHT_DISTRIBUTE;
+        cpn_log(LOG_LEVEL_ERROR, "Capability has no chain");
+        goto out;
+    }
 
-        for (i = 0; i < chain_depth; i++) {
-            string = ++ptr;
-            ptr = strchr(string, ':');
+    cap->chain = malloc(sizeof(*cap->chain) * chain_depth);
+    cap->chain_depth = chain_depth;
+    rights = CPN_CAP_RIGHT_EXEC | CPN_CAP_RIGHT_TERM | CPN_CAP_RIGHT_DISTRIBUTE;
 
-            if (ptr == NULL) {
-                cpn_log(LOG_LEVEL_ERROR, "Capability chain entry without rights");
-                goto out;
-            }
+    for (i = 0; i < chain_depth; i++) {
+        string = ++ptr;
+        ptr = strchr(string, ':');
 
-            if (parse_hex(cap->chain[i].identity.data, sizeof(struct cpn_sign_pk),
-                        string, ptr - string) < 0)
-            {
-                cpn_log(LOG_LEVEL_ERROR, "Capability chain entry invalid identity");
-                goto out;
-            }
-
-            cap->chain[i].rights = 0;
-            while (*++ptr != '\0' && *ptr != '|') {
-                switch (*ptr) {
-                    case 'x':
-                        cap->chain[i].rights |= CPN_CAP_RIGHT_EXEC;
-                        break;
-                    case 't':
-                        cap->chain[i].rights |= CPN_CAP_RIGHT_TERM;
-                        break;
-                    case 'd':
-                        cap->chain[i].rights |= CPN_CAP_RIGHT_DISTRIBUTE;
-                        break;
-                    case '|':
-                        continue;
-                    default:
-                        goto out;
-                }
-            }
-
-            if (cap->chain[i].rights == 0 || (cap->chain[i].rights & ~rights))
-                goto out;
-            rights = cap->chain[i].rights;
+        if (ptr == NULL) {
+            cpn_log(LOG_LEVEL_ERROR, "Capability chain entry without rights");
+            goto out;
         }
+
+        if (parse_hex(cap->chain[i].identity.data, sizeof(struct cpn_sign_pk),
+                    string, ptr - string) < 0)
+        {
+            cpn_log(LOG_LEVEL_ERROR, "Capability chain entry invalid identity");
+            goto out;
+        }
+
+        cap->chain[i].rights = 0;
+        while (*++ptr != '\0' && *ptr != '|') {
+            switch (*ptr) {
+                case 'x':
+                    cap->chain[i].rights |= CPN_CAP_RIGHT_EXEC;
+                    break;
+                case 't':
+                    cap->chain[i].rights |= CPN_CAP_RIGHT_TERM;
+                    break;
+                case 'd':
+                    cap->chain[i].rights |= CPN_CAP_RIGHT_DISTRIBUTE;
+                    break;
+                case '|':
+                    continue;
+                default:
+                    goto out;
+            }
+        }
+
+        if (cap->chain[i].rights == 0 || (cap->chain[i].rights & ~rights))
+            goto out;
+        rights = cap->chain[i].rights;
     }
 
     err = 0;
@@ -142,21 +142,19 @@ int cpn_cap_to_string(char **out, const struct cpn_cap *cap)
     if (cpn_buf_append_hex(&buf, cap->secret, sizeof(cap->secret)) < 0)
         goto out_err;
 
-    if (cap->chain_depth) {
-        for (i = 0; i < cap->chain_depth; i++) {
-            if (!cap->chain[i].rights)
-                goto out_err;
+    for (i = 0; i < cap->chain_depth; i++) {
+        if (!cap->chain[i].rights)
+            goto out_err;
 
-            cpn_sign_pk_hex_from_key(&hex, &cap->chain[i].identity);
-            cpn_buf_printf(&buf, "|%s:", hex.data);
+        cpn_sign_pk_hex_from_key(&hex, &cap->chain[i].identity);
+        cpn_buf_printf(&buf, "|%s:", hex.data);
 
-            if (cap->chain[i].rights & CPN_CAP_RIGHT_EXEC)
-                cpn_buf_append(&buf, "x");
-            if (cap->chain[i].rights & CPN_CAP_RIGHT_TERM)
-                cpn_buf_append(&buf, "t");
-            if (cap->chain[i].rights & CPN_CAP_RIGHT_DISTRIBUTE)
-                cpn_buf_append(&buf, "d");
-        }
+        if (cap->chain[i].rights & CPN_CAP_RIGHT_EXEC)
+            cpn_buf_append(&buf, "x");
+        if (cap->chain[i].rights & CPN_CAP_RIGHT_TERM)
+            cpn_buf_append(&buf, "t");
+        if (cap->chain[i].rights & CPN_CAP_RIGHT_DISTRIBUTE)
+            cpn_buf_append(&buf, "d");
     }
 
     *out = buf.data;
@@ -168,49 +166,27 @@ out_err:
     return -1;
 }
 
-struct cpn_cap *cpn_cap_dup(const struct cpn_cap *cap)
-{
-    uint32_t i;
-    struct cpn_cap *dup;
-
-    dup = malloc(sizeof(struct cpn_cap));
-    dup->chain_depth = cap->chain_depth;
-    memcpy(dup->secret, cap->secret, sizeof(dup->secret));
-
-    if (dup->chain_depth) {
-        dup->chain = malloc(sizeof(*dup->chain) * cap->chain_depth);
-        for (i = 0; i < cap->chain_depth; i++) {
-            memcpy(&dup->chain[i], &cap->chain[i], sizeof(dup->chain[i]));
-        }
-    } else {
-        dup->chain = NULL;
-    }
-
-    return dup;
-}
-
 int cpn_cap_from_protobuf(struct cpn_cap **out, const CapabilityMessage *msg)
 {
     struct cpn_cap *cap = NULL;
     uint32_t i;
 
-    if (!msg || msg->secret.len != CPN_CAP_SECRET_LEN || msg->n_chain > UINT8_MAX)
+    if (!msg)
+        goto out_err;
+    if (msg->secret.len != CPN_CAP_SECRET_LEN)
+        goto out_err;
+    if (msg->n_chain == 0 || msg->n_chain > UINT8_MAX)
         goto out_err;
 
     cap = malloc(sizeof(struct cpn_cap));
     memcpy(cap->secret, msg->secret.data, CPN_CAP_SECRET_LEN);
     cap->chain_depth = msg->n_chain;
+    cap->chain = malloc(sizeof(*cap->chain) * cap->chain_depth);
 
-    if (cap->chain_depth) {
-        cap->chain = malloc(sizeof(*cap->chain) * cap->chain_depth);
-
-        for (i = 0; i < msg->n_chain; i++) {
-            cap->chain[i].rights = msg->chain[i]->rights;
-            if (cpn_sign_pk_from_proto(&cap->chain[i].identity, msg->chain[i]->identity) < 0)
-                goto out_err;
-        }
-    } else {
-        cap->chain = NULL;
+    for (i = 0; i < msg->n_chain; i++) {
+        cap->chain[i].rights = msg->chain[i]->rights;
+        if (cpn_sign_pk_from_proto(&cap->chain[i].identity, msg->chain[i]->identity) < 0)
+            goto out_err;
     }
 
     *out = cap;
@@ -233,20 +209,15 @@ int cpn_cap_to_protobuf(CapabilityMessage **out, const struct cpn_cap *cap)
 
     msg->secret.data = malloc(CPN_CAP_SECRET_LEN);
     msg->secret.len = CPN_CAP_SECRET_LEN;
-
     msg->n_chain = cap->chain_depth;
-    if (msg->n_chain) {
-        msg->chain = malloc(sizeof(*msg->chain) * cap->chain_depth);
+    msg->chain = malloc(sizeof(*msg->chain) * cap->chain_depth);
 
-        for (i = 0;  i < cap->chain_depth; i++) {
-            CapabilityMessage__Chain *chain = malloc(sizeof(*chain));
-            capability_message__chain__init(chain);
-            chain->rights = cap->chain[i].rights;
-            cpn_sign_pk_to_proto(&chain->identity, &cap->chain[i].identity);
-            msg->chain[i] = chain;
-        }
-    } else {
-        msg->chain = NULL;
+    for (i = 0;  i < cap->chain_depth; i++) {
+        CapabilityMessage__Chain *chain = malloc(sizeof(*chain));
+        capability_message__chain__init(chain);
+        chain->rights = cap->chain[i].rights;
+        cpn_sign_pk_to_proto(&chain->identity, &cap->chain[i].identity);
+        msg->chain[i] = chain;
     }
 
     memcpy(msg->secret.data, cap->secret, CPN_CAP_SECRET_LEN);
@@ -256,18 +227,9 @@ int cpn_cap_to_protobuf(CapabilityMessage **out, const struct cpn_cap *cap)
     return 0;
 }
 
-int cpn_cap_create_root(struct cpn_cap **out)
+int cpn_cap_create_secret(struct cpn_cap_secret *out)
 {
-    struct cpn_cap *cap;
-
-    *out = NULL;
-
-    cap = malloc(sizeof(struct cpn_cap));
-    cpn_randombytes(cap->secret, CPN_CAP_SECRET_LEN);
-    cap->chain_depth = 0;
-    cap->chain = NULL;
-
-    *out = cap;
+    cpn_randombytes(out->secret, CPN_CAP_SECRET_LEN);
 
     return 0;
 }
@@ -279,12 +241,17 @@ int cpn_cap_create_ref(struct cpn_cap **out, const struct cpn_cap *root,
 
     *out = NULL;
 
-    if (root->chain_depth && (rights & ~root->chain[root->chain_depth - 1].rights)) {
+    if (!root->chain_depth || !root->chain) {
+        cpn_log(LOG_LEVEL_ERROR, "Invalid capability chain");
+        return -1;
+    }
+
+    if (rights & ~root->chain[root->chain_depth - 1].rights) {
         cpn_log(LOG_LEVEL_ERROR, "Invalid right expansion for new capability");
         return -1;
     }
 
-    if (root->chain_depth && !(CPN_CAP_RIGHT_DISTRIBUTE & root->chain[root->chain_depth - 1].rights)) {
+    if (!(CPN_CAP_RIGHT_DISTRIBUTE & root->chain[root->chain_depth - 1].rights)) {
         cpn_log(LOG_LEVEL_ERROR, "Trying to derive from non-distributable capability");
         return -1;
     }
@@ -308,6 +275,32 @@ int cpn_cap_create_ref(struct cpn_cap **out, const struct cpn_cap *root,
     return 0;
 }
 
+int cpn_cap_create_ref_for_secret(struct cpn_cap **out,
+        const struct cpn_cap_secret *secret,
+        uint32_t rights, const struct cpn_sign_pk *key)
+{
+    struct cpn_cap *cap;
+
+    *out = NULL;
+
+    cap = malloc(sizeof(struct cpn_cap));
+
+    if (hash_secret(cap->secret, rights, secret->secret, key) < 0) {
+        cpn_log(LOG_LEVEL_ERROR, "Could not compute capability secret");
+        free(cap);
+        return -1;
+    }
+
+    cap->chain_depth = 1;
+    cap->chain = malloc(sizeof(*cap->chain));
+    memcpy(&cap->chain[0].identity, key, sizeof(struct cpn_sign_pk));
+    cap->chain[0].rights = rights;
+
+    *out = cap;
+
+    return 0;
+}
+
 void cpn_cap_free(struct cpn_cap *cap)
 {
     if (!cap)
@@ -317,10 +310,11 @@ void cpn_cap_free(struct cpn_cap *cap)
     free(cap);
 }
 
-int cpn_caps_verify(const struct cpn_cap *ref, const struct cpn_cap *root,
+int cpn_caps_verify(const struct cpn_cap *ref,
+        const struct cpn_cap_secret *secret,
         const struct cpn_sign_pk *key, uint32_t right)
 {
-    uint8_t secret[CPN_CAP_SECRET_LEN];
+    uint8_t hash[CPN_CAP_SECRET_LEN];
     uint32_t i, rights;
 
     if (ref->chain_depth == 0)
@@ -330,8 +324,8 @@ int cpn_caps_verify(const struct cpn_cap *ref, const struct cpn_cap *root,
     if (!(ref->chain[ref->chain_depth - 1].rights & right))
         return -1;
 
-    rights = CPN_CAP_RIGHT_EXEC | CPN_CAP_RIGHT_TERM | CPN_CAP_RIGHT_DISTRIBUTE;
-    memcpy(secret, root->secret, sizeof(secret));
+    rights = CPN_CAP_RIGHTS_ALL;
+    memcpy(hash, secret->secret, sizeof(hash));
 
     for (i = 0; i < ref->chain_depth; i++) {
         /* Check whether the previous set of rights allows for distribution */
@@ -346,7 +340,7 @@ int cpn_caps_verify(const struct cpn_cap *ref, const struct cpn_cap *root,
             return -1;
         }
 
-        if (hash_secret(secret, ref->chain[i].rights, secret, &ref->chain[i].identity) < 0) {
+        if (hash_secret(hash, ref->chain[i].rights, hash, &ref->chain[i].identity) < 0) {
             cpn_log(LOG_LEVEL_ERROR, "Unable to compute capability secret");
             return -1;
         }
@@ -356,7 +350,7 @@ int cpn_caps_verify(const struct cpn_cap *ref, const struct cpn_cap *root,
 
     if (right & ~rights)
         return -1;
-    if (memcmp(secret, ref->secret, CPN_CAP_SECRET_LEN))
+    if (memcmp(hash, ref->secret, CPN_CAP_SECRET_LEN))
         return -1;
 
     return 0;

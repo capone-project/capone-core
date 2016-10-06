@@ -24,14 +24,14 @@
 
 static char *string;
 
-static struct cpn_cap *root;
+static struct cpn_cap_secret secret;
 static struct cpn_cap *ref;
 static struct cpn_sign_pk pk;
 static struct cpn_sign_pk other_pk;
 
 static int setup()
 {
-    root = NULL;
+    cpn_cap_create_secret(&secret);
     ref = NULL;
     string = NULL;
     assert_success(cpn_sign_pk_from_hex(&pk, PK));
@@ -42,22 +42,19 @@ static int setup()
 static int teardown()
 {
     free(string);
-    cpn_cap_free(root);
     cpn_cap_free(ref);
     return 0;
 }
 
-static void adding_capability_succeeds()
+static void creating_secret_succeeds()
 {
-    assert_success(cpn_cap_create_root(&root));
-    assert_int_equal(root->chain_depth, 0);
-    assert_null(root->chain);
+    assert_success(cpn_cap_create_secret(&secret));
 }
 
 static void creating_ref_succeeds()
 {
-    assert_success(cpn_cap_create_root(&root));
-    assert_success(cpn_cap_create_ref(&ref, root, CPN_CAP_RIGHT_EXEC, &pk));
+    assert_success(cpn_cap_create_secret(&secret));
+    assert_success(cpn_cap_create_ref_for_secret(&ref, &secret, CPN_CAP_RIGHT_EXEC, &pk));
 
     assert_int_equal(ref->chain_depth, 1);
     assert_int_equal(ref->chain[0].rights, CPN_CAP_RIGHT_EXEC);
@@ -68,8 +65,8 @@ static void creating_nested_refs_succeeds()
 {
     struct cpn_cap *nested;
 
-    assert_success(cpn_cap_create_root(&root));
-    assert_success(cpn_cap_create_ref(&ref, root, CPN_CAP_RIGHT_EXEC|CPN_CAP_RIGHT_DISTRIBUTE, &pk));
+    assert_success(cpn_cap_create_secret(&secret));
+    assert_success(cpn_cap_create_ref_for_secret(&ref, &secret, CPN_CAP_RIGHT_EXEC|CPN_CAP_RIGHT_DISTRIBUTE, &pk));
     assert_success(cpn_cap_create_ref(&nested, ref, CPN_CAP_RIGHT_EXEC, &other_pk));
 
     assert_int_equal(nested->chain_depth, 2);
@@ -85,88 +82,66 @@ static void creating_nested_refs_with_additional_rights_fails()
 {
     struct cpn_cap *nested;
 
-    assert_success(cpn_cap_create_root(&root));
-    assert_success(cpn_cap_create_ref(&ref, root, CPN_CAP_RIGHT_EXEC|CPN_CAP_RIGHT_DISTRIBUTE, &pk));
+    assert_success(cpn_cap_create_secret(&secret));
+    assert_success(cpn_cap_create_ref_for_secret(&ref, &secret, CPN_CAP_RIGHT_EXEC|CPN_CAP_RIGHT_DISTRIBUTE, &pk));
     assert_failure(cpn_cap_create_ref(&nested, ref, CPN_CAP_RIGHT_EXEC|CPN_CAP_RIGHT_TERM, &other_pk));
     assert_null(nested);
 }
 
 static void creating_ref_without_distribution_right_fails()
 {
-    assert_success(cpn_cap_create_root(&root));
-    assert_success(cpn_cap_create_ref(&ref, root, CPN_CAP_RIGHT_EXEC, &pk));
+    assert_success(cpn_cap_create_secret(&secret));
+    assert_success(cpn_cap_create_ref_for_secret(&ref, &secret, CPN_CAP_RIGHT_EXEC, &pk));
     assert_failure(cpn_cap_create_ref(&ref, ref, CPN_CAP_RIGHT_EXEC, &pk));
 }
 
 static void verifying_valid_ref_succeeds()
 {
-    assert_success(cpn_cap_create_root(&root));
-    assert_success(cpn_cap_create_ref(&ref, root, CPN_CAP_RIGHT_EXEC, &pk));
-    assert_success(cpn_caps_verify(ref, root, &pk, CPN_CAP_RIGHT_EXEC));
+    assert_success(cpn_cap_create_secret(&secret));
+    assert_success(cpn_cap_create_ref_for_secret(&ref, &secret, CPN_CAP_RIGHT_EXEC, &pk));
+    assert_success(cpn_caps_verify(ref, &secret, &pk, CPN_CAP_RIGHT_EXEC));
 }
 
 static void verifying_valid_ref_with_different_pk_fails()
 {
-    assert_success(cpn_cap_create_root(&root));
-    assert_success(cpn_cap_create_ref(&ref, root, CPN_CAP_RIGHT_EXEC, &pk));
-    assert_failure(cpn_caps_verify(ref, root, &other_pk, CPN_CAP_RIGHT_EXEC));
+    assert_success(cpn_cap_create_secret(&secret));
+    assert_success(cpn_cap_create_ref_for_secret(&ref, &secret, CPN_CAP_RIGHT_EXEC, &pk));
+    assert_failure(cpn_caps_verify(ref, &secret, &other_pk, CPN_CAP_RIGHT_EXEC));
 }
 
 static void verifying_valid_ref_with_different_rights_fails()
 {
-    assert_success(cpn_cap_create_root(&root));
-    assert_success(cpn_cap_create_ref(&ref, root, CPN_CAP_RIGHT_EXEC, &pk));
-    assert_failure(cpn_caps_verify(ref, root, &pk, CPN_CAP_RIGHT_TERM));
+    assert_success(cpn_cap_create_secret(&secret));
+    assert_success(cpn_cap_create_ref_for_secret(&ref, &secret, CPN_CAP_RIGHT_EXEC, &pk));
+    assert_failure(cpn_caps_verify(ref, &secret, &pk, CPN_CAP_RIGHT_TERM));
 }
 
 static void verifying_valid_ref_with_additional_rights_fails()
 {
-    assert_success(cpn_cap_create_root(&root));
-    assert_success(cpn_cap_create_ref(&ref, root, CPN_CAP_RIGHT_EXEC, &pk));
-    assert_failure(cpn_caps_verify(ref, root, &pk, CPN_CAP_RIGHT_EXEC | CPN_CAP_RIGHT_TERM));
+    assert_success(cpn_cap_create_secret(&secret));
+    assert_success(cpn_cap_create_ref_for_secret(&ref, &secret, CPN_CAP_RIGHT_EXEC, &pk));
+    assert_failure(cpn_caps_verify(ref, &secret, &pk, CPN_CAP_RIGHT_EXEC | CPN_CAP_RIGHT_TERM));
 }
 
 static void verifying_reference_extending_rights_fails()
 {
     struct cpn_cap *other;
 
-    assert_success(cpn_cap_create_root(&root));
-    assert_success(cpn_cap_create_ref(&ref, root, CPN_CAP_RIGHT_EXEC, &pk));
-    assert_success(cpn_cap_create_ref(&other, root, CPN_CAP_RIGHT_EXEC, &pk));
+    assert_success(cpn_cap_create_secret(&secret));
+    assert_success(cpn_cap_create_ref_for_secret(&ref, &secret, CPN_CAP_RIGHT_EXEC|CPN_CAP_RIGHT_DISTRIBUTE, &pk));
+    assert_success(cpn_cap_create_ref(&other, ref, CPN_CAP_RIGHT_EXEC, &pk));
 
     other->chain[0].rights |= CPN_CAP_RIGHT_TERM;
     other->chain[1].rights |= CPN_CAP_RIGHT_TERM;
 
-    assert_failure(cpn_caps_verify(other, root, &pk, CPN_CAP_RIGHT_TERM));
+    assert_failure(cpn_caps_verify(other, &secret, &pk, CPN_CAP_RIGHT_TERM));
 
     cpn_cap_free(other);
 }
 
-static void parsing_cap_succeeds()
+static void parsing_cap_without_chain_fails()
 {
     char secret[] = SECRET;
-
-    assert_success(cpn_cap_from_string(&ref, secret));
-}
-
-static void parsing_cap_with_invalid_secret_length_fails()
-{
-    char secret[] = SECRET "a";
-
-    assert_failure(cpn_cap_from_string(&ref, secret));
-}
-
-static void parsing_cap_with_invalid_secret_chars_fails()
-{
-    char secret[] = SECRET;
-    secret[0] = 'x';
-
-    assert_failure(cpn_cap_from_string(&ref, secret));
-}
-
-static void parsing_root_cap_with_rights_fails()
-{
-    char secret[] = SECRET ":r";
 
     assert_failure(cpn_cap_from_string(&ref, secret));
 }
@@ -217,12 +192,11 @@ static void cap_to_string_succeeds_with_root_ref()
 
 static void cap_to_string_succeeds_with_reference()
 {
-    struct cpn_cap cap;
+    struct cpn_cap_secret secret;
 
-    memset(&cap, 0, sizeof(struct cpn_cap));
+    memset(&secret, 0, sizeof(struct cpn_cap_secret));
 
-    assert_success(cpn_cap_create_ref(&ref, &cap, CPN_CAP_RIGHT_EXEC | CPN_CAP_RIGHT_TERM, &pk));
-
+    assert_success(cpn_cap_create_ref_for_secret(&ref, &secret, CPN_CAP_RIGHT_EXEC | CPN_CAP_RIGHT_TERM, &pk));
     assert_success(cpn_cap_to_string(&string, ref));
 
     assert_string_equal(string, "c9e6e247596f2dce001d6b60ff6c75a6"
@@ -232,48 +206,16 @@ static void cap_to_string_succeeds_with_reference()
 
 static void reference_to_string_fails_without_rights()
 {
-    assert_success(cpn_cap_create_root(&root));
-    assert_success(cpn_cap_create_ref(&ref, root, 0, &pk));
+    assert_success(cpn_cap_create_secret(&secret));
+    assert_success(cpn_cap_create_ref_for_secret(&ref, &secret, 0, &pk));
 
     assert_failure(cpn_cap_to_string(&string, ref));
-}
-
-static void dup_of_root_cap_succeeds()
-{
-    struct cpn_cap *dup;
-
-    assert_success(cpn_cap_create_root(&root));
-    dup = cpn_cap_dup(root);
-
-    assert_non_null(dup);
-    assert_memory_equal(dup->secret, root->secret, sizeof(dup->secret));
-    assert_int_equal(dup->chain_depth, 0);
-    assert_null(dup->chain);
-
-    cpn_cap_free(dup);
-}
-
-static void dup_of_reference_cap_succeeds()
-{
-    struct cpn_cap *dup;
-
-    assert_success(cpn_cap_create_root(&root));
-    assert_success(cpn_cap_create_ref(&ref, root, 0, &pk));
-
-    dup = cpn_cap_dup(ref);
-
-    assert_non_null(dup);
-    assert_int_equal(dup->chain_depth, 1);
-    assert_memory_equal(dup->chain, ref->chain, sizeof(*dup->chain) * dup->chain_depth);
-
-    cpn_cap_free(dup);
 }
 
 int caps_test_run_suite(void)
 {
     const struct CMUnitTest tests[] = {
-        test(adding_capability_succeeds),
-
+        test(creating_secret_succeeds),
         test(creating_ref_succeeds),
         test(creating_nested_refs_succeeds),
         test(creating_nested_refs_with_additional_rights_fails),
@@ -285,10 +227,7 @@ int caps_test_run_suite(void)
         test(verifying_valid_ref_with_additional_rights_fails),
         test(verifying_reference_extending_rights_fails),
 
-        test(parsing_cap_succeeds),
-        test(parsing_cap_with_invalid_secret_length_fails),
-        test(parsing_cap_with_invalid_secret_chars_fails),
-        test(parsing_root_cap_with_rights_fails),
+        test(parsing_cap_without_chain_fails),
         test(parsing_cap_with_single_chain_succeeds),
         test(parsing_cap_with_multiple_chain_elements_succeeds),
         test(parsing_cap_with_extending_rights_fails),
@@ -297,9 +236,6 @@ int caps_test_run_suite(void)
         test(cap_to_string_succeeds_with_root_ref),
         test(cap_to_string_succeeds_with_reference),
         test(reference_to_string_fails_without_rights),
-
-        test(dup_of_root_cap_succeeds),
-        test(dup_of_reference_cap_succeeds)
     };
 
     return execute_test_suite("caps", tests, NULL, NULL);

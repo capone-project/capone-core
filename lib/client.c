@@ -244,7 +244,6 @@ int cpn_client_start_session(struct cpn_session **out,
     session = malloc(sizeof(struct cpn_session));
     session->parameters = params;
     session->identifier = sessionid;
-    session->cap = cpn_cap_dup(cap);
 
     *out = session;
 

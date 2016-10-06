@@ -70,8 +70,8 @@ struct cpn_session {
     /** @brief Session identifier used to distinguish sessions */
     uint32_t identifier;
 
-    /** @brief Session capability used for access control */
-    struct cpn_cap *cap;
+    /** @brief Session secret used for access control */
+    struct cpn_cap_secret secret;
 
     /** @brief Identity of the user who created the session */
     struct cpn_sign_pk creator;

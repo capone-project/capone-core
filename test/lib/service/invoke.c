@@ -41,19 +41,23 @@ static struct cpn_cfg cfg;
 static struct cpn_sign_keys keys;
 static IdentityMessage *identity_msg;
 
-static struct cpn_cap cap;
+static struct cpn_cap_secret secret;
+static struct cpn_cap *cap;
 static CapabilityMessage *cap_proto;
 
 static const struct cpn_service_plugin *service;
 
 static int setup()
 {
+
     assert_success(cpn_cfg_parse_string(&cfg, CFG, strlen(CFG)));
     assert_success(cpn_sign_keys_from_config(&keys, &cfg));
     assert_success(cpn_service_plugin_for_type(&service, "invoke"));
 
     assert_success(cpn_sign_pk_to_proto(&identity_msg, &keys.pk));
-    assert_success(cpn_cap_to_protobuf(&cap_proto, &cap));
+    memset(&secret, 0, sizeof(secret));
+    assert_success(cpn_cap_create_ref_for_secret(&cap, &secret, CPN_CAP_RIGHT_EXEC, &keys.pk));
+    assert_success(cpn_cap_to_protobuf(&cap_proto, cap));
 
     return 0;
 }
@@ -61,6 +65,8 @@ static int setup()
 static int teardown()
 {
     cpn_cfg_free(&cfg);
+    cpn_cap_free(cap);
+    cap = NULL;
 
     identity_message__free_unpacked(identity_msg, NULL);
     capability_message__free_unpacked(cap_proto, NULL);
@@ -119,10 +125,10 @@ static void invoking_succeeds()
 
     assert_string_equal(cpn_test_service_get_data(), "test");
     assert_int_equal(msg->identifier, 12345);
-    assert_int_equal(msg->capability->n_chain, 0);
-    assert_null(msg->capability->chain);
-    assert_int_equal(msg->capability->secret.len, sizeof(cap.secret));
-    assert_memory_equal(msg->capability->secret.data, cap.secret, sizeof(cap.secret));
+    assert_int_equal(msg->capability->n_chain, 1);
+    assert_non_null(msg->capability->chain);
+    assert_int_equal(msg->capability->secret.len, CPN_CAP_SECRET_LEN);
+    assert_memory_equal(msg->capability->secret.data, cap->secret, CPN_CAP_SECRET_LEN);
 
     session_connect_message__free_unpacked(msg, NULL);
 
@@ -142,7 +148,6 @@ static void invoking_fails_with_invalid_service_type()
     params.service_identity = identity_msg;
     params.cap = cap_proto;
 
-    session.cap = &cap;
     session.identifier = 1;
     session.parameters = &params.base;
 
@@ -163,7 +168,6 @@ static void invoking_fails_with_invalid_capability()
     params.cap = cap_proto;
     params.cap->secret.len--;
 
-    session.cap = &cap;
     session.identifier = 1;
     session.parameters = &params.base;
 
@@ -184,7 +188,6 @@ static void invoking_fails_with_invalid_service_identity()
     params.service_identity->data.len--;
     params.cap = cap_proto;
 
-    session.cap = &cap;
     session.identifier = 1;
     session.parameters = &params.base;
 

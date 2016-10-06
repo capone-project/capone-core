@@ -194,7 +194,7 @@ int cpn_server_handle_session(struct cpn_channel *channel,
         goto out_notify;
     }
 
-    if (cpn_caps_verify(cap, session->cap, remote_key, CPN_CAP_RIGHT_EXEC) < 0) {
+    if (cpn_caps_verify(cap, &session->secret, remote_key, CPN_CAP_RIGHT_EXEC) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Could not authorize session connect");
         error.code = ERROR_MESSAGE__ERROR_CODE__EPERM;
         goto out_notify;
@@ -299,13 +299,15 @@ out:
     return err;
 }
 
-static int create_cap(CapabilityMessage **out, const struct cpn_cap *root, uint32_t rights, const struct cpn_sign_pk *key)
+static int create_cap(CapabilityMessage **out,
+        const struct cpn_cap_secret *secret,
+        uint32_t rights, const struct cpn_sign_pk *key)
 {
     CapabilityMessage *msg = NULL;
     struct cpn_cap *cap = NULL;
     int err = -1;
 
-    if (cpn_cap_create_ref(&cap, root, rights, key) < 0)
+    if (cpn_cap_create_ref_for_secret(&cap, secret, rights, key) < 0)
         goto out;
 
     if (cpn_cap_to_protobuf(&msg, cap) < 0)
@@ -363,7 +365,7 @@ int cpn_server_handle_request(struct cpn_channel *channel,
         goto out_notify;
     }
 
-    if (create_cap(&result.cap, session->cap,
+    if (create_cap(&result.cap, &session->secret,
                 CPN_CAP_RIGHT_EXEC | CPN_CAP_RIGHT_TERM, remote_key) < 0)
     {
         cpn_log(LOG_LEVEL_ERROR, "Unable to add invoker capability");
@@ -434,7 +436,7 @@ int cpn_server_handle_termination(struct cpn_channel *channel,
         goto out_notify;
     }
 
-    if (cpn_caps_verify(cap, session->cap, remote_key, CPN_CAP_RIGHT_TERM) < 0) {
+    if (cpn_caps_verify(cap, &session->secret, remote_key, CPN_CAP_RIGHT_TERM) < 0) {
         cpn_log(LOG_LEVEL_ERROR, "Received unauthorized request");
         error.code = ERROR_MESSAGE__ERROR_CODE__EPERM;
         goto out_notify;

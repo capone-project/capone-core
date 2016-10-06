@@ -40,7 +40,7 @@ int cpn_sessions_add(const struct cpn_session **out, ProtobufCMessage *params,
     session = malloc(sizeof(struct cpn_session));
     session->parameters = params;
 
-    if (cpn_cap_create_root(&session->cap) < 0)
+    if (cpn_cap_create_secret(&session->secret) < 0)
         return -1;
 
     memcpy(&session->creator, creator, sizeof(struct cpn_sign_pk));
@@ -123,7 +123,6 @@ void cpn_session_free(struct cpn_session *session)
 {
     if (session == NULL)
         return;
-    cpn_cap_free(session->cap);
     if (session->parameters)
         protobuf_c_message_free_unpacked(session->parameters, NULL);
     free(session);

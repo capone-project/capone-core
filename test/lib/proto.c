@@ -456,7 +456,7 @@ static void service_connects()
 
     assert_success(service.plugin->parse_fn((ProtobufCMessage **) &params_proto, ARRAY_SIZE(params), params));
     assert_success(cpn_sessions_add(&session, (ProtobufCMessage *) params_proto, &remote_keys.pk));
-    assert_success(cpn_cap_create_ref(&cap, session->cap, CPN_CAP_RIGHT_EXEC, &local_keys.pk));
+    assert_success(cpn_cap_create_ref_for_secret(&cap, &session->secret, CPN_CAP_RIGHT_EXEC, &local_keys.pk));
     sessionid = session->identifier;
 
     assert_success(cpn_client_start_session(&received_session, &local, session->identifier, cap, service.plugin));
@@ -538,7 +538,7 @@ static void termination_kills_session()
     assert_success(cpn_sessions_add(&session, 0, &remote_keys.pk));
     sessionid = session->identifier;
 
-    assert_success(cpn_cap_create_ref(&cap, session->cap, CPN_CAP_RIGHT_TERM, &local_keys.pk));
+    assert_success(cpn_cap_create_ref_for_secret(&cap, &session->secret, CPN_CAP_RIGHT_TERM, &local_keys.pk));
 
     cpn_spawn(&t, handle_termination, &args);
     assert_success(cpn_client_terminate_session(&local, sessionid, cap));
