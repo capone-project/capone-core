@@ -218,10 +218,7 @@ int cpn_cap_from_protobuf(struct cpn_cap **out, const CapabilityMessage *msg)
     return 0;
 
 out_err:
-    if (cap) {
-        free(cap->chain);
-        free(cap);
-    }
+    cpn_cap_free(cap);
 
     return -1;
 }
