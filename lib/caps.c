@@ -194,7 +194,7 @@ int cpn_cap_from_protobuf(struct cpn_cap **out, const CapabilityMessage *msg)
     struct cpn_cap *cap = NULL;
     uint32_t i;
 
-    if (!msg || msg->secret.len != CPN_CAP_SECRET_LEN)
+    if (!msg || msg->secret.len != CPN_CAP_SECRET_LEN || msg->n_chain > UINT8_MAX)
         goto out_err;
 
     cap = malloc(sizeof(struct cpn_cap));

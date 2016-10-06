@@ -47,7 +47,7 @@ struct cpn_cap {
         struct cpn_sign_pk identity;
         uint32_t rights;
     } *chain;
-    uint32_t chain_depth;
+    uint8_t chain_depth;
 };
 
 /** @brief Parse a capability from strings */
